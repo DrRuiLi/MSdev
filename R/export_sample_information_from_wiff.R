@@ -9,7 +9,7 @@
 #' @export
 #'
 #' @examples
-#' export_sample_information_from_wiff(raw.data.dir,project.dir)
+
 export_sample_information_from_wiff <- function(
     raw.data.dir,
     project.dir){
