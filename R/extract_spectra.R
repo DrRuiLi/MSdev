@@ -1,3 +1,13 @@
+#' Extract Spectra
+#'
+#' Extract feature MSpectra from XCMSnExp and convert to Spectra
+#'
+#' @param ms.ana
+#'
+#' @return ms.ana
+#' @export
+#'
+#' @examples
 extract_spectra <- function(ms.ana){
 
   message(Sys.time()," Extract Spectra...")
