@@ -7,7 +7,7 @@
 #' @export
 #'
 #' @examples
-metabolomic_work_flow <- function(
+metabolomic_workflow <- function(
     project.dir ="d:/2022_07_05-Lirui/",
     raw.data.dir ="d:/2022_07_05-Lirui/Data/"
     ){
