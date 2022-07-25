@@ -17,6 +17,3 @@ ms.ana objective
 \description{
 Detect raw data (*.wiff and *.wiff.scan) from Sciex 6600
 }
-\examples{
-export_sample_information_from_wiff(raw.data.dir,project.dir)
-}
