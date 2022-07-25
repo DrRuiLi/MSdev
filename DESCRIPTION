@@ -13,10 +13,11 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Imports: 
+    tidyverse
+Depends: 
+    tidyverse,
     BiocParallel,
     enviPat,
     Spectra,
     webchem,
     xcms
-Depends: 
-    tidyverse

@@ -33,7 +33,7 @@ Retrieve_compounds_data_from_pubchem <- function(compound.record.file) {
   ### get compound information from pubchem
   {
     pubchem.info <-
-      pc_prop(
+      webchem::pc_prop(
         compound.record$pubchem.cid,
         c(
           "Title",
