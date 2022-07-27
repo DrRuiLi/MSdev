@@ -1,8 +1,9 @@
 #' @title Retrieve compound data
 #' @desription retrieve compound information by pubchem.cid in compound.record.file
 #' @return compound.record
+#' @Import  webchem
+#' @import enviPat
 #' @export
-#' @import webchem
 #' @examples
 Retrieve_compounds_data_from_pubchem <-
   function(compound.record.file) {
@@ -33,8 +34,11 @@ Retrieve_compounds_data_from_pubchem <-
 
     ### get compound information from pubchem
     {
+      compound.record$pubchem.cid <- gsub(pattern = "[^A-z1-9]",
+                                          x = compound.record$pubchem.cid,
+                                          replacement = "")
       pubchem.info <-
-        webchem::pc_prop(
+       pc_prop(
           compound.record$pubchem.cid,
           c(
             "Title",
@@ -50,7 +54,9 @@ Retrieve_compounds_data_from_pubchem <-
       compound.record$inchi <- pubchem.info$InChI
       compound.record$inchikey <- pubchem.info$InChIKey
       compound.record$pubchem.cid <- pubchem.info$CID
-      compound.record$formula <- pubchem.info$MolecularFormula
+      if (is.null(compound.record$formula )) {
+        compound.record$formula <- pubchem.info$MolecularFormula
+      }
       compound.record$IsotopeAtomCount <-
         pubchem.info$IsotopeAtomCount
       compound.record$Charge <- pubchem.info$Charge
@@ -68,8 +74,21 @@ Retrieve_compounds_data_from_pubchem <-
 
       compound.record$formula <- formula.checked$new_formula
       compound.record$is.salt <- !is.contain.na
+      compound.record$is.formula.not.equal.mass <- !compound.record$exact.mass-formula.checked$monoisotopic_mass < 1e-6
 
+      if (sum(compound.record$is.salt)!= 0) {
 
+        paste0(sum(compound.record$is.salt), " formula contain salt, plsease check ")%>%
+          crayon::red()%>%
+          message()
+      }
+
+      if (sum(compound.record$is.formula.not.equal.mass)!= 0) {
+        paste0(sum(compound.record$is.formula.not.equal.mass),
+               " formula and mass not match, plsease check ")%>%
+          crayon::red()%>%
+          message()
+      }
     }
 
     ### sort
