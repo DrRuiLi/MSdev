@@ -34,7 +34,7 @@ Retrieve_compounds_data_from_pubchem <-
 
     ### get compound information from pubchem
     {
-      compound.record$pubchem.cid <- gsub(pattern = "[^A-z1-9]",
+      compound.record$pubchem.cid <- gsub(pattern = "[^A-z0-9]",
                                           x = compound.record$pubchem.cid,
                                           replacement = "")
       pubchem.info <-
@@ -71,9 +71,10 @@ Retrieve_compounds_data_from_pubchem <-
         check_chemform(isotopes = isotopes, chemforms = compound.record$formula)
       is.contain.na <-
         check_ded(formulas = formula.checked$new_formula , deduct = "Na1") %>% as.logical()
-
+      is.contain.cl <-
+        check_ded(formulas = formula.checked$new_formula , deduct = "Cl1") %>% as.logical()
       compound.record$formula <- formula.checked$new_formula
-      compound.record$is.salt <- !is.contain.na
+      compound.record$is.salt <- (!is.contain.na)|(!is.contain.cl)
       compound.record$is.formula.not.equal.mass <- !compound.record$exact.mass-formula.checked$monoisotopic_mass < 1e-6
 
       if (sum(compound.record$is.salt)!= 0) {
@@ -94,7 +95,7 @@ Retrieve_compounds_data_from_pubchem <-
     ### sort
     {
       col.head <-
-        c("name", "formula", "exact.mass", "pubchem.cid", "inchikey")
+        c("name", "formula","is.salt","is.formula.not.equal.mass" ,"exact.mass", "pubchem.cid", "inchikey")
       compound.record <- compound.record %>%
         select(col.head, everything())
       openxlsx::write.xlsx(compound.record , file = compound.record.file)
