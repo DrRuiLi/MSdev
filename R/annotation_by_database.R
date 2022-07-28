@@ -51,7 +51,7 @@ annotation_by_database <- function(ms.ana, polarity,
     lib.rtime <- rtime(spectra.database)
     lib.candidate <- apply(feature.mz_rt,1,function(x){
 
-      mz.hit <- abs( lib.precursormz-x["mz"]) < ppm(x["mz"],mz.ppm)
+      mz.hit <- abs( lib.precursormz-x["mz"]) < Spectra::ppm(x["mz"],mz.ppm)
       rt.hit <- abs( lib.rtime -x["rt"]) < rt.tol
       rt.hit[is.na(rt.hit)] <-T
       which(mz.hit & rt.hit  )
@@ -98,7 +98,7 @@ annotation_by_database <- function(ms.ana, polarity,
       sp.lib <- feature.definition$candidate[[x]]
 
       mz.error <- abs(to.return$mz - sp.lib$precursorMz)
-      mz.score <- 1 - mz.error/ppm(to.return$mz , mz.ppm)
+      mz.score <- 1 - mz.error/Spectra::ppm(to.return$mz , mz.ppm)
 
       rt.error <- abs(to.return$rt - sp.lib$rtime)
       rt.score <- 2- rt.error/rt.tol
@@ -142,7 +142,7 @@ annotation_by_database <- function(ms.ana, polarity,
 
     annotation.table <- lapply(feature.annotation,function(x){
       x[1:11]
-    }) %>%rbindlist(fill = T) %>%as.data.frame()
+    }) %>%data.table::rbindlist(fill = T) %>%as.data.frame()
 
 
   }
