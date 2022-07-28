@@ -22,7 +22,7 @@ extract_spectra <- function(ms.ana){
     register(SerialParam())
     ms.ana$Spectra.positive$MSpectra <- featureSpectra(ms.ana$xcms.positive,msLevel = 2,return.type = "MSpectra")
     try(ms.ana$Spectra.positive$Spectra <- MSpectra2Spectra(ms.ana$Spectra.positive$MSpectra)%>%
-          combineSpectra(f = .$feature_id,
+         Spectra::combineSpectra(f = .$feature_id,
                          peaks = "intersect",
                          minProp = 0.3,
                          ppm = 20,
@@ -33,7 +33,7 @@ extract_spectra <- function(ms.ana){
 
     ms.ana$Spectra.negative$MSpectra <- featureSpectra(ms.ana$xcms.negative,msLevel = 2,return.type = "MSpectra")
     try(ms.ana$Spectra.negative$Spectra <- MSpectra2Spectra(ms.ana$Spectra.negative$MSpectra )%>%
-          combineSpectra(f = .$feature_id,
+          Spectra::combineSpectra(f = .$feature_id,
                          peaks = "intersect",
                          minProp = 0.5,
                          ppm = 20))
