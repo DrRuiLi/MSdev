@@ -18,9 +18,9 @@ export_sample_information_from_wiff <- function(
   ### format dir
   {
 
-    raw.data.dir <- gsub(raw.data.dir,pattern = "\\",replacement = "/",fixed = T)
-    project.dir <- gsub(project.dir,pattern = "\\",replacement = "/",fixed = T)
-    mzMl.dir <- paste0(project.dir,"mzML/")
+    raw.data.dir <- normalizePath(raw.data.dir,winslash = "/")
+    project.dir <- normalizePath(project.dir,winslash = "/")
+    mzMl.dir <- paste0(project.dir,"/mzML/")
   }
 
   ### check if analysis existed
@@ -122,7 +122,7 @@ export_sample_information_from_wiff <- function(
 
   ### save data
   {
-    file.to.save <- paste0(project.dir,"ms.ana.",Sys.Date(),".Rdata")
+    file.to.save <- paste0(project.dir,"/ms.ana.",Sys.Date(),".Rdata")
     ms.ana$processing.info$project.info$ms.ana.file <- file.to.save
     save(ms.ana,file = file.to.save)
     return(ms.ana)
