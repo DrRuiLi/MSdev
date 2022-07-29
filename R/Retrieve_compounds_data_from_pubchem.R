@@ -1,5 +1,5 @@
 #' @title Retrieve compound data
-#' @desription retrieve compound information by pubchem.cid in compound.record.file
+#' @desription retrieve compound information by pubchem.cid in compound.record.file, this sheet should be the first sheet in xlsx file
 #' @return compound.record
 #' @Import  webchem
 #' @import enviPat
@@ -10,7 +10,9 @@ Retrieve_compounds_data_from_pubchem <-
     ### import
     {
       #compound.record.file <- "Standard.record.2021.12.18.STD_01.xlsx"
-      compound.record <- readxl::read_excel(compound.record.file)
+      compound.record.workbook <- openxlsx::loadWorkbook(compound.record.file)
+      openxlsx::renameWorksheet(compound.record.workbook,1,"Compound_info")
+      compound.record <- openxlsx::read.xlsx(compound.record.workbook)
 
     }
 
@@ -92,13 +94,17 @@ Retrieve_compounds_data_from_pubchem <-
       }
     }
 
-    ### sort
+    ### sort and save xlsx
     {
       col.head <-
         c("name", "formula","is.salt","is.formula.not.equal.mass" ,"exact.mass", "pubchem.cid", "inchikey")
       compound.record <- compound.record %>%
         select(col.head, everything())
-      openxlsx::write.xlsx(compound.record , file = compound.record.file)
+
+      openxlsx::writeData(wb = compound.record.workbook,sheet = "Compound_info",x = compound.record)
+      openxlsx::saveWorkbook(compound.record.workbook ,
+                             file = compound.record.file,
+                             overwrite = T)
 
     }
     return(compound.record)
