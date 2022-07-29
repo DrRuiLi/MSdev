@@ -10,7 +10,8 @@
 plot_xcms_peaks_distribution <- function(xcms.xcms,plot.title = "Peaks distribution"){
 
   xcms.peaks <- chromPeaks(xcms.xcms)%>%
-    as.data.frame()
+    as.data.frame()%>%
+    dplyr::filter(!is.na(intb))
   xcms.process.type <- processHistory(xcms.xcms) %>% sapply( processType )
   xcms.findpeak.param <- processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
     processParam()
