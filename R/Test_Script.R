@@ -1,0 +1,130 @@
+
+x <- MS.network[[5]]
+##
+adduct.candidate <- x[["adduct.candidate"]]
+adduct.mz <- adduct.candidate$exact.mz
+peak.mz <- xcms.peaks[,"mz"]
+adduct.matrix <- matrix(rep(adduct.mz,length(peak.mz)) , nrow = length(adduct.mz))
+peak.matrix <- matrix(rep(peak.mz,length(adduct.mz)) ,
+                      nrow = length(adduct.mz),
+                      byrow = T)
+sub.matrix <- adduct.matrix - peak.matrix
+tol.matrix <- peak.matrix * ppm.thresh*1e-6
+pass.matrix <- abs(sub.matrix) < tol.matrix
+
+matched.id <- which(pass.matrix,arr.ind = T)
+matched.id
+
+adduct <- cbind(adduct.candidate[matched.id[,1],],
+                matrix(xcms.peaks[matched.id[,2],],nrow = 1))
+
+
+b <-MS.network.pos[[16]][["adduct"]]
+ggplot(b)+
+  geom_point(aes(x = peak.rt,y=peak.mz,size = log10(peak.intb),col = adduct),
+             alpha = 0.8)+
+  ggsci::scale_color_aaas()+
+  xlim(c(0,750))
+export::graph2png(file = "b.png",width = 10,height = 8)
+
+ggplot(as.data.frame(xcms.pos.peaks))+
+  geom_point(aes(x = rt,y=mz,
+                 col = log10(intb),
+                 alpha = log10(intb)/10,
+                 size = rtmax-rtmin),
+             )+
+  scale_color_gradient2(low = "yellow",mid = "red",high = "blue",midpoint = 5)
+export::graph2png(file = "a.png",width = 5,height = 4)
+
+ggplot(as.data.frame(xcms.peaks))+
+  geom_point(aes(x = rt,y=mz,
+                 col = log10(intb),
+                 alpha = log10(intb)/10,
+                 size = (rtmax-rtmin)),
+  )+
+  scale_size_area(max_size = 10)+
+  xlim(c(0,800))+
+  scale_color_gradient2(low = "yellow",mid = "red",high = "blue",
+                        midpoint = 5)
+export::graph2png(file = "b.png",width = 10,height = 8)
+
+ggplot(xcms.peaks)+
+  geom_segment(aes(x = rtmin,
+                   xend = rtmax, y=mzmin,yend = mzmax,
+                 col = log10(intb),
+                 alpha = log10(intb)/10)
+  )+
+  scale_size_area(max_size = 20)+
+  xlim(c(0,800))+
+  scale_color_gradient2(low = "yellow",mid = "red",high = "blue",
+                        midpoint = 5)
+export::graph2png(file = "b.png",width = 5,height = 4)
+
+
+spec.neg <- Spectra(unique(compound.record$mzML.negative))
+
+a <-spec.neg%>%
+  filterMsLevel(2)%>%
+  filterPrecursorMzRange(c(129.00,129.02))
+precursorMz(a)
+rtime(a)
+plotSpectra(a[1])
+
+export_sample_information_from_wiff(raw.data.dir = choose.dir(),project.dir = choose.dir())
+
+peak.density.param <- PeakDensityParam(sampleGroups = sample.info.xcms$sample.type,
+                                       minFraction = 0.8,bw = 30,
+                                       binSize = 0.015)
+
+xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
+
+
+openxlsx::write.xlsx(compound.record , file = compound.record.file,
+                     sheetName = "aaa")
+
+
+a <- loadWorkbook(compound.record.file)
+sheets(a)
+compound.record <- read.xlsx(a)%>%
+  select(pubchem.cid)
+addWorksheet(wb = a,sheetName = "b")
+sheets(a)
+writeData(x = compound.record,wb = a,sheet = "b")
+saveWorkbook(a , "a.xlsx")
+
+a <- quantify(ms.ana$xcms.positive)%>%
+  colData()%>%
+  as.data.frame()
+b <- featureChromatograms(ms.ana$xcms.positive,expandRt = 700,features = sample(1:10000,10))
+plot(b[10],col  = brewer.pal(7,"Set1"))
+
+a <- featureValues(xcms.xcms)%>%as.data.frame()
+
+quantify(xcms.xcms)
+
+
+xcms.xcms <- xcms.pos
+sampleNames(xcms.xcms)
+featureValues(xcms.xcms)%>%colnames()
+
+
+sampleNames(xcms.xcms) <- paste0("S",1:7)
+featureValues(xcms.xcms)%>%colnames()
+
+xcms.xcms@phenoData@data$sampleNames<- paste0("S",1:7)
+featureValues(xcms.xcms)%>%colnames()
+
+
+fileNames(xcms.xcms) <-  paste0("S",1:7)
+
+xcms.xcms@processingData@files <- paste0("S",1:7)
+fileNames(xcms.xcms)
+featureValues(xcms.xcms)%>%colnames()
+
+
+
+
+
+
+
+
