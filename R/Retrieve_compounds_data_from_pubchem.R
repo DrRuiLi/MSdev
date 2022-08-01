@@ -11,7 +11,10 @@ Retrieve_compounds_data_from_pubchem <-
     {
       #compound.record.file <- "Standard.record.2021.12.18.STD_01.xlsx"
       compound.record.workbook <- openxlsx::loadWorkbook(compound.record.file)
-      openxlsx::renameWorksheet(compound.record.workbook,1,"Compound_info")
+      if (!"Compound_info" %in% names(compound.record.workbook)) {
+        openxlsx::renameWorksheet(compound.record.workbook,1,"Compound_info")
+      }
+
       compound.record <- openxlsx::read.xlsx(compound.record.workbook)
 
     }
