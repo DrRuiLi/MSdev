@@ -22,7 +22,7 @@ xcms_processing <- function(sample.info, ion_mode ){
 
   message(Sys.time()," xcms data importing... ",ion_mode)
   xcms.xcms <-  readMSData(sample.info.xcms$mzML.file, mode = "onDisk")
-  #sampleNames(xcms.xcms) <- sample.info.xcms$sample.name
+  pData(xcms.xcms) <- sample.info.xcms
 
   message(Sys.time()," xcms peak finding...",ion_mode)
   centwave.param <- CentWaveParam(peakwidth = c(5,30),
