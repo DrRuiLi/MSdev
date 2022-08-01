@@ -20,18 +20,18 @@ xcms_processing <- function(sample.info, ion_mode ){
     dplyr::arrange(injection.order)
 
 
-  message(Sys.time()," xcms data importing... ",polarity)
+  message(Sys.time()," xcms data importing... ",ion_mode)
   xcms.xcms <-  readMSData(sample.info.xcms$mzML.file, mode = "onDisk")
   #sampleNames(xcms.xcms) <- sample.info.xcms$sample.name
 
-  message(Sys.time()," xcms peak finding...",polarity)
+  message(Sys.time()," xcms peak finding...",ion_mode)
   centwave.param <- CentWaveParam(peakwidth = c(5,30),
                                   prefilter = c(3,100),
                                   ppm = 20)
   xcms.xcms<-findChromPeaks(xcms.xcms,
                             param = centwave.param)
 
-  message(Sys.time()," xcms rime adjusting... ",polarity)
+  message(Sys.time()," xcms rime adjusting... ",ion_mode)
   peak.density.param <- PeakDensityParam(sampleGroups = sample.info.xcms$sample.type,
                                          minFraction = 0.8,bw = 30,
                                          binSize = 0.015)
@@ -42,7 +42,7 @@ xcms_processing <- function(sample.info, ion_mode ){
 
   xcms.xcms <- adjustRtime(xcms.xcms,param = peak.group.param)
 
-  message(Sys.time()," xcms peak grouping ",polarity)
+  message(Sys.time()," xcms peak grouping ",ion_mode)
   peak.density.param <- PeakDensityParam(sampleGroups = sample.info.xcms$sample.type,
                                          minFraction = 0.5,bw = 30,
                                          binSize = 0.015)
