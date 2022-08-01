@@ -1,7 +1,8 @@
 #' @title xcms_procecing
 #' @description read in files in sample.info$mzML.files. note the sample were reordered in xcms object by analysis time, may not identical to sample.name, should be correspondended by mzML.file
 #' @param sample.info
-#'
+#' @import xcms
+#' @import MsFeatures
 #' @return
 #' @export
 #'
@@ -22,11 +23,12 @@ xcms_processing <- function(sample.info, ion_mode ){
 
   message(Sys.time()," xcms data importing... ",ion_mode)
   xcms.xcms <-  readMSData(sample.info.xcms$mzML.file, mode = "onDisk")
-  pData(xcms.xcms) <- sample.info.xcms
+  pData(xcms.xcms) <- cbind(pData(xcms.xcms),sample.info.xcms)
 
   message(Sys.time()," xcms peak finding...",ion_mode)
   centwave.param <- CentWaveParam(peakwidth = c(5,30),
                                   prefilter = c(3,100),
+                                  snthresh = 100,
                                   ppm = 20)
   xcms.xcms<-findChromPeaks(xcms.xcms,
                             param = centwave.param)
@@ -42,14 +44,19 @@ xcms_processing <- function(sample.info, ion_mode ){
 
   xcms.xcms <- adjustRtime(xcms.xcms,param = peak.group.param)
 
-  message(Sys.time()," xcms peak grouping ",ion_mode)
+  message(Sys.time()," xcms peak grouping... ",ion_mode)
   peak.density.param <- PeakDensityParam(sampleGroups = sample.info.xcms$sample.type,
                                          minFraction = 0.5,bw = 30,
                                          binSize = 0.015)
 
   xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
   xcms.xcms <- fillChromPeaks(xcms.xcms,param = FillChromPeaksParam())
+
+
+  message(Sys.time()," xcms features grouping... ",ion_mode)
+
   return(xcms.xcms)
 
 
-}
+
+  }
