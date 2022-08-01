@@ -2,6 +2,7 @@
 
 export(Retrieve_compounds_data_from_pubchem)
 export(build_inhouse_database)
+export(build_inhouse_database_single_injection)
 export(expand_adduct_from_compounds)
 export(export_sample_information_from_wiff)
 export(extract_spectra)
