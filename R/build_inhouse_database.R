@@ -1,7 +1,6 @@
-#' @title build inhouse database
+#' @param compound.record.file
 #'
-#' @param record.file
-#' @param mzML.files
+#' @title build inhouse database
 #'
 #' @return
 #' @export
@@ -12,6 +11,8 @@ build_inhouse_database <-
 
     ### test
     compound.record.file<- "C:\\Users\\91879\\OneDrive\\Documents\\Code\\R\\Projecct\\2022.7.22.MS.inhouse.database.building\\Standard.record.2021.12.18.STD_01.xlsx"
+    compound.record.file<- "d:/2022.6.27.STD/Internal.standard.2022.6.27.xlsx"
+
     ###check files
     {
       if (!file.exists(compound.record.file)) {
@@ -53,7 +54,7 @@ build_inhouse_database <-
       xcms.pos.peaks <-chromPeaks(xcms.pos)
       MS.network.pos <- expand_adduct_from_compounds(compound.record,"positive")
       MS.network.pos <- match_adduct_to_peaks(MS.network.pos,xcms.pos.peaks,ppm.thresh = 10)
-      #plot_adduct_distribution(MS.network.pos,5)
+      plot_adduct_distribution(MS.network.pos,5)
 
 
     }
@@ -73,7 +74,7 @@ build_inhouse_database <-
       xcms.neg.peaks <-chromPeaks(xcms.neg)
       MS.network.neg <- expand_adduct_from_compounds(compound.record,"negative")
       MS.network.neg <- match_adduct_to_peaks(MS.network.neg,xcms.neg.peaks,ppm.thresh = 10)
-      #plot_adduct_distribution(MS.network.pos,3)
+      plot_adduct_distribution(MS.network.neg,5)
 
 
     }
