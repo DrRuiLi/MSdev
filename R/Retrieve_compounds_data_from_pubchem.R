@@ -85,8 +85,8 @@ Retrieve_compounds_data_from_pubchem <-
           message()
       }
 
-      if (sum(compound.record$is.formula.not.equal.mass)!= 0) {
-        paste0(sum(compound.record$is.formula.not.equal.mass),
+      if (sum(compound.record$is.isotope)!= 0) {
+        paste0(sum(compound.record$is.isotope),
                " formula and mass not match, plsease check ")%>%
           crayon::red()%>%
           message()
@@ -97,7 +97,7 @@ Retrieve_compounds_data_from_pubchem <-
     {
       col.head <-
         c("name", "formula","is.salt","salt.to.remove",
-          "is.formula.not.equal.mass" ,"exact.mass", "pubchem.cid", "inchikey")
+          "is.isotope","isotope.to.replace" ,"exact.mass", "pubchem.cid", "inchikey")
       compound.record <- compound.record %>%
         select(col.head, everything())
 
