@@ -76,7 +76,7 @@ Retrieve_compounds_data_from_pubchem <-
       compound.record$formula <- formula.checked$new_formula
       compound.record$is.salt <- (!is.contain.na)|(!is.contain.cl)
       compound.record$salt.to.remove <- NA
-      compound.record$is.isotope <- !compound.record$exact.mass-formula.checked$monoisotopic_mass < 1e-6
+      compound.record$is.isotope <- abs(compound.record$exact.mass-formula.checked$monoisotopic_mass) > 1e-6
       compound.record$isotope.to.replace <- NA
       if (sum(compound.record$is.salt)!= 0) {
 
