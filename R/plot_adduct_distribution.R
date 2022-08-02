@@ -18,7 +18,7 @@ plot_adduct_distribution <- function(MS.network,index){
                                  label = paste0(adduct,
                                                 "\nmz = ",sprintf("%.4f",peak.mz),
                                                 "\nrt = ",sprintf("%.2f",peak.rt),
-                                                "\nint = ",sprintf("%1.1g",peak.intb))),
+                                                "\nint = ",sprintf("%.3g",peak.intb))),
                              show.legend = F,force = 100,
                              #label.size = 0,fill = "transparent",
                              direction = "both",size = 2.3,hjust = "left")+
