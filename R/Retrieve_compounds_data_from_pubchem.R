@@ -25,16 +25,7 @@ Retrieve_compounds_data_from_pubchem <-
       if (is.null(compound.record$pubchem.cid)) {
         message("pubchem.cid not exist")
       }
-      # if (is.null(compound.record$mzML.positive)) {
-      #   message("Select positive mzML file")
-      #   compound.record$mzML.positive <-
-      #     choose.files(default = getwd(), caption = "Select positive")
-      # }
-      # if (is.null(compound.record$mzML.negative)) {
-      #   message("Select negative mzML file")
-      #   compound.record$mzML.negative <-
-      #     choose.files(default = getwd(), caption = "Select negative")
-      # }
+
     }
 
     ### get compound information from pubchem
@@ -55,6 +46,10 @@ Retrieve_compounds_data_from_pubchem <-
             "Charge"
           )
         )
+
+
+
+
       compound.record$name <- pubchem.info$Title
       compound.record$inchi <- pubchem.info$InChI
       compound.record$inchikey <- pubchem.info$InChIKey
@@ -80,8 +75,9 @@ Retrieve_compounds_data_from_pubchem <-
         check_ded(formulas = formula.checked$new_formula , deduct = "Cl1") %>% as.logical()
       compound.record$formula <- formula.checked$new_formula
       compound.record$is.salt <- (!is.contain.na)|(!is.contain.cl)
-      compound.record$is.formula.not.equal.mass <- !compound.record$exact.mass-formula.checked$monoisotopic_mass < 1e-6
-
+      compound.record$salt.to.remove <- NA
+      compound.record$is.isotope <- !compound.record$exact.mass-formula.checked$monoisotopic_mass < 1e-6
+      compound.record$isotope.to.replace <- NA
       if (sum(compound.record$is.salt)!= 0) {
 
         paste0(sum(compound.record$is.salt), " formula contain salt, plsease check ")%>%
@@ -100,7 +96,8 @@ Retrieve_compounds_data_from_pubchem <-
     ### sort and save xlsx
     {
       col.head <-
-        c("name", "formula","is.salt","is.formula.not.equal.mass" ,"exact.mass", "pubchem.cid", "inchikey")
+        c("name", "formula","is.salt","salt.to.remove",
+          "is.formula.not.equal.mass" ,"exact.mass", "pubchem.cid", "inchikey")
       compound.record <- compound.record %>%
         select(col.head, everything())
 
