@@ -9,7 +9,10 @@ plot_adduct_distribution <- function(MS.network,index){
                alpha = 0.8)+
     ggsci::scale_color_npg()+
     ggrepel::geom_text_repel(aes(x = peak.rt,y=peak.mz ,
-                                 label = sprintf("%.4f",peak.mz)))+
+                                 col = adduct,
+                                 label = paste0(adduct,
+                                                "\nmz = ",sprintf("%.4f",peak.mz))),
+                             show.legend = F,direction = "x",size = 2.3)+
     scale_size(range = c(3,5),breaks = c(2,4.5,5))+
     xlim(c(0,750))+
     labs(title = compound["name"],
