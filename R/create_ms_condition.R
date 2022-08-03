@@ -51,7 +51,7 @@ create_ms_condition <- function() {
 
     ms_gradient <- data.frame(
       time = c(0, 60, 100, 500),
-      Contentraion_B = c(0, 50, 100, 100)
+      Contentration_B = c(0, 50, 100, 100)
     )
   }
   ### manipulate in Excel
