@@ -123,8 +123,105 @@ featureValues(xcms.xcms)%>%colnames()
 
 
 
+xcms.xcms <- MsFeatures::groupFeatures(xcms.xcms,
+                                       param = MsFeatures::SimilarRtimeParam(10))
+plotFeatureGroups(xcms.xcms)
+xcms.xcms <- MsFeatures::groupFeatures(xcms.xcms,
+                                       param = MsFeatures::AbundanceSimilarityParam(threshold = 0.7,
+                                                                                    transform = log2))
+library(SummarizedExperiment)
+se <- quantify(xcms.pos)
+assay(se) <-featureValues(xcms.pos,filled = T,
+                          missing = "rowmin_half")
+assay(se)
+assayNames(se)
+
+tl <- c(1,system.time(a))
+for (i in seq(1,10000,200)) {
+
+  system.time(a <- groupFeatures(se[1:i],
+                              param = SimilarRtimeParam(10), rtime = "rtmed")
+
+  )->t
+  message(i,", time: ",t[1])
+  tl<-rbind(tl,c(i,t))
+  x <- tl[,1]
+  y <- tl[,2]
+  #fit2 <- lm(y~poly(x,2))
+  plot(x,y)
+  #lines(x,predict(fit2))
+}
+plot(tl[,1],tl[,2])
+
+x <-20000
+5e-6 *x*x - 0.0009*x+0.1339
+
+
+a <-data.frame(x = tl[,1],
+               y = tl[,2])
+
+
+fit <- lm(y~poly(x) , data = a)
+fit
+
+b <- data.frame(x = 1:10000 )
+c <- predict(fit,b)
+head(c)
+
+
+std.matrix <- featureValues(xcms.pos,missing = "rowmin_half")[,1:5]
+
+plot(std.matrix[6,])
+std.matrix <- log2(std.matrix)
+cor.list <- cor(t(std.matrix), compound.sample.info$concentration[1:5])
+densityplot(cor.list)
+sum(cor.list>0.5,na.rm = T)
+which(cor.list >0.8)
+plot(compound.sample.info$concentration[1:5],std.matrix[2570 ,])
 
 
 
 
+
+
+
+
+
+
+
+xcms.xcms <- xcms.pos
+featureGroups(xcms.xcms) <- NA
+xcms.xcms <- MsFeatures::groupFeatures(xcms.xcms,
+                                       param = MsFeatures::SimilarRtimeParam(10))
+featureGroups(xcms.xcms)
+plotFeatureGroups(xcms.xcms)
+
+xcms.xcms <- MsFeatures::groupFeatures(xcms.xcms,
+                                       param = MsFeatures::AbundanceSimilarityParam(threshold = 0.7))
+featureGroups(xcms.xcms)%>%table()
+
+t.s <- Sys.time()
+xcms.xcms <- MsFeatures::groupFeatures(xcms.xcms,
+                                       param = xcms::EicSimilarityParam(n = 2))
+t.e <- Sys.time()
+save(xcms.xcms,file = paste0("xcms.msfeature.temp.Rdata"))
+
+
+xcms.peaks <- chromPeaks(xcms.pos)%>%as.data.frame()
+table(xcms.peaks$sample)
+
+xcms.to.plot <- filterFile(xcms.pos,7)
+sampleNames(xcms.to.plot)
+plot_xcms_peaks_distribution(xcms.to.plot)
+
+library(SummarizedExperiment)
+ms.features <- quantify(xcms.pos ,missing = "rowmin_half")
+colData(ms.features)
+ms.feature.matrix<- assay(ms.features)
+
+a <- sample(nrow(ms.feature.matrix),100)
+toplot <- ms.feature.matrix[a,]%>%max_min_normalize()
+
+
+ComplexHeatmap::Heatmap(toplot,cluster_columns = F)
 
