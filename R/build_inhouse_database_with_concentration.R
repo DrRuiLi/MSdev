@@ -32,11 +32,11 @@ build_inhouse_database <-
     ###pos
     {
 
-      xcms.pos <- xcms_procecing(compound.sample.info,"positive")
-      plot_xcms_peaks_distribution(xcms.pos)
+      xcms.pos <- xcms_processing(compound.sample.info,"positive")
+      plot_xcms_features_distribution(xcms.pos)
       xcms.pos.features <-featureDefinitions(xcms.pos)
       MS.network.pos <- expand_adduct_from_compounds(compound.record,"positive")
-      MS.network.pos <- match_adduct_to_peaks(MS.network.pos,xcms.pos.features,ppm.thresh = 10)
+      MS.network.pos <- match_adduct_to_features(MS.network.pos,xcms.pos,ppm.thresh = 10)
       plot_adduct_distribution(MS.network.pos,5)
 
 
@@ -44,19 +44,11 @@ build_inhouse_database <-
     ###neg
     {
 
-      xcms.neg <- readMSData(unique(compound.record$mzML.negative),
-                             mode = "onDisk")
-      centwave.param <- CentWaveParam(peakwidth = c(5,30),
-                                      prefilter = c(3,100),
-                                      snthresh = 100,
-                                      ppm = 10)
-      xcms.neg<-findChromPeaks(xcms.neg,
-                               param = centwave.param,
-                               BPPARAM = SerialParam())
-      plot_xcms_peaks_distribution(xcms.neg)
-      xcms.neg.peaks <-chromPeaks(xcms.neg)
+      xcms.neg <- xcms_processing(compound.sample.info,"negative")
+      plot_xcms_features_distribution(xcms.neg)
+      xcms.neg.features <-featureDefinitions(xcms.neg)
       MS.network.neg <- expand_adduct_from_compounds(compound.record,"negative")
-      MS.network.neg <- match_adduct_to_peaks(MS.network.neg,xcms.neg.peaks,ppm.thresh = 10)
+      MS.network.neg <- match_adduct_to_features(MS.network.neg,xcms.neg,ppm.thresh = 10)
       plot_adduct_distribution(MS.network.neg,5)
 
 
