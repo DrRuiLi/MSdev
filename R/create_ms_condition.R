@@ -40,13 +40,13 @@ create_ms_condition <- function() {
     ms_phase_A <- data.frame(
       Compound = c("H2O", "Formic acid"),
       Type = c("solvent", "solute"),
-      Concentration = c("100%", "0.001mM")
+      Concentration = c(100, 0.001)
     )
 
     ms_phase_B <- data.frame(
       Compound = c("ACN", "Formic acid"),
       Type = c("solvent", "solute"),
-      Concentration = c("100%", "0.001mM")
+      Concentration = c(100, 0.001)
     )
 
     ms_gradient <- data.frame(
