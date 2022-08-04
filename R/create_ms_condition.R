@@ -40,13 +40,13 @@ create_ms_condition <- function() {
     ms_phase_A <- data.frame(
       Compound = c("H2O", "Formic acid"),
       Type = c("solvent", "solute"),
-      Concentration = c(100, 0.001)
+      Concentration = c("100%", "0.001mM")
     )
 
     ms_phase_B <- data.frame(
       Compound = c("ACN", "Formic acid"),
       Type = c("solvent", "solute"),
-      Concentration = c(100, 0.001)
+      Concentration = c("100%", "0.001mM")
     )
 
     ms_gradient <- data.frame(
@@ -56,7 +56,7 @@ create_ms_condition <- function() {
   }
   ### manipulate in Excel
   {
-    temp.xlsx <- paste0(tempdir(), "/temp.xlsx")
+    temp.xlsx <- paste0(tempdir(), "/temp_",paste0(sample(letters,5),collapse = ""),".xlsx")
     openxlsx::write.xlsx(
       list(
         "Exp_Condition" = ms_condition_table,
@@ -108,7 +108,17 @@ create_ms_condition <- function() {
       "ms_condition.rda",
       package = "MSdev"
     )
-    load(ms_condition_file)
+    if (file.exists(ms_condition_file)) {
+      load(ms_condition_file)
+    }else{
+      ms_condition_file <-ms_condition_file <- system.file("data",
+                                                           package = "MSdev"
+      )%>%
+        paste0("/ms_condition.rda")
+      save(ms_condition, file = ms_condition_file)
+      return()
+    }
+
     to.add$MSC_id <- paste0(
       "MSC",
       sprintf(
@@ -122,6 +132,7 @@ create_ms_condition <- function() {
       ms_condition,
       to.add
     )
+
     save(ms_condition, file = ms_condition_file)
   }
 }
