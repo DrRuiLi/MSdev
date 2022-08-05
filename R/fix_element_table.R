@@ -2,7 +2,7 @@
 #' @description this function add natural elemetn form, such as [12]C, [1]H to dataset from lc8 and enviPat
 #' @return
 #' @export
-#'
+#' @note this will lead to warning in enviPat function and maybe unknown error, not apply
 #' @examples
 fix_element_table <- function() {
   data("isotopes", package = "enviPat")
