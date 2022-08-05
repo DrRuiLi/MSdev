@@ -1,9 +1,13 @@
 #' @title create_ms_condition
 #'
-#' @description create a set of ms param, call an excel windows to edit and then record in inner data
+#' @description create a set of ms param,
+#'  open an excel windows to edit param,
+#'  do not support modifying param terms right now,
+#'  then record in inner database (/data/ms_condition.Rda)
+#'  if MSC_id existed in database, auto replace.
 #' @return
 #' @export
-#'
+#' @seealso [edit_ms_condition()] to edit, [show_ms_condition()] to show
 #' @examples
 create_ms_condition <- function() {
   ### template
