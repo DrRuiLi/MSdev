@@ -30,6 +30,7 @@ plot_adduct_distribution <- function(MS.network,index){
          y = "mz",
          col = "Adduct form",
          size = "Log10(intensity)")+
+    theme_bw()+
     theme(text = element_text(size = 8))->adduct.plot
   adduct.plot
   return(adduct.plot)
