@@ -45,8 +45,8 @@ isotopes_pattern_enviPat <- function(formula) {
   isopat <- data.frame(formula = formulat_list ,
                        isopat[, 1:2])%>%
     rowwise()%>%
-    mutate(isotope_elemet = formula_calculate_lc8(formula,formula_raw , -1),
-           isotope_elemet = select_elemet(isotope_elemet))
+    mutate(isotope_element = formula_calculate_lc8(formula,formula_raw , -1),
+           isotope_element = select_elemet(isotope_element))
 
 
   return(isopat)
