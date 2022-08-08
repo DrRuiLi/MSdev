@@ -12,7 +12,7 @@ plot_adduct_distribution <- function(MS.network,index){
     geom_point(aes(x = peak.rt,y=peak.mz,col = adduct),
                size =5,
                alpha = 0.3)+
-    ggsci::scale_color_npg()+
+    #ggsci::scale_color_npg()+
     ggrepel::geom_text_repel(aes(x = peak.rt,y=peak.mz ,
                                  col = adduct,
                                  label = paste0(adduct,
