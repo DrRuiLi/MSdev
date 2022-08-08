@@ -26,14 +26,29 @@ isotopes_pattern_enviPat <- function(formula) {
       mutate(element = elem_table$element[match(element , elem_table$isotope)]) %>%
       group_by(element) %>%
       summarise(sum(n)) %>%
+      filter(`sum(n)`!=0)%>%
       rowwise() %>%
       mutate(f = paste0(element, `sum(n)`)) %>%
       pull(f) %>%
       paste0(collapse = "")
 
   }
+  formula_raw <- formula
+  select_elemet <- function(x ){
+    ele_table <- lc8::my_break_formula(x)%>%as.data.frame()%>%
+      filter(count >0)%>%
+      mutate(f = paste0(elem,count))%>%
+      pull(f)%>%
+      paste0(collapse = "")
+    ele_table
+  }
   isopat <- data.frame(formula = formulat_list ,
-                       isopat[, 1:2])
+                       isopat[, 1:2])%>%
+    rowwise()%>%
+    mutate(isotope_elemet = formula_calculate_lc8(formula,formula_raw , -1),
+           isotope_elemet = select_elemet(isotope_elemet))
+
+
   return(isopat)
 
 }
