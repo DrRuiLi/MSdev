@@ -28,7 +28,7 @@ xcms_processing <- function(sample.info, ion_mode ){
   message(Sys.time()," xcms peak finding...",ion_mode)
   centwave.param <- CentWaveParam(peakwidth = c(5,50),
                                   prefilter = c(3,100),
-                                  snthresh = 10,
+                                  snthresh = 100,
                                   ppm = 20)
   xcms.xcms<-findChromPeaks(xcms.xcms,
                             param = centwave.param)
