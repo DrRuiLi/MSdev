@@ -12,16 +12,16 @@ plot_adduct_distribution <- function(MS.network,index,rt.filter = T){
   }
 ###
   ggplot(adduct.table)+
-    geom_point(aes(x = peak.rt,y=peak.mz,col = adduct),
+    geom_point(aes(x = feature.rt,y=feature.mz,col = adduct),
                size =5,
                alpha = 0.3)+
     #ggsci::scale_color_npg()+
-    ggrepel::geom_text_repel(aes(x = peak.rt,y=peak.mz ,
+    ggrepel::geom_text_repel(aes(x = feature.rt,y=feature.mz ,
                                  col = adduct,
                                  label = paste0(adduct,
-                                                "\nmz = ",sprintf("%.4f",peak.mz),
-                                                "\nrt = ",sprintf("%.2f",peak.rt),
-                                                "\nint = ",sprintf("%.3g",peak.intb))),
+                                                "\nmz = ",sprintf("%.4f",feature.mz),
+                                                "\nrt = ",sprintf("%.2f",feature.rt),
+                                                "\nint = ",sprintf("%.3g",feature.intb))),
                              show.legend = F,force = 100,
                              #label.size = 0,fill = "transparent",
                              direction = "both",size = 2.3,hjust = "left")+
