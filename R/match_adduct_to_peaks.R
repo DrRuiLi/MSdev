@@ -9,7 +9,7 @@
 #' @export
 #'
 #' @examples
-match_adduct_to_peaks <- function(MS.network , xcms.xcms, ppm.thresh = 10){
+match_adduct_to_peaks <- function(MS.network , xcms.xcms, ppm.thresh = 10,rt.tol = 10){
 
   xcms.peaks <-chromPeaks(xcms.xcms)
 match.adduct <-function(x){
@@ -35,6 +35,10 @@ match.adduct <-function(x){
                         peak.rt = xcms.peaks[matched.id[,2],"rt"],
                         peak.intb = xcms.peaks[matched.id[,2],"intb"])%>%
     dplyr::mutate(peak.error = (peak.mz-exact.mz)/exact.mz*1e6, .before = peak.id)
+  rt_max <- adduct$peak.rt[which.max(adduct$peak.intb)]
+  adduct <- adduct%>%
+    dplyr::mutate(rt.filter = case_when(abs(peak.rt - rt_max) <rt.tol ~ T,
+                                        T ~F ))
 
   x[["adduct"]] <- adduct
   return(x)
