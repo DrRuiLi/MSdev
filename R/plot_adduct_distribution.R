@@ -1,11 +1,14 @@
-plot_adduct_distribution <- function(MS.network,index){
+plot_adduct_distribution <- function(MS.network,index,rt.filter = T){
 
-###test
+
   compound <- MS.network[[index]][["compound"]]
   adduct.table <-MS.network[[index]][["adduct"]]
   if (nrow(adduct.table)== 0 ) {
     message("No adduct detected")
     return()
+  }
+  if (rt.filter) {
+    adduct.table <- dplyr::filter(adduct.table , rt.filter)
   }
 ###
   ggplot(adduct.table)+
