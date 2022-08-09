@@ -10,7 +10,8 @@
 #' @examples
 match_adduct_with_eicSimilarity <-
   function(MS.network, xcms.xcms) {
-    compare_eic <- function(MS.network , xcms.xcms) {
+
+    compare_eic <- function(x , xcms.xcms) {
       #x <- MS.network[[2]]
       compound <- x[["compound"]]
       adduct <- x[["adduct"]] %>%
