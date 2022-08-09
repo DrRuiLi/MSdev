@@ -1,19 +1,23 @@
 #' @title match_adduct_to_peaks
 #' @description match adduct candidate in xcms.peaks table
+#'
 #' @param MS.network
+#' @param xcms.xcms
 #' @param ppm.thresh
-#' @param xcms.peaks
 #'
 #' @return
 #' @export
 #'
 #' @examples
-match_adduct_to_peaks <- function(MS.network , xcms.peaks, ppm.thresh = 10){
+match_adduct_to_peaks <- function(MS.network , xcms.xcms, ppm.thresh = 10){
 
+  xcms.peaks <-chromPeaks(xcms.xcms)
 match.adduct <-function(x){
+  x <- MS.network[[2]]
   adduct.candidate <- x[["adduct.candidate"]]
   adduct.mz <- adduct.candidate$exact.mz
   peak.mz <- xcms.peaks[,"mz"]
+  peak.id <-rownames(xcms.peaks)
   adduct.matrix <- matrix(rep(adduct.mz,length(peak.mz)) , nrow = length(adduct.mz))
   peak.matrix <- matrix(rep(peak.mz,length(adduct.mz)) ,
                         nrow = length(adduct.mz),
@@ -27,8 +31,10 @@ match.adduct <-function(x){
 
   adduct <- data.frame( adduct.candidate[matched.id[,1],],
                         peak.mz = xcms.peaks[matched.id[,2],"mz"],
+                        peak.id = peak.id[matched.id[,2]],
                         peak.rt = xcms.peaks[matched.id[,2],"rt"],
-                        peak.intb = xcms.peaks[matched.id[,2],"intb"])
+                        peak.intb = xcms.peaks[matched.id[,2],"intb"])%>%
+    dplyr::mutate(peak.error = (peak.mz-exact.mz)/exact.mz*1e6, .before = peak.id)
 
   x[["adduct"]] <- adduct
   return(x)
