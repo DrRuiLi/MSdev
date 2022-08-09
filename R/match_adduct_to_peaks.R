@@ -13,7 +13,7 @@ match_adduct_to_peaks <- function(MS.network , xcms.xcms, ppm.thresh = 10){
 
   xcms.peaks <-chromPeaks(xcms.xcms)
 match.adduct <-function(x){
-  x <- MS.network[[2]]
+  #x <- MS.network[[2]]
   adduct.candidate <- x[["adduct.candidate"]]
   adduct.mz <- adduct.candidate$exact.mz
   peak.mz <- xcms.peaks[,"mz"]
