@@ -28,7 +28,7 @@ plot_xcms_features_distribution <-
         alpha = log10(intb) / 10,
         size = (rtmax - rtmin)
       ),) +
-      scale_size_area(max_size = 5) +
+      scale_size(range = c(2,6)) +
       xlim(c(0, 800)) +
       labs(
         title = plot.title,
