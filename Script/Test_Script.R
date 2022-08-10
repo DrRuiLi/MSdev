@@ -225,3 +225,223 @@ toplot <- ms.feature.matrix[a,]%>%max_min_normalize()
 
 ComplexHeatmap::Heatmap(toplot,cluster_columns = F)
 
+
+
+ms_condition_to_workbook <- function(ms_condition){
+
+  ms_condition$column[[1]] -> ms_column
+  ms_condition$phaseA[[1]] -> ms_phase_A
+  ms_condition$phaseB [[1]]-> ms_phase_B
+  ms_condition$gradient [[1]]-> ms_gradient
+
+  ms_condition <- ms_condition[-which(colnames(ms_condition) %in% c("column","phaseA","phaseB","gradient"))]
+
+  ms_condition_table <- as.data.frame(ms_condition,row.names = "value")%>%
+    t%>%as.data.frame()%>%rownames_to_column("params")
+
+  ### edit in excel
+  temp.xlsx <- paste0(tempdir(), "/temp.xlsx")
+  openxlsx::write.xlsx(
+    list(
+      "Exp_Condition" = ms_condition_table,
+      "Column" = ms_column,
+      "phase A" = ms_phase_A,
+      "phase B" = ms_phase_B,
+      "Gradient" = ms_gradient
+    ),
+    file = temp.xlsx
+  )
+  openxlsx::openXL(temp.xlsx)
+  readline("Edit MS condition")
+  ms_workbook <- openxlsx::loadWorkbook(file = temp.xlsx)
+
+  ms_column <- openxlsx::read.xlsx(ms_workbook, sheet = "Column")
+  ms_phase_A <- openxlsx::read.xlsx(ms_workbook, sheet = "phase A")
+  ms_phase_B <- openxlsx::read.xlsx(ms_workbook, sheet = "phase B")
+  ms_gradient <-
+    openxlsx::read.xlsx(ms_workbook, sheet = "Gradient")
+
+
+  ### load new data
+  {
+    ms_condition_table <-
+      openxlsx::read.xlsx(ms_workbook, sheet = "Exp_Condition")
+    ms_column <- openxlsx::read.xlsx(ms_workbook, sheet = "Column")
+    ms_phase_A <- openxlsx::read.xlsx(ms_workbook, sheet = "phase A")
+    ms_phase_B <- openxlsx::read.xlsx(ms_workbook, sheet = "phase B")
+    ms_gradient <-
+      openxlsx::read.xlsx(ms_workbook, sheet = "Gradient")
+
+
+    ms_condition <- DataFrame(MSC_id = NA)
+    for (i in 1:nrow(ms_condition_table)) {
+      exprss <-
+        paste0(
+          "ms_condition$",
+          ms_condition_table$params[i],
+          " <- \"",
+          ms_condition_table$values[i],
+          "\""
+        )
+      eval(parse(text = exprss))
+    }
+    ms_condition$column <- ms_column %>% list()
+    ms_condition$phaseA <- ms_phase_A %>% list()
+    ms_condition$phaseB <- ms_phase_B %>% list()
+    ms_condition$gradient <- ms_gradient %>% list()
+    }
+  return(ms_condition)
+}
+
+check_chemform(isotopes, chemforms = "[13]C0[15]N0[17]O0[18]O0[2]H5C9H6N1O2")
+
+
+
+#49   63
+data("chemforms")
+for (i in 1:length(chemforms)) {
+  formula <- chemforms[i]
+  isopat <- isotopes_pattern_enviPat(formula )
+  check <- check_chemform(isotopes , isopat$formula)
+  if (any(check$warning)) {
+    message(i,":",formula,"\n")
+  }
+}
+
+enviPat::check_chemform(isotopes , "Br1")
+
+export::graph2ppt(file = "temp.xlsx",width = 6,height = 4,append = T)
+
+
+
+ms.features <- as.data.frame(xcms.pos.peaks)%>%
+  filter( mz > 374 ,mz < 375)
+
+ms.chrom <- chromatogram(xcms.xcms ,mz = c( 280.1605
+,280.1621))
+
+plot(ms.chrom)
+grid()
+
+
+peaks.ppm <- data.frame(xcms.peaks)%>%
+  mutate(error = (mzmax-mz)/mz * 1e6)
+
+
+xcms.xcms <- groupChromPeaks(xcms.xcms , param =PeakDensityParam())
+
+xcms.feature <- featureDefinitions(xcms.xcms) %>%as.data.frame()%>%
+  mutate(rtdiff = rtmax - rtmin,
+         mzdiff = (mzmax-mzmin)/mzmed)
+
+xcms.peaks <- chromPeaks(xcms.xcms)
+a <- xcms.peaks[xcms.feature$peakidx[308][[1]],]
+
+
+
+
+adduct <- MS.network[["2"]][["adduct"]]
+
+
+
+
+
+
+
+
+#####################
+
+
+extract_featuregroup <- function(i,MS.network){
+  x <- MS.network[[i]]
+  compound <- x[["compound"]]
+  adduct <- x[["adduct"]]%>%
+    dplyr::filter(rt.filter)%>%
+    mutate(feature_group_id = paste0("FG",sprintf("%03d",i)))
+
+  adduct
+
+}
+feature_group <- lapply(1:5, extract_featuregroup,MS.network)%>%
+  data.table::rbindlist()%>%
+  distinct(feature.id,feature_group_id )
+
+xcms.features[feature_group$feature.id , "feature_group"] <-feature_group$feature_group_id
+
+featureDefinitions(xdata)$feature_group <-xcms.features$feature_group
+
+xcms.eic <- groupFeatures(xdata, EicSimilarityParam(threshold = 0.7, n = 1,onlyPeak = T))
+
+
+ms.chrom.1 <- featureChromatograms(xcms.xcms , features = "FT0526")
+ms.chrom.2 <- featureChromatograms(xcms.xcms , features = "FT0520")
+
+compareChromatograms(ms.chrom.1,ms.chrom.2)
+
+mix <- c(ms.chrom.1,ms.chrom.2)
+plotChromatogramsOverlay(normalize(mix),lwd = 2, peakType = "none",col = c("red","blue"))
+plotChromatogramsOverlay(normalize(mix),lwd = 2, peakType = "none",col = c("red","blue"))
+
+plot(ms.chrom.1)
+plot(ms.chrom.2)
+
+ms.chrom.mix <- featureChromatograms(xcms.xcms  ,features = feature_group$feature.id)
+cor.matrix <- compareChromatograms(ms.chrom.mix)
+
+
+cor.matrix[is.na(cor.matrix)] <- 0
+
+
+
+
+compare_eic <- function( MS.network ,xcms.xcms){
+
+  #x <- MS.network[[2]]
+  compound <- x[["compound"]]
+  adduct <- x[["adduct"]]%>%
+    dplyr::filter(rt.filter)
+
+  adduct
+  chrom <- featureChromatograms(xcms.xcms , features = adduct$feature.id)
+  cor.matrix <- compareChromatograms(chrom)
+  cor.to.main.peak <- cor.matrix[which.max(adduct$feature.intb),]
+  cor.to.main.peak[is.na(cor.to.main.peak) ] <- 0
+  adduct$cor.to.main.peak <- cor.to.main.peak
+
+  x[["chromatogram"]] <- chrom
+  x[["adduct"]] <- adduct
+  return(x)
+
+}
+
+MS.network <- lapply(MS.network, compare_eic,xcms.xcms)
+export::graph2ppt(file = "temp.xlsx",width = 7,height = 4,append = T)
+
+
+
+
+tra.adduct <- MS.network.pos[["2"]][["adduct"]]%>%filter(cor.to.main.peak>0.5)
+
+isopat <- isotopes_pattern_enviPat("C19H22Cl1N5O1")
+
+tra.adduct <- tra.adduct[c(1,2,4,6),]
+isopat <- isopat[c(1,3,4,6),]
+
+isoadduct <- data.frame(adduct = tra.adduct$adduct,
+                        abundance = isopat$abundance,
+                        intb = tra.adduct$feature.intb)
+isoadduct$intb[1] <- 35257012.120*0.6
+isoadduct <- isoadduct%>%
+  mutate(intb = intb /21154207.272*100)%>%
+  pivot_longer( 2:3,names_to = "f",values_to = "v" )
+
+library(randomcoloR)
+ggplot(isoadduct)+
+  geom_bar(aes(x = adduct , y = v , fill = f),stat = "identity",position = "dodge2")+
+  scale_fill_manual(values =randomColor(2),label = c("Relative intensity","Theorical isotope abundance") )+
+  labs(fill = "Ion type", x = "Adduct/isotope", y = "Relative intensity/\nTheoretical abundance")+
+  theme_bw()
+
+plot_adduct_distribution(MS.network.neg,3)+
+  xlim(c(0,100))
+
