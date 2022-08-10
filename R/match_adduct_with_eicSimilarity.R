@@ -14,8 +14,8 @@ match_adduct_with_eicSimilarity <-
     compare_eic <- function(x , xcms.xcms) {
       #x <- MS.network[[2]]
       compound <- x[["compound"]]
-      adduct <- x[["adduct"]] %>%
-        dplyr::filter(rt.filter)
+      adduct <- x[["adduct"]]
+
 
       adduct
       chrom <-
