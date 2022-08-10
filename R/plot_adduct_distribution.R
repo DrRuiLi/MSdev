@@ -27,8 +27,8 @@ plot_adduct_distribution <- function(MS.network,index,rt.filter = T){
                              direction = "both",size = 2.3,hjust = "left")+
     #scale_size(range = c(3,5),breaks = c(2,4.5,5))+
     xlim(c(0,750))+
-    labs(title = compound["name"],
-         subtitle = paste0("Exact mass = ",compound["exact.mass"]),
+    labs(title = paste0(compound["name"] ),
+         subtitle = paste0(unique(adduct.table$ion_mode),"\nExact mass = ",compound["exact.mass"]),
          x = "Retention time",
          y = "mz",
          col = "Adduct form",
