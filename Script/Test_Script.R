@@ -445,3 +445,56 @@ ggplot(isoadduct)+
 plot_adduct_distribution(MS.network.neg,3)+
   xlim(c(0,100))
 
+
+
+Sys.time()
+####  2022-08-10 21:04:16 CST
+
+library(tibble)
+setClass("MS_exp" ,slots = list(
+
+  name = "character",
+  MSC_id = "character",
+  Pre_processing = "tbl",
+  Column = "tbl",
+  PhaseA  ="tbl",
+  PhaseB = "tbl",
+  Gradient = "tbl",
+  MS_info = "tbl"
+
+))
+
+MS_exp <- function(){
+  new("MS_exp")
+}
+
+
+
+
+use_r("MS_exp-class")
+
+
+
+
+
+project.dir ="d:/2022_08_08-WYQ/"
+raw.data.dir ="d:/2022_08_08-WYQ/Data/"
+
+
+
+metabolomic_workflow(project.dir ,raw.data.dir )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
