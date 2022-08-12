@@ -1,3 +1,17 @@
+#' @title MS_Exp-class
+#'
+#' @slot General tbl.
+#' @slot Pre_process list.
+#' @slot Moblie_phase_A list.
+#' @slot Moblie_phase_B list.
+#' @slot Chroma_column list.
+#' @slot Chroma_gradient list.
+#' @slot Mass_Spectrum list.
+#'
+#' @return
+#' @export
+#'
+#' @examples
 setClass(
   "MS_Exp",
   slots = list(
@@ -14,6 +28,7 @@ setClass(
 
 MS_Exp <- function() {
   new("MS_Exp")
+
 }
 
 
@@ -23,6 +38,7 @@ setMethod("initialize" , "MS_Exp",
               "MSE_id" =  "MSE00001",
               "Name" =  "Metabolomics",
               "Creat_time" = paste0(Sys.time()),
+              "Source" = "YHY Lab",
               "Link" = "",
               "PubMed_ID" = "",
               "Note" = ""
@@ -92,12 +108,28 @@ setMethod("[","MS_Exp",
           new.object
 
           })
+setMethod("c" , "MS_Exp" ,
+          definition = function(x,y){
+            new.object <- MS_Exp()
+            new.object@General <- rbind(x@General,y@General)
+            new.object@Pre_process <- c(x@Pre_process,y@Pre_process)
+            new.object@Moblie_phase_A <- c(x@Moblie_phase_A,y@Moblie_phase_A)
+            new.object@Moblie_phase_B <- c(x@Moblie_phase_B,y@Moblie_phase_B)
+            new.object@Chroma_column <- c(x@Chroma_column,y@Chroma_column)
+            new.object@Chroma_gradient <- c(x@Chroma_gradient,y@Chroma_gradient)
+            new.object@Mass_Spectrum <-c(x@Mass_Spectrum,y@Mass_Spectrum)
+            new.object
 
 
 
+          })
 
-object <- MS_Exp()
-object
+setMethod("length" ,
+          "MS_Exp" ,
+          definition = function(x){
+            nrow(x@General)})
+
+
 
 
 
