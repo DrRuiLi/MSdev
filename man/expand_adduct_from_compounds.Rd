@@ -4,11 +4,11 @@
 \alias{expand_adduct_from_compounds}
 \title{Expand compound to adduct}
 \usage{
-expand_adduct_from_compounds(compound.record, polarity)
+expand_adduct_from_compounds(compound.record, ion_mode)
 }
 \arguments{
-\item{polarity}{}
+\item{ion_mode}{}
 }
 \description{
-Using formula, exact.mass and polarity, expand adduct by enviPat::adduct
+Using formula, exact.mass and ion_mode, expand adduct by enviPat::adduct
 }

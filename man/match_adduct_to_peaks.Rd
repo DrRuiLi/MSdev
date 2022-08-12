@@ -4,10 +4,10 @@
 \alias{match_adduct_to_peaks}
 \title{match_adduct_to_peaks}
 \usage{
-match_adduct_to_peaks(MS.network, xcms.peaks, ppm.thresh = 10)
+match_adduct_to_peaks(MS.network, xcms.xcms, ppm.thresh = 10, rt.tol = 10)
 }
 \arguments{
-\item{xcms.peaks}{}
+\item{ppm.thresh}{}
 }
 \description{
 match adduct candidate in xcms.peaks table

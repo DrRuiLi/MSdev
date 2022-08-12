@@ -4,7 +4,7 @@
 \alias{match_adduct_to_features}
 \title{Title}
 \usage{
-match_adduct_to_features(MS.network, xcms.xcms, ppm.thresh = 10)
+match_adduct_to_features(MS.network, xcms.xcms, ppm.thresh = 10, rt.tol = 10)
 }
 \arguments{
 \item{ppm.thresh}{}
