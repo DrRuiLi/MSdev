@@ -13,7 +13,43 @@
   new.object
 
 }
+.plot_MS_Exp <- function(x){
 
+  to_show <- x@General
+  column <- x@Chroma_column%>%as.data.frame()
+  phaseA <- x@Moblie_phase_A%>%as.data.frame()
+  phaseB <-  x@Moblie_phase_B%>%as.data.frame()
+  gradient <- x@Chroma_gradient%>%as.data.frame()
+
+  ggplot(gradient) +
+    geom_line(aes(x = time , y = Contentration_B)) +
+    labs(
+      title = to_show$Name,
+      subtitle = paste0(
+        "Column : ",
+        column$Column_name,
+        " , ",
+        column$Length,
+        " x ",
+        column$Diameter,
+        " , ",
+        column$Paricle_size,
+        "\n",
+        "Phase A : ",
+        paste0(
+          str_c(phaseA$Concentration , phaseA$Compound, sep = " "),
+          collapse = " + "
+        ),
+        "\nPhase B : ",
+        paste0(
+          str_c(phaseB$Concentration , phaseB$Compound, sep = " "),
+          collapse = " + "
+        )
+      )
+    ) +
+    ylim(c(0, 100)) +
+    theme_bw()
+}
 .MS_Exp_to_workbook <- function(x){
 
   if (length(x) >1) {
@@ -87,7 +123,6 @@ create_MS_Exp_record <-function( copy_from = 1,edit = F){
       as.numeric()%>%
       setdiff(1:1e5,.)%>%
       min()%>%
-      `+`(1)%>%
       sprintf("%05d",.)%>%
       paste0("MSE",.)
   }
@@ -133,8 +168,38 @@ show_MS_Exp_record <- function( i = "all"){
                                     package = "MSdev"
   )
   load(MS_Experiment.file)
-  if (i == "all") {
-    MS_Experiment
-  }
 
+  if (i == "all") {
+    return(MS_Experiment)
+  }
+  if ( is.character(i)) {
+    i <- which(MS_Experiment@General$MSE_id == i)
+  }
+  if (is_empty(i) | i > length(MS_Experiment)) {
+    stop("Record not exist")
+  }
+  .plot_MS_Exp(MS_Experiment[i])
+
+}
+update_MS_Exp_record <- function(){
+
+  MS_Experiment.file <- system.file("data",
+                                    "MS_Experiment.rda",
+                                    package = "MSdev"
+  )
+  load(MS_Experiment.file)
+  x <- MS_Exp()
+  colnames(MS_Experiment@General)
+  colnames(x@General)
+  to.add <-  setdiff(colnames(x@General),
+                     colnames(MS_Experiment@General))
+  to.remove <-setdiff(colnames(MS_Experiment@General),
+                      colnames(x@General))
+  MS_Experiment@General <- MS_Experiment@General %>%
+    add_multi_column(to.add)%>%
+    select(colnames(x@General))%>%
+    as.tibble()
+
+  save(MS_Experiment ,file =  MS_Experiment.file)
+  MS_Experiment
 }
