@@ -78,7 +78,7 @@
     select(value = 1)%>%
     openxlsx::writeData(wb = MS_workbook,sheet = 7,rowNames = T)
 
-  saveWorkbook(wb = MS_workbook, file = "b.xlsx",overwrite = T)
+  openxlsx::saveWorkbook(wb = MS_workbook, file = "b.xlsx",overwrite = T)
   MS_workbook
 
 }
@@ -86,14 +86,14 @@
   x <- MS_Exp()
   x@General <- openxlsx::read.xlsx(wb , sheet = 1,rowNames = T)%>%t%>%
     as.tibble()
-  x@Pre_process <- openxlsx::read.xlsx(wb , sheet = 2,rowNames = F)
-  x@Moblie_phase_A <- openxlsx::read.xlsx(wb , sheet = 3,rowNames = F)
-  x@Moblie_phase_B <- openxlsx::read.xlsx(wb , sheet = 4,rowNames = F)
+  x@Pre_process <- openxlsx::read.xlsx(wb , sheet = 2,rowNames = F)%>%as.tibble()%>%list()
+  x@Moblie_phase_A <- openxlsx::read.xlsx(wb , sheet = 3,rowNames = F)%>%as.tibble()%>%list()
+  x@Moblie_phase_B <- openxlsx::read.xlsx(wb , sheet = 4,rowNames = F)%>%as.tibble()%>%list()
   x@Chroma_column <- openxlsx::read.xlsx(wb , sheet = 5,rowNames = T)%>%t%>%
-    as.tibble()
-  x@Chroma_gradient <- openxlsx::read.xlsx(wb , sheet = 6,rowNames = F)
+    as.tibble()%>%list()
+  x@Chroma_gradient <- openxlsx::read.xlsx(wb , sheet = 6,rowNames = F)%>%as.tibble()%>%list()
   x@Mass_Spectrum <-openxlsx::read.xlsx(wb , sheet = 7,rowNames = T)%>%t%>%
-    as.tibble()
+    as.tibble()%>%list()
   x
 
 }
