@@ -17,8 +17,10 @@
 
   to_show <- x@General
   column <- x@Chroma_column%>%as.data.frame()
-  phaseA <- x@Moblie_phase_A%>%as.data.frame()
-  phaseB <-  x@Moblie_phase_B%>%as.data.frame()
+  phaseA <- x@Moblie_phase_A%>%as.data.frame()%>%
+    arrange(Type)
+  phaseB <-  x@Moblie_phase_B%>%as.data.frame()%>%
+    arrange(Type)
   gradient <- x@Chroma_gradient%>%as.data.frame()
 
   ggplot(gradient) +
