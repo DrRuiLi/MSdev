@@ -47,28 +47,32 @@ setMethod("initialize" , "MS_Exp",
                                   "Process" = "")%>%list()
 
             Moblie_phase_A <- tibble(
-              "Compound" = c("H2O", "Formic acid"),
-              "Type" = c("solvent", "solute"),
-              "Concentration" = c("100%", "0.001mM")
+              "Compound" = c( "Formic acid","H2O"),
+              "Type" = c( "solute","solvent"),
+              "Concentration" = c("0.1 mM","100 %" )
             )%>%list
             Moblie_phase_B <- tibble(
-              "Compound" = c("ACN", "Formic acid"),
-              "Type" = c("solvent", "solute"),
-              "Concentration" = c("100%", "0.001mM")
+              "Compound" = c( "Formic acid","ACN"),
+              "Type" = c("solute","solvent"),
+              "Concentration" = c( "0.1 mM","100 %")
             )%>%list
             Chroma_column <- tibble(
               "Column_name" = "Kinetex C18",
               "Manufacturer" = "Phenomenex",
               "Paricle_size" = "1.7 μm",
               "Length" = "50 mm",
-              "Diameter" = "2.1 mm")%>%list
+              "Diameter" = "2.1 mm",
+              "Item_No" = "",
+            "Link" = "")%>%list
             Chroma_gradient <- tibble(
-              time = c(0, 60, 100, 500),
-              Contentration_B = c(0, 50, 100, 100))%>%list
+              time = c(0, 2, 4, 10),
+              Contentration_B = c(0, 50, 100, 100),
+              Flow_rate = 2.5)%>%list
             Mass_Spectrum <- tibble(
               "Instrument" = "SCIEX TripleTOF 6600",
               "MS_type" = "Q-TOF",
               "Data_aquisition" = "DDA TOP10",
+              "Ion_mode" = "both",
             )%>%list
 
             .Object@General <- General
