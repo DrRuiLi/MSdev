@@ -6,7 +6,7 @@
 #' @export
 #' @import xcms
 #' @examples
-build_inhouse_database <-
+build_inhouse_database_with_concentraion <-
   function(compound.record.file ) {
 
     ### test
@@ -37,7 +37,7 @@ build_inhouse_database <-
       xcms.pos.features <-featureDefinitions(xcms.pos)
       MS.network.pos <- expand_adduct_from_compounds(compound.record,"positive")
       MS.network.pos <- match_adduct_to_features(MS.network.pos,xcms.pos,ppm.thresh = 10)
-      plot_adduct_distribution(MS.network.pos,5)
+      plot_adduct_distribution(MS.network.pos,3)
 
 
     }
@@ -49,7 +49,7 @@ build_inhouse_database <-
       xcms.neg.features <-featureDefinitions(xcms.neg)
       MS.network.neg <- expand_adduct_from_compounds(compound.record,"negative")
       MS.network.neg <- match_adduct_to_features(MS.network.neg,xcms.neg,ppm.thresh = 10)
-      plot_adduct_distribution(MS.network.neg,5)
+      plot_adduct_distribution(MS.network.neg,3)
 
 
     }

@@ -44,18 +44,31 @@ build_inhouse_database_single_injection <-
 
       xcms.pos <- readMSData(unique(compound.record$mzML.positive),
                              mode = "onDisk")
-      centwave.param <- CentWaveParam(peakwidth = c(5,50),
+      centwave.param <- CentWaveParam(peakwidth = c(5,30),
                                       prefilter = c(3,100),
-                                      snthresh = 100,
+                                      snthresh = 10,
                                       ppm = 10)
       xcms.pos<-findChromPeaks(xcms.pos,
                                param = centwave.param,
                                BPPARAM = SerialParam())
+      xcms.pos <- groupChromPeaks(xcms.pos , param = PeakDensityParam(sampleGroups = "sample",
+                                                                        binSize = 0.015))
+
       plot_xcms_peaks_distribution(xcms.pos)
+      plot_xcms_features_distribution(xcms.pos)
       xcms.pos.peaks <-chromPeaks(xcms.pos)
       MS.network.pos <- expand_adduct_from_compounds(compound.record,"positive")
-      MS.network.pos <- match_adduct_to_peaks(MS.network.pos,xcms.pos.peaks,ppm.thresh = 10)
-      plot_adduct_distribution(MS.network.pos,3)
+      MS.network.pos <- match_adduct_to_features(MS.network.pos,
+                                                 xcms.pos,
+                                                 ppm.thresh = 10,
+                                                 rt.tol = 10)
+      MS.network.pos <-  match_adduct_with_eicSimilarity(MS.network.pos,xcms.pos)
+      plot_adduct_distribution(MS.network.pos,3,rt.filter = T)
+      plot_adduct_chromatogram(MS.network.pos,3,
+                               rt.filter = T,cor.thresh = 0.9,
+                               norm = T,
+                               move = T)
+
 
 
     }
@@ -66,21 +79,32 @@ build_inhouse_database_single_injection <-
                              mode = "onDisk")
       centwave.param <- CentWaveParam(peakwidth = c(5,30),
                                       prefilter = c(3,100),
-                                      snthresh = 100,
+                                      snthresh = 10,
                                       ppm = 10)
       xcms.neg<-findChromPeaks(xcms.neg,
                                param = centwave.param,
                                BPPARAM = SerialParam())
+      xcms.neg <- groupChromPeaks(xcms.neg , param = PeakDensityParam(sampleGroups = "sample",
+                                                                      binSize = 0.015))
+
       plot_xcms_peaks_distribution(xcms.neg)
+      plot_xcms_features_distribution(xcms.neg)
       xcms.neg.peaks <-chromPeaks(xcms.neg)
       MS.network.neg <- expand_adduct_from_compounds(compound.record,"negative")
-      MS.network.neg <- match_adduct_to_peaks(MS.network.neg,xcms.neg.peaks,ppm.thresh = 10)
+      MS.network.neg <- match_adduct_to_features(MS.network.neg,
+                                                 xcms.neg,
+                                                 ppm.thresh = 10,
+                                                 rt.tol = 10)
+      MS.network.neg <-  match_adduct_with_eicSimilarity(MS.network.neg,xcms.neg)
       plot_adduct_distribution(MS.network.neg,3)
-
-
+      plot_adduct_chromatogram(MS.network.neg,3,
+                               rt.filter = F,cor.thresh = -1,
+                               norm = T,
+                               move = T)
     }
 
 
 
 
   }
+
