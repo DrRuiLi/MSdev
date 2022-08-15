@@ -2,7 +2,7 @@
 % Please edit documentation in R/metabolomic_workflow.R
 \name{metabolomic_workflow}
 \alias{metabolomic_workflow}
-\title{Title}
+\title{metabolomic_workflow}
 \usage{
 metabolomic_workflow(
   project.dir = "d:/2022_07_05-Lirui/",
@@ -13,5 +13,5 @@ metabolomic_workflow(
 \item{raw.data.dir}{}
 }
 \description{
-Title
+metabolomic_workflow
 }
