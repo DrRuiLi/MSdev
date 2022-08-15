@@ -66,11 +66,14 @@ lipidomic_workflow <- function(project.dir = "d:/2022_07_05-Lirui/",
   }
   ### annotation
   {
-    ms.ana <- annotation_by_database(ms.ana,
-                                     polarity = "positive",
-                                     database.file = "d:/MSdb_temp/LipidBlast/LipidBlast_spectra_2022_08_12.Rdata")
-    ms.ana <- annotation_by_database(ms.ana, polarity = "negative")
 
+    ms.ana <- annotation_by_MSdb(ms.ana = ms.ana,
+                                 ion_mode = "positive",
+                                 database_to_match = "LipidBlast_from_MSDIAL")
+
+    ms.ana <- annotation_by_MSdb(ms.ana = ms.ana,
+                                 ion_mode = "negative",
+                                 database_to_match = "LipidBlast_from_MSDIAL")
   }
 
 
