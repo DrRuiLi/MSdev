@@ -160,8 +160,8 @@ annotation_by_MSdb <- function(ms.ana,
   }
   ### save and return
   {
-    ms.ana[[paste0("annotation.",polarity)]][["annotation"]] <- feature.annotation
-    ms.ana[[paste0("annotation.",polarity)]][["annotation.table"]] <- annotation.table
+    ms.ana[[paste0("annotation.",ion_mode)]][["annotation"]] <- feature.annotation
+    ms.ana[[paste0("annotation.",ion_mode)]][["annotation.table"]] <- annotation.table
     save(ms.ana , file = ms.ana$processing.info$project.info$ms.ana.file)
 
     return(ms.ana)
