@@ -22,7 +22,8 @@ plot_adduct_chromatogram <- function(MS.network,
   }
   adduct.table <- adduct.table[idx.to.show,]
   if (length(idx.to.show)==1) {
-    chrom.col <- randomcoloR::distinctColorPalette(nrow(chrom))
+    chrom.col <- randomcoloR::distinctColorPalette(1)
+    chrom <- chrom[c(0,idx.to.show)]
   }else{
     chrom.col <- randomcoloR::distinctColorPalette(nrow(chrom))
     chrom <- chrom[idx.to.show]
