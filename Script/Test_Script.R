@@ -486,15 +486,126 @@ metabolomic_workflow(project.dir ,raw.data.dir )
 
 
 
+prototype = list(
+  General = tibble(
+    "MSC_id" =  "MSC0001",
+    "name" =  "Metabolomics",
+    "creat_time" = paste0(Sys.time()),
+    "instrument" = "SCIEX TripleTOF 6600",
+    "data_aquisition" = "DDA TOP10",
+    "link" = "",
+    "note" = ""
+  ),
+  Pre_process = tibble(
+
+  )
+)
+# Fri Aug 12 15:10:20 2022 ------------------------------
+
+
+object <- MS_Exp(General )
+object
+a <- c(object,object)
+a
+length(a)
+.remove_MS_Exp(a , c(1))
+a[-2]
+a[1] <- object
+
+
+
+# Fri Aug 12 15:15:30 2022 ------------------------------
+MS_workbook <- openxlsx::createWorkbook()
+sapply(slotNames(x), function(y){
+  openxlsx::addWorksheet( wb = MS_workbook,sheetName = y)
+} )
+x@General %>%t %>%as.data.frame()%>%
+  select(value = 1)%>%
+  openxlsx::writeData(wb = MS_workbook,sheet = 1,rowNames = T)
+x@Pre_process %>%as.data.frame()%>%
+  openxlsx::writeData(wb = MS_workbook,sheet = 2,rowNames = F)
+x@Moblie_phase_A %>%as.data.frame()%>%
+  openxlsx::writeData(wb = MS_workbook,sheet = 3,rowNames = F)
+x@Moblie_phase_B %>%as.data.frame()%>%
+  openxlsx::writeData(wb = MS_workbook,sheet = 4,rowNames = F)
+x@Chroma_column%>%unlist%>%as.data.frame()%>%as.data.frame()%>%
+  select(value = 1)%>%
+  openxlsx::writeData(wb = MS_workbook,sheet = 5,rowNames = T)
+x@Chroma_gradient %>%as.data.frame()%>%
+  openxlsx::writeData(wb = MS_workbook,sheet = 6,rowNames = F)
+x@Mass_Spectrum%>%unlist%>%as.data.frame()%>%
+  select(value = 1)%>%
+  openxlsx::writeData(wb = MS_workbook,sheet = 7,rowNames = T)
+
+saveWorkbook(wb = MS_workbook, file = "b.xlsx",overwrite = T)
+
+
+
+# Fri Aug 12 16:21:35 2022 ------------------------------
+MS_Experiment@General$MSE_id %>%
+  str_extract(pattern = "[0-9]+")%>%
+  as.numeric()%>%
+  `+`(1)%>%
+  sprintf("%05d",.)%>%
+  paste0("MSE",.)
+
+
+i= 1
+min((i+1),length(MS_Experiment)):length(MS_Experiment)
+
+
+
+MS_Experiment@General$MSE_id %>%
+  str_extract(pattern = "[0-9]+")%>%
+  as.numeric()%>%
+  setdiff(1:1e5,.)%>%
+  min()
+  `+`(1)%>%
+  sprintf("%05d",.)%>%
+  paste0("MSE",.)
 
 
 
 
+  data("starwars")
+  colnames(starwars )
+  vars <- c("mass", "height")
+  mutate(starwars, prod = .data[[vars[[1]]]] * .data[[vars[[2]]]])
+  vars <- c("aaa", "bbb")
+  mutate(starwars, "{vars[1]}":= 0 ) %>%colnames()
+
+
+
+  MS_Experiment@General$MSE_id %>%
+    str_extract(pattern = "[0-9]+")%>%
+    as.numeric()%>%
+    setdiff(1:10,.)%>%
+    min
+
+library(stringi)
+a <- stri_rand_strings(10,5,pattern = "[A-D]")
+b <- stri_rand_strings(4,5,pattern = "[A-D]")
+
+stringdist::stringdisttmatrix(a,b)
+a
+b
+
+gunzip()
+
+
+use_r("dev_openxlsx")
 
 
 
 
+df<- starwars
 
+wb <- df_to_wb(df)
+
+
+
+lipid_blast <- as.data.frame(spectraData(spectra.database))
+hmdb <- as.data.frame(spectraData(hmdb.exp.spectra))
 
 
 
