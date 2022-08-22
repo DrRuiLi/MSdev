@@ -616,6 +616,77 @@ use_r("ms_ana-function")
 
 
 
+load("d:/2022_08_08-WYQ/ms.ana.2022-08-12.Rdata")
+ms.ana <-edit_sample_info(ms.ana)
+
+
+
+for (i in 1:5) {
+
+
+  plot_adduct_distribution(MS.network.pos,i)->p
+
+  export::graph2ppt(p , file = "MS_Network.pptx",width = 7,height = 4,append = T)
+  plot_adduct_chromatogram(MS.network.pos,i,
+                           rt.filter = T,cor.thresh = 0.5,
+                           norm = F,
+                           move = T) ->p
+  export::graph2ppt(p , file = "MS_Network.pptx",width = 7,height = 4,append = T)
+
+
+  plot_adduct_distribution(MS.network.neg,i)->p
+
+  export::graph2ppt(p , file = "MS_Network.pptx",width = 7,height = 4,append = T)
+  plot_adduct_chromatogram(MS.network.neg,i,
+                           rt.filter = T,cor.thresh = 0.5,
+                           norm = F,
+                           move = T) ->p
+  export::graph2ppt(p , file = "MS_Network.pptx",width = 7,height = 4,append = T)
+}
+
+
+
+
+xcms.s1.pos <- readMSData(files = "d:/2022.6.27.STD/mzML/pos/Sample2.mzML",
+                          mode = "onDisk")
+
+tic.s1.pos <- xcms::chromatogram(xcms.s1.pos,aggregationFun = "sum")
+plot(tic.s1.pos ,main = "")
+title( main = "Serum metabolomic TIC\nPositive",
+       adj = 0)
+export::graph2ppt(file = "tic.pptx",width = 7,height = 4,append = T)
+### neg
+xcms.s1.neg <- readMSData(files = "d:/2022.6.27.STD/mzML/neg/Sample2.mzML",
+                          mode = "onDisk")
+
+tic.s1.neg <- xcms::chromatogram(xcms.s1.neg,aggregationFun = "sum")
+plot(tic.s1.neg ,main = "")
+title( main = "Serum metabolomic TIC\nnegitive",
+       adj = 0)
+export::graph2ppt(file = "tic.pptx",width = 7,height = 4,append = T)
+
+
+
+
+
+### IS
+xcms.s1.pos <- readMSData(files = "d:/2022.6.27.STD/mzML/pos/Sample7.mzML",
+                          mode = "onDisk")
+
+tic.s1.pos <- xcms::chromatogram(xcms.s1.pos,aggregationFun = "sum")
+plot(tic.s1.pos ,main = "")
+title( main = "Standard metabolomic TIC\nPositive",
+       adj = 0)
+export::graph2ppt(file = "tic.pptx",width = 7,height = 4,append = T)
+### neg
+xcms.s1.neg <- readMSData(files = "d:/2022.6.27.STD/mzML/neg/Sample7.mzML",
+                          mode = "onDisk")
+
+tic.s1.neg <- xcms::chromatogram(xcms.s1.neg,aggregationFun = "sum")
+plot(tic.s1.neg ,main = "")
+title( main = "Standard metabolomic TIC\nnegitive",
+       adj = 0)
+export::graph2ppt(file = "tic.pptx",width = 7,height = 4,append = T)
 
 
 
@@ -624,6 +695,15 @@ use_r("ms_ana-function")
 
 
 
+
+
+
+# Mon Aug 22 15:21:21 2022 ------------------------------
+load("d:/2022_08_08-WYQ/ms.ana.2022-08-12.Rdata")
+
+
+cbind(SummarizedExperiment::rowData(xcms.sum),
+      SummarizedExperiment::assay(xcms.sum))->a
 
 
 
