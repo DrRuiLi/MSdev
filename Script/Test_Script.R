@@ -794,3 +794,6 @@ plot(pca.data$p1,pca.data$p2)
 
 library(ggsci)
 show_col(pal_futurama()(10))
+
+
+
