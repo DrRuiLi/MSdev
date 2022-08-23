@@ -1,7 +1,4 @@
 
-
-
-
 edit_sample_info<- function(ms.ana) {
 
   sample.info <- ms.ana$sample.info
@@ -15,7 +12,7 @@ edit_sample_info<- function(ms.ana) {
     pData(ms.ana$xcms.negative) <- cbind(sample.info,sampleNames(ms.ana$xcms.negative))
     save_ms_ana( ms.ana)
   }
-  return(sample.info)
+  return(ms.ana)
 
 }
 
@@ -127,7 +124,8 @@ get_unique_compound <- function(ms.ana){
       filter(!is.na(inchikey),
              score > 0.3)%>%
       group_by(inchikey)%>%
-      slice_max(score*10+log10(med_intensity))
+      slice_max(score*10+log10(med_intensity))%>%
+      ungroup()
   }
 
 
