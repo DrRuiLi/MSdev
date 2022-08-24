@@ -26,13 +26,7 @@ save_ms_ana <- function(ms.ana){
 
 get_feature <- function(ms.ana){
 
-  {### check features
-    if (!is.null(ms.ana[["feature"]]) ) {
-      ms.ana[["feature"]] ->feature
 
-      return(ms.ana)
-    }
-  }
 
   {### extract feature data
     feature.data.pos <- get_features_from_xcms(ms.ana$xcms.positive)
@@ -140,4 +134,32 @@ get_unique_compound <- function(ms.ana){
 
 
 
+plot_feature_intensity_distribution<-function(ms.ana,feature.id.to.plot){
 
+  sample.info <- ms.ana$sample.info%>%
+    dplyr::arrange(analysis.time.positive)%>%
+    dplyr::mutate(injection.order = 1:nrow(.))
+  feature <- ms.ana$feature
+
+  sample.info$value <- feature %>%
+    dplyr::filter(feature.id == feature.id.to.plot)%>%
+    dplyr::select(sample.info$sample.name)%>%
+    as.numeric()
+  qc.value <- sample.info$value[sample.info$sample.type == "QC"]
+  qc.rsd <- sd(qc.value,na.rm = T)/mean(qc.value,na.rm = T)*100
+  sample.value <- sample.info$value[sample.info$sample.type != "Blank"]
+  sample.rsd <- sd(sample.value,na.rm = T)/mean(sample.value,na.rm = T)*100
+  ggplot(sample.info)+
+    geom_point(aes(x =injection.order , y = value ,col = sample.type))+
+    scale_color_manual(values = c("QC"= "green","Blank" = "grey","Sample" = "blue"))+
+    labs(title = paste0(feature.id.to.plot),
+         subtitle = paste0("mz = ",feature$mz[feature$feature.id == feature.id.to.plot]%>%
+                             sprintf("%.4f",.)," ; rt = ",
+                           feature$rt[feature$feature.id == feature.id.to.plot]%>%
+                             sprintf("%.2f",.),"\n",
+                           "QC RSD = ",sprintf("%.2f",qc.rsd),"%\n",
+                           "Sample RSD = ",sprintf("%.2f",sample.rsd),"%"),
+         col = "Sample type")
+
+
+}
