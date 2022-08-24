@@ -1,5 +1,9 @@
 sta_workflow <- function(ms.ana){
 
+  ms.ana <-edit_sample_info(ms.ana)
+  ms.ana <- get_feature(ms.ana)
+  ms.ana <- get_unique_compound(ms.ana)
+
   output.dir <- paste0(ms.ana$processing.info$project.info$project.dir,
                        "/Statistic")
   dir.create(output.dir)
@@ -13,7 +17,7 @@ sta_workflow <- function(ms.ana){
     plot_volcano(diff.table,F)->vp
     plot_diff_heatmap(ms.ana , i) ->hp
     dir.create( paste0(output.dir,"/",
-                       names(ms.ana$Difference)[i]))
+                       names(ms.ana$Statistic$Difference)[i]))
     openxlsx::write.xlsx(diff.table , file = paste0(output.dir,"/",
                                                     names(ms.ana$Statistic$Difference)[i],
                                                     "/Diff_",names(ms.ana$Statistic$Difference)[i],".xlsx"))
@@ -305,16 +309,16 @@ plot_anova_heatmap <- function(ms.ana){
                           show_column_dend = F,
                           column_split= sample.info$group,
                           cluster_column_slices = F,
-                          rect_gp = gpar(col = "white",lwd = 0.001),
+                          rect_gp = grid::gpar(col = "white",lwd = 0.001),
                           column_gap = unit(2,"mm"),
                          # row_dend_width = unit(40,"mm"),
-                         # row_dend_gp = gpar(lwd = 5),
+                         # row_dend_gp = grid::gpar(lwd = 5),
                           row_dend_side = "right",
                           column_title = NULL,
-                          top_annotation = columnAnnotation(Diagnose = anno_block(gp = gpar(fill = col.list,
+                          top_annotation = columnAnnotation(Diagnose = anno_block(gp = grid::gpar(fill = col.list,
                                                                                             lty = 0),
                                                                                   labels = names(col.list),
-                                                                                  labels_gp = gpar(cex = 1))),
+                                                                                  labels_gp = grid::gpar(cex = 1))),
                           heatmap_legend_param = list(title = "z-score")
   ) ->hp
   hp
@@ -340,16 +344,16 @@ plot_diff_heatmap <- function(ms.ana,i ){
                           show_column_dend = F,
                           column_split= diff.sample.info$group,
                           cluster_column_slices = F,
-                          rect_gp = gpar(col = "white",lwd = 0.001),
+                          rect_gp = grid::gpar(col = "white",lwd = 0.001),
                           column_gap = unit(2,"mm"),
                           # row_dend_width = unit(40,"mm"),
-                          # row_dend_gp = gpar(lwd = 5),
+                          # row_dend_gp = grid::gpar(lwd = 5),
                           row_dend_side = "right",
                           column_title = NULL,
-                          top_annotation = columnAnnotation(Diagnose = anno_block(gp = gpar(fill = col.list,
+                          top_annotation = columnAnnotation(Diagnose = anno_block(gp = grid::gpar(fill = col.list,
                                                                                             lty = 0),
                                                                                   labels = names(col.list),
-                                                                                  labels_gp = gpar(cex = 1))),
+                                                                                  labels_gp = grid::gpar(cex = 1))),
                           heatmap_legend_param = list(title = "z-score")
   ) ->hp
   hp
