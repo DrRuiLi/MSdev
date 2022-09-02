@@ -24,7 +24,7 @@ save_ms_ana <- function(ms.ana){
 
 }
 
-get_feature <- function(ms.ana){
+get_feature <- function(ms.ana,qc_rsd_thresh = 0.3){
 
 
 
@@ -48,11 +48,11 @@ get_feature <- function(ms.ana){
       mutate(feature.id = paste0(feature.id , "_neg"))
     feature <- rbind(feature.pos,
                      feature.neg)%>%
-      filter(qc_rsd < 0.3)
+      filter(qc_rsd < qc_rsd_thresh)
     message("Total ",
             nrow(feature),"/",
             nrow(feature.pos)+nrow(feature.neg),
-            " features RSD > 30 %")
+            " features RSD < ",qc_rsd_thresh*100," %")
 
   }
 
