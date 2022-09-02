@@ -1,6 +1,6 @@
 setClass("MSdev",
          slots = list(
-           projectInfo = "data.frame",
+           projectInfo = "list",
            processingInfo = "list",
            sampleInfo = "data.frame",
            experimentInfo ="MS_Exp",
@@ -12,16 +12,77 @@ setClass("MSdev",
 
 
 
-MSdev <- function()
-  new("MSdev")
+MSdev <- function(rawDataDir =
+                    "C:/Users/91879/OneDrive/Documents/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data",
+                  projectDir =
+                    "C:/Users/91879/OneDrive/Documents/Code/R/Projecct/2022.1.8_MS.demo/Demo3",
+                  experimentInfo = MS_Exp()){
+  new("MSdev",rawDataDir,projectDir,experimentInfo)
+
+}
+
 
 
 setMethod("initialize" , "MSdev",
-          function(.Object){
-            .Object@projectInfo = data.frame()
+          function(.Object,
+                   rawDataDir,
+                   projectDir,
+                   experimentInfo
+                   ){
+
+            ### check param
+            {
+              if (!dir.exists(rawDataDir)) {
+                message("rawDataDir do not exist")
+
+              }
+              dir.create(projectDir,recursive = T,showWarnings = F)
+            }
+
+            .Object@projectInfo = list(
+              creatTime = Sys.time(),
+              projectDir =projectDir,
+              rawDataDir =rawDataDir,
+              rawDataFormat = NULL,
+              rawDataFileCount = NULL,
+              msDataDir =paste0(projectDir , "/msData"),
+              experimentTime = NULL,
+              msAcquisition = NA,
+              sampleNumber = NA,
+              MSdevFile = paste0(projectDir , "/MSdev_",date_suffix(),".Rdata")
+            )
+            .Object@experimentInfo = experimentInfo
+
+            ### check raw data
+            {
+              rowDataFile <- dir(.Object@projectInfo$rawDataDir)
+              .Object@projectInfo$rawDataFormat =
+                dplyr::case_when(any(grepl(pattern = ".wiff$", x = rowDataFile))~".wiff",
+                        any(grepl(pattern = ".raw$", x = rowDataFile))~".raw",
+                        any(grepl(pattern = ".lcd$", x = rowDataFile))~".lcd")
+              rowDataFile <- dir(path = .Object@projectInfo$rawDataDir,
+                                 pattern =paste0(.Object@projectInfo$rawDataFormat,"$") ,
+                                 full.names = T)
+              .Object@projectInfo$rawDataFileCount <- length(rowDataFile)
+              .Object@projectInfo$experimentTime <- max(file.info(rowDataFile)$mtime)
+
+            }
+            saveMSdev(.Object)
             .Object
 
           })
 
 
+
+setMethod(
+  "show" ,
+  "MSdev",
+  definition = function(object) {
+    project_info <- object@projectInfo
+    cat(paste0("MSdev project with ",project_info$sampleNumber," samples, ",project_info$rawDataFileCount," files\n",
+                "Data acquisition : ",project_info$msAcquisition))
+
+
+  }
+)
 
