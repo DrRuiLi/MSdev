@@ -344,4 +344,64 @@ plot_xcms_peaks_SN_distribution <- function(xcms.xcms,plot.title = "Peaks SNR(Si
 
 }
 
+plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id){
+
+  xcms.peaks <- chromPeaks(xcms.xcms)%>%
+    as.data.frame()
+  xcms.peaks <- xcms.peaks[peak_id,]
+  mz.range <-c(xcms.peaks$mzmin,xcms.peaks$mzmax)
+  rt.range <-c(xcms.peaks$rtmin,xcms.peaks$rtmax)
+
+  xcms.chrom <- chromatogram(xcms.xcms ,
+                             mz = mz.range,
+                             rt = rt.range+diff(rt.range)*c(-1.5,1.5)
+                             )
+  xcms.chrom <- xcms.chrom[1,1]
+  chrom.data <- data.frame(rt = rtime(xcms.chrom),
+                           intensity = intensity(xcms.chrom))%>%
+    #dplyr::filter(!is.na(intensity))%>%
+    dplyr::mutate(fill = rt > min(rt.range)&rt <max(rt.range))
+
+  ggplot(chrom.data)+
+    geom_line(aes(x = rt,y = intensity),linetype = 1)+
+    geom_area(aes(x = rt,y = intensity, fill = fill))+
+    scale_fill_manual(values = c("FALSE" = "transparent","TRUE" = "grey"))+
+    labs(title = paste0(xcms.chrom@chromPeakData@rownames),
+         subtitle = paste0("mz:",paste0(sprintf("%.5f",xcms.chrom@mz),collapse = " - "), ";     ",
+                           "rt:",paste0(sprintf("%.2f",rt.range),collapse = " - "),"\n",
+                           "mz error = ",sprintf("%.2f",mean(diff(xcms.chrom@mz)/xcms.chrom@mz)*1e6)," ppm;     ",
+                           "peak width = ", sprintf("%.2f",diff(rt.range))
+                           ),
+         x = "Retention time")+
+    guides(fill = "none")+
+    theme_bw()+
+    theme(text = element_text(size = 8))
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
