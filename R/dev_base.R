@@ -6,3 +6,11 @@ t.test_dev <- function(x,y){
   }
   return(p.value)
 }
+
+
+
+date_suffix <- function(){
+
+  gsub(Sys.Date(),pattern = "-",replacement = "_")
+
+}
