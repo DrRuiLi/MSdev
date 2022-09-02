@@ -12,6 +12,6 @@ plot_xcms_peaks_ms1_scans(xcms.xcms, plot.title = "Peaks Sans of MS1")
 \item{plot.title}{}
 }
 \description{
-plot scans number of MS1 levels in each peak, note that to many peaks will lead to stack,
+plot scans number of MS1 levels in each peak, note that to many peaks will lead to stuck,
 apply \code{filterFile} to decrease peaks count
 }
