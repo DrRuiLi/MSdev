@@ -9,8 +9,14 @@ t.test_dev <- function(x,y){
 
 
 
+#' @title date_suffix
+#' @description generate a character of current date
+#' @return
+#' @export
+#'
+#' @examples
 date_suffix <- function(){
 
-  gsub(Sys.Date(),pattern = "-",replacement = "_")
+  paste0("_",gsub(Sys.Date(),pattern = "-",replacement = "_"))
 
 }
