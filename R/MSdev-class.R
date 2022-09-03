@@ -47,9 +47,9 @@ setMethod("initialize" , "MSdev",
               rawDataFileCount = NULL,
               msDataDir =paste0(projectDir , "/msData"),
               experimentTime = NULL,
-              msAcquisition = NA,
-              sampleNumber = NA,
-              MSdevFile = paste0(projectDir , "/MSdev_",date_suffix(),".Rdata")
+              msAcquisition = "unknown",
+              sampleCount = NA,
+              MSdevFile = paste0(projectDir , "/MSdev",date_suffix(),".Rdata")
             )
             .Object@experimentInfo = experimentInfo
 
@@ -67,6 +67,7 @@ setMethod("initialize" , "MSdev",
               .Object@projectInfo$experimentTime <- max(file.info(rowDataFile)$mtime)
 
             }
+            .Object <- readInRawData(.Object)
             saveMSdev(.Object)
             .Object
 
@@ -79,8 +80,16 @@ setMethod(
   "MSdev",
   definition = function(object) {
     project_info <- object@projectInfo
-    cat(paste0("MSdev project with ",project_info$sampleNumber," samples, ",project_info$rawDataFileCount," files\n",
-                "Data acquisition : ",project_info$msAcquisition))
+    show_info <-paste0("MSdev project")
+
+    if (isTRUE(object@processingInfo$readInRawData$done)) {
+
+      show_info <- paste0(show_info,"\n",
+                          'Total ',
+                          project_info$sampleCount," Samples, ",
+                          project_info$rawDataFileCount," *",project_info$rawDataFormat," files")
+    }
+    cat(show_info)
 
 
   }
