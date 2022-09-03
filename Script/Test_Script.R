@@ -146,6 +146,7 @@ for (i in seq(1,10000,200)) {
   message(i,", time: ",t[1])
   tl<-rbind(tl,c(i,t))
   x <- tl[,1]
+
   y <- tl[,2]
   #fit2 <- lm(y~poly(x,2))
   plot(x,y)
@@ -795,5 +796,457 @@ plot(pca.data$p1,pca.data$p2)
 library(ggsci)
 show_col(pal_futurama()(10))
 
+
+
+# Tue Aug 23 20:13:20 2022 ------------------------------
+load("d:/2022_08_19-Lirui/ms.ana.2022-08-22.Rdata")
+ms.ana<-edit_sample_info(ms.ana)
+
+a <- filter(feature , mz >616,mz < 617)
+a <- filter(feature , rt >30,rt < 40,mz >600,mz <620)
+plot_feature_intensity_distribution(ms.ana,"FT11071_pos")+
+  theme_classic()
+export::graph2ppt(file = "RSD.pptx",width = 5,height = 3,append = T)
+plot_feature_intensity_distribution(ms.ana,"FT06896_neg")+
+  theme_classic()
+
+export::graph2ppt(file = "RSD.pptx",width = 5,height = 3,append = T)
+## 5fu
+plot_feature_intensity_distribution(ms.ana,"FT00256_neg")+
+  theme_classic()
+
+
+
+xcms.xcms <- ms.ana$xcms.negative
+library(xcms)
+fileNames(xcms.xcms)
+ms.chrom <-featureChromatograms(xcms.xcms , features = 6896)
+
+
+chrom.sub <- ms.chrom[1,11]
+plot(chrom.sub)
+
+id <- "FT11071_pos"
+xcms.pos <- ms.ana$xcms.positive
+mz.range <- feature[feature$feature.id == id,c("mzmin","mzmax")]%>%as.numeric()
+ms.chrom <-chromatogram(filterFile( xcms.pos , 5) ,mz = mz.range)
+plot(ms.chrom,xlim = c(30,50))
+plot_XChromatograms(ms.chrom)+``
+  xlim(c(35,43))
+
+
+feature <-feature%>%
+  dplyr::mutate(ion_mode = case_when(grepl(pattern = "pos",
+                                       x = feature.id)~"pos",
+                                    T~"neg"))
+table(feature$ion_mode,feature$qc_rsd <0.3)
+ggplot(feature )+
+  geom_boxplot(aes(x = ion_mode , y = qc_rsd,col = ion_mode))+
+  geom_hline(yintercept = 0.3,lty = "dashed",size= 2,col = "grey")+
+  ylim(c(0,1))+
+  theme_bw()
+
+
+
+# Wed Aug 24 17:39:18 2022 ------------------------------
+
+
+
+
+# Fri Aug 26 16:19:58 2022 ------------------------------
+library(devtools)
+load_all()
+
+
+qe.xcms<-readMSData("d:/2022_8_23_QE_test/QC_MS2_35000.mzML",mode = "onDisk")
+
+centwave.param <- CentWaveParam(peakwidth = c(5,30),
+                                prefilter = c(3,100),
+                                snthresh = 10,
+                                ppm = 20)
+xcms.xcms<-findChromPeaks(qe.xcms,
+                          param = centwave.param)
+
+
+xcms.peaks <- chromPeaks(xcms.xcms)
+
+
+mz.range <- c(651.42480,
+              651.42719
+)
+chrom <- chromatogram(xcms.xcms , mz  = mz.range)
+plot(chrom)
+
+xcms.peaks <- as.data.frame(xcms.peaks)%>%
+  mutate(ppm = (mzmax-mzmin)/mz*1e6,
+         mz_diff = mzmax-mzmin)
+
+lattice::densityplot(xcms.peaks$ppm)
+library(ggplot2)
+
+
+ggplot(xcms.peaks,aes(x = ppm , y = mz)) +
+  stat_density_2d(aes(fill= ..level..),
+                  contour = T,
+                  geom = "polygon",bins = 100)+
+  geom_point(size = 0.1,alpha = 0.1)+
+  scale_fill_gradient(low="#00000001",high = "red")+
+  theme_bw()
+
+
+plot_xcms_peaks_distribution(xcms.xcms,type = "l" )
+
+ggplot(luv_colours, aes(u, v)) +
+  geom_point(aes(colour = col), size = 3) +
+  #scale_color_identity() +
+  coord_equal()+
+  guides(col = "none")
+
+
+# Sun Aug 28 13:41:52 2022 ------------------------------
+point.size <- data.frame( x = 1:5,
+                          y = 3,
+                          size = 1:5,
+                          col = LETTERS[1:5])
+ggplot(point.size)+
+  geom_dotplot(aes(x = x,y=y,binwidth = size,col = col),alpha = 0.2)+
+  scale_size_ordinal()
+
+
+
+
+
+
+ggplot(xcms.peaks)+
+  geom_segment(aes(x = rtmin , xend = rtmax , y = mz,yend = mz ))
+
+
+# Sun Aug 28 15:18:24 2022 ------------------------------
+
+tof.xcms <- readMSData("d:/2022.6.27.STD/mzML/pos/Sample2.mzML",
+                       mode = "onDisk")
+qe.xcms <- readMSData("d:/2022_8_23_QE_test/QC_MS2_35000.mzML",
+                      mode = "onDisk")
+centwave.param <- CentWaveParam(ppm = 20,
+                                peakwidth = c(5,30),
+                                snthresh = 10,
+                                prefilter = c(3,100))
+tof.xcms <- findChromPeaks(tof.xcms , param = centwave.param)
+qe.xcms <- findChromPeaks(qe.xcms , param = centwave.param)
+
+
+
+plot_xcms_peaks_distribution(tof.xcms,type = "o",plot.title = "TOF6600 Peaks Distribution")
+export::graph2ppt(file = "QE_TOF_Comparasion", append = T,
+                  width = 8,height = 6)
+plot_xcms_peaks_distribution(qe.xcms,type = "o",plot.title = "QE Plus Peaks Distribution")
+export::graph2ppt(file = "QE_TOF_Comparasion", append = T,
+                  width = 8,height = 6)
+
+
+
+
+plot_xcms_peaks_mzerror_density(tof.xcms,plot.title =  "TOF6600 Peaks mz Error Distribution")
+export::graph2ppt(file = "QE_TOF_Comparasion", append = T,
+                  width = 8,height = 6)
+
+plot_xcms_peaks_mzerror_density(qe.xcms,plot.title =  "QE Plus Peaks mz Error Distribution")
+export::graph2ppt(file = "QE_TOF_Comparasion", append = T,
+                  width = 8,height = 6)
+
+
+
+
+
+plot_xcms_peaks_ms1_scans(tof.xcms,plot.title = "TOF6600 Peaks MS1 Scan Count Distribution")
+export::graph2ppt(file = "QE_TOF_Comparasion", append = T,
+                  width = 8,height = 6)
+
+
+plot_xcms_peaks_ms1_scans(qe.xcms,plot.title = "QE Plus Peaks MS1 Scan Count Distribution")
+export::graph2ppt(file = "QE_TOF_Comparasion", append = T,
+                  width = 8,height = 6)
+
+
+plot_xcms_peaks_ms2_scans(tof.xcms,plot.title = "TOF6600 Peaks MS2 Scan Count Distribution")
+export::graph2ppt(file = "QE_TOF_Comparasion", append = T,
+                  width = 8,height = 6)
+
+
+plot_xcms_peaks_ms2_scans(qe.xcms,plot.title = "QE Plus Peaks MS2 Scan Count Distribution")
+export::graph2ppt(file = "QE_TOF_Comparasion", append = T,
+                  width = 8,height = 6)
+
+
+
+plot_xcms_peaks_SN_distribution(tof.xcms,plot.title = "TOF6600 Peaks SNR(Signal to Noise Ratio)")
+export::graph2ppt(file = "QE_TOF_Comparasion", append = T,
+                  width = 8,height = 6)
+
+plot_xcms_peaks_SN_distribution(qe.xcms,plot.title = "QE Plus Peaks SNR(Signal to Noise Ratio)")
+export::graph2ppt(file = "QE_TOF_Comparasion", append = T,
+                  width = 8,height = 6)
+
+### TIC
+tof.tic <- chromatogram(tof.xcms)
+qe.tic <- chromatogram(qe.xcms)
+
+plot_XChromatograms(tof.tic,norm = F)+
+  labs(title = "TOF6600 TIC")+
+  guides(col = "none")+
+  theme(text = element_text(size = 8))+
+  geom_line(data = MS_Experiment@Chroma_gradient[[1]],aes(x = time*60 , y = Contentration_B*1.5e6 ))
+
+
+export::graph2ppt(file = "QE_TOF_Comparasion_overview", append = T,
+                  width = 6,height = 3)
+plot_XChromatograms(qe.tic,norm = F)+
+  labs(title = "QE Plus TIC")+
+  guides(col = "none")+
+  theme(text = element_text(size = 8))+
+  geom_line(data = MS_Experiment@Chroma_gradient[[5]],aes(x = time*60 , y = Contentration_B*3.3e7 ))
+
+
+export::graph2ppt(file = "QE_TOF_Comparasion_overview", append = T,
+                  width = 6,height = 3)
+
+
+
+### Scans
+tof.scans <- fData(tof.xcms)
+qe.scans <- fData(qe.xcms)
+rbind(table(tof.scans$msLevel)%>%as.data.frame()%>%
+  mutate(type = "tof",time = 12),
+  table(qe.scans$msLevel)%>%as.data.frame()%>%
+    mutate(type = "qe",time = 24)
+  )%>%select(mslevel = Var1,everything())-> plot.data
+ggplot(plot.data)+
+  geom_bar(aes(x = type , y = Freq , fill = mslevel),alpha = 0.3,stat = "identity",position = "dodge")+
+  geom_bar(aes(x = type , y = Freq/time*10 , col = mslevel),stat = "identity",position = "dodge")+
+  scale_x_discrete(labels = c("QE Plus","TOF6600"))+
+  scale_color_manual(values = c("#F8766D","#00BFC4"),label = c("MS1","MS2"))+
+  scale_fill_manual(values = c("#F8766D","#00BFC4"),label = c("MS1","MS2"))+
+  labs(title = "Spectrum count",
+       fill ="Total count",col = "Normalize to time",
+       x = "Instrument",y = "Spectrum count")+
+  guides(fill = guide_legend(order = 1) , col)+
+  theme_bw()+
+  theme(text = element_text(size = 8))
+export::graph2ppt(file = "QE_TOF_Comparasion_overview", append = T,
+                  width = 4,height = 6)
+
+# Mon Aug 29 15:07:23 2022 ------------------------------
+metabolomic_workflow_single_file(tof.xcms)
+tof.anno <- metabolomic_workflow_single_file(tof.xcms)
+qe.anno <- metabolomic_workflow_single_file(qe.xcms)
+
+
+
+
+
+chromPeaks(xcms.xcms)%>%
+  as.data.frame()%>%
+  mutate(mz_error = mzmax - mzmin )%>%
+  pull(mz_error)%>%
+  max
+
+
+xcms.xcms <- tof.xcms
+peak.density.param <- PeakDensityParam(sampleGroups = "a",
+                                       minFraction = 0.5,bw = 30,
+                                       binSize = 0.5)
+
+xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
+nrow(featureDefinitions(xcms.xcms))
+
+# Wed Aug 31 09:45:10 2022 ------------------------------
+plot.data <- rbind(data.frame( type= "tof",
+                  peaks = nrow(chromPeaks(tof.xcms)),
+                  features = nrow(tof.anno),
+                  annoated = sum(tof.anno$score >0))%>%
+        pivot_longer(2:4,names_to = "n",
+                     values_to = "v"),
+      data.frame( type= "qe",
+                  peaks = nrow(chromPeaks(qe.xcms)),
+                  features = nrow(qe.anno),
+                  annoated = sum(qe.anno$score >0))%>%
+        pivot_longer(2:4,names_to = "n",
+                     values_to = "v"))
+library(ggsci)
+ggplot(plot.data)+
+  geom_bar(aes(x = type , y = v , fill = n),alpha = 0.8,col="black",stat = "identity",position = "dodge")+
+  scale_x_discrete(labels = c("QE Plus","TOF6600"))+
+  scale_fill_aaas()+
+  #scale_color_manual(values = c("#F8766D","#00BFC4"),label = c("MS1","MS2"))+
+  #scale_fill_manual(values = c("#F8766D","#00BFC4"),label = c("MS1","MS2"))+
+  labs(title = "Peaks count",
+       fill ="Total count",col = "Normalize to time",
+       x = "Instrument",y = "Spectrum count")+
+  guides(fill = guide_legend(order = 1) , col)+
+  theme_bw()+
+  theme(text = element_text(size = 8))
+export::graph2ppt(file = "QE_TOF_Comparasion_overview", append = T,
+                  width = 4,height = 6)
+
+
+
+
+
+
+
+
+
+# Thu Sep  1 11:44:44 2022 ------------------------------
+metabolomic_workflow(project.dir = "d:/2022_08_30-Lirui/",
+                     raw.data.dir = "d:/2022_08_30-Lirui/Data/")
+
+
+
+load("d:/2022_08_30-Lirui/ms.ana.2022-09-01.Rdata")
+feature.neg <- ms.ana$annotation.negative$annotation.table
+a <- feature.neg%>%
+  filter(rt >30&rt <40,mz >600,mz <700)
+
+
+
+
+# Fri Sep  2 10:01:18 2022 ------------------------------
+qe.fullsacn.70k <- readMSData("d:/2022.9.1/Fullscan_R70000_pos_neg_Sample_2.mzML",
+                              mode = "onDisk")
+
+fData(qe.fullsacn.70k) -> qe.scans
+qe.scans.pos <- qe.scans %>%
+  filter(polarity ==1,msLevel ==1)
+
+
+time.diff.70k <- diff(qe.scans.pos$retentionTime)
+boxplot(time.diff.70k)
+
+
+qe.fullsacn.14k <- readMSData("d:/2022.9.1/Sample_1_Fullscan_R140000_pos_neg.mzML",
+                              mode = "onDisk")
+
+fData(qe.fullsacn.14k) -> qe.scans
+qe.scans.pos <- qe.scans %>%
+  filter(polarity ==1,msLevel ==1)
+
+
+time.diff.14k <- diff(qe.scans.pos$retentionTime)
+boxplot(time.diff.14k)
+
+
+qe.fullsacn.only <- readMSData("d:/2022.9.1/Std_Ace_4_1_fullms.mzML",
+                              mode = "onDisk")
+
+fData(qe.fullsacn.only) -> qe.scans
+qe.scans.neg <- qe.scans %>%
+  filter(polarity ==0,msLevel ==1)
+
+
+time.diff.neg <- diff(qe.scans.neg$retentionTime)
+boxplot(time.diff.neg)
+
+
+
+# Fri Sep  2 12:21:14 2022 ------------------------------
+load("d:/2022_08_30-Lirui/ms.ana.2022-09-01.Rdata")
+
+
+
+ms.ana <- get_feature(ms.ana,qc_rsd_thresh = 999)
+ms.features <- ms.ana$feature%>%
+  filter(grepl("neg",feature.id))%>%
+  filter(rt >30,
+         rt <40)%>%
+  select(c(1,2,3,23,24,25))
+
+
+
+
+plot_feature_intensity_distribution(ms.ana = ms.ana ,
+                                    feature.id.to.plot ="FT09944_neg" )
+
+
+is.chrom <- featureChromatograms(ms.ana$xcms.negative,
+                     features = 291)
+
+
+
+plot(is.chrom)
+
+
+ms.features <- ms.ana$feature%>%
+  mutate(ion_mode = case_when(grepl("neg",feature.id)~ 0,
+                   grepl("pos",feature.id)~1))
+
+ggplot(ms.features) +
+   geom_boxplot(aes(x = as.factor(ion_mode) , y = qc_rsd))+
+  geom_hline(yintercept = 0.3)+
+  ylim(c(0,0.5))+
+  scale_x_discrete(label = c("negative","positive"))+
+  labs(title = "2022.8",x = "")
+
+
+
+
+#gout.features <- openxlsx::read.xlsx("../../Projecct/2022.4.5.Gout/Discovery/features.no.svr.xlsx")
+ms.features <- gout.features%>%
+  mutate(ion_mode = case_when(grepl("neg",feature.id)~ 0,
+                              grepl("pos",feature.id)~1))
+
+ggplot(ms.features) +
+  geom_boxplot(aes(x = as.factor(ion_mode) , y = qc.rsd))+
+  geom_hline(yintercept = 0.3)+
+  ylim(c(0,0.5))+
+  scale_x_discrete(label = c("negative","positive"))+
+  labs(title = "2021.6",x = "")
+
+
+y <- rnorm(1000, 150, 10)
+
+cutoff <- quantile(y, probs = 0.95)
+
+hist.y <- density(y, from = 100, to = 200) %$%
+  data.frame(x = x, y = y) %>%
+  mutate(area = x >= cutoff)
+
+the.plot <- ggplot(data = hist.y, aes(x = x, ymin = 0, ymax = y, fill = area)) +
+  geom_ribbon() +
+  geom_line(aes(y = y)) +
+  geom_vline(xintercept = cutoff, color = 'red') +
+  annotate(geom = 'text', x = cutoff, y = 0.025, color = 'red', label = 'VaR 95%', hjust = -0.1)
+the.plot
+
+
+# Fri Sep  2 14:30:49 2022 ------------------------------
+library(xcms)
+qe.fullscan <-readMSData("d:/2022.9.1/Fullscan_R70000_pos_neg_Sample_1.mzML",
+                         mode = "onDisk")
+qe.fullscan.pos  <- filterPolarity(qe.fullscan,1)
+qe.fullscan.neg  <- filterPolarity(qe.fullscan,0)
+
+qe.fullscan.pos <- findChromPeaks(qe.fullscan.pos,param = CentWaveParam(ppm = 5))
+plot_xcms_peaks_distribution(qe.fullscan.pos,type = "l")
+plot_xcms_peaks_ms1_scans(qe.fullscan.pos)
+plot_xcms_peaks_SN_distribution(qe.fullscan.pos)
+nrow(chromPeakData(qe.fullscan.pos))
+
+plot_xcms_peaks_Chromatogram(qe.fullscan.pos , 1949)
+
+qe.peaks <- chromPeaks(qe.fullscan.pos) %>%
+  as.data.frame()%>%
+  mutate(pw  = rtmax - rtmin)
+
+
+
+
+use_r("MSdev-class")# Fri Sep  2 18:57:29 2022 ------------------------------
+load_all()
+object <- MSdev()
+#use_r("MSdev-function")
+
+use_r()
+
+load("../../Projecct/2022.1.8_MS.demo/Demo3/MSdev_2022_09_03.Rdata")
 
 
