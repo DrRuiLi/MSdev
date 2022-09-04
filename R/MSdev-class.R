@@ -80,16 +80,20 @@ setMethod(
   "MSdev",
   definition = function(object) {
     project_info <- object@projectInfo
-    show_info <-paste0("MSdev project")
+    cat(paste0("MSdev project"))
 
     if (isTRUE(object@processingInfo$readInRawData$done)) {
 
-      show_info <- paste0(show_info,"\n",
+      cat(paste0("\n",
                           'Total ',
                           project_info$sampleCount," Samples, ",
-                          project_info$rawDataFileCount," *",project_info$rawDataFormat," files")
+                          project_info$rawDataFileCount," *",project_info$rawDataFormat," files"))
+
+      print(object@projectInfo$rawDatafiles  )
+
     }
-    cat(show_info)
+
+
 
 
   }
