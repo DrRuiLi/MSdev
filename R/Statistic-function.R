@@ -1,7 +1,8 @@
 sta_workflow <- function(ms.ana){
 
-  ms.ana <-edit_sample_info(ms.ana)
+  ms.ana <- edit_sample_info(ms.ana)
   ms.ana <- get_feature(ms.ana)
+  ms.ana <- get_feature_corrected(ms.ana)
   ms.ana <- get_unique_compound(ms.ana)
 
   output.dir <- paste0(ms.ana$processing.info$project.info$project.dir,
