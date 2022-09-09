@@ -39,6 +39,14 @@ metabolomic_workflow <- function(project.dir = "d:/2022_07_05-Lirui/",
     ms.ana <- annotation_by_database(ms.ana, polarity = "negative")
 
   }
+
+  ### Statistic
+  {
+    ms.ana <- get_feature(ms.ana )
+    ms.ana <- get_unique_compound(ms.ana)
+    sta_workflow(ms.ana )
+
+  }
 }
 
 lipidomic_workflow <- function(project.dir = "d:/2022_07_05-Lirui/",
@@ -247,12 +255,20 @@ metabolomic_workflow_single_file <-
 
 
 
-metabolomics_workflow_for_QE <- function(){
+metabolomics_workflow_for_QE_fullscan_both <- function(){
 
 
-
-
-
+  MS_dev_QE <- MSdev(rawDataDir = "d:/2022.9.1_QE.Test/rawData",
+                     projectDir = "d:/2022.9.1_QE.Test",
+                     experimentInfo = MS_Experiment[5])
+  MS_dev_QE <- checkSampleInfo(MS_dev_QE)
+  MS_dev_QE <- msConvert(MS_dev_QE)
+  MS_dev_QE <- xcmsProcessing_fullscan_DDA(MS_dev_QE)
+  MS_dev_QE <- extractSpectra_fullscan_DDA(MS_dev_QE)
+  MS_dev_QE <- featureSpectra_fullscan_DDA(MS_dev_QE)
+  MS_dev_QE <- featureCandidate(MS_dev_QE,mz.ppm = 20)
+  MS_dev_QE <- annotateMSdev(MS_dev_QE)
+  MS_dev_QE <- dropSpectra(MS_dev_QE)
 
 
 }

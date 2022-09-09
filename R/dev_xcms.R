@@ -386,10 +386,86 @@ plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id){
 
 
 
+#' @title xcmsProcessingMS1
+#' @description Import `msDataFiles`, filter `ion_mode`, find peaks using `centWaveParam`, correct RT, group peaks using `peaksGroup`, fill peaks by xcms at MS1 Level
+#' @param msDataFiles `char` ms file (full) paths
+#' @param ion_mode to filter ion_mode, 1: positive, 0: negative, import when scans with both pos and neg
+#' @param peaksGroup `vector` to PeakGroupsParam(sampleGroups), should contain "QC"
+#' @param centWaveParam xcms::CentWaveParam()
+#'
+#' @return
+#' @export
+#'
+#' @examples
+xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
+                              centWaveParam = xcms::CentWaveParam(ppm = 20,
+                                                                  peakwidth = c(5,30),
+                                                                  snthresh = 10,
+                                                                  prefilter = c(3,100))){
+  xcms.xcms <-  readMSData(msDataFiles, mode = "onDisk")
+  if (is.na(ion_mode)) {
+    ion_mode <- polarity(xcms.xcms )%>%unique()
+    if (length(ion_mode)!=1) {
+      stop("MS1 scans contain both positive and negative, please check")
+    }
+  }
+  if (all(is.na(peaksGroup))) {
+    peaksGroup<- rep("A",length(msDataFiles))
+
+  }
+  xcms.xcms <- ProtGenerics::filterPolarity(xcms.xcms , ion_mode)
+  message(Sys.time()," Find peaks...")
+  xcms.xcms<-findChromPeaks(xcms.xcms,
+                            param = centWaveParam)
+  message(Sys.time()," Adjust RT...")
+  peak.density.param <- PeakDensityParam(sampleGroups = peaksGroup,
+                                         minFraction = 0.8,bw = 30,
+                                         binSize = 0.015)
+  xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
+
+  peak.group.param <- PeakGroupsParam(minFraction = 0.85,
+                                      subset = which(peaksGroup == "QC"),
+                                      subsetAdjust = "average",span = 0.4)
+
+  xcms.xcms <- adjustRtime(xcms.xcms,param = peak.group.param)
+  message(Sys.time()," Group peaks...")
+
+  peak.density.param <- PeakDensityParam(sampleGroups =peaksGroup,
+                                         minFraction = 0.5,bw = 30,
+                                         binSize = 0.015)
+  xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
+  xcms.xcms <- fillChromPeaks(xcms.xcms,param = FillChromPeaksParam())
+  return(xcms.xcms)
 
 
 
 
+}
+
+
+
+
+
+matchSpectra_Features <- function(xcmsFeatureDef, spec){
+
+  .matchSP <- function(x,xcmsFeatureDef,
+                       mz_ppm = 10,
+                       rt_tol = 10){
+    mz <- x[["precursorMz"]]%>%as.numeric()
+    rt <- x[["rtime"]]%>%as.numeric()
+    mzError <- abs((mz - xcmsFeatureDef$mzmed)/mz*1e6)
+    rtError <- abs((rt- xcmsFeatureDef$rtmed)/rt)
+    feature_id <- rownames(xcmsFeatureDef)[mzError < mz_ppm &rtError < rt_tol]
+    #ifelse(length(feature_id)==0, NA,feature_id)
+
+
+  }
+  spec.data <- as.data.frame(spectraData(spec))
+  feature_id <- apply(spec.data, 1,.matchSP,xcmsFeatureDef)
+  spec$feature_id <- feature_id
+  spec
+
+}
 
 
 

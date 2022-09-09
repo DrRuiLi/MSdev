@@ -65,8 +65,8 @@ build_inhouse_database_single_injection <-
       MS.network.pos <-  match_adduct_with_eicSimilarity(MS.network.pos,xcms.pos)
       plot_adduct_distribution(MS.network.pos,3,rt.filter = T)
       plot_adduct_chromatogram(MS.network.pos,3,
-                               rt.filter = T,cor.thresh = 0.9,
-                               norm = T,
+                               rt.filter = T,cor.thresh = 0.3,
+                               norm =F,
                                move = T)
 
 
@@ -96,7 +96,7 @@ build_inhouse_database_single_injection <-
                                                  ppm.thresh = 10,
                                                  rt.tol = 10)
       MS.network.neg <-  match_adduct_with_eicSimilarity(MS.network.neg,xcms.neg)
-      plot_adduct_distribution(MS.network.neg,3)
+      plot_adduct_distribution(MS.network.neg,3,rt.filter = F)
       plot_adduct_chromatogram(MS.network.neg,3,
                                rt.filter = F,cor.thresh = -1,
                                norm = T,

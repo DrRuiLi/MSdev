@@ -15,7 +15,8 @@ a \code{MSdev} object
 \description{
 read in ms raw data from \code{object@projectInfo$msDataDir}
 and generate a table \code{sampleInfo}
-note this function read in file according to their file names
+note this function read in file according to their file names, those contaion both "pos" and "neg"
+will be regarded as two files
 }
 \details{
 discriminate sample type and ion mode according char in file names

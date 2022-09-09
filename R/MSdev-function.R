@@ -136,7 +136,13 @@ msConvert <- function(object){
                        BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
 
   }else if(object@projectInfo$rawDataFormat == ".wiff"){
-      stop("not supprot wiff file convert")
+    msconvert_wiff2mzML(wiff.files  = object@sampleInfo$raw.file.positive,
+                       mzML.files = object@sampleInfo$msData.file.positive,
+                       BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
+
+    msconvert_wiff2mzML(wiff.files  = object@sampleInfo$raw.file.negative,
+                       mzML.files = object@sampleInfo$msData.file.negative,
+                       BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
 
   }
 
@@ -157,20 +163,36 @@ msConvert <- function(object){
 
 xcmsProcessing_fullscan_DDA <- function(object){
 
-  object@xcmsData$positiveMS1  <- xcmsProcessingMS1(msDataFiles = object@sampleInfo$msData.file.positive,
+
+
+  sampleInfoPos <-dplyr::filter(object@sampleInfo,
+                                xcmsProcessing %in% c("MS1","both")
+                                )%>%
+    dplyr::filter(!is.na(msData.file.positive))
+  object@xcmsData$positiveMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoPos$msData.file.positive,
                                                        ion_mode = 1,
-                                                       peaksGroup =object@sampleInfo$sample.type,
-                                                       centWaveParam =xcms::CentWaveParam(ppm = 5,
-                                                                                          peakwidth = c(5,50))
-  )
-  object@xcmsData$negativeMS1  <- xcmsProcessingMS1(msDataFiles = object@sampleInfo$msData.file.negative,
-                                                       ion_mode = 0,
-                                                       peaksGroup =object@sampleInfo$sample.type,
+                                                       peaksGroup =sampleInfoPos$sample.type,
                                                        centWaveParam =xcms::CentWaveParam(ppm = 5,
                                                                                           peakwidth = c(5,50))
   )
 
-  object
+  pData(object@xcmsData$positiveMS1)$sampleType <- sampleInfoPos$sample.type
+
+  sampleInfoNeg <-dplyr::filter(object@sampleInfo,
+                                xcmsProcessing %in% c("MS1","both")
+  )%>%
+    dplyr::filter(!is.na(msData.file.negative))
+  object@xcmsData$negativeMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoNeg$msData.file.negative,
+                                                       ion_mode = 0,
+                                                       peaksGroup = sampleInfoNeg$sample.type,
+                                                       centWaveParam =xcms::CentWaveParam(ppm = 5,
+                                                                                          peakwidth = c(5,50))
+  )
+
+  pData(object@xcmsData$negativeMS1)$sampleType <- sampleInfoNeg$sample.type
+
+  extractFeature(object)
+
 
 
 
@@ -178,9 +200,24 @@ xcmsProcessing_fullscan_DDA <- function(object){
 
 }
 
+extractFeature <- function(object){
+
+  object@xcmsData$positiveFeature <- as.data.frame(featureDefinitions(object@xcmsData$positiveMS1))
+  object@xcmsData$negativeFeature <- as.data.frame(featureDefinitions(object@xcmsData$negativeMS1))
+  object
+
+}
 
 
-
+#' @title extractSpectra_fullscan_DDA
+#' @description extract all MS2 Spectra from `object@sampleInfo$msDataFile` which `sampleInfo$xcmsProcessing` %in% % c("both","MS2"),
+#' return store in `object@spectra$positiveMS2`
+#' @param object a `MSdev` object
+#'
+#' @return  a `MSdev` object
+#' @export
+#'
+#' @examples
 extractSpectra_fullscan_DDA <- function(object){
 
   sampleInfo <- object@sampleInfo%>%
@@ -199,6 +236,18 @@ extractSpectra_fullscan_DDA <- function(object){
 }
 
 
+#' @title featureSpectra_fullscan_DDA
+#' @description extrat spectra from `MSdev@spectra` according to mz and rt of feature,
+#' extracted spectra store in `object@spectra$positiveFeatureMS2` and `object@spectra$negativeFeatureMS2`,
+#' a list contain `Spectra` object of each feature, empty `Spectra` with precursorMz and rtime
+#'
+#' @param object a `MSdev` object
+#'
+#' @return a `MSdev` object
+#'
+#' @export
+#'
+#' @examples
 featureSpectra_fullscan_DDA <- function(object){
 
   .matchSP <- function(x,spectras,
@@ -208,29 +257,115 @@ featureSpectra_fullscan_DDA <- function(object){
     rt <- x$rtmed
     mzError <- abs((mz - spectras$precursorMz)/mz*1e6)
     rtError <- abs((rt- spectras$rtime)/rt)
-    matchedspectras <- which(mzError < mz_ppm &rtError < rt_tol)
-    if (length(matchedspectras)==0) {
-      return(NA)
+    matchedspectras_id <- which(mzError < mz_ppm &rtError < rt_tol)
+    if (length(matchedspectras_id)==0) {
+      matchedspectras <- makeSpectra(mz,rt)
+      matchedspectras$feature_id <- rownames(x)
+      return(matchedspectras)
     }else{
+      matchedspectras <- spectras[matchedspectras_id]
+      matchedspectras$feature_id <- rownames(x)
       return(matchedspectras)
     }
 
 
   }
 
-  object@spectra$positiveFeatureMS2Map <- apply(featureDefinitions(object@xcmsData$PositiveMS1), 1, .matchSP , object@spectra$positiveMS2 )
-  object@spectra$negativeFeatureMS2Map <- apply(featureDefinitions(object@xcmsData$negativeMS1), 1, .matchSP , object@spectra$negativeMS2 )
+  object@spectra$positiveFeatureMS2 <- apply(featureDefinitions(object@xcmsData$positiveMS1), 1, .matchSP , object@spectra$positiveMS2 )
+  object@spectra$negativeFeatureMS2 <- apply(featureDefinitions(object@xcmsData$negativeMS1), 1, .matchSP , object@spectra$negativeMS2 )
+
+
   object
+}
+
+
+#' @title featureCandidate
+#' @description match feature with database by mz, return all spectra matched in a list  splited by feature
+#'
+#' @param object a `MSdev` object
+#' @param mz.ppm mz error
+#' @param spectraDatabase databse path
+#'
+#' @return a `MSdev` object
+#' @export
+#'
+#' @examples
+featureCandidate<- function(object,mz.ppm = 10,
+                            spectraDatabase =
+                              "C:\\Users\\91879\\OneDrive\\Documents\\Code\\R\\Projecct\\2022.1.17_Compounds.database\\Spectra.integrated.database.integration.2022_02_12.Rdata")
+  {
+  load(spectraDatabase)
+  .matchMz <- function(xcmsFeature,spectraDB){
+    feature.mz_rt <- data.frame(mz = xcmsFeature$mzmed,
+                                rt = xcmsFeature$rtmed)
+    lib.precursormz <- precursorMz(spectraDB)
+    lib.rtime <- rtime(spectraDB)
+    lib.candidate <- apply(feature.mz_rt,1,function(x){
+
+      mz.hit <- abs( lib.precursormz-x[["mz"]]) < x[["mz"]]*mz.ppm /1e6
+      which(mz.hit   )
+
+    })
+    #sum(sapply(lib.candidate, length)>0)
+    featureCandidate <- lapply(lib.candidate,  function(x){
+      sp <- spectraDB[x]
+      if (length(sp)== 0) {
+        return(NULL)
+      }else{
+        return(sp)
+      }
+    })
+    return(featureCandidate)
+
+  }
+  object@annotation$positiveCandidate <- .matchMz(object@xcmsData$positiveFeature,
+                                                  filterPolarity(spectra.database,1))
+  object@annotation$negativeCandidate <- .matchMz(object@xcmsData$negativeFeature,
+                                                  filterPolarity(spectra.database,0))
+  object
+
 }
 
 annotateMSdev <- function(object){
 
-  .annotateMSdev <- function(xcmsFeature , ion_mode){
+  .annotateMSdev <- function(featureMS2 , candidate){
 
+    BiocParallel::bplapply(1:length(featureMS2),function(i){
+      annotateSpectra(featureMS2[[i]],candidate[[i]])
+    },BPPARAM = SerialParam(
+      progressbar = T))
+  }
+  object@annotation$positiveAnnotation <- .annotateMSdev(featureMS2 = object@spectra$positiveFeatureMS2,
+                                                         candidate = object@annotation$positiveCandidate)
+  object@annotation$negativeAnnotation <- .annotateMSdev(featureMS2 = object@spectra$negativeFeatureMS2,
+                                                         candidate = object@annotation$negativeCandidate)
+
+
+
+  return(object)
+}
+
+dropSpectra <- function(object){
+
+  object@spectra$positiveMS2 <- NULL
+  object@spectra$negativeMS2 <- NULL
+  object@annotation$positiveCandidate <- NULL
+  object@annotation$negativeCandidate <- NULL
+  return(object)
+  }
+
+
+getStaData <- function(object){
+
+  featurePos <- get_features_from_xcms(object@xcmsData$positiveMS1)
+  featureNeg <- get_features_from_xcms(object@xcmsData$negativeMS1)
 
   }
 
 
 
 
-}
+
+
+
+
