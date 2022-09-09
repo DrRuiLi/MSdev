@@ -1250,3 +1250,301 @@ use_r()
 load("../../Projecct/2022.1.8_MS.demo/Demo3/MSdev_2022_09_03.Rdata")
 
 
+
+test.dir <- "d:/test.dir"
+dir.create(test.dir)
+test.files <- paste0(test.dir , "/fullscan_pos_neg_",1:9,".raw")
+file.create(test.files)
+
+
+test.msdev<- MSdev(rawDataDir = "d:/test.dir/raw.data/")
+
+
+raw.files <- dir(path = projectInfo$rawDataDir,
+                 pattern = paste0(projectInfo$rawDataFormat,"$"),
+                 full.names = T)
+raw.files <- test.files
+
+.select_char <- function(char_vector){
+  if (all(is.na(char_vector))) {
+    return(NA)
+  }
+  max(char_vector,na.rm = T)
+}
+sample.info <- data.frame(raw.files = raw.files)%>%
+  dplyr::filter(!grepl(pattern = "condition",x = raw.files))%>%
+  dplyr::mutate(raw.file.positive = case_when(grepl(pattern = "pos", x = raw.files,ignore.case = T)~raw.files),
+                raw.file.negative = case_when(grepl(pattern = "neg", x = raw.files,ignore.case = T)~raw.files))%>%
+  dplyr::mutate(sample.abbreviation= gsub(pattern = paste0("pos|neg|",projectInfo$rawDataFormat,"$"),
+                                          x = basename(raw.files) ,
+                                          ignore.case = T,
+                                          replacement = ""),
+                sample.abbreviation = tolower(sample.abbreviation))%>%
+  dplyr::group_by(sample.abbreviation)%>%
+  dplyr::mutate(raw.file.positive = .select_char (raw.file.positive),
+                raw.file.negative = .select_char (raw.file.negative))%>%
+  dplyr::ungroup()%>%
+  dplyr::distinct(sample.abbreviation,.keep_all = T)%>%
+  dplyr::mutate(analysis.time.positive =as.character( file.info(raw.file.positive)$mtime),
+                analysis.time.negative = as.character(file.info(raw.file.negative)$mtime))%>%
+  dplyr::mutate(sample.type = case_when(grepl(pattern = "QC",x = sample.abbreviation,ignore.case = T)~ "QC",
+                                        grepl(pattern = "blank|blk",x = sample.abbreviation,ignore.case = T)~ "Blank",
+                                        T~"Sample"),
+                .before = sample.abbreviation)%>%
+  dplyr::mutate(sample.name = paste0(sample.type,str_pad(1:nrow(.), ceiling(log10(nrow(.))),pad = "0")),
+                .before = sample.type)%>%
+  dplyr::mutate(msData.file.positive = case_when(is.na(raw.file.positive)~raw.file.positive,
+                                                 T~paste0(msData.dir,"pos/",sample.name,".mzML")),
+                msData.file.negative = case_when(is.na(raw.file.negative)~raw.file.positive,
+                                                 T~paste0(msData.dir,"neg/",sample.name,".mzML")))%>%
+  dplyr::select(sample.name,sample.type,sample.abbreviation,
+                raw.file.positive,raw.file.negative,
+                analysis.time.positive,analysis.time.negative,
+                msData.file.positive,msData.file.negative)
+
+
+
+
+
+
+
+
+
+sample.info <- data.frame(raw.files = raw.files)%>%
+  dplyr::filter(!grepl(pattern = "condition",x = raw.files))%>%
+  dplyr::mutate(polarity = case_when(grepl(pattern = "pos", x = raw.files,ignore.case = T)~"raw.file.positive",
+                                     grepl(pattern = "neg", x = raw.files,ignore.case = T)~"raw.file.negative",
+
+                                     T~"error"),
+                sample.abbreviation= gsub(pattern = paste0("pos|neg|",projectInfo$rawDataFormat,"$"),
+                                          x = basename(raw.files) ,
+                                          ignore.case = T,
+                                          replacement = ""),
+                sample.abbreviation = tolower(sample.abbreviation))%>%
+  pivot_wider(names_from = polarity , values_from = raw.files)%>%
+  dplyr::mutate(analysis.time.positive =as.character( file.info(raw.file.positive)$mtime),
+                analysis.time.negative = as.character(file.info(raw.file.negative)$mtime))%>%
+  dplyr::mutate(sample.type = case_when(grepl(pattern = "QC",x = sample.abbreviation,ignore.case = T)~ "QC",
+                                        grepl(pattern = "blank|blk",x = sample.abbreviation,ignore.case = T)~ "Blank",
+                                        T~"Sample"),
+                .before = sample.abbreviation)%>%
+  dplyr::mutate(sample.name = paste0(sample.type,str_pad(1:nrow(.), ceiling(log10(nrow(.))),pad = "0")),
+                .before = sample.type)%>%
+  dplyr::mutate(msData.file.positive = case_when(is.na(raw.file.positive)~raw.file.positive,
+                                                 T~paste0(msData.dir,"pos/",sample.name,".mzML")),
+                msData.file.negative = case_when(is.na(raw.file.negative)~raw.file.positive,
+                                                 T~paste0(msData.dir,"neg/",sample.name,".mzML")))%>%
+  dplyr::select(sample.name,sample.type,sample.abbreviation,
+                raw.file.positive,raw.file.negative,
+                analysis.time.positive,analysis.time.negative,
+                msData.file.positive,msData.file.negative)
+
+
+# Sun Sep  4 23:19:09 2022 ------------------------------
+
+
+test.msdev<- MSdev(rawDataDir = "d:/test.dir/raw.data/")
+checkSampleInfo(test.msdev)
+
+
+
+
+
+
+
+
+
+
+
+# Mon Sep  5 10:28:08 2022 ------------------------------
+library(devtools)
+load_all()
+use_r("dev_proteoWizard")
+MS_dev_QE <-checkSampleInfo(MSdev)
+
+
+
+xcmsProcessingMS1(msDataFiles = MS_dev_QE@sampleInfo$msData.file.positive,
+                  ion_mode = 1,
+                  peaksGroup =MS_dev_QE@sampleInfo$sample.type,
+                  centWaveParam =xcms::CentWaveParam(ppm = 20,
+                                                     peakwidth = c(5,50))
+)->a.ppm.20
+xcmsProcessingMS1(msDataFiles = MS_dev_QE@sampleInfo$msData.file.positive,
+                  ion_mode = 1,
+                  peaksGroup =MS_dev_QE@sampleInfo$sample.type,
+                  centWaveParam =xcms::CentWaveParam(ppm = 5,
+                                                     peakwidth = c(5,50))
+)->a.ppm.5
+
+b <- featureDefinitions(a)%>%as.data.frame()
+
+nrow(chromPeaks(a.ppm.5))
+nrow(featureDefinitions(a.ppm.5))
+
+
+
+
+library(enviPat)
+a <- isotopes
+b <- adducts
+
+openxlsx::write.xlsx(list(a,b),file = "a.xlsx")
+
+
+
+hist(sapply(object@spectra$positiveFeatureMS2Map, length))
+a[a > 5] <- 5
+
+hist(a,xlim = c(0,5),breaks = 0:5,ylim = c(0,300),
+     main = "Total 3654 features",
+     xlab = "MS2 count")
+
+
+ggplot(a)+
+  geom_density_2d_filled(aes( x= precursorMz, y = precursorMz))
+
+
+
+a <- spectra.pos%>%
+  addProcessing(normalizeSpectra)%>%
+  applyProcessing()
+a$maxIntensity
+
+
+
+
+
+
+
+library(devtools)
+load_all()
+load("d:/2022.9.1_QE.Test/MSdev_2022_09_05.Rdata")
+MS_dev_QE <- MSdev
+rm(MSdev)
+sum(sapply(MS_dev_QE@annotation$negativeCandidate, length)>0)
+sum(sapply(MS_dev_QE@annotation$positiveCandidate, length)>0)
+
+
+
+load("d:/2022_08_30-Lirui/ms.ana.2022-09-01.Rdata")
+
+
+MS_dev_QE@annotation[["positiveCandidate"]][[31]] ->refSpec
+MS_dev_QE@spectra[["positiveFeatureMS2"]][[31]] ->expSpec
+
+
+files <- dir("f:/YHY.Cloud/LR/MSdemo/",pattern = ".wiff$",full.names = T)
+files.mzml <- sub(x = files,pattern = "wiff",replacement = "mzML")
+msconvert_wiff2mzML(files,files.mzml)
+
+
+
+
+
+
+expSpec <- object@spectra$positiveFeatureMS2[[58]]
+refSpec <- object@annotation$positiveCandidate[[58]]
+
+
+featurematrix <- assay(featurePos)%>%t
+
+toplot <- featurematrix%>%
+  scale()
+
+ComplexHeatmap::Heatmap(t(toplot),
+                        cluster_columns = F,
+                        show_row_names = F,
+                        show_row_dend = F)
+
+
+MS_dev_tof <- MSdev(rawDataDir = "d:/2022.9.1_TOF.test/raw.data",
+                   projectDir = "d:/2022.9.1_TOF.test",
+                   experimentInfo = MS_Experiment[1])
+MS_dev_tof <- checkSampleInfo(MS_dev_tof)
+MS_dev_tof <- msConvert(MS_dev_tof)
+MS_dev_tof <- xcmsProcessing_fullscan_DDA(MS_dev_tof)
+MS_dev_tof <- extractSpectra_fullscan_DDA(MS_dev_tof)
+MS_dev_tof <- featureSpectra_fullscan_DDA(MS_dev_tof)
+MS_dev_tof <- featureCandidate(MS_dev_tof,mz.ppm = 20)
+MS_dev_tof <- annotateMSdev(MS_dev_tof)
+MS_dev_tof <- dropSpectra(MS_dev_tof)
+saveMSdev(MS_dev_tof)
+
+
+
+
+nrow(MS_dev_QE@xcmsData$positiveMS1%>%featureDefinitions())
+nrow(MS_dev_QE@xcmsData$negativeMS1%>%featureDefinitions())
+nrow(MS_dev_tof@xcmsData$negativeMS1%>%featureDefinitions())
+nrow(MS_dev_tof@xcmsData$positiveMS1%>%featureDefinitions())
+
+
+sum(sapply(MS_dev_QE@annotation$positiveAnnotation, `[`,"score")>0)
+sum(sapply(MS_dev_QE@annotation$negativeAnnotation, `[`,"score")>0)
+
+sum(sapply(MS_dev_tof@annotation$positiveAnnotation, `[`,"score")>0)
+sum(sapply(MS_dev_tof@annotation$negativeAnnotation, `[`,"score")>0)
+
+
+MS_dev_QE@spectra[["positiveMS2"]]->a
+plot(a$rtime,a$precursorMz,main = "QE MS2 precursor mz ")
+
+
+
+MS_dev_tof@spectra[["positiveMS2"]]->a
+plot(a$rtime,a$precursorMz,main = "TOF MS2 precursor mz ")
+
+
+
+
+
+
+
+
+
+
+
+
+
+qe.dda <- readMSData("d:/2022_8_23_QE_test/QC_MS2_35000.mzML",mode = "onDisk")
+qe.scans <- fData(qe.dda)%>%
+  dplyr::filter(msLevel == 2)
+
+plot(qe.scans$retentionTime,qe.scans$precursorMZ,ylim = c(416.371,416.373))
+x.chrom <- chromatogram(qe.dda,mz =  c(416.371,416.373))
+plot(x.chrom)
+
+
+
+sum(sapply(MS_dev_QE@annotation[["positiveCandidate"]], length)>0)
+sum(sapply(MS_dev_QE@annotation[["negativeCandidate"]], length)>0)
+
+sum(sapply(MS_dev_tof@annotation[["positiveCandidate"]], length)>0)
+sum(sapply(MS_dev_tof@annotation[["negativeCandidate"]], length)>0)
+
+
+
+
+library(xcms)
+qe.dda <- readMSData("d:/2022.9.8.QE_from.FSH/T2_UP.mzML",mode = "onDisk")
+qe.scans <- fData(qe.dda)%>%
+  dplyr::filter(msLevel == 2)
+plot(qe.scans$retentionTime,qe.scans$precursorMZ)
+x.chrom <- chromatogram(qe.dda,mz =  c(416.371,416.373))
+plot(x.chrom)
+
+
+mzlist <- a
+clusterMz <-function(mzlist){
+
+
+}
+
+
+plot_xcms_peaks_distribution(MS_dev_tof@xcmsData$positiveMS1)
+
+
+
+
+

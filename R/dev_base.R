@@ -20,3 +20,23 @@ date_suffix <- function(){
   paste0("_",gsub(Sys.Date(),pattern = "-",replacement = "_"))
 
 }
+
+
+
+matrixSub <- function(v1,v2){
+
+  m1 <- matrix(rep(v1,length(v2)),nrow = length(v1),byrow = F)
+  m1
+  m2 <- matrix(rep(v2,length(v1)),ncol = length(v2),byrow = T)
+  m2
+  x <- m1-m2
+  rownames(x) <- names(v1)
+  colnames(x) <- names(v2)
+  return(x)
+}
+
+
+
+
+
+

@@ -94,7 +94,7 @@ get_feature_corrected <- function(ms.ana){
 
   {### save
     message(Sys.time(),", Correct weight")
-    ms.ana[["feature"]] <-feature
+    #ms.ana[["feature"]] <-feature
     ms.ana$processing.info$extract.feature$weight.correct <- T
     save_ms_ana( ms.ana)
 
