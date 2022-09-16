@@ -1542,7 +1542,54 @@ clusterMz <-function(mzlist){
 }
 
 
+
 plot_xcms_peaks_distribution(MS_dev_tof@xcmsData$positiveMS1)
+
+
+
+
+
+library(devtools)
+
+load_all()
+
+plot_feature_intensity_distribution()
+
+
+load("d:/2022_07_05-Lirui/ms.ana.2022-07-13.Rdata")
+library(xcms)
+plotAdjustedRtime(ms.ana$xcms.positive)
+export::graph2png(file = "a.png",width = 10,height = 5)
+
+load("d:/2021.10.09.LNN/mzML/ms.peaks.pos.Rdata")
+plotAdjustedRtime(ms.peaks,col = randomcoloR::randomColor(length(sampleNames(ms.peaks))))
+export::graph2png(file = "a.png",width = 10,height = 5)
+
+
+
+
+
+
+
+
+mzfile <- dir("d:/LR/","mzML",full.names = T)
+xcms.xcms <- readMSData(mzfile,mode = "onDisk")
+
+header(xcms.xcms)
+
+a <- openMSfile(mzfile)
+runInfo(a)
+close(a)
+
+
+
+
+MS_dev_QE <- MSdev(rawDataDir = "d:/2022.9.16.LR.Lipidomic.Co.FuDan/rawData",
+                   projectDir = "d:/2022.9.16.LR.Lipidomic.Co.FuDan",
+                   experimentInfo = MS_Experiment[5])
+
+
+
 
 
 

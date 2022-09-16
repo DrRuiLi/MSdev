@@ -14,5 +14,5 @@ a \code{MSdev} object
 }
 \description{
 extract all MS2 Spectra from \code{object@sampleInfo$msDataFile} which \code{sampleInfo$xcmsProcessing} \%in\% \% c("both","MS2"),
-return store in object@spectra$positiveMS2
+return store in \code{object@spectra$positiveMS2}
 }
