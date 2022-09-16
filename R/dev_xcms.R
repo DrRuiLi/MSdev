@@ -344,17 +344,31 @@ plot_xcms_peaks_SN_distribution <- function(xcms.xcms,plot.title = "Peaks SNR(Si
 
 }
 
-plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id){
+#' @title plot_xcms_peaks_Chromatogram
+#' @description extract EIC according to peaks' mzrange and rtrange,
+#' note that if multiple sample in xcms object, only first sample will be extracted
+#'
+#' @param xcms.xcms
+#' @param peak_id
+#' @param rt_expand foldchange to expand rt range
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt_expand = 1.5){
 
   xcms.peaks <- chromPeaks(xcms.xcms)%>%
     as.data.frame()
   xcms.peaks <- xcms.peaks[peak_id,]
   mz.range <-c(xcms.peaks$mzmin,xcms.peaks$mzmax)
   rt.range <-c(xcms.peaks$rtmin,xcms.peaks$rtmax)
-
+  rt.range <- rt.range+diff(rt.range)*c(-rt_expand,rt_expand)
+  rt.range[rt.range <0 ] <- 0
+  rt.range[rt.range > max(rtime(xcms.xcms))] <-max(rtime(xcms.xcms))
   xcms.chrom <- chromatogram(xcms.xcms ,
                              mz = mz.range,
-                             rt = rt.range+diff(rt.range)*c(-1.5,1.5)
+                             rt = rt.range
                              )
   xcms.chrom <- xcms.chrom[1,1]
   chrom.data <- data.frame(rt = rtime(xcms.chrom),
