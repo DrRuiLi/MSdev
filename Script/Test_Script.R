@@ -1587,11 +1587,61 @@ close(a)
 MS_dev_QE <- MSdev(rawDataDir = "d:/2022.9.16.LR.Lipidomic.Co.FuDan/rawData",
                    projectDir = "d:/2022.9.16.LR.Lipidomic.Co.FuDan",
                    experimentInfo = MS_Experiment[5])
+MS_dev_QE <- checkSampleInfo(MS_dev_QE)
+MS_dev_QE <- msConvert(MS_dev_QE)
+MS_dev_QE <- checkSampleInfo(MS_dev_QE)
+MS_dev_QE
+MS_dev_QE <- xcmsProcessing_fullscan_DDA(MS_dev_QE)
+MS_dev_QE <- extractSpectra_fullscan_DDA(MS_dev_QE)
+MS_dev_QE <- featureSpectra_fullscan_DDA(MS_dev_QE)
+MS_dev_QE <- featureCandidate(MS_dev_QE,mz.ppm = 10,spectraDatabase = "d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata")
+MS_dev_QE <- annotateMSdev(MS_dev_QE)
+MS_dev_QE <- getStaData(MS_dev_QE)
+saveMSdev(MS_dev_QE)
+MS_dev_QE <- dropSpectra(MS_dev_QE)
+
+
+
+object@projectInfo$MSDB_path <-"d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata"
+
+a <- readMSData("d:/2022.9.16.LR.Lipidomic.Co.FuDan/msData/pos/Sample02.mzML",
+                mode = "onDisk")
+
+
+experimentData(a)->b
+
+
+expinfo(a)
+msInfo(a)->b
+
+
+sum(sapply(MS_dev_QE@annotation$positiveCandidate, length)>0)
+sum(sapply(MS_dev_QE@annotation$negativeCandidate, length)>0)
 
 
 
 
 
 
+testfun <- function(...){
 
+  args <- ...
+  args
+
+}
+
+testfun(featurePos,a)->b
+
+
+commandArgs()
+
+
+use_r("MSdev-Sta_function")
+
+
+use_r("MSdev_tools")
+
+
+
+MS_dev_QE <- checkSampleInfo(MS_dev_QE)
 
