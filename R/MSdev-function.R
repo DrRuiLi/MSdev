@@ -146,6 +146,14 @@ msConvert <- function(object){
 
   }
 
+  ### update SampleInfo
+  {
+    sampleInfo <-object@sampleInfo
+    sampleInfo$analysis.time.positive <- getmsExpTime(sampleInfo$msData.file.positive)$ExpTime
+    sampleInfo$analysis.time.negative <- getmsExpTime(sampleInfo$msData.file.negative)$ExpTime
+    sampleInfo -> object@sampleInfo
+
+  }
   ### return
   {
     object@processingInfo$rawDataConvert <- list(
@@ -173,10 +181,12 @@ xcmsProcessing_fullscan_DDA <- function(object){
                                                        ion_mode = 1,
                                                        peaksGroup =sampleInfoPos$sample.type,
                                                        centWaveParam =xcms::CentWaveParam(ppm = 5,
-                                                                                          peakwidth = c(5,50))
+                                                                                          peakwidth = c(5,50),
+                                                                                          prefilter = c(3,1000))
   )
 
-  pData(object@xcmsData$positiveMS1)$sampleType <- sampleInfoPos$sample.type
+  pData(object@xcmsData$positiveMS1) <- cbind(pData(object@xcmsData$positiveMS1),
+                                              sampleInfoPos)
 
   sampleInfoNeg <-dplyr::filter(object@sampleInfo,
                                 xcmsProcessing %in% c("MS1","both")
@@ -186,10 +196,12 @@ xcmsProcessing_fullscan_DDA <- function(object){
                                                        ion_mode = 0,
                                                        peaksGroup = sampleInfoNeg$sample.type,
                                                        centWaveParam =xcms::CentWaveParam(ppm = 5,
-                                                                                          peakwidth = c(5,50))
+                                                                                          peakwidth = c(5,50),
+                                                                                          prefilter = c(3,1000))
   )
 
-  pData(object@xcmsData$negativeMS1)$sampleType <- sampleInfoNeg$sample.type
+  pData(object@xcmsData$negativeMS1)$sampleType <-  cbind(pData(object@xcmsData$negativeMS1),
+                                                          sampleInfoNeg)
 
   extractFeature(object)
 
@@ -207,6 +219,9 @@ extractFeature <- function(object){
   object
 
 }
+
+
+
 
 
 #' @title extractSpectra_fullscan_DDA
@@ -294,7 +309,7 @@ featureCandidate<- function(object,mz.ppm = 10,
                             spectraDatabase =
                               "C:\\Users\\91879\\OneDrive\\Documents\\Code\\R\\Projecct\\2022.1.17_Compounds.database\\Spectra.integrated.database.integration.2022_02_12.Rdata")
   {
-  load(spectraDatabase)
+  Spectra_database <- load_as_var(spectraDatabase)
   .matchMz <- function(xcmsFeature,spectraDB){
     feature.mz_rt <- data.frame(mz = xcmsFeature$mzmed,
                                 rt = xcmsFeature$rtmed)
@@ -318,10 +333,11 @@ featureCandidate<- function(object,mz.ppm = 10,
     return(featureCandidate)
 
   }
+  object@projectInfo$MSDB_path <- spectraDatabase
   object@annotation$positiveCandidate <- .matchMz(object@xcmsData$positiveFeature,
-                                                  filterPolarity(spectra.database,1))
+                                                  filterPolarity(Spectra_database,1))
   object@annotation$negativeCandidate <- .matchMz(object@xcmsData$negativeFeature,
-                                                  filterPolarity(spectra.database,0))
+                                                  filterPolarity(Spectra_database,0))
   object
 
 }
@@ -331,7 +347,7 @@ annotateMSdev <- function(object){
   .annotateMSdev <- function(featureMS2 , candidate){
 
     BiocParallel::bplapply(1:length(featureMS2),function(i){
-      annotateSpectra(featureMS2[[i]],candidate[[i]])
+      annotateSpectraMSdb(featureMS2[[i]],candidate[[i]])
     },BPPARAM = SerialParam(
       progressbar = T))
   }
@@ -357,10 +373,72 @@ dropSpectra <- function(object){
 
 getStaData <- function(object){
 
+  sampleInfo <- object@sampleInfo%>%
+    dplyr::filter(xcmsProcessing %in% c("both","MS1"))
+
+
+
+  annotationPos <- lapply(object@annotation$positiveAnnotation, function(x){
+    x[c( "mz"    ,
+         "rt" ,
+         "ref.mz" ,
+         "ref.rt" ,
+         "score" ,
+         "MSDB_id" )]
+  })%>%data.table::rbindlist()
+  annotationNeg <- lapply(object@annotation$negativeAnnotation, function(x){
+    x[c( "mz"    ,
+         "rt" ,
+         "ref.mz" ,
+         "ref.rt" ,
+         "score" ,
+         "MSDB_id" )]
+  })%>%data.table::rbindlist()
+
   featurePos <- get_features_from_xcms(object@xcmsData$positiveMS1)
+  featurePos <- rowData(featurePos)%>%
+    as.data.frame()%>%
+    rownames_to_column("feature_id")%>%
+    dplyr::select(feature_id,qc_rsd,sample_rsd,med_intensity)%>%
+    dplyr::mutate(feature_id = paste0(feature_id , "_pos"),
+                  ion_mode = "positive")%>%
+    cbind(annotationPos,assay(featurePos))%>%
+    dplyr::rename_with( ~sub(pattern = ".mzML",replacement = "",x = .x))%>%
+    remove_rownames()
+
   featureNeg <- get_features_from_xcms(object@xcmsData$negativeMS1)
+  featureNeg <- rowData(featureNeg)%>%
+    as.data.frame()%>%
+    rownames_to_column("feature_id")%>%
+    dplyr::select(feature_id,qc_rsd,sample_rsd,med_intensity)%>%
+    dplyr::mutate(feature_id = paste0(feature_id , "_neg"),
+                  ion_mode = "negative")%>%
+    cbind(annotationNeg,assay(featureNeg))%>%
+    dplyr::rename_with( ~sub(pattern = ".mzML",replacement = "",x = .x))%>%
+    remove_rownames()
+
+  featureAll <-  rbind(featurePos,featureNeg)
+  featureAllanno <- MSdb:::getInfoFromMSDB(featureAll$MSDB_id,
+                                       msdb_path = object@projectInfo$MSDB_path,
+                                       keys =  c("Compound_name","adduct","formula","inchikey","Lipid_subclass" ,"database_origin"))
+  featureAll<- add_column(featureAll,featureAllanno[,-1],.after = "feature_id")
+  object@statData$featureRaw <-featureAll
+  object@statData$feature <- featureAll%>%
+    dplyr::filter(qc_rsd <0.3)
+  .uniqueFeatures <- function(score,intensity){
+    score <- ifelse(score >0.3 , 10,1)
+    unique.score <- score*log10(intensity)
+    unique.score
 
   }
+  object@statData$metabolites <- object@statData$feature%>%
+    dplyr::filter(!is.na(inchikey))%>%
+    dplyr::group_by(inchikey)%>%
+    dplyr::slice_max(.uniqueFeatures(score,med_intensity ))%>%
+    dplyr::ungroup()
+
+  return(object)
+}
 
 
 
