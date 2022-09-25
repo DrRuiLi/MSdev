@@ -1640,8 +1640,165 @@ use_r("MSdev-Sta_function")
 
 
 use_r("MSdev_tools")
+use_r("dev_RStudio")
+use_r("StatisticFunction")
 
-
-
+library(devtools)
+load_all()
 MS_dev_QE <- checkSampleInfo(MS_dev_QE)
+MS_dev_QE <- load_as_var("d:/2022.9.16.LR.Lipidomic.Co.FuDan/MSdev_2022_09_16.Rdata")
+object <- MS_dev_QE
+saveMSdev(MS_dev_QE)
+
+
+
+anova.sample.info <- object@sampleInfo%>%
+  dplyr::filter(xcmsProcessing%in% c("both","MS1"),
+                sample.type != "Blank",
+                sample.type != "QC")%>%
+  dplyr::filter(grepl(pattern = "Tissue",group))
+
+anova.matrix <- object@statData$metabolites %>%
+  column_to_rownames("feature_id")%>%
+  dplyr::select(sample.info$sample.name)%>%
+  t
+
+anova.table <-analyzeANOVA(anova.matrix,anova.sample.info$group)
+
+object@statData$ANOVA[["Tissue"]] <- anova.table
+object
+
+
+MS_dev_QE<- analyzeMSdevDiffMetabolites(MS_dev_QE)
+saveMSdev(MS_dev_QE)
+plotMSdevDiffVolcano(MS_dev_QE)
+
+
+
+MS_dev_QE<- analyzeMSdevANOVA(MS_dev_QE)
+MS_dev_QE<- analyzeMSdevANOVA(MS_dev_QE,c("Serum_Con_0H","Serum_8H","Serum_20H"))
+MS_dev_QE<- analyzeMSdevANOVA(MS_dev_QE,c("Tissue_Con_0H","Tissue_8H","Tissue_20H"))
+plotMSdevANOVA(MS_dev_QE)
+
+
+
+library(devtools)
+load_all()
+MS_dev_QE <- load_as_var("d:/2022.9.16.LR.Lipidomic.Co.FuDan/MSdev_2022_09_16.Rdata")
+object <- MS_dev_QE
+
+
+
+xcms.xcms <- MS_dev_QE@xcmsData$positiveMS1
+sampleNames(xcms.xcms)
+
+qe.fs <- xcms.xcms%>%
+  filterFile("Sample26.mzML")
+plot_xcms_peaks_distribution(qe.fs)
+plot_xcms_peaks_ms1_scans(qe.fs)
+plot_xcms_peaks_mzerror_density(qe.fs)
+plot_xcms_peaks_SN_distribution(qe.fs)
+
+qe.scan <- fData(qe.fs)
+qe.scan.time <- diff.Date(qe.scan$retentionTime)
+density(qe.scan.time)%>%plot
+
+
+qe.ylf <- xcmsProcessingMS1("C:\\Users\\91879\\OneDrive\\Documents\\YHY_lab\\Project\\2022.QEPlus.Test.YLF\\2022.9.1_QE.Test/msData/pos/Sample02.mzML"
+                           , centWaveParam = CentWaveParam(ppm = 10,snthresh = 100))
+plot_xcms_peaks_distribution(qe.ylf,type = "l")
+plot_xcms_peaks_ms1_scans(qe.ylf)
+plot_xcms_peaks_ms2_scans(qe.ylf)
+plot_xcms_peaks_mzerror_density(qe.ylf)
+plot_xcms_peaks_SN_distribution(qe.ylf)
+
+a <- fData(qe.ylf)%>%
+  filter(msLevel == 1)
+plot(a$retentionTime,a$precursorMZ)
+boxplot(diff(a$retentionTime))
+
+
+
+
+qe.fsh <- xcmsProcessingMS1("D:/2022.9.16.LR.Lipidomic.Co.FuDan/msData/pos/QC01.mzML"
+                            , centWaveParam = CentWaveParam(ppm = 10,snthresh = 100)
+)
+plot_xcms_peaks_distribution(qe.fsh,type = "l")
+plot_xcms_peaks_ms1_scans(qe.fsh)
+plot_xcms_peaks_ms2_scans(qe.fsh)
+plot_xcms_peaks_mzerror_density(qe.fsh)
+plot_xcms_peaks_SN_distribution(qe.fsh)
+
+a <- fData(qe.fsh)%>%
+  filter(msLevel == 2)
+plot(a$retentionTime,a$precursorMZ)
+a <- fData(qe.fsh)%>%
+  filter(msLevel == 1)
+boxplot(diff(a$retentionTime))
+
+
+
+
+
+
+tof <- xcmsProcessingMS1("C:\\Users\\91879\\OneDrive\\Documents\\YHY_lab\\Project\\2022.QEPlus.Test.YLF\\2022.9.1_TOF.test/msData/pos/Sample1.mzML"
+                            , centWaveParam = CentWaveParam(ppm = 20,snthresh = 10,
+                                                            peakwidth = c(10,50)))
+plot_xcms_peaks_distribution(tof,type = "l")
+plot_xcms_peaks_ms1_scans(tof)
+plot_xcms_peaks_ms2_scans(tof)
+plot_xcms_peaks_mzerror_density(tof)
+plot_xcms_peaks_SN_distribution(tof)
+
+a <- fData(tof)%>%
+  filter(msLevel == 1)
+plot(a$retentionTime,a$precursorMZ)
+boxplot(diff(a$retentionTime))
+
+
+
+library(devtools)
+load_all()
+MS_dev_QE <- load_as_var("d:/2022.9.16.LR.Lipidomic.Co.FuDan/MSdev_2022_09_16.Rdata")
+object <- MS_dev_QE
+
+metabolites <- MS_dev_QE@statData$metabolites
+
+
+avanti.is <- readxl::read_excel("d:/AVANTI.IS.xlsx")%>%
+  mutate(mass = check_chemform(chemforms  = `Chemical Formula`, isotopes =isotopes)$monoisotopic_mass)
+
+avanti.is.addh <-avanti.is%>%
+  mutate(mass = mass + isotopes$mass[1])
+
+findFeature(MS_dev_QE, 710.5591,ion_mode = 0)->a
+
+
+
+
+
+feature.def <- featureDefinitions(MS_dev_QE@xcmsData$negativeMS1)%>%
+  as.data.frame()
+feature.def<-feature.def[c(5833,5834),]
+
+
+library(devtools)
+load_all()
+MS_dev_QE <- MSdev(rawDataDir = "d:/2022.9.24.ESCC/rawData",
+                   projectDir = "d:/2022.9.24.ESCC",
+                   experimentInfo = MS_Experiment[6])
+MS_dev_QE <- checkSampleInfo(MS_dev_QE)
+MS_dev_QE <- msConvert(MS_dev_QE)
+MS_dev_QE <- checkSampleInfo(MS_dev_QE)
+MS_dev_QE
+MS_dev_QE <- xcmsProcessing_fullscan_DDA(MS_dev_QE)
+MS_dev_QE <- extractSpectra_fullscan_DDA(MS_dev_QE)
+MS_dev_QE <- featureSpectra_fullscan_DDA(MS_dev_QE)
+saveMSdev(MS_dev_QE)
+
+
+
+
+
+
 
