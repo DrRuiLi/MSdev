@@ -62,7 +62,7 @@ readInRawData <- function(object){
                                                    T~paste0(msData.dir,"/pos/",sample.name,".mzML")),
                   msData.file.negative = case_when(is.na(raw.file.negative)~raw.file.positive,
                                                    T~paste0(msData.dir,"/neg/",sample.name,".mzML")))%>%
-    dplyr::mutate(group = sample.type,weight = 1 ,
+    dplyr::mutate(group = sample.type,weight = NA ,
                   xcmsProcessing = "Both")%>%
     dplyr::select(sample.name,sample.type,group , weight,
                   sample.abbreviation,
@@ -174,13 +174,13 @@ xcmsProcessing_fullscan_DDA <- function(object){
 
 
   sampleInfoPos <-dplyr::filter(object@sampleInfo,
-                                xcmsProcessing %in% c("MS1","both")
+                                xcmsProcessing %in% c("MS1","Both")
                                 )%>%
     dplyr::filter(!is.na(msData.file.positive))
   object@xcmsData$positiveMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoPos$msData.file.positive,
                                                        ion_mode = 1,
                                                        peaksGroup =sampleInfoPos$sample.type,
-                                                       centWaveParam =xcms::CentWaveParam(ppm = 5,
+                                                       centWaveParam =xcms::CentWaveParam(ppm = 10,snthresh = 100,
                                                                                           peakwidth = c(5,50),
                                                                                           prefilter = c(3,1000))
   )
@@ -195,7 +195,7 @@ xcmsProcessing_fullscan_DDA <- function(object){
   object@xcmsData$negativeMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoNeg$msData.file.negative,
                                                        ion_mode = 0,
                                                        peaksGroup = sampleInfoNeg$sample.type,
-                                                       centWaveParam =xcms::CentWaveParam(ppm = 5,
+                                                       centWaveParam =xcms::CentWaveParam(ppm = 5,snthresh = 1000,
                                                                                           peakwidth = c(5,50),
                                                                                           prefilter = c(3,1000))
   )
@@ -423,6 +423,9 @@ getStaData <- function(object){
                                        keys =  c("Compound_name","adduct","formula","inchikey","Lipid_subclass" ,"database_origin"))
   featureAll<- add_column(featureAll,featureAllanno[,-1],.after = "feature_id")
   object@statData$featureRaw <-featureAll
+
+  object <- adjusetFeautreByweight(object)
+
   object@statData$feature <- featureAll%>%
     dplyr::filter(qc_rsd <0.3)
   .uniqueFeatures <- function(score,intensity){
@@ -440,6 +443,37 @@ getStaData <- function(object){
   return(object)
 }
 
+
+adjusetFeautreByweight <- function(object){
+
+  sampleInfoToAdjust <- object@sampleInfo%>%
+    dplyr::filter(!is.na(weight))
+  weight <- sampleInfoToAdjust$weight / mean(sampleInfoToAdjust$weight )
+  featureMatrix <- object@statData$featureRaw%>%
+    column_to_rownames("feature_id")%>%
+    dplyr::select(sampleInfoToAdjust$sample.name)%>%
+    as.matrix()
+
+  featureMatrixAdjusted <-t( t(featureMatrix)/weight)
+  featureMatrixAdjusted-> object@statData$featureRaw[,sampleInfoToAdjust$sample.name]
+  object
+
+}
+
+
+
+findFeature <- function(object,exact_mass =100,ppm = 10,ion_mode = 1 ){
+
+  ion_mz <- exact_mass+ifelse(ion_mode==1 , 1.007825,-1.007825)
+  ion_mode_char <- ifelse(ion_mode==1 , "positive","negative")
+  feature <- object@statData$featureRaw
+  feature_matched <- feature%>%
+    dplyr::filter( ion_mode == ion_mode_char,
+                   mz > ion_mz-ion_mz*ppm/1e6,
+                   mz <  ion_mz+ion_mz*ppm/1e6)
+
+
+}
 
 
 
