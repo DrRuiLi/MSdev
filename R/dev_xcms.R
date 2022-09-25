@@ -27,7 +27,28 @@ get_features_from_xcms <- function(xcms.xcms){
 
 
 
+featureDefinitions_PeakSta<- function(xcms.xcms){
 
+  feature.def <- featureDefinitions(xcms.xcms)
+  feature.val <- featureValues(xcms.xcms)
+  peaks.data <- chromPeaks(xcms.xcms)
+
+  .xcmsPeakDataMed <- function(x,peaks.data,key = "rtmax"){
+    x.peaks.data <- peaks.data[c(x,NA),]
+    peak.rt <- x.peaks.data[,key]
+    median(peak.rt,na.rm = T)
+  }
+
+
+  feature.def$peakRtMin <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"rtmin")
+  feature.def$peakRtMax <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"rtmax")
+  feature.def$peakWidth <- feature.def$peakRtMax-feature.def$peakRtMin
+  feature.def$peakSN <-  sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"sn")
+  feature.def$peakMaxo <-  sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"maxo")
+
+  feature.def.df <- as.data.frame(feature.def)
+  dplyr::select(feature.def.df , -peakidx)
+}
 
 
 
