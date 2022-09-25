@@ -279,16 +279,26 @@ plot_xcms_peaks_ms2_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS2"
 
   }
   xcms.peaks$ms2_scans_no <- apply(xcms.peaks ,1,peaks_scans , xcms.scans)
+  ms2_scans_table <- table(xcms.peaks$ms2_scans_no)
   ggplot(xcms.peaks)+
     geom_jitter(aes(x = rt, y = ms2_scans_no, col = log10(maxo)),
                  size = 0.6
     )+
     #geom_hline(yintercept = 7)+
     geom_violin(aes( x = max(rt)*1.2 , y =ms2_scans_no),width = diff(range(xcms.peaks$rt))*0.1)+
+    geom_text(aes(x =  max(rt)*1.3,y = 0,label = ms2_scans_table["0"]),size = 2.67,hjust = 0)+
+    geom_text(aes(x =  max(rt)*1.3,y = 1,label = ms2_scans_table["1"]),size = 2.67,hjust = 0)+
+    geom_text(aes(x =  max(rt)*1.3,y = 2,label = ms2_scans_table["2"]),size = 2.67,hjust = 0)+
+    geom_text(aes(x =  max(rt)*1.3,y = 3,label = ms2_scans_table["3"]),size = 2.67,hjust = 0)+
+    geom_text(aes(x =  max(rt)*1.3,y = 4,label = ms2_scans_table["4"]),size = 2.67,hjust = 0)+
+    geom_text(aes(x =  max(rt)*1.3,y = 5,label = ms2_scans_table["5"]),size = 2.67,hjust = 0)+
+    geom_text(aes(x =  max(rt)*1.4,y = 5,label = ""),size = 2.67,)+
     labs(title = plot.title,
          subtitle = paste0("ppm = ",xcms.findpeak.param@ppm,
                            "; SN = ",xcms.findpeak.param@snthresh,
-                           "; prefilter = (",paste0(xcms.findpeak.param@prefilter,collapse = ","),")" ),
+                           "; prefilter = (",paste0(xcms.findpeak.param@prefilter,collapse = ","),")" ,"\n",
+                           sum(xcms.peaks$ms2_scans_no > 0)," / ",length(xcms.peaks$ms2_scans_no),
+                           " ( ",sprintf("%.2f",sum(xcms.peaks$ms2_scans_no > 0)/length(xcms.peaks$ms2_scans_no)*100),"% )"),
          col = "Log10(Intensity)",
          x = "Retention time",
          y = "Scan count of MS2 in each peak")+
@@ -441,7 +451,10 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
                                       subset = which(peaksGroup == "QC"),
                                       subsetAdjust = "average",span = 0.4)
 
-  xcms.xcms <- adjustRtime(xcms.xcms,param = peak.group.param)
+  if (length(sampleNames(xcms.xcms))>1) {
+    xcms.xcms <- adjustRtime(xcms.xcms,param = peak.group.param)
+  }
+
   message(Sys.time()," Group peaks...")
 
   peak.density.param <- PeakDensityParam(sampleGroups =peaksGroup,
