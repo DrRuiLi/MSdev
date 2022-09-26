@@ -27,6 +27,16 @@ get_features_from_xcms <- function(xcms.xcms){
 
 
 
+#' @title featureDefinitions_PeakSta
+#' @description extract features' median rt, sn and maxo,
+#' `xcms::featureDefinitions()` return a `DataFrame`, in which rtmin, rtmax, rtmed was median of `xcms::chromPeaks()$rt`,
+#' but not the median range of peaks
+#'
+#' @param xcms.xcms
+#'
+#' @return
+#' @export
+#'
 featureDefinitions_PeakSta<- function(xcms.xcms){
 
   feature.def <- featureDefinitions(xcms.xcms)
