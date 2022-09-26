@@ -1796,6 +1796,120 @@ MS_dev_QE <- extractSpectra_fullscan_DDA(MS_dev_QE)
 MS_dev_QE <- featureSpectra_fullscan_DDA(MS_dev_QE)
 saveMSdev(MS_dev_QE)
 
+feature.pos <- featureDefinitions_PeakSta(MS_dev_QE@xcmsData$positiveMS1)
+feature.neg <- featureDefinitions_PeakSta(MS_dev_QE@xcmsData$negativeMS1)
+plot_xcms_features_distribution(MS_dev_QE@xcmsData$positiveMS1)
+plot_xcms_features_distribution(MS_dev_QE@xcmsData$negativeMS1)
+
+plot_xcms_peaks_SN_distribution(MS_dev_QE@xcmsData$positiveMS1)
+plot_xcms_peaks_SN_distribution(MS_dev_QE@xcmsData$negativeMS1)
+
+
+
+
+a<- export_QE_InclusionList_From_xcmsFeature(MS_dev_QE@xcmsData$positiveMS1)
+b<- export_QE_InclusionList_From_xcmsFeature(MS_dev_QE@xcmsData$negativeMS1)
+
+
+library(devtools)
+load_all()
+MSDEV_WXX  <- MSdev(rawDataDir = "d:/2022.9.26.WXX/rawData",
+                   projectDir = "d:/2022.9.26.WXX",
+                   experimentInfo = MS_Experiment[6])
+MSDEV_WXX  <- checkSampleInfo(MSDEV_WXX )
+MSDEV_WXX  <- msConvert(MSDEV_WXX )
+MSDEV_WXX  <- xcmsProcessing_fullscan_DDA(MSDEV_WXX )
+MSDEV_WXX  <- extractSpectra_fullscan_DDA(MSDEV_WXX )
+MSDEV_WXX  <- featureSpectra_fullscan_DDA(MSDEV_WXX )
+MSDEV_WXX <- xcmsProcessing_fullscan_DDA(MSDEV_WXX)
+MSDEV_WXX <- extractSpectra_fullscan_DDA(MSDEV_WXX)
+MSDEV_WXX <- featureSpectra_fullscan_DDA(MSDEV_WXX)
+MSDEV_WXX <- featureCandidate(MSDEV_WXX,mz.ppm = 10,spectraDatabase = "d:/MSdb/msdb.temp.Rdata")
+MSDEV_WXX <- annotateMSdev(MSDEV_WXX)
+MSDEV_WXX <- getStaData(MSDEV_WXX)
+saveMSdev(MSDEV_WXX)
+MSDEV_WXX <- dropSpectra(MSDEV_WXX)
+
+featureAllanno <- MSdb:::getInfoFromMSDB(featureAll$MSDB_id,
+                                         msdb_path = object@projectInfo$MSDB_path,
+                                         keys =  c("name","adduct","formula","inchikey" ,"database_origin"))
+
+
+MSDEV_WXX <- load_as_var("d:/2022.9.26.WXX/MSdev_2022_09_26.Rdata")
+MSDEV_WXX_result <- MSDEV_WXX@statData$metabolites
+openxlsx::write.xlsx(MSDEV_WXX_result,file = "d:/2022.9.26.WXX/Feature_annotation.xlsx")
+
+
+
+ms.temp <-  xcmsProcessingMS1("d:/2022.9.24.ESCC/msData/pos/Sample49.mzML")
+
+plot_xcms_peaks_distribution(ms.temp)
+
+
+
+
+
+
+groupMz <- function(x,ppm.thresh = 10){
+
+  x.table <- data.frame( mz = x)%>%
+    dplyr::mutate(raw.order = 1:length(x))%>%
+    dplyr::arrange(mz)%>%
+    dplyr::mutate(mz.diff = c(diff(mz),0),
+                  mz.ppm = mz.diff/mz*1e6,
+                  mz.group = "")
+  i <- 1
+  i.group <- 1
+  this.group.idx <- c()
+  while(i <= nrow(x.table)){
+    x.table$mz.ppm[i]
+    if (x.table$mz.ppm[i] <ppm.thresh) {
+      this.group.idx <- c(this.group.idx,i)
+      x.table$mz.group[this.group.idx] <- paste0("ion_group",sprintf("%06d",i.group))
+    }else{
+      this.group.idx <-  c(this.group.idx,i)
+      x.table$mz.group[this.group.idx] <- paste0("ion_group",sprintf("%06d",i.group))
+      i.group <- i.group+1
+      i <- i+1
+      this.group.idx <- c()
+      next
+    }
+
+    i <- i+1
+    next
+
+  }
+
+  x.table <-x.table %>%
+    dplyr::group_by(mz.group)%>%
+    dplyr::mutate(mz.width = max(mz)-min(mz),
+                  mz.width.ppm = mz.width/mz)%>%
+    dplyr::ungroup()
+  return(x.table)
+
+
+}
+
+ms.peaks <- chromPeaks(ms.temp)%>%
+  as.data.frame()%>%
+  arrange(mz)%>%
+  mutate(mzdiff = c(diff(mz),0),
+         mz.group = groupMz(mz)$mz.group)
+
+ms.peaks.count <- ms.peaks %>%
+  group_by(mz.group)%>%
+  mutate(mz.group.count=length(mz.group) )%>%
+  ungroup()%>%
+  filter(mz.group.count > 15)
+
+
+
+ggplot(ms.peaks.count)+
+  geom_segment(aes(x = rtmin,xend =  rtmax , y = mz,yend = mz,col = mz.group))+
+  guides(col = "none")+
+  theme_bw()
+
+
 
 
 
