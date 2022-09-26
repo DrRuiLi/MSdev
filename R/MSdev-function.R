@@ -189,13 +189,13 @@ xcmsProcessing_fullscan_DDA <- function(object){
                                               sampleInfoPos)
 
   sampleInfoNeg <-dplyr::filter(object@sampleInfo,
-                                xcmsProcessing %in% c("MS1","both")
+                                xcmsProcessing %in% c("MS1","Both")
   )%>%
     dplyr::filter(!is.na(msData.file.negative))
   object@xcmsData$negativeMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoNeg$msData.file.negative,
                                                        ion_mode = 0,
                                                        peaksGroup = sampleInfoNeg$sample.type,
-                                                       centWaveParam =xcms::CentWaveParam(ppm = 5,snthresh = 1000,
+                                                       centWaveParam =xcms::CentWaveParam(ppm = 10,snthresh = 100,
                                                                                           peakwidth = c(5,50),
                                                                                           prefilter = c(3,1000))
   )
@@ -225,7 +225,7 @@ extractFeature <- function(object){
 
 
 #' @title extractSpectra_fullscan_DDA
-#' @description extract all MS2 Spectra from `object@sampleInfo$msDataFile` which `sampleInfo$xcmsProcessing` %in% % c("both","MS2"),
+#' @description extract all MS2 Spectra from `object@sampleInfo$msDataFile` which `sampleInfo$xcmsProcessing` %in% % c("Both","MS2"),
 #' return store in `object@spectra$positiveMS2`
 #' @param object a `MSdev` object
 #'
@@ -236,13 +236,18 @@ extractFeature <- function(object){
 extractSpectra_fullscan_DDA <- function(object){
 
   sampleInfo <- object@sampleInfo%>%
-    dplyr::filter(xcmsProcessing %in% c("both","MS2"))
-  spectra.pos <- Spectra::Spectra(sampleInfo$msData.file.positive)%>%
-    filterMsLevel(2)%>%
-    setBackend(MsBackendDataFrame())
-  spectra.neg <- Spectra::Spectra(sampleInfo$msData.file.negative)%>%
-    filterMsLevel(2)%>%
-    setBackend(MsBackendDataFrame())
+    dplyr::filter(xcmsProcessing %in% c("Both","MS2"))
+  if (nrow(sampleInfo)==0) {
+    spectra.pos <- Spectra::Spectra()
+    spectra.neg <- Spectra::Spectra()
+  } else {
+    spectra.pos <- Spectra::Spectra(sampleInfo$msData.file.positive,backend = MsBackendDataFrame())%>%
+    filterMsLevel(2)
+
+    spectra.neg <- Spectra::Spectra(sampleInfo$msData.file.negative,backend = MsBackendDataFrame())%>%
+    filterMsLevel(2)
+  }
+
 
   object@spectra$positiveMS2 <- spectra.pos
   object@spectra$negativeMS2 <- spectra.neg
@@ -374,7 +379,7 @@ dropSpectra <- function(object){
 getStaData <- function(object){
 
   sampleInfo <- object@sampleInfo%>%
-    dplyr::filter(xcmsProcessing %in% c("both","MS1"))
+    dplyr::filter(xcmsProcessing %in% c("Both","MS1"))
 
 
 
