@@ -146,6 +146,129 @@ plotMSdevANOVA <- function(object){
 
 }
 
+
+plotMSdevDiffVennDiagram <- function(object,
+                                     diff.select = "manual",
+                                     change = c("both","up","down"),
+                                     p = "p.value"){
+
+  diff.all <-data.frame(idx = 1:length(object@statData$DifferentialMetabolites),
+                        selected = names(object@statData$DifferentialMetabolites))
+  metabolite.table <- object@statData$metabolites[,1:18]
+  if (diff.select == "manual") {
+    diff.select <- edit_df_in_excel(diff.all)%>%
+      dplyr::filter(selected%in%diff.all$selected)
+
+    message("selected: ", paste0(diff.select$idx,collapse = ", "),"\n",
+            paste0(diff.select$selected,collapse = "\n"))
+  }else{
+    diff.select <- diff.all[diff.select,]
+  }
+
+  if ("both" %in% change) {
+    lapply(object@statData$DifferentialMetabolites, function(x){
+      x%>%
+        dplyr::filter(eval(str2expression(p)) <0.05)%>%
+        pull(feature_id)
+    })->venn.list
+    venn.list <- venn.list[diff.select$idx]
+    dev.off()
+    VennDiagram::venn.diagram(venn.list,
+                              width = 10,height = 10,
+                              filename = NULL,
+                              fill =pal_aaas()(nrow(diff.select)),
+                              alpha = 0.7,
+                              col = "white",
+                              cex= 0.67)%>%
+      grid.draw()%>%
+      export::graph2ppt(file = paste0(object@projectInfo$projectDir,"/Statistic/VennDiagram_All_Significant_Metabolites.pptx"),
+                        width = 4,height = 4)
+    venn.overlap <-VennDiagram::get.venn.partitions (venn.list)
+    venn.overlap.list <- lapply(venn.overlap$..values.., function(x){
+        metabolite.table%>%
+        dplyr::filter(feature_id %in% x)
+
+    })
+    names(venn.overlap.list) <- venn.overlap$..set..
+    for (i in 1:length(venn.overlap.list)) {
+      openxlsx::write.xlsx(venn.overlap.list[[i]],
+                           file =paste0(object@projectInfo$projectDir,"/Statistic/VennDiagram_All_Significant_Metabolites.Overlap.",
+                                        names(venn.overlap.list)[i],".xlsx") )
+    }
+
+  }
+
+  if ("up" %in% change) {
+    lapply(object@statData$DifferentialMetabolites, function(x){
+      x%>%
+        dplyr::filter(eval(str2expression(p)) <0.05,foldchange >1)%>%
+        pull(feature_id)
+    })->venn.list
+    venn.list <- venn.list[diff.select$idx]
+    dev.off()
+    VennDiagram::venn.diagram(venn.list,
+                              width = 10,height = 10,
+                              filename = NULL,
+                              fill =pal_aaas()(nrow(diff.select)),
+                              alpha = 0.7,
+                              col = "white",
+                              cex= 0.67)%>%
+      grid.draw()%>%
+      export::graph2ppt(file = paste0(object@projectInfo$projectDir,"/Statistic/VennDiagram_Up_Metabolites.pptx"),
+                        width = 4,height = 4)
+    venn.overlap <-VennDiagram::get.venn.partitions (venn.list)
+    venn.overlap.list <- lapply(venn.overlap$..values.., function(x){
+      metabolite.table%>%
+        dplyr::filter(feature_id %in% x)
+
+    })
+    names(venn.overlap.list) <- venn.overlap$..set..
+    for (i in 1:length(venn.overlap.list)) {
+      openxlsx::write.xlsx(venn.overlap.list[[i]],
+                           file =paste0(object@projectInfo$projectDir,"/Statistic/VennDiagram_Up_Metabolites.Overlap.",
+                                        names(venn.overlap.list)[i],".xlsx") )
+    }
+
+  }
+
+  if ("down" %in% change) {
+    lapply(object@statData$DifferentialMetabolites, function(x){
+      x%>%
+        dplyr::filter(eval(str2expression(p)) <0.05,foldchange <1)%>%
+        pull(feature_id)
+    })->venn.list
+    venn.list <- venn.list[diff.select$idx]
+    dev.off()
+    VennDiagram::venn.diagram(venn.list,
+                              width = 10,height = 10,
+                              filename = NULL,
+                              fill =pal_aaas()(nrow(diff.select)),
+                              alpha = 0.7,
+                              col = "white",
+                              cex= 0.67)%>%
+      grid.draw()%>%
+      export::graph2ppt(file = paste0(object@projectInfo$projectDir,"/Statistic/VennDiagram_Down_Metabolites.pptx"),
+                        width = 4,height = 4)
+    venn.overlap <-VennDiagram::get.venn.partitions (venn.list)
+    venn.overlap.list <- lapply(venn.overlap$..values.., function(x){
+      metabolite.table%>%
+        dplyr::filter(feature_id %in% x)
+
+    })
+    names(venn.overlap.list) <- venn.overlap$..set..
+    for (i in 1:length(venn.overlap.list)) {
+      openxlsx::write.xlsx(venn.overlap.list[[i]],
+                           file =paste0(object@projectInfo$projectDir,"/Statistic/VennDiagram_Down_Metabolites.Overlap.",
+                                        names(venn.overlap.list)[i],".xlsx") )
+
+  }
+
+
+
+  }
+}
+
+
 analyzeMSdevDiffMetabolites <- function(object){
 
   sample.info <- object@sampleInfo%>%
@@ -157,15 +280,13 @@ analyzeMSdevDiffMetabolites <- function(object){
 
 
   for (i in 1:ncol(groups.comb)) {
-    groups.pair <- groups.comb[,i]
-    if(any(grepl(pattern = "CON|WT",x = groups.pair,ignore.case = T))){
-      group.con <- groups.pair[grepl(pattern = "CON|WT",x = groups.pair,ignore.case = T)][1]
-      group.case <- setdiff(groups.pair,group.con)
+    groups.pair <- groups.comb[,i]%>%
+      groupStringFactor()
 
-    }else {
-      group.con <- sort(groups.pair)[1]
-      group.case <- sort(groups.pair)[2]
-    }
+
+    group.con <- levels(groups.pair)[1]
+    group.case <- levels(groups.pair)[2]
+
 
     diff.sample.info <- sample.info%>%
       dplyr::filter(group %in% groups.pair)
@@ -210,7 +331,9 @@ analyzeMSdevANOVA <- function(object,groupANOVA = "All Group"){
 }
 
 
-exportMSdevSampleInfo <- function(object){
+exportMSdev <- function(object){
+
+  dir.create(paste0(object@projectInfo$projectDir,"/Statistic"),recursive = T)
   openxlsx::write.xlsx(object@sampleInfo,
                        file = paste0(object@projectInfo$projectDir,"/Statistic/Sample.info.xlsx"))
 
