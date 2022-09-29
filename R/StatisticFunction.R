@@ -1,14 +1,10 @@
 analyzeDiff <- function(diff.matrix,diff.group){
 
-  groups.pair <- unique(diff.group)
-  if(any(grepl(pattern = "CON|WT",x = groups.pair,ignore.case = T))){
-    group.con <- groups.pair[grepl(pattern = "CON|WT",x = groups.pair,ignore.case = T)][1]
-    group.case <- setdiff(groups.pair,group.con)
+  groups.pair <- unique(diff.group)%>%
+    groupStringFactor()
 
-  }else {
-    group.con <- sort(groups.pair)[1]
-    group.case <- sort(groups.pair)[2]
-  }
+  group.con <- levels(groups.pair)[1]
+  group.case <- levels(groups.pair)[2]
   idx.con <- which(diff.group==group.con)
   idx.case <- which(diff.group==group.case)
 
