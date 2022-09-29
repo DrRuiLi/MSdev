@@ -123,7 +123,7 @@ checkSampleInfo <- function(object){
 }
 
 
-msConvert <- function(object){
+msConvert_MSdev <- function(object){
 
   ### convert
   if (object@projectInfo$rawDataFormat == ".raw") {
@@ -180,7 +180,7 @@ xcmsProcessing_fullscan_DDA <- function(object){
   object@xcmsData$positiveMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoPos$msData.file.positive,
                                                        ion_mode = 1,
                                                        peaksGroup =sampleInfoPos$sample.type,
-                                                       centWaveParam =xcms::CentWaveParam(ppm = 10,snthresh = 100,
+                                                       centWaveParam =xcms::CentWaveParam(ppm = 10,snthresh = 10,
                                                                                           peakwidth = c(5,50),
                                                                                           prefilter = c(3,1000))
   )
@@ -195,7 +195,7 @@ xcmsProcessing_fullscan_DDA <- function(object){
   object@xcmsData$negativeMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoNeg$msData.file.negative,
                                                        ion_mode = 0,
                                                        peaksGroup = sampleInfoNeg$sample.type,
-                                                       centWaveParam =xcms::CentWaveParam(ppm = 10,snthresh = 100,
+                                                       centWaveParam =xcms::CentWaveParam(ppm = 10,snthresh = 10,
                                                                                           peakwidth = c(5,50),
                                                                                           prefilter = c(3,1000))
   )
@@ -272,11 +272,11 @@ featureSpectra_fullscan_DDA <- function(object){
 
   .matchSP <- function(x,spectras,
                        mz_ppm = 10,
-                       rt_tol = 10){
+                       rt_tol = 20){
     mz <- x$mzmed
     rt <- x$rtmed
     mzError <- abs((mz - spectras$precursorMz)/mz*1e6)
-    rtError <- abs((rt- spectras$rtime)/rt)
+    rtError <- abs(rt- spectras$rtime)
     matchedspectras_id <- which(mzError < mz_ppm &rtError < rt_tol)
     if (length(matchedspectras_id)==0) {
       matchedspectras <- makeSpectra(mz,rt)
@@ -479,8 +479,6 @@ findFeature <- function(object,exact_mass =100,ppm = 10,ion_mode = 1 ){
 
 
 }
-
-
 
 
 
