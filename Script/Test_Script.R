@@ -1795,21 +1795,25 @@ MS_dev_QE <- xcmsProcessing_fullscan_DDA(MS_dev_QE)
 MS_dev_QE <- extractSpectra_fullscan_DDA(MS_dev_QE)
 MS_dev_QE <- featureSpectra_fullscan_DDA(MS_dev_QE)
 saveMSdev(MS_dev_QE)
-
+MS_dev_QE <- load_as_var("d:/2022.9.24.ESCC/MSdev_2022_09_26_SN10.Rdata")
 feature.pos <- featureDefinitions_PeakSta(MS_dev_QE@xcmsData$positiveMS1)
 feature.neg <- featureDefinitions_PeakSta(MS_dev_QE@xcmsData$negativeMS1)
-plot_xcms_features_distribution(MS_dev_QE@xcmsData$positiveMS1)
-plot_xcms_features_distribution(MS_dev_QE@xcmsData$negativeMS1)
-
-plot_xcms_peaks_SN_distribution(MS_dev_QE@xcmsData$positiveMS1)
-plot_xcms_peaks_SN_distribution(MS_dev_QE@xcmsData$negativeMS1)
+plot_xcms_features_distribution(MS_dev_QE@xcmsData$positiveMS1,plot.title = "positive")
+plot_xcms_features_distribution(MS_dev_QE@xcmsData$negativeMS1,"negative")
 
 
+a <- get_features_from_xcms(MS_dev_QE@xcmsData$positiveMS1)%>%
+  assay()
+sample.info <-get_features_from_xcms(MS_dev_QE@xcmsData$positiveMS1)%>%
+  colData()%>%as.data.frame()%>%
+  arrange(analysis.time.negative)
+ropls::opls(a)
+plot(a[sample(11467,1),sample.info$sampleNames])
 
-
-a<- export_QE_InclusionList_From_xcmsFeature(MS_dev_QE@xcmsData$positiveMS1)
-b<- export_QE_InclusionList_From_xcmsFeature(MS_dev_QE@xcmsData$negativeMS1)
-
+inclusion.list.pos <- export_QE_InclusionList_From_xcmsFeature(MS_dev_QE@xcmsData$positiveMS1)
+inclusion.list.neg <- export_QE_InclusionList_From_xcmsFeature(MS_dev_QE@xcmsData$negativeMS1)
+openxlsx::write.xlsx(inclusion.list.pos,file = "d:/2022.9.24.ESCC/inclusion.list.pos.sn10.xlsx")
+openxlsx::write.xlsx(inclusion.list.neg,file = "d:/2022.9.24.ESCC/inclusion.list.neg.sn10.xlsx")
 
 library(devtools)
 load_all()
@@ -1850,45 +1854,7 @@ plot_xcms_peaks_distribution(ms.temp)
 
 
 
-groupMz <- function(x,ppm.thresh = 10){
 
-  x.table <- data.frame( mz = x)%>%
-    dplyr::mutate(raw.order = 1:length(x))%>%
-    dplyr::arrange(mz)%>%
-    dplyr::mutate(mz.diff = c(diff(mz),0),
-                  mz.ppm = mz.diff/mz*1e6,
-                  mz.group = "")
-  i <- 1
-  i.group <- 1
-  this.group.idx <- c()
-  while(i <= nrow(x.table)){
-    x.table$mz.ppm[i]
-    if (x.table$mz.ppm[i] <ppm.thresh) {
-      this.group.idx <- c(this.group.idx,i)
-      x.table$mz.group[this.group.idx] <- paste0("ion_group",sprintf("%06d",i.group))
-    }else{
-      this.group.idx <-  c(this.group.idx,i)
-      x.table$mz.group[this.group.idx] <- paste0("ion_group",sprintf("%06d",i.group))
-      i.group <- i.group+1
-      i <- i+1
-      this.group.idx <- c()
-      next
-    }
-
-    i <- i+1
-    next
-
-  }
-
-  x.table <-x.table %>%
-    dplyr::group_by(mz.group)%>%
-    dplyr::mutate(mz.width = max(mz)-min(mz),
-                  mz.width.ppm = mz.width/mz)%>%
-    dplyr::ungroup()
-  return(x.table)
-
-
-}
 
 ms.peaks <- chromPeaks(ms.temp)%>%
   as.data.frame()%>%
@@ -1908,6 +1874,369 @@ ggplot(ms.peaks.count)+
   geom_segment(aes(x = rtmin,xend =  rtmax , y = mz,yend = mz,col = mz.group))+
   guides(col = "none")+
   theme_bw()
+
+register(SerialParam())
+QEExclusionListTemplate <- read_csv("d:/temp/ExclusionListTemplate.CSV")
+
+
+
+xcms.xcms <- xcmsProcessingMS1("d:/2022.9.24.ESCC/msData/neg/QC09.mzML",
+                               centWaveParam = CentWaveParam(ppm = 10,
+                                                             peakwidth = c(5,50),
+                                                             snthresh = 10))
+plot_xcms_peaks_distribution(xcms.xcms )
+export_QE_ExclusionList_From_xcmsPeaks(xcms.xcms,10)
+
+xcms.xcms <- xcmsProcessingMS1("d:/2022.9.24.ESCC/msData/neg/QC18.mzML",
+                               centWaveParam = CentWaveParam(ppm = 10,
+                                                             peakwidth = c(5,50),
+                                                             snthresh = 10))
+export_QE_ExclusionList_From_xcmsPeaks(xcms.xcms,10)
+
+
+
+
+xcms.xcms <- xcmsProcessingMS1("d:/2022.9.24.ESCC/msData/neg/QC17.mzML",
+                               centWaveParam = CentWaveParam(ppm = 10,
+                                                             peakwidth = c(5,50),
+                                                             snthresh = 10))
+export_QE_ExclusionList_From_xcmsPeaks(xcms.xcms,100)
+
+
+
+MSQE <- load_as_var("d:/2022.9.24.ESCC/MSdev_2022_09_26.Rdata")
+
+
+xcms.tmp <- filterFile(MSQE@xcmsData$positiveMS1,sample(length(fileNames(MSQE@xcmsData$positiveMS1)),30))
+export_QE_ExclusionList_From_xcmsPeaks(xcms.tmp,150)
+
+
+xcms.tmp <- filterFile(MSQE@xcmsData$negativeMS1,sample(length(fileNames(MSQE@xcmsData$negativeMS1)),30))
+export_QE_ExclusionList_From_xcmsPeaks(xcms.tmp,150)
+
+
+
+
+
+
+
+
+MS_dev_QE <- load_as_var("d:/2022.9.24.ESCC/MSdev_2022_09_26_SN10.Rdata")
+inclusion.list.pos <- export_QE_InclusionList_From_xcmsFeature(MS_dev_QE@xcmsData$positiveMS1)%>%
+  mutate(group = sample(LETTERS[1:3],nrow(.),replace = T))
+inclusion.list.pos.A <-filter(inclusion.list.pos,group == "A")
+inclusion.list.pos.B <-filter(inclusion.list.pos,group == "B")
+inclusion.list.pos.C <-filter(inclusion.list.pos,group == "C")
+
+write_csv(inclusion.list.pos.A,file = "d:/2022.9.24.ESCC/inclusion.list.pos.sn10_A.csv")
+write_csv(inclusion.list.pos.B,file = "d:/2022.9.24.ESCC/inclusion.list.pos.sn10_B.csv")
+write_csv(inclusion.list.pos.C,file = "d:/2022.9.24.ESCC/inclusion.list.pos.sn10_C.csv")
+
+inclusion.list.neg <- export_QE_InclusionList_From_xcmsFeature(MS_dev_QE@xcmsData$negativeMS1)%>%
+  mutate(group = sample(LETTERS[1:3],nrow(.),replace = T))
+inclusion.list.neg.A <-filter(inclusion.list.neg,group == "A")
+inclusion.list.neg.B <-filter(inclusion.list.neg,group == "B")
+inclusion.list.neg.C <-filter(inclusion.list.neg,group == "C")
+
+write_csv(inclusion.list.neg.A,file = "d:/2022.9.24.ESCC/inclusion.list.neg.sn10_A.csv")
+write_csv(inclusion.list.neg.B,file = "d:/2022.9.24.ESCC/inclusion.list.neg.sn10_B.csv")
+write_csv(inclusion.list.neg.C,file = "d:/2022.9.24.ESCC/inclusion.list.neg.sn10_C.csv")
+
+
+
+openxlsx::write.xlsx(inclusion.list.pos,file = "d:/2022.9.24.ESCC/inclusion.list.pos.sn10.xlsx")
+openxlsx::write.xlsx(inclusion.list.neg,file = "d:/2022.9.24.ESCC/inclusion.list.neg.sn10.xlsx")
+
+
+
+
+plot(inclusion.list.neg$`Start [min]`,inclusion.list.neg$`Mass [m/z]`)
+
+
+a <- fData(qe.fsh)%>%
+  select(msLevel,retentionTime,precursorMZ)
+
+
+b <- inclusion.list.neg.A%>%
+  mutate()
+
+
+
+
+
+
+
+library(devtools)
+load_all()
+MSDEV_WXX  <- MSdev(rawDataDir = "e:/2022.9.24.ESCC/rawData",
+                    projectDir = "e:/2022.9.24.ESCC",
+                    experimentInfo = MS_Experiment[6])
+MSDEV_WXX  <- checkSampleInfo(MSDEV_WXX )
+MSDEV_WXX  <- msConvert(MSDEV_WXX )
+MSDEV_WXX  <- xcmsProcessing_fullscan_DDA(MSDEV_WXX )
+MSDEV_WXX  <- extractSpectra_fullscan_DDA(MSDEV_WXX )
+MSDEV_WXX  <- featureSpectra_fullscan_DDA(MSDEV_WXX )
+MSDEV_WXX <- xcmsProcessing_fullscan_DDA(MSDEV_WXX)
+MSDEV_WXX <- extractSpectra_fullscan_DDA(MSDEV_WXX)
+MSDEV_WXX <- featureSpectra_fullscan_DDA(MSDEV_WXX)
+MSDEV_WXX <- featureCandidate(MSDEV_WXX,mz.ppm = 10,spectraDatabase = "d:/MSdb/msdb.temp.Rdata")
+MSDEV_WXX <- annotateMSdev(MSDEV_WXX)
+MSDEV_WXX <- getStaData(MSDEV_WXX)
+
+
+
+a <- readMSData(choose.files(),mode = "onDisk")
+fData(a)->b
+a.sp <- Spectra(choose.files())
+
+a.xcms <- xcmsProcessingMS1(choose.files())
+
+
+a.chrom <- chromPeaks(a.xcms)
+a.feautre <- featureDefinitions(a.xcms)%>%as.data.frame()
+a.chrom.sub <- a.chrom[a.feautre$peakidx[[8]],]
+
+a.chrompeak <- chromatogram(a.xcms ,mz = c(151.0729,151.0732))
+
+plot(a.chrompeak)
+
+
+
+library(devtools)
+load_all()
+msdev_syq <- load_as_var("d:/2022.9.16.LR.Lipidomic.Co.FuDan/MSdev_2022_09_16.Rdata")
+
+
+
+msdev_syq <- analyzeMSdevDiffMetabolites(msdev_syq)
+
+plotMSdevDiffVolcano(msdev_syq)
+
+
+
+up.s.20.0 <-msdev_syq@statData$DifferentialMetabolites$`Serum_20H vs Serum_Con_0H`%>%
+  filter(p.value < 0.05,foldchange > 1)%>%
+  pull(feature_id)
+up.s.8.0 <-msdev_syq@statData$DifferentialMetabolites$`Serum_8H vs Serum_Con_0H`%>%
+  filter(p.value < 0.05,foldchange > 1)%>%
+  pull(feature_id)
+up.s.20.8 <-msdev_syq@statData$DifferentialMetabolites$`Serum_20H vs Serum_8H`%>%
+  filter(p.value < 0.05,foldchange > 1)%>%
+  pull(feature_id)
+
+down.s.20.0 <-msdev_syq@statData$DifferentialMetabolites$`Serum_20H vs Serum_Con_0H`%>%
+  filter(p.value < 0.05,foldchange < 1)%>%
+  pull(feature_id)
+down.s.8.0 <-msdev_syq@statData$DifferentialMetabolites$`Serum_8H vs Serum_Con_0H`%>%
+  filter(p.value < 0.05,foldchange <1)%>%
+  pull(feature_id)
+down.s.20.8 <-msdev_syq@statData$DifferentialMetabolites$`Serum_20H vs Serum_8H`%>%
+  filter(p.value < 0.05,foldchange < 1)%>%
+  pull(feature_id)
+
+
+up.venn <- list(
+  `Serum_20H vs Serum_Con_0H` = up.s.8.0,
+  `Serum_8H vs Serum_Con_0H` = up.s.20.0,
+  `Serum_20H vs Serum_8H` = up.s.20.8
+)
+library(ggvenn)
+library(ggVennDiagram)
+library(ggsci)
+ggvenn(up.venn,
+       show_percentage = F,
+       fill_alpha = 0.6,
+       set_name_size = 4,
+      text_size = 4,
+       stroke_color = "white")+
+  scale_fill_aaas()->gv
+export::graph2ppt(gv , file = "a.png",
+                  width = 5,
+                  height = 5)
+library(VennDiagram)
+
+venn.diagram(up.venn,
+             filename = NULL,
+             disable.logging=T)->a
+grid.draw(a)
+export::graph2ppt( grid.draw(a),
+                   file = "a.png",
+                  width = 5,
+                  height = 5)
+
+
+
+a <- object@statData$DifferentialMetabolites
+
+lapply(a, function(x){
+
+  x%>%
+    dplyr::filter(p.value <0.05,log2foldchange >0)%>%
+    pull(feature_id)
+
+})->b
+
+
+use_r("dev_VennDiagram")
+
+
+
+batch <- readxl::read_excel("d:/2022.9.28.ESCC.Lipidomic/Batch/Batch.temp5.xlsx",skip = 1)
+raw.files <- dir(path = "d:/2022.9.28.ESCC.Lipidomic/rawData/Result_All/",pattern = "raw")%>%
+  sub(pattern = ".raw",replacement = "")
+
+
+batch$file <- batch$`File Name`%in% raw.files
+
+openxlsx::write.xlsx(batch,"a.xlsx")
+
+
+msdev.escc <- MSdev(rawDataDir = "d:/2022.9.28.ESCC.Lipidomic/rawData",
+                    projectDir = "d:/2022.9.28.ESCC.Lipidomic",
+                    experimentInfo = MS_Experiment[6])
+msdev.escc <- load_as_var("d:/2022.9.28.ESCC.Lipidomic/MSdev_2022_09_28.Rdata")
+msdev.escc <- checkSampleInfo(msdev.escc)
+msdev.escc <- msConvert(msdev.escc)
+msdev.escc <- xcmsProcessing_fullscan_DDA(msdev.escc)
+msdev.escc <- extractSpectra_fullscan_DDA(msdev.escc)
+msdev.escc <- featureSpectra_fullscan_DDA(msdev.escc)
+msdev.escc <- featureCandidate(msdev.escc,mz.ppm = 10,spectraDatabase = "d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata")
+msdev.escc <- annotateMSdev(msdev.escc)
+msdev.escc <- getStaData(msdev.escc)
+
+saveMSdev(msdev.escc)
+
+
+
+exportMSdev(msdev.escc)
+
+
+
+dda.qc.inclusion.a <- readMSData("d:/2022.9.28.ESCC.Lipidomic/msData/pos/QC004.mzML",mode = "onDisk")
+a.df <- fData(dda.qc.inclusion.a)%>%
+  select(msLevel,retentionTime,precursorMZ)
+
+
+blank.tune.sv4.pos <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_pos_QC_tune_SV4_CT350.mzML")
+blank.tune.sv4.pos.peaks <- chromPeaks(blank.tune.sv4.pos)%>%as.data.frame()
+boxplot(blank.tune.sv4.pos.peaks$maxo%>%log10)
+boxplot(blank.tune.sv4.pos.peaks$sn%>%log10)
+plot_xcms_peaks_distribution(blank.tune.sv4.pos,type = "l")
+plot_xcms_peaks_SN_distribution(blank.tune.sv4.pos)
+
+blank.tune.sv4.neg <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_neg_QC_tune_SV4_CT350.mzML")
+blank.tune.sv4.neg.peaks <- chromPeaks(blank.tune.sv4.neg)%>%as.data.frame()
+boxplot(blank.tune.sv4.neg.peaks$maxo%>%log10,main = "log10 intensity")
+boxplot(blank.tune.sv4.neg.peaks$sn%>%log10,main = "log10 sn")
+plot_xcms_peaks_distribution(blank.tune.sv4.neg,type = "l")
+plot_xcms_peaks_SN_distribution(blank.tune.sv4.neg)
+
+
+
+
+library(devtools)
+load_all()
+qc.tune.sv4.pos <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_pos_Blank_tune_SV4_CT350.mzML")
+qc.tune.sv4.pos.peaks <- chromPeaks(qc.tune.sv4.pos)%>%as.data.frame()
+boxplot(qc.tune.sv4.pos.peaks$maxo%>%log10)
+boxplot(qc.tune.sv4.pos.peaks$sn%>%log10)
+plot_xcms_peaks_distribution(qc.tune.sv4.pos,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.sv4.pos)
+
+qc.tune.sv4.neg <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_neg_Blank_tune_SV4_CT350.mzML")
+qc.tune.sv4.neg.peaks <- chromPeaks(qc.tune.sv4.neg)%>%as.data.frame()
+boxplot(qc.tune.sv4.neg.peaks$maxo%>%log10,main = "log10 intensity")
+boxplot(qc.tune.sv4.neg.peaks$sn%>%log10,main = "log10 sn")
+plot_xcms_peaks_distribution(qc.tune.sv4.neg,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.sv4.neg)
+
+
+
+
+
+qc.tune.YLF.pos <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_pos_QC_tune_YLF.mzML")
+qc.tune.YLF.pos.peaks <- chromPeaks(qc.tune.YLF.pos)%>%as.data.frame()
+boxplot(qc.tune.YLF.pos.peaks$maxo%>%log10)
+boxplot(qc.tune.YLF.pos.peaks$sn%>%log10)
+plot_xcms_peaks_distribution(qc.tune.YLF.pos,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.YLF.pos)
+
+qc.tune.YLF.neg <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_neg_QC_tune_YLF.mzML")
+qc.tune.YLF.neg.peaks <- chromPeaks(qc.tune.YLF.neg)%>%as.data.frame()
+boxplot(qc.tune.YLF.neg.peaks$maxo%>%log10,main = "log10 intensity")
+boxplot(qc.tune.YLF.neg.peaks$sn%>%log10,main = "log10 sn")
+plot_xcms_peaks_distribution(qc.tune.YLF.neg,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.YLF.neg)
+
+
+
+
+
+
+
+
+qc.tune.default300.pos <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_pos_QC_tune_default300.mzML")
+qc.tune.default300.pos.peaks <- chromPeaks(qc.tune.default300.pos)%>%as.data.frame()
+boxplot(qc.tune.default300.pos.peaks$maxo%>%log10)
+boxplot(qc.tune.default300.pos.peaks$sn%>%log10)
+plot_xcms_peaks_distribution(qc.tune.default300.pos,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.default300.pos)
+
+
+
+qc.tune.default300.neg <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_neg_QC_tune_default300.mzML")
+qc.tune.default300.neg.peaks <- chromPeaks(qc.tune.default300.neg)%>%as.data.frame()
+boxplot(qc.tune.default300.neg.peaks$maxo%>%log10,main = "log10 intensity")
+boxplot(qc.tune.default300.neg.peaks$sn%>%log10,main = "log10 sn")
+plot_xcms_peaks_distribution(qc.tune.default300.neg,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.default300.neg)
+
+
+
+
+
+qc.tune.default300.neg <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_neg_QC_tune_sv3_5.mzML")
+qc.tune.default300.neg.peaks <- chromPeaks(qc.tune.default300.neg)%>%as.data.frame()
+boxplot(qc.tune.default300.neg.peaks$maxo%>%log10,main = "log10 intensity")
+boxplot(qc.tune.default300.neg.peaks$sn%>%log10,main = "log10 sn")
+plot_xcms_peaks_distribution(qc.tune.default300.neg,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.default300.neg)
+
+
+
+
+
+
+# Thu Sep 29 17:36:40 2022 ------------------------------
+
+qc.tune.default300.pos <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_pos_QC_20_min_tune_sv3_8.mzML")
+qc.tune.default300.pos.peaks <- chromPeaks(qc.tune.default300.pos)%>%as.data.frame()
+boxplot(qc.tune.default300.pos.peaks$maxo%>%log10)
+boxplot(qc.tune.default300.pos.peaks$sn%>%log10)
+plot_xcms_peaks_distribution(qc.tune.default300.pos,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.default300.pos)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+qc.tune.default300.neg <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_neg_QC_20_min_tune_sv3_5.mzML")
+qc.tune.default300.neg.peaks <- chromPeaks(qc.tune.default300.neg)%>%as.data.frame()
+boxplot(qc.tune.default300.neg.peaks$maxo%>%log10,main = "log10 intensity")
+boxplot(qc.tune.default300.neg.peaks$sn%>%log10,main = "log10 sn")
+plot_xcms_peaks_distribution(qc.tune.default300.neg,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.default300.neg)
+
+
 
 
 
