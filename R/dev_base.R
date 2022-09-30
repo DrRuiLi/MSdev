@@ -23,6 +23,51 @@ date_suffix <- function(){
 
 
 
+
+
+groupMz <- function(x,ppm.thresh = 10){
+
+  x.table <- data.frame( mz = x)%>%
+    dplyr::mutate(raw.order = 1:length(x))%>%
+    dplyr::arrange(mz)%>%
+    dplyr::mutate(mz.diff = c(diff(mz),0),
+                  mz.ppm = mz.diff/mz*1e6,
+                  mz.group = "")
+  i <- 1
+  i.group <- 1
+  this.group.idx <- c()
+  while(i <= nrow(x.table)){
+    x.table$mz.ppm[i]
+    if (x.table$mz.ppm[i] <ppm.thresh) {
+      this.group.idx <- c(this.group.idx,i)
+      x.table$mz.group[this.group.idx] <- paste0("ion_group",sprintf("%06d",i.group))
+    }else{
+      this.group.idx <-  c(this.group.idx,i)
+      x.table$mz.group[this.group.idx] <- paste0("ion_group",sprintf("%06d",i.group))
+      i.group <- i.group+1
+      i <- i+1
+      this.group.idx <- c()
+      next
+    }
+
+    i <- i+1
+    next
+
+  }
+
+  x.table <-x.table %>%
+    dplyr::group_by(mz.group)%>%
+    dplyr::mutate(mz.width = max(mz)-min(mz),
+                  mz.width.ppm = mz.width/mz)%>%
+    dplyr::ungroup()%>%
+    dplyr::arrange(raw.order)
+  return(x.table)
+
+
+}
+
+
+
 #' @title matrixSub
 #' @description expand 2 vector to matrix and "`-`"
 #' @param v1 vector
