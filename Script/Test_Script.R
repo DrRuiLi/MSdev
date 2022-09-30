@@ -2154,14 +2154,14 @@ plot_xcms_peaks_SN_distribution(qc.tune.sv4.neg)
 
 
 
-qc.tune.YLF.pos <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_pos_QC_tune_YLF.mzML")
+qc.tune.YLF.pos <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_pos_QC_tune_YLF.mzML")
 qc.tune.YLF.pos.peaks <- chromPeaks(qc.tune.YLF.pos)%>%as.data.frame()
 boxplot(qc.tune.YLF.pos.peaks$maxo%>%log10)
 boxplot(qc.tune.YLF.pos.peaks$sn%>%log10)
 plot_xcms_peaks_distribution(qc.tune.YLF.pos,type = "l")
 plot_xcms_peaks_SN_distribution(qc.tune.YLF.pos)
 
-qc.tune.YLF.neg <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_neg_QC_tune_YLF.mzML")
+qc.tune.YLF.neg <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_neg_QC_tune_YLF.mzML")
 qc.tune.YLF.neg.peaks <- chromPeaks(qc.tune.YLF.neg)%>%as.data.frame()
 boxplot(qc.tune.YLF.neg.peaks$maxo%>%log10,main = "log10 intensity")
 boxplot(qc.tune.YLF.neg.peaks$sn%>%log10,main = "log10 sn")
@@ -2184,7 +2184,7 @@ plot_xcms_peaks_SN_distribution(qc.tune.default300.pos)
 
 
 
-qc.tune.default300.neg <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_neg_QC_tune_default300.mzML")
+qc.tune.default300.neg <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_neg_QC_tune_default300.mzML")
 qc.tune.default300.neg.peaks <- chromPeaks(qc.tune.default300.neg)%>%as.data.frame()
 boxplot(qc.tune.default300.neg.peaks$maxo%>%log10,main = "log10 intensity")
 boxplot(qc.tune.default300.neg.peaks$sn%>%log10,main = "log10 sn")
@@ -2195,7 +2195,7 @@ plot_xcms_peaks_SN_distribution(qc.tune.default300.neg)
 
 
 
-qc.tune.default300.neg <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_neg_QC_tune_sv3_5.mzML")
+qc.tune.default300.neg <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_neg_QC_tune_sv3_5.mzML")
 qc.tune.default300.neg.peaks <- chromPeaks(qc.tune.default300.neg)%>%as.data.frame()
 boxplot(qc.tune.default300.neg.peaks$maxo%>%log10,main = "log10 intensity")
 boxplot(qc.tune.default300.neg.peaks$sn%>%log10,main = "log10 sn")
@@ -2209,7 +2209,7 @@ plot_xcms_peaks_SN_distribution(qc.tune.default300.neg)
 
 # Thu Sep 29 17:36:40 2022 ------------------------------
 
-qc.tune.default300.pos <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_pos_QC_20_min_tune_sv3_8.mzML")
+qc.tune.default300.pos <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_pos_QC000.mzML")
 qc.tune.default300.pos.peaks <- chromPeaks(qc.tune.default300.pos)%>%as.data.frame()
 boxplot(qc.tune.default300.pos.peaks$maxo%>%log10)
 boxplot(qc.tune.default300.pos.peaks$sn%>%log10)
@@ -2217,24 +2217,90 @@ plot_xcms_peaks_distribution(qc.tune.default300.pos,type = "l")
 plot_xcms_peaks_SN_distribution(qc.tune.default300.pos)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-qc.tune.default300.neg <- xcmsProcessingMS1("d:/test.dir/raw.data/FS_neg_QC_20_min_tune_sv3_5.mzML")
+qc.tune.default300.neg <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_neg_Sample001.mzML")
 qc.tune.default300.neg.peaks <- chromPeaks(qc.tune.default300.neg)%>%as.data.frame()
 boxplot(qc.tune.default300.neg.peaks$maxo%>%log10,main = "log10 intensity")
 boxplot(qc.tune.default300.neg.peaks$sn%>%log10,main = "log10 sn")
 plot_xcms_peaks_distribution(qc.tune.default300.neg,type = "l")
 plot_xcms_peaks_SN_distribution(qc.tune.default300.neg)
+
+
+
+
+
+
+
+# Thu Sep 29 20:07:42 2022 ------------------------------
+
+
+qc.tune.QYJ.pos <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_pos_Sample001.mzML")
+qc.tune.QYJ.pos.peaks <- chromPeaks(qc.tune.QYJ.pos)%>%as.data.frame()
+boxplot(qc.tune.QYJ.pos.peaks$maxo%>%log10)
+boxplot(qc.tune.QYJ.pos.peaks$sn%>%log10)
+plot_xcms_peaks_distribution(qc.tune.QYJ.pos,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.QYJ.pos)
+
+
+qc.tune.QYJ.neg <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_neg_Sample001.mzML")
+qc.tune.QYJ.neg.peaks <- chromPeaks(qc.tune.QYJ.neg)%>%as.data.frame()
+boxplot(qc.tune.QYJ.neg.peaks$maxo%>%log10,main = "log10 intensity")
+boxplot(qc.tune.QYJ.neg.peaks$sn%>%log10,main = "log10 sn")
+plot_xcms_peaks_distribution(qc.tune.QYJ.neg,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.QYJ.neg)
+
+
+
+
+# Thu Sep 29 20:08:52 2022 ------------------------------
+
+qc.tune.YLF.pos <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_pos_QC_tune_YLF.mzML")
+qc.tune.YLF.pos.peaks <- chromPeaks(qc.tune.YLF.pos)%>%as.data.frame()
+boxplot(qc.tune.YLF.pos.peaks$maxo%>%log10)
+boxplot(qc.tune.YLF.pos.peaks$sn%>%log10)
+plot_xcms_peaks_distribution(qc.tune.YLF.pos,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.YLF.pos)
+
+
+qc.tune.YLF.neg <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_neg_QC_tune_YLF.mzML")
+qc.tune.YLF.neg.peaks <- chromPeaks(qc.tune.YLF.neg)%>%as.data.frame()
+boxplot(qc.tune.YLF.neg.peaks$maxo%>%log10,main = "log10 intensity")
+boxplot(qc.tune.YLF.neg.peaks$sn%>%log10,main = "log10 sn")
+plot_xcms_peaks_distribution(qc.tune.YLF.neg,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.YLF.neg)
+
+
+
+# Thu Sep 29 20:11:11 2022 ------------------------------
+
+qc.tune.QYJ.pos <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_pos_Sample002.mzML")
+qc.tune.QYJ.pos.peaks <- chromPeaks(qc.tune.QYJ.pos)%>%as.data.frame()
+boxplot(qc.tune.QYJ.pos.peaks$maxo%>%log10)
+boxplot(qc.tune.QYJ.pos.peaks$sn%>%log10)
+plot_xcms_peaks_distribution(qc.tune.QYJ.pos,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.QYJ.pos)
+
+
+qc.tune.QYJ.neg <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_neg_Sample002.mzML")
+qc.tune.QYJ.neg.peaks <- chromPeaks(qc.tune.QYJ.neg)%>%as.data.frame()
+boxplot(qc.tune.QYJ.neg.peaks$maxo%>%log10,main = "log10 intensity")
+boxplot(qc.tune.QYJ.neg.peaks$sn%>%log10,main = "log10 sn")
+plot_xcms_peaks_distribution(qc.tune.QYJ.neg,type = "l")
+plot_xcms_peaks_SN_distribution(qc.tune.QYJ.neg)
+
+
+
+# Thu Sep 29 21:31:32 2022 ------------------------------
+qc.tune.QYJ.neg <- xcmsProcessingMS1("d:/test.dir/rawData/mzML/FS_neg_QC000_new.mzML")
+qc.tune.QYJ.neg.peaks <- chromPeaks(qc.tune.QYJ.neg)%>%as.data.frame()
+boxplot(qc.tune.QYJ.neg.peaks$maxo%>%log10,main = "log10 intensity")
+boxplot(qc.tune.QYJ.neg.peaks$sn%>%log10,main = "log10 sn")
+plot_xcms_peaks_distribution(qc.tune.QYJ.neg,type = "o")
+plot_xcms_peaks_SN_distribution(qc.tune.QYJ.neg)
+
+
+library(devtools)
+mzml.dir <- choose.dir()
+msConvertDir(mzml.dir)
 
 
 
