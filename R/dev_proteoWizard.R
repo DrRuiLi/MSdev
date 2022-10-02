@@ -125,6 +125,7 @@ msConvertDir<- function(raw.path,format.to = "mzML"){
                   file.exist = file.exists(mzML))%>%
     dplyr::filter(!file.exist)
   msConvert2mzML(raw.files$raw.file,raw.files$mzML)
+  return(raw.files$mzML)
 
 
 }
