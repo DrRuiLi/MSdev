@@ -376,7 +376,7 @@ dropSpectra <- function(object){
   }
 
 
-getStaData <- function(object){
+getStaData <- function(object,MSDB.keys =c("Compound_name","adduct","formula","inchikey","Lipid_subclass" ,"database_origin")){
 
   sampleInfo <- object@sampleInfo%>%
     dplyr::filter(xcmsProcessing %in% c("Both","MS1"))
@@ -425,7 +425,7 @@ getStaData <- function(object){
   featureAll <-  rbind(featurePos,featureNeg)
   featureAllanno <- MSdb:::getInfoFromMSDB(featureAll$MSDB_id,
                                        msdb_path = object@projectInfo$MSDB_path,
-                                       keys =  c("Compound_name","adduct","formula","inchikey","Lipid_subclass" ,"database_origin"))
+                                       keys =  MSDB.keys)
   featureAll<- add_column(featureAll,featureAllanno[,-1],.after = "feature_id")
   object@statData$featureRaw <-featureAll
 
