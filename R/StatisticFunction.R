@@ -45,6 +45,60 @@ analyzeANOVA <- function(anova.matrix , anova.group){
 
 }
 
+#' @title analyzePathwayGlobalTest
+#' @description pathway enrichment by global test
+#' @param pathway.matrix should be a matrix, sample as rowname, kegg id as colname
+#' @param pathway.group should be a vector with length same as nrow(pathway.matrix), indicate group of sample
+#'
+#' @return global.test.result
+#' @export
+#'
+#' @examples
+analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group ){
+
+  kegg.pathway <- load_as_var("C:/Users/91879/OneDrive/Documents/Code/R/data/database.for.compounds.identification/kegg.pathway.database.2022.04.10.Rda")
+  pathway.matrix <-data.frame( group = groupStringFactor(pathway.group),
+                               scale(pathway.matrix))
+  global.test.result <- data.frame(pathway.name =0,
+                                   pathway.id = 0,
+                                   pathway.class = 0,
+                                   Hit=0,
+                                   Total=0,
+                                   p.value = rep(1,length(kegg.pathway)),
+                                   Statistic = 1,
+                                   Expected = 1,
+                                   Std.dev = 0,
+                                   Cov = 0,
+                                   compounds = "")
+  for (i in 1:length(kegg.pathway)) {
+
+    kegg.pathway.name <- kegg.pathway[[i]][["NAME"]]%>%sub(pattern = " - Homo sapiens (human)",replacement = "",fixed = T)
+    kegg.pathway.id <- kegg.pathway[[i]][["ENTRY"]]
+    kegg.pathway.class <- kegg.pathway[[i]][["CLASS"]]
+    kegg.pathway.compounds <- names(kegg.pathway[[i]][["COMPOUND"]])
+    kegg.pathway.hits <- colnames(pathway.matrix)[ colnames(pathway.matrix)%in%kegg.pathway.compounds]
+    global.test.result$pathway.name[i] <- kegg.pathway.name
+    global.test.result$pathway.id[i] <- kegg.pathway.id
+    if (!is_empty(kegg.pathway.class)) {
+      global.test.result$pathway.class[i] <- kegg.pathway.class
+    }
+    global.test.result$Hit[i] <- length(kegg.pathway.hits)
+    global.test.result$Total[i] <- length(kegg.pathway.compounds)
+    global.test.result$compounds[i] <- paste(kegg.pathway.hits,collapse = ";")
+    if (length(kegg.pathway.hits) ==0) {
+      next
+    }
+    gt.data <-   pathway.matrix[,c("group",kegg.pathway.hits)]
+
+    gt.gt <-globaltest::gt( group~. , data = gt.data,model = "logistic")
+    global.test.result[i,6:10] <- gt.gt@result
+  }
+  global.test.result
+
+
+
+}
+
 plotPCA <- function(pca.matrix,pca.group){
 
   pca.pca <- ropls::opls(x = pca.matrix,
@@ -152,6 +206,47 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
                           show_row_dend = F
                           )->p
   p
+
+
+}
+
+plotPathwayEnrichment <- function(pathway.table,top = 20){
+
+  pathway.table <- pathway.table%>%
+    dplyr::arrange(-p.value)%>%
+    dplyr::mutate(p.fdr = p.adjust(p.value),
+                  enrich.ratio = Hit/Total,
+                  log10fdr = -log10(p.fdr),
+                  pathway.name = factor(pathway.name , levels = pathway.name)
+    )%>%
+    dplyr::filter(grepl(x = pathway.class , pattern = "Metabolism"),
+                  !grepl(x = pathway.class , pattern = "Glycan biosynthesis "),
+                  !grepl(x = pathway.class , pattern = "terpenoids "),
+                  !grepl(x = pathway.class , pattern = "Xenobiotics "),
+                  !grepl(x = pathway.class , pattern = "secondary metabolites"))%>%
+    dplyr::mutate(pathway.class = factor(pathway.class))%>%
+    dplyr::slice_min(p.value,n = top)
+
+  ggplot(pathway.table)+
+    geom_bar(aes(x = pathway.name , y = enrich.ratio , fill = -log10(p.value)),
+             col ="black",stat = "identity",size = 0.01)+
+    scale_fill_gradient2(low = "white" ,mid = "white",high = "#DC0000")+
+    labs(x = NULL ,y = "Enrich Ratio", fill = "-Log10(P)")+
+    coord_flip()+
+    theme_classic()+
+    theme(text = element_text(size = 8),
+          legend.key.size = unit(0.1,"inch"),
+          legend.text = element_text(size = 8),
+          legend.title = element_text(size = 8),
+          axis.text = element_text(size = 5),
+          axis.title = element_text(size = 5),
+          axis.line.x = element_line(size = 0.1),
+          axis.line.y = element_line(colour = NA),
+          axis.ticks.x = element_line(size = 0.1),
+          axis.ticks.y = element_line(colour = NA),
+          panel.background = element_blank())
+
+
 
 
 }
