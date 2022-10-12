@@ -8,6 +8,17 @@ fixStringLength <- function(x , n = 10){
 
 
 
+#' @title groupStringFactor
+#' @description convert a vector to a factor,
+#' levels will be ordered by 1: string, "con" or "wt" will be placed in first;
+#' 2: others will be ordered according to0 number
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#'
+#' @examples
 groupStringFactor <- function(x){
 
   x.con <- x[grepl(pattern = "con|wt",x,ignore.case = T)]%>%

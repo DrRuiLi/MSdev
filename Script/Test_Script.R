@@ -2300,7 +2300,135 @@ plot_xcms_peaks_SN_distribution(qc.tune.QYJ.neg)
 
 library(devtools)
 mzml.dir <- choose.dir()
-msConvertDir(mzml.dir)
+mzml.files <- msConvertDir(mzml.dir)
+xcms.xcms <- xcmsProcessingMS1(mzml.files)
+
+
+
+msdev.temp <- MSdev(rawDataDir = "d:/2022.9.30.ESCC/Result_blank0-sample13",
+                    projectDir = "d:/2022.9.30.ESCC")
+msdev.temp <- msConvert_MSdev(msdev.temp)
+msdev.temp <- xcmsProcessing_fullscan_DDA(msdev.temp)
+saveMSdev(msdev.temp)
+plotAdjustedRtime(msdev.temp@xcmsData$positiveMS1,col = randomColor(18))
+export::graph2png(file = "a.png",width = 10,height = 8)
+
+
+
+
+
+MSdev.ZHB <- MSdev("d:/2022_09_21-Lirui/Data",
+                   "d:/2022_09_21-Lirui")
+
+MSdev.ZHB <- checkSampleInfo(MSdev.ZHB)
+MSdev.ZHB <- msConvert_MSdev(MSdev.ZHB)
+MSdev.ZHB <- xcmsProcessing_fullscan_DDA(MSdev.ZHB)
+MSdev.ZHB <- extractSpectra_fullscan_DDA(MSdev.ZHB)
+MSdev.ZHB <- featureSpectra_fullscan_DDA(MSdev.ZHB)
+MSdev.ZHB <- featureCandidate(MSdev.ZHB,mz.ppm = 20,spectraDatabase = "d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata")
+MSdev.ZHB <- annotateMSdev(MSdev.ZHB)
+MSdev.ZHB <- getStaData(MSdev.ZHB)
+
+saveMSdev(MSdev.ZHB)
+
+exportMSdev(MSdev.ZHB)
+plotMSdevPCA(MSdev.ZHB)
+MSdev.ZHB <- analyzeMSdevANOVA(MSdev.ZHB)
+plotMSdevANOVA(MSdev.ZHB)
+
+MSdev.ZHB <- analyzeMSdevDiffMetabolites(MSdev.ZHB)
+plotMSdevDiffVolcano(MSdev.ZHB)
+
+
+library(devtools)
+load_all()
+MSDEV_ESCC  <- MSdev(rawDataDir = "D:/2022.10.2.ESCC.metabolomic/rawData",
+                    projectDir = "D:/2022.10.2.ESCC.metabolomic",
+                    experimentInfo = MS_Experiment[1])
+MSDEV_ESCC  <- checkSampleInfo(MSDEV_ESCC )
+MSDEV_ESCC  <- msConvert_MSdev(MSDEV_ESCC )
+MSDEV_ESCC  <- xcmsProcessing_fullscan_DDA(MSDEV_ESCC )
+saveMSdev(MSDEV_ESCC)
+MSDEV_ESCC <- load_as_var("d:/2022.10.2.ESCC.metabolomic/MSdev_2022_10_03.Rdata")
+
+
+pos.inclu <- export_QE_InclusionList_From_xcmsFeature(xcms.xcms = MSDEV_ESCC@xcmsData$positiveMS1)
+neg.inclu <- export_QE_InclusionList_From_xcmsFeature(xcms.xcms = MSDEV_ESCC@xcmsData$negativeMS1)
+
+xcms.pos <- filterFile(MSDEV_ESCC@xcmsData$positiveMS1,sample(116,1))
+export_QE_ExclusionList_From_xcmsPeaks(xcms.pos)
+
+xcms.neg <- filterFile(MSDEV_ESCC@xcmsData$negativeMS1,sample(116,1))
+export_QE_ExclusionList_From_xcmsPeaks(xcms.neg)
+
+
+
+
+inclusion.list.pos <- export_QE_InclusionList_From_xcmsFeature(MSDEV_ESCC@xcmsData$positiveMS1)%>%
+  mutate(group = sample(LETTERS[1:3],nrow(.),replace = T))
+inclusion.list.pos.A <-filter(inclusion.list.pos,group == "A")
+inclusion.list.pos.B <-filter(inclusion.list.pos,group == "B")
+inclusion.list.pos.C <-filter(inclusion.list.pos,group == "C")
+
+write_csv(inclusion.list.pos.A,file = "d:/2022.10.2.ESCC.metabolomic/inclusion.list.pos.A.csv")
+write_csv(inclusion.list.pos.B,file = "d:/2022.10.2.ESCC.metabolomic/inclusion.list.pos.B.csv")
+write_csv(inclusion.list.pos.C,file = "d:/2022.10.2.ESCC.metabolomic/inclusion.list.pos.C.csv")
+
+inclusion.list.neg <- export_QE_InclusionList_From_xcmsFeature(MSDEV_ESCC@xcmsData$negativeMS1)%>%
+  mutate(group = sample(LETTERS[1:3],nrow(.),replace = T))
+inclusion.list.neg.A <-filter(inclusion.list.neg,group == "A")
+inclusion.list.neg.B <-filter(inclusion.list.neg,group == "B")
+inclusion.list.neg.C <-filter(inclusion.list.neg,group == "C")
+
+write_csv(inclusion.list.neg.A,file = "d:/2022.10.2.ESCC.metabolomic/inclusion.list.neg.A.csv")
+write_csv(inclusion.list.neg.B,file = "d:/2022.10.2.ESCC.metabolomic/inclusion.list.neg.B.csv")
+write_csv(inclusion.list.neg.C,file = "d:/2022.10.2.ESCC.metabolomic/inclusion.list.neg.C.csv")
+
+
+
+
+
+
+
+
+library(devtools)
+load_all()
+MSDEV_LJW  <- MSdev(rawDataDir = "d:/2022_09_26-Lirui_LJW_Metabolomic/Data",
+                    projectDir = "d:/2022_09_26-Lirui_LJW_Metabolomic")
+MSDEV_LJW  <- checkSampleInfo(MSDEV_LJW )
+MSDEV_LJW  <- msConvert_MSdev(MSDEV_LJW )
+MSDEV_LJW  <- xcmsProcessing_fullscan_DDA(MSDEV_LJW )
+MSDEV_LJW  <- extractSpectra_fullscan_DDA(MSDEV_LJW )
+MSDEV_LJW  <- featureSpectra_fullscan_DDA(MSDEV_LJW )
+MSDEV_LJW <- xcmsProcessing_fullscan_DDA(MSDEV_LJW)
+MSDEV_LJW <- extractSpectra_fullscan_DDA(MSDEV_LJW)
+MSDEV_LJW <- featureSpectra_fullscan_DDA(MSDEV_LJW)
+MSDEV_LJW <- featureCandidate(MSDEV_LJW,mz.ppm = 25,spectraDatabase = "d:/MSdb/msdb.temp.Rdata")
+MSDEV_LJW <- annotateMSdev(MSDEV_LJW)
+MSDEV_LJW <- getStaData(MSDEV_LJW,MSDB.keys = c("Compound_name","adduct","formula","inchikey","kegg.id" ,"database_origin"))
+saveMSdev(MSDEV_LJW)
+MSDEV_LJW <- dropSpectra(MSDEV_LJW)
+
+
+exportMSdev(MSDEV_LJW)
+plotMSdevPCA(MSDEV_LJW)
+MSDEV_LJW <- analyzeMSdevANOVA(MSDEV_LJW)
+plotMSdevANOVA(MSDEV_LJW)
+
+MSDEV_LJW <- analyzeMSdevDiffMetabolites(MSDEV_LJW)
+plotMSdevDiffVolcano(MSDEV_LJW)
+plotMSdevDiffHeatmap(MSDEV_LJW)
+#plotMSdevDiffVennDiagram(MSDEV_LJW)
+
+
+library(devtools)
+load_all()
+MSDEV_LJW <- load_as_var("d:/2022_09_26-Lirui_LJW_Metabolomic/MSdev_2022_10_11.Rdata")
+
+MSDEV_LJW <- analyzeMSdevPathway(MSDEV_LJW)
+plotMSdevPathway(MSDEV_LJW)
+
+
 
 
 
