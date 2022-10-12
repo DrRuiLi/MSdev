@@ -2,14 +2,15 @@
 plotMSdevPCA <- function(object){
 
   sample.info <- object@sampleInfo%>%
-    dplyr::filter(xcmsProcessing%in% c("both","MS1"),
-                  sample.type != "Blank")
+    dplyr::filter(xcmsProcessing%in% c("Both","MS1"),
+                  !sample.type%in%   c("Blank"))
   pca.matrix <- object@statData$feature%>%
     column_to_rownames("feature_id")%>%
     dplyr::select(sample.info$sample.name)%>%
-    t%>%scale
+    t
 
   plotPCA(pca.matrix,sample.info$group)->p
+  dir.create(paste0(object@projectInfo$projectDir,"/Statistic"),recursive = T)
   export::graph2ppt(p,
                     file= paste0(object@projectInfo$projectDir,"/Statistic/PCA.pptx"),
                     width = 4,height = 4)
@@ -93,7 +94,7 @@ plotMSdevDiffHeatmap <- function(object){
 plotMSdevANOVA <- function(object){
 
   sample.info <- object@sampleInfo%>%
-    dplyr::filter(xcmsProcessing%in% c("both","MS1"),
+    dplyr::filter(xcmsProcessing%in% c("Both","MS1"),
                   sample.type != "Blank",
                   sample.type != "QC")
   n.anova <- length(object@statData$ANOVA)
@@ -136,7 +137,7 @@ plotMSdevANOVA <- function(object){
 
     export::graph2pdf(anova.heatmap,
                       file= paste0(anova.dir,"/Heatmap.",anova.title,".pptx"),
-                      width = 1*nrow(anova.col.info),height = 0.08*nrow(anova.row.info))
+                      width = 1*nrow(anova.col.info),height = 0.08*nrow(anova.row.info)+0.5)
     openxlsx::write.xlsx(anova.table,
                          file = paste0(anova.dir,"/ANOVA.",anova.title,".xlsx"))
 
@@ -172,7 +173,7 @@ plotMSdevDiffVennDiagram <- function(object,
         pull(feature_id)
     })->venn.list
     venn.list <- venn.list[diff.select$idx]
-    dev.off()
+    #dev.off()
     VennDiagram::venn.diagram(venn.list,
                               width = 10,height = 10,
                               filename = NULL,
@@ -205,7 +206,7 @@ plotMSdevDiffVennDiagram <- function(object,
         pull(feature_id)
     })->venn.list
     venn.list <- venn.list[diff.select$idx]
-    dev.off()
+    #dev.off()
     VennDiagram::venn.diagram(venn.list,
                               width = 10,height = 10,
                               filename = NULL,
@@ -238,7 +239,7 @@ plotMSdevDiffVennDiagram <- function(object,
         pull(feature_id)
     })->venn.list
     venn.list <- venn.list[diff.select$idx]
-    dev.off()
+    #dev.off()
     VennDiagram::venn.diagram(venn.list,
                               width = 10,height = 10,
                               filename = NULL,
@@ -268,11 +269,42 @@ plotMSdevDiffVennDiagram <- function(object,
   }
 }
 
+plotMSdevPathway <- function(object){
+
+  n.pathway <- length(object@statData$PathwayEnrichment)
+  metabolites.table <- object@statData$metabolites%>%
+    dplyr::select(1:17)
+
+  for (i in 1:n.pathway) {
+
+    pathway.title <- names(object@statData$PathwayEnrichment)[i]
+    pathway.dir <- paste0(object@projectInfo$projectDir,"/Statistic/",pathway.title)
+    dir.create(pathway.dir,recursive = T,showWarnings = F)
+    pathway.table <- object@statData$PathwayEnrichment[[i]]%>%
+      dplyr::arrange(p.value)
+    topN = 20
+    pathway.plot <- plotPathwayEnrichment(pathway.table,top = topN)+
+      labs(title = pathway.title)
+    pathway.plot
+    openxlsx::write.xlsx(pathway.table,
+                         file = paste0(pathway.dir,"/PathwayEnrichment.",pathway.title,".xlsx"))
+    export::graph2ppt(pathway.plot,
+                      file= paste0(pathway.dir,"/PathwayEnrichment.",pathway.title,".pptx"),
+                      width = 4,height = 0.8+0.1*topN)
+
+
+
+  }
+
+
+
+}
+
 
 analyzeMSdevDiffMetabolites <- function(object){
 
   sample.info <- object@sampleInfo%>%
-    dplyr::filter(xcmsProcessing%in% c("both","MS1"),
+    dplyr::filter(xcmsProcessing%in% c("Both","MS1"),
                   sample.type != "Blank",
                   sample.type != "QC")
   sample.groups <- unique(sample.info$group)
@@ -310,7 +342,7 @@ analyzeMSdevANOVA <- function(object,groupANOVA = "All Group"){
 
 
   anova.sample.info <- object@sampleInfo%>%
-    dplyr::filter(xcmsProcessing%in% c("both","MS1"),
+    dplyr::filter(xcmsProcessing%in% c("Both","MS1"),
                   sample.type != "Blank",
                   sample.type != "QC")
   if (!"All Group"%in%groupANOVA) {
@@ -327,6 +359,45 @@ analyzeMSdevANOVA <- function(object,groupANOVA = "All Group"){
 
   object@statData$ANOVA[[paste0(unique(groupANOVA),collapse = "_and_")]] <- anova.table
   object
+
+}
+
+
+analyzeMSdevPathway <- function(object,method = "gt"){
+
+  sample.info <- object@sampleInfo%>%
+    dplyr::filter(xcmsProcessing%in% c("Both","MS1"),
+                  sample.type != "Blank",
+                  sample.type != "QC")
+  sample.groups <- unique(sample.info$group)
+  groups.comb <- combn(sample.groups,2)
+
+  if (method == "gt") {
+    for (i in 1:ncol(groups.comb)) {
+      groups.pair <- groups.comb[,i]%>%
+        groupStringFactor()
+
+
+      group.con <- levels(groups.pair)[1]
+      group.case <- levels(groups.pair)[2]
+
+
+      pathway.sample.info <- sample.info%>%
+        dplyr::filter(group %in% groups.pair)
+      pathway.matrix <- object@statData$metabolites %>%
+        dplyr::filter(!is.na(kegg.id))%>%
+        dplyr::distinct(kegg.id,.keep_all = T)%>%
+        column_to_rownames("kegg.id")%>%
+        dplyr::select(pathway.sample.info$sample.name)%>%
+        t
+      pathway.table <- analyzePathwayGlobalTest(pathway.matrix,pathway.sample.info$group)
+      object@statData$PathwayEnrichment[[paste0(group.case," vs ",group.con)]] <- pathway.table
+
+    }
+
+  }
+  return(object)
+
 
 }
 
