@@ -2431,6 +2431,72 @@ plotMSdevPathway(MSDEV_LJW)
 
 
 
+c1 <- randomcoloR::randomColor(1)
+c2 <- randomcoloR::randomColor(1)
+
+#c1 <- "green"
+#c2 <- "blue"
+show_col(c(c1,c2,colorCalculate(c1,c2)))
+
+
+show_col(colors(T))
+export::graph2pdf(file = "a.pdf",width = 30,height = 30)
+
+pdf(file = "a.pdf",width = 10,height = 10)
+for (i in 1:115) {
+
+  hcl.colors(99,palette = hcl.pals()[i])%>%
+    show_col(labels = T,borders = F)
+
+}
+
+dev.off()
+
+
+colorMix <- function(...){
+  col.list <- list(...)
+  col.df <- lapply(col.list,function(x){
+    if (is.na(x)) {
+      x <- "#FFFFFF00"
+
+    }
+    data.frame(t(col2rgb(x,alpha = T)))
+
+  })%>%data.table::rbindlist()%>%
+    dplyr::mutate(r = red*alpha/255/255,
+                  g = green *alpha/255/255,
+                  b = blue*alpha/255/255,
+                  a = alpha/255)%>%
+    summarise_all(sum)
+  if (col.df$a ==0) {
+    return("#FFFFFF00")
+  }
+  rgb(red = col.df$r,
+      green = col.df$g,
+      blue = col.df$b,
+      maxColorValue = col.df$a)
+
+}
+
+c1<-randomcoloR::randomColor(1)
+c2 <- randomcoloR::randomColor(1)
+c3 <- randomcoloR::randomColor(1)
+colorMix(c1,c2,c3)
+c1 <- "red"
+c2 <- "blue"
+c3 <- "green"
+show_col(c(c1,c2,c3,colorMix(c1,c2,c3)))
+
+
+
+
+MSDEV_LJW <- load_as_var("../../Projecct/2022.9.26.LJW/MSdev_2022_10_11.Rdata")
+
+
+analyzeMSdevPathway(MSDEV_LJW,method = "ht")
+
+
+
 
 
 
