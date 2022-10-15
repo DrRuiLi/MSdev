@@ -1,5 +1,6 @@
 #' @title setwdActivedFilePath
-#' @description see `rstudioapi::getSourceEditorContext()`
+#' @description Set Working Directory as currently opened file in RStudio editor,
+#' see `rstudioapi::getSourceEditorContext()`
 #' @return
 #' @export
 #'
