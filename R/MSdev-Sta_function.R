@@ -363,7 +363,7 @@ analyzeMSdevANOVA <- function(object,groupANOVA = "All Group"){
 }
 
 
-analyzeMSdevPathway <- function(object,method = "gt"){
+analyzeMSdevPathway <- function(object,method = "global.test",p.adjusted=F){
 
   sample.info <- object@sampleInfo%>%
     dplyr::filter(xcmsProcessing%in% c("Both","MS1"),
@@ -372,7 +372,10 @@ analyzeMSdevPathway <- function(object,method = "gt"){
   sample.groups <- unique(sample.info$group)
   groups.comb <- combn(sample.groups,2)
 
-  if (method == "gt") {
+  metabolites.table <- object@statData$metabolites%>%
+    dplyr::select(1:17)
+
+  if (method == "global.test") {
     for (i in 1:ncol(groups.comb)) {
       groups.pair <- groups.comb[,i]%>%
         groupStringFactor()
@@ -390,8 +393,36 @@ analyzeMSdevPathway <- function(object,method = "gt"){
         column_to_rownames("kegg.id")%>%
         dplyr::select(pathway.sample.info$sample.name)%>%
         t
-      pathway.table <- analyzePathwayGlobalTest(pathway.matrix,pathway.sample.info$group)
+      pathway.table <- analyzePathwayGlobalTest(pathway.matrix,pathway.sample.info$group)%>%
+        dplyr::mutate(diff = "all")
       object@statData$PathwayEnrichment[[paste0(group.case," vs ",group.con)]] <- pathway.table
+
+    }
+
+  }
+  if (method == "hyper.test") {
+    for (i in 1:length(object@statData$DifferentialMetabolites)) {
+
+
+      diff.table <- object@statData$DifferentialMetabolites[[i]]%>%
+        dplyr::mutate(p = case_when(p.adjusted~p.fdr,
+                                    T~p.value),
+                      log10p = -log10(p),
+                      diff =  case_when(log2foldchange > 0.4150375 & p <0.05 ~ "up",
+                                        log2foldchange < -0.4150375 & p <0.05 ~ "down",
+                                        T~ "no"),
+                      kegg.id = metabolites.table$kegg.id[match(.$feature_id,metabolites.table$feature_id)]
+        )%>%data.table::as.data.table()
+      diff.title <- names(object@statData$DifferentialMetabolites)[i]
+
+      pathway.table <- rbind(analyzePathwayHypertest(diff.table[diff=="down"]$kegg.id)%>%
+                               dplyr::mutate(diff = "down"),
+                             analyzePathwayHypertest(diff.table[diff=="up"]$kegg.id)%>%
+                               dplyr::mutate(diff = "up"),
+                             analyzePathwayHypertest(diff.table[diff%in% c("up","down")]$kegg.id)%>%
+                               dplyr::mutate(diff = "all"))
+
+      object@statData$PathwayEnrichment[[diff.title]] <- pathway.table
 
     }
 
