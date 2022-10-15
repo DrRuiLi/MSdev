@@ -114,3 +114,35 @@ load_as_var <- function(file_to_load){
 }
 
 
+#' @title colorMix
+#' @description mix color by RGB and weighted by alpha
+#' @param ... colors
+#'
+#' @return
+#' @export
+#'
+#' @examples
+colorMix <- function(...){
+  col.list <- list(...)
+  col.df <- lapply(col.list,function(x){
+    if (is.na(x)) {
+      x <- "#FFFFFF00"
+
+    }
+    data.frame(t(col2rgb(x,alpha = T)))
+
+  })%>%data.table::rbindlist()%>%
+    dplyr::mutate(r = red*alpha/255/255,
+                  g = green *alpha/255/255,
+                  b = blue*alpha/255/255,
+                  a = alpha/255)%>%
+    summarise_all(sum)
+  rgb(red = col.df$r,
+      green = col.df$g,
+      blue = col.df$b,
+      maxColorValue = col.df$a)
+
+}
+
+
+
