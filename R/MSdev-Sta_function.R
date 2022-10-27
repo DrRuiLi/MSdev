@@ -269,7 +269,7 @@ plotMSdevDiffVennDiagram <- function(object,
   }
 }
 
-plotMSdevPathway <- function(object){
+plotMSdevPathway <- function(object,method = "set1",topN=20){
 
   n.pathway <- length(object@statData$PathwayEnrichment)
   metabolites.table <- object@statData$metabolites%>%
@@ -282,8 +282,10 @@ plotMSdevPathway <- function(object){
     dir.create(pathway.dir,recursive = T,showWarnings = F)
     pathway.table <- object@statData$PathwayEnrichment[[i]]%>%
       dplyr::arrange(p.value)
-    topN = 20
-    pathway.plot <- plotPathwayEnrichment(pathway.table,top = topN)+
+
+    pathway.plot <- plotPathwayEnrichment(pathway.table,
+                                          method = method,
+                                          top = topN)+
       labs(title = pathway.title)
     pathway.plot
     openxlsx::write.xlsx(pathway.table,
@@ -415,11 +417,11 @@ analyzeMSdevPathway <- function(object,method = "global.test",p.adjusted=F){
         )%>%data.table::as.data.table()
       diff.title <- names(object@statData$DifferentialMetabolites)[i]
 
-      pathway.table <- rbind(analyzePathwayHypertest(diff.table[diff=="down"]$kegg.id)%>%
+      pathway.table <- rbind(analyzePathwayHypertest(diff.table$kegg.id[diff.table$diff=="down"])%>%
                                dplyr::mutate(diff = "down"),
-                             analyzePathwayHypertest(diff.table[diff=="up"]$kegg.id)%>%
+                             analyzePathwayHypertest(diff.table$kegg.id[diff.table$diff=="up"])%>%
                                dplyr::mutate(diff = "up"),
-                             analyzePathwayHypertest(diff.table[diff%in% c("up","down")]$kegg.id)%>%
+                             analyzePathwayHypertest(diff.table$kegg.id[diff.table$diff%in% c("up","down")])%>%
                                dplyr::mutate(diff = "all"))
 
       object@statData$PathwayEnrichment[[diff.title]] <- pathway.table
