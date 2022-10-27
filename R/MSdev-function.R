@@ -1,6 +1,10 @@
 
 saveMSdev <- function(object){
   MSdev <- object
+  save.dir <- dirname(object@projectInfo$MSdevFile)
+  if (!dir.exists(save.dir)) {
+    dir.create(save.dir,recursive = T)
+  }
   save(MSdev, file =  object@projectInfo$MSdevFile)
   invisible(MSdev)
 }
@@ -60,11 +64,15 @@ readInRawData <- function(object){
                   .before = sample.type)%>%
     dplyr::mutate(msData.file.positive = case_when(is.na(raw.file.positive)~raw.file.positive,
                                                    T~paste0(msData.dir,"/pos/",sample.name,".mzML")),
-                  msData.file.negative = case_when(is.na(raw.file.negative)~raw.file.positive,
+                  msData.file.negative = case_when(is.na(raw.file.negative)~raw.file.negative,
                                                    T~paste0(msData.dir,"/neg/",sample.name,".mzML")))%>%
-    dplyr::mutate(group = sample.type,weight = NA ,
+    dplyr::arrange(analysis.time.positive)%>%
+    dplyr::mutate(no = 1:nrow(.),
+                  label = sample.abbreviation,
+                  group = sample.type,
+                  weight = NA ,
                   xcmsProcessing = "Both")%>%
-    dplyr::select(sample.name,sample.type,group , weight,
+    dplyr::select(no,sample.name,sample.type,group ,label, weight,
                   sample.abbreviation,
                   raw.file.positive,raw.file.negative,
                   analysis.time.positive,analysis.time.negative,
@@ -169,9 +177,18 @@ msConvert_MSdev <- function(object){
   }
 }
 
-xcmsProcessing_fullscan_DDA <- function(object){
+xcmsProcessingMSdev <- function(object,
+                                xcms.findpeak.param = xcms::CentWaveParam(ppm = 25,snthresh = 10,
+                                                                   peakwidth = c(5,50),
+                                                                   prefilter = c(3,1000))){
 
+  ### determine xcms param
+  {
+    if (is.na(xcms.findpeak.param)) {
 
+    }
+
+  }
 
   sampleInfoPos <-dplyr::filter(object@sampleInfo,
                                 xcmsProcessing %in% c("MS1","Both")
@@ -180,9 +197,7 @@ xcmsProcessing_fullscan_DDA <- function(object){
   object@xcmsData$positiveMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoPos$msData.file.positive,
                                                        ion_mode = 1,
                                                        peaksGroup =sampleInfoPos$sample.type,
-                                                       centWaveParam =xcms::CentWaveParam(ppm = 10,snthresh = 10,
-                                                                                          peakwidth = c(5,50),
-                                                                                          prefilter = c(3,1000))
+                                                    centWaveParam = xcms.findpeak.param
   )
 
   pData(object@xcmsData$positiveMS1) <- cbind(pData(object@xcmsData$positiveMS1),
@@ -195,9 +210,7 @@ xcmsProcessing_fullscan_DDA <- function(object){
   object@xcmsData$negativeMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoNeg$msData.file.negative,
                                                        ion_mode = 0,
                                                        peaksGroup = sampleInfoNeg$sample.type,
-                                                       centWaveParam =xcms::CentWaveParam(ppm = 10,snthresh = 10,
-                                                                                          peakwidth = c(5,50),
-                                                                                          prefilter = c(3,1000))
+                                                       centWaveParam = xcms.findpeak.param
   )
 
   pData(object@xcmsData$negativeMS1)$sampleType <-  cbind(pData(object@xcmsData$negativeMS1),
