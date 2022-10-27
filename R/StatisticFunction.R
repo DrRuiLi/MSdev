@@ -24,6 +24,14 @@ analyzeDiff <- function(diff.matrix,diff.group){
 
 }
 
+analyzeOddRate <- function(or.matrix,or.group,cov.matrix ){
+
+  or.table <- apply(or.matrix,2 , odd.rate.test , y = or.group, cov.matrix )%>%
+    data.table::rbindlist()%>%
+    dplyr::mutate(var = colnames(or.matrix))
+
+}
+
 analyzeANOVA <- function(anova.matrix , anova.group){
 
   p.values <- rep(1,ncol(anova.matrix))
@@ -97,6 +105,48 @@ analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group ){
 
 
 
+}
+
+#' @title analyzePathwayHypertest
+#'
+#' @param kegg.id
+#'
+#' @return
+#' @export
+#'
+#' @examples
+analyzePathwayHypertest <- function(kegg.id){
+  kegg.id <- na.omit(kegg.id)
+  kegg.pathway <- load_as_var("C:/Users/91879/OneDrive/Documents/Code/R/data/database.for.compounds.identification/kegg.pathway.database.2022.04.10.Rda")
+  N <- 3466  #number of compounds in kegg.pathway.database
+  n <- length(kegg.id)
+  pathway.hyper.test <- data.frame( pathway.id = 1:length(kegg.pathway) )
+  for (i in 1: length(kegg.pathway)) {
+
+    pathway <- kegg.pathway[[i]]
+
+    pathway.hyper.test$pathway.name[i] <- pathway$NAME%>%sub(pattern = " - Homo sapiens (human)",replacement = "",fixed = T)
+    pathway.hyper.test$pathway.id[i] <- pathway$ENTRY
+    pathway.hyper.test$pathway.class[i] <- ifelse(is_empty(pathway$CLASS),NA,pathway$CLASS)
+
+    M <- pathway$COMPOUND %>% length
+    k <- sum(names(pathway$COMPOUND) %in%  kegg.id )
+
+
+    pathway.hyper.test$Hit[i] <- k
+    pathway.hyper.test$Total[i] <- M
+    pathway.hyper.test$p.value[i] <- phyper(k-1,M,N-M,n,lower.tail = F)
+    pathway.hyper.test$Statistic[i] <- NA
+    pathway.hyper.test$Expected[i] <- NA
+    pathway.hyper.test$Std.dev[i] <- NA
+    pathway.hyper.test$Cov[i] <- k
+    #d<- data.frame(a=c(M-k,N-M-n+k),b=c(k,n-k))
+    #pathway.hyper.test$p[i] <- fisher.test(d)$p.value
+    compounds.richment <- names(pathway$COMPOUND)[names(pathway$COMPOUND) %in%  kegg.id ]
+    pathway.hyper.test$compounds[i] <- ifelse(length(compounds.richment)!=0,stringr::str_c(compounds.richment,collapse = ";"),NA)
+
+  }
+  pathway.hyper.test
 }
 
 plotPCA <- function(pca.matrix,pca.group){
@@ -210,43 +260,114 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
 
 }
 
-plotPathwayEnrichment <- function(pathway.table,top = 20){
+plotPathwayEnrichment <- function(pathway.table,top = 20 , method = "set1"){
 
   pathway.table <- pathway.table%>%
+    dplyr::group_by(diff)%>%
     dplyr::arrange(-p.value)%>%
     dplyr::mutate(p.fdr = p.adjust(p.value),
                   enrich.ratio = Hit/Total,
-                  log10fdr = -log10(p.fdr),
+                  log10p = -log10(p.value),
                   pathway.name = factor(pathway.name , levels = pathway.name)
     )%>%
-    dplyr::filter(grepl(x = pathway.class , pattern = "Metabolism"),
-                  !grepl(x = pathway.class , pattern = "Glycan biosynthesis "),
-                  !grepl(x = pathway.class , pattern = "terpenoids "),
-                  !grepl(x = pathway.class , pattern = "Xenobiotics "),
-                  !grepl(x = pathway.class , pattern = "secondary metabolites"))%>%
+   # dplyr::filter(grepl(x = pathway.class , pattern = "Metabolism"),
+   #               !grepl(x = pathway.class , pattern = "Glycan biosynthesis "),
+   #               !grepl(x = pathway.class , pattern = "terpenoids "),
+   #               !grepl(x = pathway.class , pattern = "Xenobiotics "),
+   #               !grepl(x = pathway.class , pattern = "secondary metabolites")
+   #               )%>%
     dplyr::mutate(pathway.class = factor(pathway.class))%>%
-    dplyr::slice_min(p.value,n = top)
+    dplyr::slice_tail(n = top)%>%
+    dplyr::ungroup()
 
-  ggplot(pathway.table)+
-    geom_bar(aes(x = pathway.name , y = enrich.ratio , fill = -log10(p.value)),
-             col ="black",stat = "identity",size = 0.01)+
-    scale_fill_gradient2(low = "white" ,mid = "white",high = "#DC0000")+
-    labs(x = NULL ,y = "Enrich Ratio", fill = "-Log10(P)")+
-    coord_flip()+
-    theme_classic()+
-    theme(text = element_text(size = 8),
-          legend.key.size = unit(0.1,"inch"),
-          legend.text = element_text(size = 8),
-          legend.title = element_text(size = 8),
-          axis.text = element_text(size = 5),
-          axis.title = element_text(size = 5),
-          axis.line.x = element_line(size = 0.1),
-          axis.line.y = element_line(colour = NA),
-          axis.ticks.x = element_line(size = 0.1),
-          axis.ticks.y = element_line(colour = NA),
-          panel.background = element_blank())
+ if (method == "set1") {
+   ### for global test plot
+   ggplot(pathway.table)+
+     geom_bar(aes(x = pathway.name , y = enrich.ratio , fill = log10p),
+              col ="black",stat = "identity",size = 0.01)+
+     scale_fill_gradient2(low = "white" ,mid = "white",high = "#DC0000")+
+     labs(x = NULL ,y = "Enrich Ratio", fill = "-Log10(P)")+
+     coord_flip()+
+     theme_classic()+
+     theme(text = element_text(size = 8),
+           legend.key.size = unit(0.1,"inch"),
+           legend.text = element_text(size = 8),
+           legend.title = element_text(size = 8),
+           axis.text = element_text(size = 5),
+           axis.title = element_text(size = 5),
+           axis.line.x = element_line(size = 0.1),
+           axis.line.y = element_line(colour = NA),
+           axis.ticks.x = element_line(size = 0.1),
+           axis.ticks.y = element_line(colour = NA),
+           panel.background = element_blank())->p
+   return(p)
 
+ }
+  if (method == "set2") {
+    ### for hyper test, and distinct up and down
+    pathway.table <- pathway.table%>%
+      dplyr::filter(diff %in% c("up","down")  )%>%
+      dplyr::arrange(abs(log10p))%>%
+      dplyr::mutate(log10p = ifelse(diff == "up",1,-1)*log10p,
+                    pathway.name = factor(pathway.name , levels = unique(pathway.name)))
+
+    limit.abs <-max(abs(pathway.table$log10p))*1.5
+    ggplot(pathway.table)+
+      geom_bar(aes(x = pathway.name , y = log10p , fill = log10p),
+               col ="black",stat = "identity",size = 0.01)+
+      scale_fill_gradient2(low = "#0271B6",high = "#992307",
+                           midpoint = 0,
+                           limits = c(-limit.abs,limit.abs),
+                           breaks = c(-floor(limit.abs),0,floor(limit.abs)),
+                           labels = c(floor(limit.abs),0,floor(limit.abs)))+
+      scale_y_continuous(limits = c(-limit.abs,limit.abs))+
+      labs(x = NULL ,y = "Log10(P)", fill = "-Log10(P)")+
+      coord_flip()+
+      theme_classic()+
+      theme(text = element_text(size = 8),
+            legend.key.size = unit(0.1,"inch"),
+            legend.text = element_text(size = 8),
+            legend.title = element_text(size = 8),
+            axis.text = element_text(size = 5),
+            axis.title = element_text(size = 5),
+            axis.line.x = element_line(size = 0.1),
+            axis.line.y = element_line(colour = NA),
+            axis.ticks.x = element_line(size = 0.1),
+            axis.ticks.y = element_line(colour = NA),
+            panel.background = element_blank())->p
+    p
+    return(p)
+
+
+  }
 
 
 
 }
+
+
+odd.rate.test <- function(x,y,cov.matrix = NULL){
+
+  if (is.factor(y)) {
+    or.data <- data.frame(y=y , x= x ,cov.matrix)
+    glm.glm <- glm(data = or.data,formula = "y ~ x + .",family = binomial())
+    or.result <- epiDisplay::logistic.display(glm.glm,simplified = T)$table
+    return(data.frame(
+      OR = or.result["x","OR"],
+      lower95ci = or.result["x","lower95ci"],
+      upper95ci = or.result["x","upper95ci"],
+      p.value = or.result["x","Pr(>|Z|)"]
+    ))
+  }
+
+
+}
+
+
+
+
+
+
+
+
+
