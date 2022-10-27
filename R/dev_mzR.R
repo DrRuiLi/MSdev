@@ -11,6 +11,11 @@ getmsExpTime<- function(msDataFiles){
                        ExpTime = NA)
   for (i in 1:length(msDataFiles)) {
     #cat(i,"\n")
+    if (is.na(msDataFiles[i])) {
+      msdata$ExpTime[i] <- NA
+      next
+
+    }
     msmzR <- mzR::openMSfile(msDataFiles[i])
     msdata$ExpTime[i] <- mzR::runInfo(msmzR)$startTimeStamp
     mzR::close(msmzR)
