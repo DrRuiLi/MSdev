@@ -34,3 +34,10 @@ groupStringFactor <- function(x){
  # x.new <- c(x.con,sort(x.other))
   factor(x,levels = unique(x.new))
 }
+
+
+vector2str <- function(v){
+
+  paste0("c(\"",paste0(na.omit(v),collapse = "\",\""),"\")")%>%
+    cat()
+}
