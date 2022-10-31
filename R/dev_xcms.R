@@ -474,11 +474,11 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
                             param = centWaveParam)
   message(Sys.time()," Adjust RT...")
   peak.density.param <- PeakDensityParam(sampleGroups = peaksGroup,
-                                         minFraction = 0.8,bw = 30,
+                                         minFraction = 0.4,bw = 30,
                                          binSize = 0.015)
   xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
 
-  peak.group.param <- PeakGroupsParam(minFraction = 0.85,
+  peak.group.param <- PeakGroupsParam(minFraction = 0.4,
                                       subset = which(peaksGroup == "QC"),
                                       subsetAdjust = "average",span = 0.4)
 
