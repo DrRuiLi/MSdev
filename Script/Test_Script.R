@@ -2494,11 +2494,211 @@ MSDEV_LJW <- load_as_var("../../Projecct/2022.9.26.LJW/MSdev_2022_10_11.Rdata")
 
 
 analyzeMSdevPathway(MSDEV_LJW,method = "ht")
+#
+#'data.frame':	3020 obs. of  5 variables:
+#  $ switch     : Factor w/ 2 levels "no","yes": 2 2 1 2 2 2 2 2 2 2 ...
+#$ arsenic    : num  2.36 0.71 2.07 1.15 1.1 3.9 2.97 3.24 3.28 2.52 ...
+#$ distance   : num  16.8 47.3 21 21.5 40.9 ...
+#$ education  : int  0 0 10 12 14 9 4 10 0 0 ...
+#$ association: Factor w/ 2 levels "no","yes": 1 1 1 1 2 2 2 1 2 2 ...
+glm.glm <- glm(switch ~ distance,data = Wells ,family = binomial())
+
+#summary(glm.glm)
+logistic.display(glm.glm,simplified = F)
+or1
+wells2 <- mutate(Wells,add = 1)
+glm.glm2 <- glm(switch ~ distance+education+association,data = wells2 ,family = binomial())
+logistic.display(glm.glm2,simplified = T)
 
 
 
 
 
+or.matrix <- rnorm(3020*10)%>%
+  matrix(nrow = 3020)%>%
+  as.data.frame()
+or.group <- Wells$switch
+cov.matrix <- Wells[,2:5]
+
+a <- apply(or.matrix,2 , odd.rate.test , y = or.group, cov.matrix )%>%
+  data.table::rbindlist()
+
+
+
+
+MSDEV_WHL  <- MSdev(rawDataDir = "d:/2022_10_17-Wanghonglin/Data")
+MSDEV_WHL  <- checkSampleInfo(MSDEV_WHL )
+MSDEV_WHL  <- msConvert_MSdev(MSDEV_WHL )
+MSDEV_WHL  <- xcmsProcessing_fullscan_DDA(MSDEV_WHL )
+MSDEV_WHL  <- extractSpectra_fullscan_DDA(MSDEV_WHL )
+MSDEV_WHL  <- featureSpectra_fullscan_DDA(MSDEV_WHL )
+MSDEV_WHL <- featureCandidate(MSDEV_WHL,mz.ppm = 25,spectraDatabase = "d:/MSdb/msdb.temp.Rdata")
+MSDEV_WHL <- annotateMSdev(MSDEV_WHL)
+MSDEV_WHL <- getStaData(MSDEV_WHL,MSDB.keys = c("Compound_name","adduct","formula","inchikey","kegg.id" ,"database_origin"))
+saveMSdev(MSDEV_WHL)
+MSDEV_WHL <- dropSpectra(MSDEV_WHL)
+exportMSdev(MSDEV_WHL)
+
+
+
+
+
+msdev_ljw <- load_as_var(choose.files())
+saveMSdev(msdev_ljw)
+
+msdev_ljw <- analyzeMSdevPathway(msdev_ljw , method = "hyper.test")
+plotMSdevPathway(msdev_ljw,method = "set2",topN = 10)
+pathway.table <- msdev_ljw@statData$PathwayEnrichment[[1]]
+
+
+
+MSDEV.WHL <- load_as_var(choose.files())
+#MSDEV.WHL <- getStaData(MSDEV.WHL)
+saveMSdev(MSDEV.WHL)
+exportMSdev(MSDEV.WHL)
+
+
+MSDEV.WHL <- checkSampleInfo(MSDEV.WHL)
+
+MSDEV.WHL <- analyzeMSdevANOVA(MSDEV.WHL)
+plotMSdevANOVA(MSDEV.WHL)
+
+plotMSdevPCA(MSDEV.WHL)
+
+MSDEV.WHL <- analyzeMSdevDiffMetabolites(MSDEV.WHL)
+plotMSdevDiffHeatmap(MSDEV.WHL)
+plotMSdevDiffVolcano(MSDEV.WHL)
+#plotMSdevDiffVennDiagram(MSDEV.WHL,change = "both")
+
+
+
+
+
+MSDEV.WHL <- analyzeMSdevPathway(MSDEV.WHL)
+plotMSdevPathway(MSDEV.WHL)
+
+
+
+
+
+ESCC.lipidomic <- load_as_var("d:/2022.9.28.ESCC.Lipidomic/MSdev_2022_09_28.Rdata")
+
+
+
+
+
+
+library(devtools)
+load_all()
+
+ESCC.lipidomic <- load_as_var("d:/2022.9.28.ESCC.Lipidomic/MSdev_2022_09_28.Rdata")
+
+
+
+
+
+
+
+library(devtools)
+load_all()
+ESCC.lipidomic <- load_as_var("d:/2022.9.28.ESCC.Lipidomic/MSdev_2022_09_28.Rdata")
+ESCC.lipidomic <- checkSampleInfo(ESCC.lipidomic)
+saveMSdev(ESCC.lipidomic)
+
+ESCC.metabolomics <- load_as_var("d:/2022.10.2.ESCC.metabolomic/MSdev_2022_10_16.Rdata")
+ESCC.metabolomics <- checkSampleInfo(ESCC.metabolomics)
+saveMSdev(ESCC.lipidomic)
+
+
+
+### Serum metabolomics
+saveMSdev(ESCC.serum.metabolomics)
+ESCC.serum.metabolomics <- xcmsProcessingMSdev(ESCC.serum.metabolomics,
+                                               CentWaveParam(
+                                                 ppm = 25,
+                                                 peakwidth = c(5,50)
+                                               ))
+
+saveMSdev(ESCC.serum.metabolomics)
+ESCC.serum.metabolomics  <- extractSpectra_fullscan_DDA(ESCC.serum.metabolomics )
+ESCC.serum.metabolomics  <- featureSpectra_fullscan_DDA(ESCC.serum.metabolomics )
+ESCC.serum.metabolomics <- featureCandidate(ESCC.serum.metabolomics,
+                                            mz.ppm = 25,
+                                            spectraDatabase = "d:/MSdb/msdb.KEGG.2022_10_27.Rdata")
+ESCC.serum.metabolomics <- annotateMSdev(ESCC.serum.metabolomics)
+ESCC.serum.metabolomics <- getStaData(ESCC.serum.metabolomics,
+                                      MSDB.keys = c("Compound_name","adduct","formula","inchikey","kegg.id" ,"database_origin"))
+
+exportMSdev(ESCC.serum.metabolomics)
+saveMSdev(ESCC.serum.metabolomics)
+
+
+
+### Tissue Lipidomics
+ESCC.lipidomic <- load_as_var("d:/2022.9.28.ESCC.Lipidomic/MSdev_2022_09_28.Rdata")
+ESCC.lipidomic <- checkSampleInfo(ESCC.lipidomic)
+ESCC.lipidomic <- getStaData(ESCC.lipidomic)
+plotMSdevPCA(ESCC.lipidomic)
+exportMSdev(ESCC.lipidomic)
+ESCC.lipidomic <- analyzeMSdevANOVA(ESCC.lipidomic)
+plotMSdevANOVA(ESCC.lipidomic)
+ESCC.lipidomic <- analyzeMSdevDiffMetabolites(ESCC.lipidomic)
+plotMSdevDiffVolcano(ESCC.lipidomic)
+plotMSdevDiffHeatmap(ESCC.lipidomic)
+saveMSdev(ESCC.lipidomic)
+
+### Tissue metabolomics
+ESCC.metabolomics <- MSdev(rawDataDir = "d:/2022.10.2.ESCC.metabolomic/rawData",
+                           experimentInfo = MS_Experiment[7])
+ESCC.metabolomics <- checkSampleInfo(ESCC.metabolomics)
+ESCC.metabolomics <- msConvert_MSdev(ESCC.metabolomics)
+
+
+ESCC.metabolomics <- xcmsProcessingMSdev(ESCC.metabolomics,
+                                         CentWaveParam(
+                                           ppm = 20,
+                                           snthresh = 10,
+                                           peakwidth = c(5,50),
+                                           prefilter = c(3,100)
+                                         ))
+
+
+ESCC.metabolomics <- extractSpectra_fullscan_DDA(ESCC.metabolomics)
+ESCC.metabolomics <- featureSpectra_fullscan_DDA(ESCC.metabolomics)
+ESCC.metabolomics <- featureCandidate(ESCC.metabolomics,mz.ppm = 20,
+                                      spectraDatabase ="d:/MSdb/msdb.KEGG.2022_10_27.Rdata" )
+ESCC.metabolomics <- annotateMSdev(ESCC.metabolomics)
+ESCC.metabolomics <- checkSampleInfo(ESCC.metabolomics)
+ESCC.metabolomics <- getStaData(ESCC.metabolomics,
+                                MSDB.keys = c("Compound_name","adduct","formula","inchikey","kegg.id" ,"database_origin"))
+
+
+plotMSdevPCA(ESCC.metabolomics)
+ESCC.metabolomics <- analyzeMSdevANOVA(ESCC.metabolomics)
+plotMSdevANOVA(ESCC.metabolomics)
+ESCC.metabolomics <- analyzeMSdevDiffMetabolites(ESCC.metabolomics)
+plotMSdevDiffVolcano(ESCC.metabolomics)
+plotMSdevDiffHeatmap(ESCC.metabolomics)
+exportMSdev(ESCC.metabolomics)
+saveMSdev(ESCC.metabolomics)
+
+
+
+
+
+### Serum metabolomics
+ESCC.serum.metabolomics <- load_as_var("d:/2022.10.27.ESCC.Serum.metablomics/MSdev_2022_10_27.Rdata")
+ESCC.serum.metabolomics <- checkSampleInfo(ESCC.serum.metabolomics)
+
+
+
+
+
+
+
+
+# Mon Oct 31 12:54:47 2022 ------------------------------
+# this is a branch of master
 
 
 
