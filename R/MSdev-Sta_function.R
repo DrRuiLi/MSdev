@@ -33,7 +33,7 @@ plotMSdevDiffVolcano <- function(object){
     dir.create(diff.dir,recursive = T,showWarnings = F)
     diff.table <- object@statData$DifferentialMetabolites[[i]]%>%
       dplyr::mutate(metabolites.table,.after = log10fdr)
-    diff.volcano <- plotVolcano(diff.table,p.adjusted = F)+
+    diff.volcano <- plotVolcano(diff.table,p.adjusted = T)+
       labs(title = diff.title)
     diff.volcano
     openxlsx::write.xlsx(diff.table,
@@ -66,7 +66,7 @@ plotMSdevDiffHeatmap <- function(object){
       dplyr::filter(sample.name %in% colnames(diff.table))%>%
       dplyr::mutate(col.group = groupStringFactor(group),
                     col.label = label)
-    diff.row.info <- metabolites.table[diff.table$p.value < 0.05,]%>%
+    diff.row.info <- metabolites.table[diff.table$p.fdr < 0.05,]%>%
       dplyr::mutate(row.label = fixStringLength(Compound_name , 20),
                     row.group = " ")
     diff.matrix <- object@statData$metabolites%>%
@@ -122,7 +122,7 @@ plotMSdevANOVA <- function(object){
       dplyr::filter(group %in% anova.group)%>%
       dplyr::mutate(col.group = groupStringFactor(group),
                     col.label = label)
-    anova.row.info <- metabolites.table[which(anova.table$p.value < 0.05),]%>%
+    anova.row.info <- metabolites.table[which(anova.table$p.fdr < 0.05),]%>%
       dplyr::mutate(row.label = fixStringLength(Compound_name , 20),
                     row.group = " ")
     anova.matrix <- object@statData$metabolites%>%
@@ -137,7 +137,7 @@ plotMSdevANOVA <- function(object){
 
     export::graph2pdf(anova.heatmap,
                       file= paste0(anova.dir,"/Heatmap.",anova.title,".pptx"),
-                      width = 1*nrow(anova.col.info),height = 0.08*nrow(anova.row.info)+0.5)
+                      width = 0.2*nrow(anova.col.info),height = 0.08*nrow(anova.row.info)+3)
     openxlsx::write.xlsx(anova.table,
                          file = paste0(anova.dir,"/ANOVA.",anova.title,".xlsx"))
 
