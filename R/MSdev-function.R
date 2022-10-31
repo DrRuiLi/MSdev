@@ -254,10 +254,10 @@ extractSpectra_fullscan_DDA <- function(object){
     spectra.pos <- Spectra::Spectra()
     spectra.neg <- Spectra::Spectra()
   } else {
-    spectra.pos <- Spectra::Spectra(sampleInfo$msData.file.positive,backend = MsBackendDataFrame())%>%
+    spectra.pos <- Spectra::Spectra(na.omit(sampleInfo$msData.file.positive),backend = MsBackendDataFrame())%>%
     filterMsLevel(2)
 
-    spectra.neg <- Spectra::Spectra(sampleInfo$msData.file.negative,backend = MsBackendDataFrame())%>%
+    spectra.neg <- Spectra::Spectra(na.omit(sampleInfo$msData.file.negative),backend = MsBackendDataFrame())%>%
     filterMsLevel(2)
   }
 
@@ -285,7 +285,7 @@ featureSpectra_fullscan_DDA <- function(object){
 
   .matchSP <- function(x,spectras,
                        mz_ppm = 10,
-                       rt_tol = 20){
+                       rt_tol = 30){
     mz <- x$mzmed
     rt <- x$rtmed
     mzError <- abs((mz - spectras$precursorMz)/mz*1e6)
