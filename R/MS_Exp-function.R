@@ -10,6 +10,7 @@
   new.object@Chroma_column <- x@Chroma_column[-i]
   new.object@Chroma_gradient <- x@Chroma_gradient[-i]
   new.object@Mass_Spectrum <- x@Mass_Spectrum[-i]
+  new.object@Internal_Standard <- x@Internal_Standard[-i]
   new.object
 
 }
@@ -71,7 +72,7 @@
     openxlsx::writeData(wb = MS_workbook,sheet = 3,rowNames = F)
   x@Moblie_phase_B %>%as.data.frame()%>%
     openxlsx::writeData(wb = MS_workbook,sheet = 4,rowNames = F)
-  x@Chroma_column%>%unlist%>%as.data.frame()%>%as.data.frame()%>%
+  x@Chroma_column%>%unlist%>%as.data.frame()%>%
     select(value = 1)%>%
     openxlsx::writeData(wb = MS_workbook,sheet = 5,rowNames = T)
   x@Chroma_gradient %>%as.data.frame()%>%
@@ -79,6 +80,8 @@
   x@Mass_Spectrum%>%unlist%>%as.data.frame()%>%
     select(value = 1)%>%
     openxlsx::writeData(wb = MS_workbook,sheet = 7,rowNames = T)
+  x@Internal_Standard%>%as.data.frame()%>%
+    openxlsx::writeData(wb = MS_workbook,sheet = 8,rowNames = F)
 
   MS_workbook
 
@@ -95,6 +98,8 @@
   x@Chroma_gradient <- openxlsx::read.xlsx(wb , sheet = 6,rowNames = F)%>%as.tibble()%>%list()
   x@Mass_Spectrum <-openxlsx::read.xlsx(wb , sheet = 7,rowNames = T)%>%t%>%
     as.tibble()%>%list()
+  x@Internal_Standard <-openxlsx::read.xlsx(wb , sheet = 8,rowNames = F)%>%
+    as.data.frame()%>%list()
   x
 
 }
@@ -109,6 +114,7 @@ create_MS_Exp_record <-function( copy_from = 1,edit = F){
   if (copy_from==0) {
     x <- MS_Exp()
   }
+  x@General$Creat_time <- as.character(Sys.time())
   if(edit){
     wb <- .MS_Exp_to_workbook(x)
     temp.xlsx <- paste0(tempdir(), "/temp_",paste0(sample(letters,5),collapse = ""),".xlsx")
