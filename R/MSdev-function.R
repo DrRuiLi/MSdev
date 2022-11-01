@@ -389,7 +389,18 @@ dropSpectra <- function(object){
   }
 
 
-getStaData <- function(object,MSDB.keys =c("Compound_name","adduct","formula","inchikey","Lipid_subclass" ,"database_origin")){
+#' @title getStaDataMSdev
+#'
+#' @param object
+#' @param MSDB.keys
+#'
+#' @return
+#' @export
+#'
+#' @examples
+getStaDataMSdev <- function(object,
+                            MSDB.keys =c("Compound_name","adduct","formula","inchikey","Lipid_subclass" ,"database_origin")
+                            ){
 
   sampleInfo <- object@sampleInfo%>%
     dplyr::filter(xcmsProcessing %in% c("Both","MS1"))
@@ -413,7 +424,7 @@ getStaData <- function(object,MSDB.keys =c("Compound_name","adduct","formula","i
          "MSDB_id" )]
   })%>%data.table::rbindlist()
 
-  featurePos <- get_features_from_xcms(object@xcmsData$positiveMS1)
+  featurePos <- get_features_from_xcms(object@xcmsData$positiveMS1,missing = NA)
   featurePos <- rowData(featurePos)%>%
     as.data.frame()%>%
     rownames_to_column("feature_id")%>%
@@ -424,7 +435,7 @@ getStaData <- function(object,MSDB.keys =c("Compound_name","adduct","formula","i
     dplyr::rename_with( ~sub(pattern = ".mzML",replacement = "",x = .x))%>%
     remove_rownames()
 
-  featureNeg <- get_features_from_xcms(object@xcmsData$negativeMS1)
+  featureNeg <- get_features_from_xcms(object@xcmsData$negativeMS1,missing = NA)
   featureNeg <- rowData(featureNeg)%>%
     as.data.frame()%>%
     rownames_to_column("feature_id")%>%
@@ -441,11 +452,13 @@ getStaData <- function(object,MSDB.keys =c("Compound_name","adduct","formula","i
                                        keys =  MSDB.keys)
   featureAll<- add_column(featureAll,featureAllanno[,-1],.after = "feature_id")
   object@statData$featureRaw <-featureAll
+  object <- adjustFeatureByGQC(object,to.adjust = "featureRaw")
+  object <- adjustFeatureByweight(object,to.adjust = "feature")
 
-  object <- adjusetFeautreByweight(object)
-
-  object@statData$feature <- featureAll%>%
-    dplyr::filter(qc_rsd <0.3)
+  object@statData$feature <- object@statData$feature%>%
+    #dplyr::filter(qc_rsd <0.3)%>%
+    dplyr::filter(gqc_r2 >0.8)%>%
+    dplyr::filter()
   .uniqueFeatures <- function(score,intensity){
     score <- ifelse(score >0.3 , 10,1)
     unique.score <- score*log10(intensity)
@@ -462,23 +475,62 @@ getStaData <- function(object,MSDB.keys =c("Compound_name","adduct","formula","i
 }
 
 
-adjusetFeautreByweight <- function(object){
+adjustFeatureByweight <- function(object,to.adjust = "featureRaw"){
 
   sampleInfoToAdjust <- object@sampleInfo%>%
     dplyr::filter(!is.na(weight))
   weight <- sampleInfoToAdjust$weight / mean(sampleInfoToAdjust$weight )
-  featureMatrix <- object@statData$featureRaw%>%
+  featureMatrix <- object@statData[[to.adjust]]%>%
     column_to_rownames("feature_id")%>%
     dplyr::select(sampleInfoToAdjust$sample.name)%>%
     as.matrix()
 
   featureMatrixAdjusted <-t( t(featureMatrix)/weight)
-  featureMatrixAdjusted-> object@statData$featureRaw[,sampleInfoToAdjust$sample.name]
+  object@statData$feature <-object@statData[[to.adjust]]
+  featureMatrixAdjusted -> object@statData$feature[,sampleInfoToAdjust$sample.name]
   object
 
 }
 
+adjustFeatureByIS <-function(object,to.adjust = "featureRaw"){
 
+
+
+}
+
+adjustFeatureByGQC <- function(msdev.object,to.adjust = "featureRaw"){
+
+  sampleinfo <- msdev.object@sampleInfo%>%
+    dplyr::filter(xcmsProcessing%in% c("Both","MS1") )
+  GQC.sampleinfo <- msdev.object@sampleInfo%>%
+    dplyr::filter(sample.type == "GQC")
+
+  sample.matrix <- msdev.object@statData[[to.adjust]]%>%
+    column_to_rownames("feature_id")%>%
+    dplyr::select(sampleinfo$sample.name)%>%t
+
+  .adjust.fun <- function(x){
+    fit.df <- data.frame(y =GQC.sampleinfo$QC.gradient.concentraion,
+                         x = x[GQC.sampleinfo$sample.name])
+    if (all(is.na(fit.df$x))) {
+      return(c(x, r2 = 0))
+
+    }
+    fit <- lm(y~x , data = fit.df)
+    fit.pred <- predict(fit,newdata = data.frame(x = x ))
+
+    return(c(fit.pred , r2 = summary(fit)$r.squared))
+
+  }
+
+  adjusted.matrix  <- apply(sample.matrix,2, .adjust.fun)%>%t
+  msdev.object@statData[["feature"]] <- msdev.object@statData[[to.adjust]]
+  msdev.object@statData[["feature"]][ ,sampleinfo$sample.name] <-adjusted.matrix[,sampleinfo$sample.name]
+  msdev.object@statData[["feature"]] <- msdev.object@statData[["feature"]]%>%
+    dplyr::mutate(gqc_r2 = adjusted.matrix[,"r2"],.before = qc_rsd)
+
+  msdev.object
+}
 
 findFeature <- function(object,exact_mass =100,ppm = 10,ion_mode = 1 ){
 
@@ -490,10 +542,14 @@ findFeature <- function(object,exact_mass =100,ppm = 10,ion_mode = 1 ){
                    mz > ion_mz-ion_mz*ppm/1e6,
                    mz <  ion_mz+ion_mz*ppm/1e6)
 
-
+  return(feature_matched)
 }
 
+findISdMSdev <- function(object){
 
+
+
+}
 
 
 
