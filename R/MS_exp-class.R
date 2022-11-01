@@ -21,7 +21,8 @@ setClass(
     "Moblie_phase_B" = "list",
     "Chroma_column" = "list",
     "Chroma_gradient" = "list",
-    "Mass_Spectrum" = "list"
+    "Mass_Spectrum" = "list",
+    "Internal_Standard" = "list"
   )
 
 )
@@ -74,6 +75,12 @@ setMethod("initialize" , "MS_Exp",
               "Data_aquisition" = "DDA TOP10",
               "Ion_mode" = "both",
             )%>%list
+            Internal_Standard <- data.frame(
+              "Compound_name" = "",
+              "Exact_mass" = NA,
+              "Retention time" = NA
+
+            )%>%list()
 
             .Object@General <- General
             .Object@Pre_process <-Pre_process
@@ -82,6 +89,7 @@ setMethod("initialize" , "MS_Exp",
             .Object@Chroma_column <- Chroma_column
             .Object@Chroma_gradient <- Chroma_gradient
             .Object@Mass_Spectrum <- Mass_Spectrum
+            .Object@Internal_Standard <- Internal_Standard
             .Object
 
 
@@ -109,6 +117,7 @@ setMethod("[","MS_Exp",
           new.object@Chroma_column <- x@Chroma_column[i]
           new.object@Chroma_gradient <- x@Chroma_gradient[i]
           new.object@Mass_Spectrum <- x@Mass_Spectrum[i]
+          new.object@Internal_Standard <- x@Internal_Standard[i]
           new.object
 
           })
@@ -122,6 +131,7 @@ setMethod("c" , "MS_Exp" ,
             new.object@Chroma_column <- c(x@Chroma_column,y@Chroma_column)
             new.object@Chroma_gradient <- c(x@Chroma_gradient,y@Chroma_gradient)
             new.object@Mass_Spectrum <-c(x@Mass_Spectrum,y@Mass_Spectrum)
+            new.object@Internal_Standard <-c(x@Internal_Standard,y@Internal_Standard)
             new.object
 
 
