@@ -8,9 +8,9 @@
 #' @export
 #'
 #' @examples
-get_features_from_xcms <- function(xcms.xcms){
+get_features_from_xcms <- function(xcms.xcms,missing = NA){
 
-  xcms.sum <- quantify(xcms.xcms,missing = "rowmin_half")
+  xcms.sum <- quantify(xcms.xcms,missing = missing )
   feature.def <- SummarizedExperiment::rowData(xcms.sum)%>%
     tibble::as_tibble()
 
@@ -20,7 +20,7 @@ get_features_from_xcms <- function(xcms.xcms){
   feature.matrix.sample <- feature.matrix[,which(grepl("Sample",colnames(feature.matrix)))]
   feature.def$qc_rsd <- apply(feature.matrix.qc, 1, rsd)
   feature.def$sample_rsd <- apply(feature.matrix.sample, 1, rsd)
-  feature.def$med_intensity <- apply(feature.matrix , 1 ,median)
+  feature.def$med_intensity <- apply(feature.matrix , 1 ,median,na.rm =T)
   SummarizedExperiment::rowData(xcms.sum) <-feature.def
   return(xcms.sum)
 }
