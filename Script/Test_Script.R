@@ -2700,6 +2700,178 @@ ESCC.serum.metabolomics <- checkSampleInfo(ESCC.serum.metabolomics)
 # Mon Oct 31 12:54:47 2022 ------------------------------
 # this is a branch of master
 
+library(devtools)
+load_all()
+library(magrittr)
+
+x <- load_as_var("d:/2022.9.28.ESCC.Lipidomic/MSdev_2022_09_28.Rdata")
+
+
+checkSampleInfo(x)
+
+msdev.escc <- load_as_var("d:/2022.9.28.ESCC.Lipidomic/MSdev_2022_09_28.Rdata")
+object <- msdev.escc
+
+checkSampleInfo(msdev.escc)
+
+a <- object@statData$feature%>%
+  dplyr::filter(qc_rsd <0.3)
+boxplot(a$gqc_r2)
+
+
+a <- object@statData$feature%>%
+  dplyr::filter(gqc_r2  > 0.5)
+boxplot(a$qc_rsd, ylim= c(0,1))
+
+
+a <-object@statData$feature
+boxplot(a$gqc_r2)
+
+
+msdev.escc <- getStaDataMSdev(msdev.escc)
+exportMSdev(msdev.escc)
+
+
+# Tue Nov  1 15:18:05 2022 ------------------------------
+msdev.escc <- getStaDataMSdev(msdev.escc)
+msdev.escc <- analyzeMSdevDiffMetabolites(
+  msdev.escc
+  )
+
+
+plotMSdevDiffVolcano(msdev.escc,
+                     p.adjusted = F)
+
+
+
+msdev.escc <- analyzeMSdevANOVA(msdev.escc )
+plotMSdevANOVA(msdev.escc)
+
+for (i in 1:7) {
+
+MS_Experiment@Internal_Standard[[i]] <-  data.frame(
+  "Compound_name" = c("",""),
+  "Exact_mass" = NA,
+  "Retention time" = NA
+
+)
+
+}
+use_data(MS_Experiment,overwrite = T)
+
+
+edit_MS_Exp_record(1)
+data("MS_Experiment")
+
+
+
+MSDEV.escc.lipidomic <- load_as_var("d:/2022.9.28.ESCC.Lipidomic/MSdev_2022_09_28.Rdata")
+edit_MS_Exp_record(6)
+MSDEV.escc.lipidomic@experimentInfo <- MS_Experiment[6]
+
+findFeature(MSDEV.escc.lipidomic,
+            exact_mass = 587.55,
+            ion_mode = 1,
+            ppm = 10)%>%
+  pull(feature_id)
+
+
+
+### 15:0-18:1(d7) PG (Na Salt)   C39H67D7Na1O10P1
+### Na
+isopattern("C39H68D7Na1O10P1",isotopes = isotopes,threshold = 1)
+764.5434920 =6.7e6
+765.5468468  =2.8e6
+### Na replace with H
+isopattern("C39H69D7O10P1",isotopes = isotopes,threshold = 1)
+742.5615474 =5.2e6
+743.5649022  =2.6e6
+
+
+
+### 15:0-18:1(d7) PI (NH4 Salt)    C42H75D7N1O13P1
+isopattern("C42H76D7N1O13P1",isotopes = isotopes,threshold = 1)
+### NH4
+847=2.4e6
+848=1.1e6
+849=2.5e5
+
+
+### NH4 to H
+isopattern("C42H73D7O13P1",isotopes = isotopes,threshold = 1)
+#no signal
+
+
+
+
+### 15:0-18:1(d7) PS (Na Salt)     C39H67D7N1Na1O10P1
+#Na
+isopattern("C39H67D7N1Na1O10P1",isotopes = isotopes,threshold = 1)
+777.5387410 =1.7e6
+778.5420958   = 0
+
+
+#H
+isopattern("C39H68D7N1O10P1",isotopes = isotopes,threshold = 1)
+755.5567963  = 2.2e7
+756.5601512  =0
+
+
+
+
+
+check_chemform(chemforms = avanti.is$Formula,isotopes = isotopes)->formated
+
+avanti.is$Formula <- formated$new_formula
+avanti.is$Exact_mass <- formated$monoisotopic_mass
+
+
+openxlsx::write.xlsx(avanti.is , file = "d:/temp/AVANTI.IS.xlsx")
+
+
+
+
+
+
+
+
+
+
+isopattern("C41H73D7N1O8P1",isotopes = isotopes,threshold = 1)
+# M+      752.6060923  = 2.6e7
+# M+H     753.6094471  =4.2e8
+
+
+isopattern("C41H74D7N1O8P1",isotopes = isotopes,threshold = 1)
+# M+H     753.6139173  = 4.2e8
+# [1]M+H  754.6172721  = 1.9e8
+# [2]M+H  755.6206270  = 4.9E7
+
+
+
+
+
+
+isopattern("C26H45D7N1O7P1",isotopes = isotopes,threshold = 1)
+# M+      528.3920767   = 2.8e6
+# M+H     529.3999018  = 4.2e8
+
+
+isopattern("C41H71D9N2O6P1",isotopes = isotopes,threshold = 1)
+# M+H     529.3999018 = 4.3e7
+# [1]M+H  530.4032566 = 1.3e7
+# [2]M+H  531.4041476 = 2.4e6
+
+
+avanti.is <- avanti.is%>%
+  mutate(neg = Exact_mass- 1.007825)
+
+
+
+
+
+
+
 
 
 
