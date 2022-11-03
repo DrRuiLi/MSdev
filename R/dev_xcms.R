@@ -530,6 +530,38 @@ matchSpectra_Features <- function(xcmsFeatureDef, spec){
 
 
 
+plot_xcms_feature_intensity <- function(xcms.xcms , feature_id_to_show ){
+
+  ion_mode <- unique(fData(xcms.xcms)$polarity)
+  if (ion_mode==1) {
+    sample.info <- pData(xcms.xcms)%>%
+      dplyr::arrange(analysis.time.positive)%>%
+      dplyr::mutate(sample.type = factor(sample.type,levels = c("Blank","QC","Sample")),
+                    injecton.order = 1:nrow(.))
+  }else{
+
+    sample.info <- pData(xcms.xcms)%>%
+      dplyr::arrange(analysis.time.negative)%>%
+      dplyr::mutate(sample.type = factor(sample.type,levels = c("Blank","QC","Sample")),
+                    injecton.order = 1:nrow(.))
+  }
+  features <- featureValues(xcms.xcms)%>%
+    as.data.frame()%>%
+    rownames_to_column("feature_id")%>%
+    dplyr::filter(feature_id %in% feature_id_to_show )%>%
+    dplyr::select(sample.info$sampleNames)%>%as.numeric()
+
+  sample.info$intensity <- features
+  sample.info$intensity[is.na(sample.info$intensity )] <- 0
+  ggplot(sample.info,aes(x = injecton.order , y = intensity , col = sample.type,na.rm =T))+
+    geom_point(size = 0.5)+
+    scale_color_manual(values = c("grey","#66CAB7","#EE8E5B"))+
+    theme_bw()+
+    theme(text = element_text(size = 8))
+
+
+}
+
 
 
 
