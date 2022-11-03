@@ -213,7 +213,7 @@ xcmsProcessingMSdev <- function(object,
                                                        centWaveParam = xcms.findpeak.param
   )
 
-  pData(object@xcmsData$negativeMS1)$sampleType <-  cbind(pData(object@xcmsData$negativeMS1),
+  pData(object@xcmsData$negativeMS1) <-  cbind(pData(object@xcmsData$negativeMS1),
                                                           sampleInfoNeg)
 
   extractFeature(object)
@@ -494,6 +494,10 @@ adjustFeatureByweight <- function(object,to.adjust = "featureRaw"){
 
 adjustFeatureByIS <-function(object,to.adjust = "featureRaw"){
 
+  object <- findISMSdev(object,corr.thred = 0.8)
+
+
+
 
 
 }
@@ -532,20 +536,126 @@ adjustFeatureByGQC <- function(msdev.object,to.adjust = "featureRaw"){
   msdev.object
 }
 
-findFeature <- function(object,exact_mass =100,ppm = 10,ion_mode = 1 ){
+findFeature <- function(object,
+                        exact_mass =100,
+                        retention_time = 100,
+                        ppm = 10,rt.err = 10, ion_mode = 1 ){
 
   ion_mz <- exact_mass+ifelse(ion_mode==1 , 1.007825,-1.007825)
   ion_mode_char <- ifelse(ion_mode==1 , "positive","negative")
+
+  rt.err <- ifelse(is.na(retention_time),Inf, rt.err)
+  retention_time <- ifelse(is.na(retention_time),0, retention_time)
+
   feature <- object@statData$featureRaw
   feature_matched <- feature%>%
     dplyr::filter( ion_mode == ion_mode_char,
                    mz > ion_mz-ion_mz*ppm/1e6,
-                   mz <  ion_mz+ion_mz*ppm/1e6)
+                   mz <  ion_mz+ion_mz*ppm/1e6)%>%
+    dplyr::filter(rt > retention_time - rt.err,
+                  rt < retention_time + rt.err)
 
   return(feature_matched)
 }
 
-findISdMSdev <- function(object){
+#' @title findISMSdev
+#' @description find features of internals standard listed in `object@experimentInfo@Internal_Standard`
+#' by `Exact_mass` and `Retention_time` (if provide),
+#' only [M+H] and [M-H] are considered. Correlation and intensity will be plot based on `object@statData[["featureRaw"]]`, please check.
+#' A column "internal_standard" will be added in `object@statData[["featureRaw"]]`
+#'
+#' @param object
+#' @param corr.thred
+#'
+#' @return
+#' @export
+#'
+#' @examples
+findISMSdev <- function(object ,corr.thred = 0.6){
+
+  internal.standard <- object@experimentInfo@Internal_Standard%>%as.data.frame()
+  feature <-  object@statData[["featureRaw"]]%>%
+    dplyr::mutate( .before = qc_rsd,
+                   internal_standard = NA)
+  for (i in 1:nrow(internal.standard)) {
+    ft.pos <- findFeature(object ,
+                          exact_mass = internal.standard$Exact_mass[i],
+                          retention_time = internal.standard$Retention_time[i]*60,
+                          ppm = 10,rt.err = 10,ion_mode = 1)$feature_id
+
+    ft.neg <- findFeature(object ,
+                          exact_mass = internal.standard$Exact_mass[i],
+                          retention_time = internal.standard$Retention_time[i]*60,
+                          ppm = 10,rt.err = 10,ion_mode = 0)$feature_id
+
+    feature <- feature%>%
+      dplyr::mutate( .before = qc_rsd,
+                     internal_standard = ifelse(feature_id %in% c(ft.pos,ft.neg),internal.standard$Compound_name[i],internal_standard))
+  }
+
+  sampleinfo <- object@sampleInfo%>%
+    dplyr::filter(xcmsProcessing %in% c("Both","ms1"))
+
+  feature.internal.standard <- feature %>%
+    dplyr::filter(!is.na(internal_standard))
+
+  { ### confirm by correlation
+
+    feature.matrix <- feature.internal.standard%>%
+      column_to_rownames("feature_id")%>%
+      dplyr::select(sampleinfo$sample.name)%>%
+      as.matrix()
+
+    cor.matrix <- cor(t(feature.matrix))
+    high.cor <-apply(cor.matrix, 1, mean)>corr.thred
+
+    feature.internal.standard <- feature.internal.standard[high.cor,]
+    feature.matrix <- feature.matrix[high.cor,]
+    cor.matrix <- cor(t(feature.matrix))
+
+    corrplot::corrplot(cor.matrix  ,is.corr = F,
+                       tl.col = "black",
+                       col = colorRampPalette(c("#0A3A70","white","#FF6666"))(100),
+                       col.lim = c(corr.thred,1))
+    dir.create(paste0(object@projectInfo[["msDataDir"]],"/dataProcessing"))
+    export::graph2pdf(file = paste0(object@projectInfo[["msDataDir"]],"/dataProcessing/Internal_Standard_Corr.pdf"),
+                      width = nrow(cor.matrix)*0.7,height = nrow(cor.matrix)*0.7)
+    openxlsx::write.xlsx(feature.internal.standard,
+                         file = paste0(object@projectInfo[["msDataDir"]],"/dataProcessing/Internal_Standard.xlsx"))
+
+    }
+  feature <- feature%>%
+    dplyr::mutate(internal_standard = ifelse(feature_id %in% feature.internal.standard$feature_id,
+                         internal_standard,NA))
+  { # plot internal standard intensity
+    p.list <- list()
+    for (i in 1:nrow(feature.internal.standard)) {
+      if (feature.internal.standard$ion_mode[i] == "positive") {
+        plot_xcms_feature_intensity(object@xcmsData$positiveMS1,
+                                    sub(feature.internal.standard$feature_id[i],pattern = "_pos",replacement = ""))+
+          labs(title =feature.internal.standard$feature_id[i] )->p
+        p.list[[i]] <- p
+      }else{
+        plot_xcms_feature_intensity(object@xcmsData$negativeMS1,
+                                    sub(feature.internal.standard$feature_id[i],pattern = "_neg",replacement = ""))+
+          labs(title =feature.internal.standard$feature_id[i] )->p
+        p.list[[i]] <- p
+
+      }
+
+
+    }
+
+    (ggplot()+theme_void())/p.list+plot_layout(guides = 'collect')->p.all
+    export::graph2pdf(p.all,file = paste0(object@projectInfo[["msDataDir"]],"/dataProcessing/Internal_Standard_Intensity.pdf"),
+                      width =5,height = 2*length(p.list))
+
+
+    }
+
+  object@statData$featureRaw <-feature
+  return(object)
+
 
 
 
