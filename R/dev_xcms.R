@@ -530,6 +530,17 @@ matchSpectra_Features <- function(xcmsFeatureDef, spec){
 
 
 
+#' @title plot_xcms_feature_intensity
+#' @description plot feature's intensity, ordered by `pData(xcms.xcms)$analysis.time.positive` or
+#'  `pData(xcms.xcms)$analysis.time.negative`
+#'
+#' @param xcms.xcms
+#' @param feature_id_to_show
+#'
+#' @return
+#' @export
+#'
+#' @examples
 plot_xcms_feature_intensity <- function(xcms.xcms , feature_id_to_show ){
 
   ion_mode <- unique(fData(xcms.xcms)$polarity)
