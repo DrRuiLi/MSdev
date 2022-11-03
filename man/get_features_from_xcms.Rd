@@ -4,7 +4,7 @@
 \alias{get_features_from_xcms}
 \title{get_features_from_xcms}
 \usage{
-get_features_from_xcms(xcms.xcms)
+get_features_from_xcms(xcms.xcms, missing = NA)
 }
 \arguments{
 \item{xcms.xcms}{}
