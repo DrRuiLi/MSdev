@@ -452,6 +452,9 @@ getStaDataMSdev <- function(object,
                                        keys =  MSDB.keys)
   featureAll<- add_column(featureAll,featureAllanno[,-1],.after = "feature_id")
   object@statData$featureRaw <-featureAll
+
+  ### adjust
+  #object <- adjustFeatureByIS(object)
   object <- adjustFeatureByGQC(object,to.adjust = "featureRaw")
   object <- adjustFeatureByweight(object,to.adjust = "feature")
 
@@ -494,7 +497,58 @@ adjustFeatureByweight <- function(object,to.adjust = "featureRaw"){
 
 adjustFeatureByIS <-function(object,to.adjust = "featureRaw"){
 
-  object <- findISMSdev(object,corr.thred = 0.8)
+  object <- findISMSdev(object,corr.thred = 0.3)
+  features <- object@statData[[to.adjust]]%>%
+    dplyr::mutate(internal_standard =object@statData$featureRaw$internal_standard[match(
+      feature_id ,object@statData$featureRaw$feature_id
+    )],.before = qc_rsd )
+  sample.info <- object@sampleInfo%>%
+    dplyr::filter(xcmsProcessing%in% c("Both","MS1"),
+                  sample.type!= "GQC")
+
+  feature.matrix <- features%>%
+    column_to_rownames("feature_id")%>%
+    dplyr::select(sample.info$sample.name)
+
+  {### pos
+
+    is.norm <- feature.matrix[features%>%
+                                dplyr::filter(ion_mode == "positive",
+                                              !is.na(internal_standard))%>%
+                                pull(feature_id),]%>%
+      apply(1,function(x){x/mean(x,na.rm = T)})%>%
+      apply(1,mean)
+    feature.matrix.pos <-feature.matrix[features%>%
+                                          dplyr::filter(ion_mode == "positive")%>%
+                                          pull(feature_id),]%>%
+      t%>%
+      `/`(is.norm)%>%
+      t
+
+    }
+  {### neg
+
+    is.norm <- feature.matrix[features%>%
+                                dplyr::filter(ion_mode == "negative",
+                                              !is.na(internal_standard))%>%
+                                pull(feature_id),]%>%
+      apply(1,function(x){x/mean(x,na.rm = T)})%>%
+      apply(1,mean)
+    feature.matrix.neg <-feature.matrix[features%>%
+                                          dplyr::filter(ion_mode == "negative")%>%
+                                          pull(feature_id),]%>%
+      t%>%
+      `/`(is.norm)%>%
+      t
+
+  }
+  feature.matrix <- rbind(feature.matrix.neg,feature.matrix.pos)[features$feature_id,sample.info$sample.name]
+  features[,sample.info$sample.name] <- feature.matrix
+
+
+  features -> object@statData[["feature"]]
+
+  return(object)
 
 
 
@@ -571,10 +625,10 @@ findFeature <- function(object,
 #' @export
 #'
 #' @examples
-findISMSdev <- function(object ,corr.thred = 0.6){
+findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 
   internal.standard <- object@experimentInfo@Internal_Standard%>%as.data.frame()
-  feature <-  object@statData[["featureRaw"]]%>%
+  feature <-  object@statData[[to.adjust]]%>%
     dplyr::mutate( .before = qc_rsd,
                    internal_standard = NA)
   for (i in 1:nrow(internal.standard)) {
@@ -593,19 +647,26 @@ findISMSdev <- function(object ,corr.thred = 0.6){
                      internal_standard = ifelse(feature_id %in% c(ft.pos,ft.neg),internal.standard$Compound_name[i],internal_standard))
   }
 
-  sampleinfo <- object@sampleInfo%>%
-    dplyr::filter(xcmsProcessing %in% c("Both","ms1"))
+
 
   feature.internal.standard <- feature %>%
     dplyr::filter(!is.na(internal_standard))
 
   { ### confirm by correlation
 
+    sampleinfo <- object@sampleInfo%>%
+      dplyr::filter(xcmsProcessing %in% c("Both","MS1"))%>%
+      dplyr::filter(sample.type %in% c("QC","Sample","GQC"))
+
     feature.matrix <- feature.internal.standard%>%
       column_to_rownames("feature_id")%>%
       dplyr::select(sampleinfo$sample.name)%>%
       as.matrix()
 
+    feature.matrix <- apply(feature.matrix,1,function(x){
+      x[is.na(x)] <- min(x,na.rm = T)/10
+      return(x)}
+      )%>%t
     cor.matrix <- cor(t(feature.matrix))
     high.cor <-apply(cor.matrix, 1, mean)>corr.thred
 
@@ -616,7 +677,7 @@ findISMSdev <- function(object ,corr.thred = 0.6){
     corrplot::corrplot(cor.matrix  ,is.corr = F,
                        tl.col = "black",
                        col = colorRampPalette(c("#0A3A70","white","#FF6666"))(100),
-                       col.lim = c(corr.thred,1))
+                       col.lim = c(min(cor.matrix),1))
     dir.create(paste0(object@projectInfo[["msDataDir"]],"/dataProcessing"))
     export::graph2pdf(file = paste0(object@projectInfo[["msDataDir"]],"/dataProcessing/Internal_Standard_Corr.pdf"),
                       width = nrow(cor.matrix)*0.7,height = nrow(cor.matrix)*0.7)
