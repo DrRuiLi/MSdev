@@ -11,7 +11,7 @@ analyzeDiff <- function(diff.matrix,diff.group){
   diff.table <- data.frame(feature_id = colnames(diff.matrix),
                            foldchange =apply(diff.matrix,2,
                                              function(x)
-                                               mean(x[idx.case])/mean(x[idx.con])),
+                                               mean(x[idx.case],na.rm =T)/mean(x[idx.con],na.rm =T)),
                            p.value = apply(diff.matrix,2,function(x){
                              t.test_dev(x[idx.case],x[idx.con])
                            }))%>%
