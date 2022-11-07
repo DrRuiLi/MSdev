@@ -91,6 +91,78 @@ plotMSdevDiffHeatmap <- function(object){
 
 }
 
+plotMSdevDiffLipidClassPie <- function(object,topn = 10){
+
+  sample.info <- object@sampleInfo
+  n.diff <- length(object@statData$DifferentialMetabolites)
+  metabolites.table <- object@statData$metabolites
+  for (i in 1:n.diff) {
+
+    diff.title <- names(object@statData$DifferentialMetabolites)[i]
+    diff.dir <- paste0(object@projectInfo$projectDir,"/Statistic/",diff.title)
+    dir.create(diff.dir,recursive = T,showWarnings = F)
+
+    diff.table <- object@statData$DifferentialMetabolites[[i]]%>%
+      dplyr::mutate(Lipid_subclass=metabolites.table$Lipid_subclass)
+
+
+
+    plot.data <- diff.table%>%
+      dplyr::group_by(Lipid_subclass)%>%
+      dplyr::mutate(total = length(Lipid_subclass),
+                    sign = sum(p.value <0.05&abs(log2foldchange)>0.4150375))%>%
+      dplyr::distinct(Lipid_subclass,total,sign)%>%
+      dplyr::ungroup()%>%
+      dplyr::mutate(nosign  = total - sign,
+                    sign.rate = sign/total)%>%
+      pivot_longer(sign:nosign,names_to = "diff",values_to = "n")%>%
+      dplyr::slice_max(order_by = sign.rate,n= topn*2)%>%
+      dplyr::arrange(-total)%>%
+      dplyr::mutate(ymax = cumsum(n))%>%
+      dplyr::mutate(ymin = ymax-n-0.1,
+                    Lipid_subclass = factor(Lipid_subclass, levels = unique(Lipid_subclass)))
+    plot.data <- plot.data[1:20,]
+
+    col.total <- ggsci::pal_npg()(topn)
+    names(col.total)<-unique(plot.data$Lipid_subclass)
+
+    plot.data <- plot.data%>%
+      dplyr::mutate(inner.col = col.total[Lipid_subclass],
+                    outter.col = ifelse(diff=="sign",col.sign[Lipid_subclass],col.nosign[Lipid_subclass]),
+                    alpha =ifelse(diff=="sign",0.8,0.7))
+
+    ggplot(plot.data)+
+      geom_rect(aes(xmin = 0,xmax = 1.5,ymin = ymin,ymax = ymax ),fill = "white")+
+      geom_rect(aes(fill =Lipid_subclass , xmin = 1.5,xmax = 3,ymin = ymin,ymax = ymax ))+
+      geom_rect(aes(fill =Lipid_subclass ,
+                    xmin = 3.05,xmax =3.3,ymin = ymin,ymax = ymax ,alpha = diff))+
+      scale_fill_manual(values = col.total)+
+      scale_alpha_discrete(range  = c(0.3,0.8),labels = c("No sign","Sing"))+
+      labs(alpha = "Significance")+
+      coord_polar(theta="y")+
+      theme_void()+
+      guides(fill = guide_legend(ncol = 1))+
+      theme(text = element_text(size = 8),
+            legend.key.size = unit(0.1,"inch")
+            )->diff.pie
+    diff.pie
+    openxlsx::write.xlsx(plot.data ,
+                         file= paste0(diff.dir,"/Differential_Lipid_Class_Pie_",diff.title,".xlsx")
+                         )
+    export::graph2pdf(diff.pie,
+                      file= paste0(diff.dir,"/Differential_Lipid_Class_Pie_",diff.title,".pptx"),
+                      width = 3,height = 3)
+
+
+
+  }
+
+
+
+
+
+}
+
 plotMSdevANOVA <- function(object){
 
   sample.info <- object@sampleInfo%>%
