@@ -454,13 +454,13 @@ getStaDataMSdev <- function(object,
   object@statData$featureRaw <-featureAll
 
   ### adjust
-  #object <- adjustFeatureByIS(object)
-  object <- adjustFeatureByGQC(object,to.adjust = "featureRaw")
-  object <- adjustFeatureByweight(object,to.adjust = "feature")
+ # object <- adjustFeatureByIS(object)
+#  object <- adjustFeatureByGQC(object,to.adjust = "featureRaw")
+  object <- adjustFeatureByweight(object,to.adjust = "featureRaw")
 
   object@statData$feature <- object@statData$feature%>%
-    #dplyr::filter(qc_rsd <0.3)%>%
-    dplyr::filter(gqc_r2 >0.8)%>%
+    dplyr::filter(qc_rsd <0.3)%>%
+    #dplyr::filter(gqc_r2 >0.8)%>%
     dplyr::filter()
   .uniqueFeatures <- function(score,intensity){
     score <- ifelse(score >0.3 , 10,1)
@@ -569,17 +569,24 @@ adjustFeatureByGQC <- function(msdev.object,to.adjust = "featureRaw"){
 
   .adjust.fun <- function(x){
     fit.df <- data.frame(y =GQC.sampleinfo$QC.gradient.concentraion,
-                         x = x[GQC.sampleinfo$sample.name])
-    if (all(is.na(fit.df$x))) {
+                         x = x[GQC.sampleinfo$sample.name])%>%
+      dplyr::filter(!is.na(x))
+
+    if (nrow(fit.df)<=1) {
       return(c(x, r2 = 0))
 
     }
-    fit <- lm(y~x , data = fit.df)
+    #fit <- lm(y~x , data = fit.df)
+    fit <- e1071::svm(y~x , data = fit.df)
     fit.pred <- predict(fit,newdata = data.frame(x = x ))
-
-    return(c(fit.pred , r2 = summary(fit)$r.squared))
+    fit.pred <- fit.pred[names(x)]
+    names(fit.pred) <- names(x)
+    r2 <- cor(fit.df$y,predict(fit))^2
+    return(c(fit.pred , r2 = r2))
 
   }
+
+
 
   adjusted.matrix  <- apply(sample.matrix,2, .adjust.fun)%>%t
   msdev.object@statData[["feature"]] <- msdev.object@statData[[to.adjust]]
