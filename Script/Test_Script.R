@@ -2688,7 +2688,7 @@ saveMSdev(ESCC.metabolomics)
 
 ### Serum metabolomics
 ESCC.serum.metabolomics <- load_as_var("d:/2022.10.27.ESCC.Serum.metablomics/MSdev_2022_10_27.Rdata")
-ESCC.serum.metabolomics <- checkSampleInfo(ESCC.serum.metabolomics)
+ESCC.serum.metabolomics <- checkSampleInfo(ESCC.serum.metabolomics,MSDB.keys = c("Compound_name","adduct","formula","inchikey","kegg.id" ,"database_origin"))
 
 
 
@@ -2869,7 +2869,194 @@ avanti.is <- avanti.is%>%
 
 
 
+msdev.adjusted <- adjustFeatureByIS(msde)
 
+
+feature.matrix <- feature.matrix[,-101 ]
+corrplot::corrplot(corr = cor(t(feature.matrix)),order = "original")
+x<- feature.matrix[1,]
+y <- feature.matrix[6,]
+plot(x,y,main = cor(x,y))
+boxplot(cor(t(feature.matrix)))
+
+
+sum(apply(a,1,mean)>0.5)
+
+
+# Thu Nov  3 12:19:09 2022 ------------------------------
+MSDEV.escc.lipidomic <- load_as_var("d:/2022.9.28.ESCC.Lipidomic/MSdev_2022_09_28.Rdata")
+
+MSDEV.escc.lipidomic <- findISMSdev(MSDEV.escc.lipidomic,0,to.adjust = "featureRaw")
+MSDEV.escc.lipidomic <- adjustFeatureByIS(MSDEV.escc.lipidomic)
+MSDEV.escc.lipidomic <- getStaDataMSdev(MSDEV.escc.lipidomic)
+
+MSDEV.escc.lipidomic <- analyzeMSdevANOVA(MSDEV.escc.lipidomic)
+plotMSdevANOVA(MSDEV.escc.lipidomic)
+MSDEV.escc.lipidomic <- analyzeMSdevDiffMetabolites(MSDEV.escc.lipidomic)
+plotMSdevDiffVolcano(MSDEV.escc.lipidomic,p.adjusted = F)
+exportMSdev(MSDEV.escc.lipidomic)
+saveMSdev(MSDEV.escc.lipidomic)
+
+
+a <- adjustFeatureByGQC(MSDEV.escc.lipidomic)
+findISMSdev(MSDEV.escc.lipidomic,corr.thred = 0.5,to.adjust = "feature")
+
+
+
+
+# Fri Nov  4 10:17:43 2022 ------------------------------
+
+### Serum metabolomics
+ESCC.serum.metabolomics <- load_as_var("d:/2022.10.27.ESCC.Serum.metablomics/MSdev_2022_10_27.Rdata")
+ESCC.serum.metabolomics <- checkSampleInfo(ESCC.serum.metabolomics)
+ESCC.serum.metabolomics.adj <- getStaDataMSdev(ESCC.serum.metabolomics,
+                     MSDB.keys = c("Compound_name","adduct","formula","inchikey","kegg.id" ,"database_origin"))
+exportMSdev(ESCC.serum.metabolomics.adj)
+saveMSdev(ESCC.serum.metabolomics.adj)
+
+
+
+
+
+
+library(devtools)
+load_all()
+MSdev.syy <- load_as_var("d:/2022.9.16.LR.Lipidomic.Co.FuDan/MSdev_2022_09_16.Rdata")
+MSdev.syy <- analyzeMSdevDiffMetabolites(MSdev.syy)
+plotMSdevDiffVolcano(MSdev.syy,p.adjusted = F)
+plotMSdevDiffLipidClassPie(MSdev.syy,p.adjusted = F)
+
+
+
+
+
+c("Ac2PIM1","HBMP","FAHFA")%in%plot.data$Lipid_subclass
+
+
+sample.info <- MSdev.syy@sampleInfo%>%
+  dplyr::filter(grepl(pattern = "TISSUE",x =group,ignore.case = T))%>%
+  mutate(group = groupStringFactor(group))
+
+metabolites <-MSdev.syy@statData$metabolites%>%
+  dplyr::filter(Lipid_subclass%in% c("Ac2PIM1","HBMP","FAHFA"))
+
+heatmap.matrix <- metabolites%>%
+  column_to_rownames("feature_id")%>%
+  select(sample.info$sample.name)%>%
+  t%>%scale%>%t
+
+apply(heatmap.matrix,1,function(x){
+  any(is.nan(x))
+})->exist.nan
+
+metabolites <- metabolites[!exist.nan,]
+heatmap.matrix <- heatmap.matrix[!exist.nan,]
+
+library(ComplexHeatmap)
+Heatmap(heatmap.matrix,
+        name = "Z score",
+        row_split = metabolites$Lipid_subclass,
+        column_split  = sample.info$group,
+        row_labels = metabolites$Compound_name,
+        column_names_rot =- 45,
+        cluster_column_slices = F,
+        row_names_gp = grid::gpar(fontsize= 6),
+        column_names_gp  = grid::gpar(fontsize= 6),
+        column_title_gp = grid::gpar(fontsize= 8),
+        row_title_gp   = grid::gpar(fontsize= 8),)->diff.heatmap
+diff.heatmap
+export::graph2pdf(diff.heatmap,
+                  file= paste0(diff.dir,"/Heatmap.Tissue.Ac2PIM1.HBMP.FAHFA.pptx"),
+                  width = 1*nrow(sample.info),height = 0.08*nrow(heatmap.matrix))
+
+
+
+
+
+
+
+# Mon Nov  7 12:59:46 2022 ------------------------------
+library(devtools)
+load_all()
+
+
+
+escc.t.m <- load_as_var("d:/2022.10.2.ESCC.metabolomic/MSdev_2022_10_27.Rdata")
+
+
+#escc.t.m <- checkSampleInfo(escc.t.m)
+escc.t.m <- getStaDataMSdev(escc.t.m,
+                            MSDB.keys = c("Compound_name","adduct","formula","inchikey","kegg.id" ,"database_origin"))
+
+saveMSdev(escc.t.m)
+exportMSdev(escc.t.m)
+
+
+escc.t.m <- analyzeMSdevDiffMetabolites(escc.t.m)
+plotMSdevDiffVolcano(escc.t.m,p.adjusted = F)
+
+
+escc.s.m <- load_as_var()
+
+
+
+fit.df <- data.frame(y =GQC.sampleinfo$QC.gradient.concentraion,
+                     x = x[GQC.sampleinfo$sample.name])
+plot(fit.df$y,fit.df$x  )
+
+
+
+escc.t.L <- adjustFeatureByIS(escc.t.L)
+
+findISMSdev(escc.t.L)
+library(devtools)
+load_all()
+escc.t.L <- load_as_var("d:/2022.9.28.ESCC.Lipidomic/MSdev_2022_09_28.Rdata")
+#escc.t.L <- checkSampleInfo(escc.t.L)
+escc.t.L <- getStaDataMSdev(escc.t.L)
+exportMSdev(escc.t.L)
+saveMSdev(escc.t.L)
+escc.t.L <- analyzeMSdevDiffMetabolites(escc.t.L)
+plotMSdevDiffVolcano(escc.t.L,p.adjusted = F)
+
+
+library(devtools)
+load_all()
+plotPCA()
+
+
+library(ropls)
+
+data(foods) ## see Eriksson et al. (2001); presence of 3 missing values (NA)
+head(foods)
+foodMN <- as.matrix(foods[, colnames(foods) != "Country"])
+rownames(foodMN) <- foods[, "Country"]
+head(foodMN)
+foo.pca <- opls(foodMN,predI = 10)
+
+
+
+
+
+# Fri Nov 11 14:04:27 2022 ------------------------------
+escc.s.m <- MSdev(rawDataDir = "d:/2022.10.27.ESCC.Serum.metablomics/rawData/",
+                  experimentInfo = MS_Experiment[1])
+escc.s.m <- checkSampleInfo(escc.s.m)
+
+escc.s.m <- msConvert_MSdev(escc.s.m)
+escc.s.m <- xcmsProcessingMSdev(escc.s.m,xcms.findpeak.param = CentWaveParam(ppm = 25,
+                                                                             peakwidth = c(5,50)))
+escc.s.m <- extractSpectra_fullscan_DDA(escc.s.m)
+escc.s.m <- featureSpectra_fullscan_DDA(escc.s.m)
+escc.s.m <- featureCandidate(escc.s.m,mz.ppm = 20,
+                                      spectraDatabase ="d:/MSdb/msdb.KEGG.2022_10_27.Rdata" )
+saveMSdev(escc.s.m)
+escc.s.m <- annotateMSdev(escc.s.m)
+escc.s.m <- checkSampleInfo(escc.s.m)
+escc.s.m <- getStaDataMSdev(escc.s.m,
+                                MSDB.keys = c("Compound_name","adduct","formula","inchikey","kegg.id" ,"database_origin"))
+exportMSdev(escc.s.m)
+saveMSdev(escc.s.m)
 
 
 
