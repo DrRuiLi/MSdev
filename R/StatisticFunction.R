@@ -197,7 +197,7 @@ plotPCA <- function(pca.matrix,pca.group){
 
 }
 
-plotVolcano <- function(diff.table,p.adjusted = T){
+plotVolcano <- function(diff.table,p.adjusted = T,point.label =F){
 
   diff.table <- diff.table%>%
     dplyr::mutate(p = case_when(p.adjusted~p.fdr,
@@ -231,6 +231,23 @@ plotVolcano <- function(diff.table,p.adjusted = T){
           axis.title = element_text(size = 8),
           panel.border = element_rect(fill= NA,size = 0.1),
           text = element_text(size=8)) ->vp
+
+  if(point.label){
+    label.df <-diff.table%>%
+      dplyr::filter(diff != "no")
+    vp <- vp+
+      ggrepel::geom_text_repel(data = label.df,
+                                aes(x = log2foldchange  , y = log10p,
+                                    label = Compound_name),
+                               size = 1,
+                               segment.size = 0.1,
+                               max.overlaps = 30)
+
+
+
+
+  }
+
   vp
 
 
