@@ -174,7 +174,7 @@ msConvert2mzML <- function(raw.files ,
     #system(shell.commomd,intern = T)
 
 
-    bplapply(shell.commomd,
+    BiocParallel::bplapply(shell.commomd,
              FUN = function(x){ system(x,intern = T)},
              BPPARAM = BPPARAM)
     return(0)
