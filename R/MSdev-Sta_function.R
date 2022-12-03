@@ -20,7 +20,7 @@ plotMSdevPCA <- function(object){
 
 }
 
-plotMSdevDiffVolcano <- function(object,p.adjusted = T){
+plotMSdevDiffVolcano <- function(object,p.adjusted = T,point.label = F){
 
   n.diff <- length(object@statData$DifferentialMetabolites)
   metabolites.table <- object@statData$metabolites%>%
@@ -33,7 +33,7 @@ plotMSdevDiffVolcano <- function(object,p.adjusted = T){
     dir.create(diff.dir,recursive = T,showWarnings = F)
     diff.table <- object@statData$DifferentialMetabolites[[i]]%>%
       dplyr::mutate(metabolites.table,.after = log10fdr)
-    diff.volcano <- plotVolcano(diff.table,p.adjusted )+
+    diff.volcano <- plotVolcano(diff.table,p.adjusted ,point.label)+
       labs(title = diff.title)
     diff.volcano
     openxlsx::write.xlsx(diff.table,
