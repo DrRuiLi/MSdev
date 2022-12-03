@@ -3064,3 +3064,146 @@ saveMSdev(escc.s.m)
 
 
 
+
+
+
+
+
+object <- adjustFeatureByIS(object)
+object <- adjustFeatureByGQC(object)
+object <- adjustFeatureByweight(object)
+
+b <- filter(a , mz >616.32&mz < 616.33)
+sp.neg <- escc.t.m@spectra$negativeFeatureMS2
+res.sp <- sp.neg[[3761]]
+#res.sp <- filterMzRange(res.sp,c(0,615.3))%>%
+#  applyProcessing()
+
+plotSpectraMirror(res.sp[1], res.sp[2],
+                  labels = function(z){
+                    x <- mz(z)[[1L]]
+
+                    x <- format(x, digits = 6)
+                    x.int <-  intensity(z)[[1L]]
+
+                    x[x.int< max(x.int)*0.1] <- ""
+                    x
+                  } ,
+                  labelSrt = -30, labelPos = 2, labelOffset = 0.2)
+
+
+
+library(XML)
+xml.file <- "D:/TEMP/temp.xml"
+result <- XML::xmlParse(xml.file)
+
+root.node <- xmlRoot(result)
+xmlSize(root.node)
+
+root.node[[1]][[1]][[1]]
+xmlToList(result)->xml.liest
+xmlToDataFrame(result)->xml.df
+
+
+# Wed Nov 30 09:34:11 2022 ------------------------------
+msdev.ljw <- load_as_var("d:/2022_09_26-Lirui_LJW_Metabolomic/MSdev_2022_10_11.Rdata")
+MSdev.obj <- msdev.ljw
+plotMSdevDiffVolcano(msdev.ljw,point.label = T,p.adjusted = F)
+
+
+
+library(shiny)
+runExample("11_timer")
+
+
+
+library(MSdev)
+
+
+library(devtools)
+load_all()
+msConvertDir("d:/TEMP/")
+
+plot_xcms_peaks_distribution(xcms.xcms )
+export_QE_ExclusionList_From_xcmsPeaks(xcms.xcms,10)
+plot_xcms_features_distribution(xcms.xcms )
+
+
+
+
+mz.file <-"d:/TEMP/mzML/FS_neg_QC011.mzML"
+
+get.inclu.list <- function(mz.file){
+
+  xcms.xcms <- xcmsProcessingMS1(mz.file,
+                                 centWaveParam = CentWaveParam(ppm = 10,
+                                                               peakwidth = c(5,50),
+                                                               snthresh = 1000))
+  inclu.list <- export_QE_InclusionList_From_xcmsFeature(xcms.xcms)%>%
+    dplyr::filter(maxo > 5)%>%
+    dplyr::slice_max(maxo , n = 5000)
+
+  f.o <- paste0(dirname(mz.file),"/Inclusion.list.",
+                basename(mz.file)%>%
+                  sub(replacement = ".csv",pattern = ".mzML"))
+
+
+  write_csv(inclu.list,file = f.o)
+
+
+
+}
+
+
+get.inclu.list("d:/TEMP/mzML/FS_neg_Sample002.mzML")
+get.inclu.list("d:/TEMP/mzML/FS_pos_Sample002.mzML")
+
+
+mz.files <- dir("d:/TEMP/mzML/",pattern = "mzML$",full.names = T)
+for (i in mz.files) {
+  get.inclu.list(i)
+}
+
+
+
+
+msdev.escc <- MSdev(rawDataDir = "d:/2022.12.1.ESCC.Serum.lipidomic.exclu/rawData/")
+msConvert_MSdev(msdev.escc)
+msdev.escc <- checkSampleInfo(msdev.escc)
+
+export_QE_ExclusionList_From_xcmsPeaks()
+
+
+
+xcms.xcms <- xcmsProcessingMS1("d:/TEMP/mzML/FS_pos_QC011.mzML",
+                               centWaveParam = CentWaveParam(ppm = 10,
+                                                             peakwidth = c(5,50),
+                                                             snthresh = 10))
+export_QE_ExclusionList_From_xcmsPeaks(xcms.xcms,5)
+
+
+xcms.xcms <- xcmsProcessingMS1("d:/TEMP/mzML/FS_neg_QC011.mzML",
+                               centWaveParam = CentWaveParam(ppm = 10,
+                                                             peakwidth = c(5,50),
+                                                             snthresh = 10))
+export_QE_ExclusionList_From_xcmsPeaks(xcms.xcms,5)
+
+
+
+
+mz.files <- dir("d:/TEMP/mzML/",pattern = "mzML$",full.names = T)
+for (i in mz.files) {
+  xcms.xcms <- xcmsProcessingMS1(i,
+                                 centWaveParam = CentWaveParam(ppm = 10,
+                                                               peakwidth = c(5,50),
+                                                               snthresh = 10))
+  export_QE_ExclusionList_From_xcmsPeaks(xcms.xcms,10)
+
+
+}
+
+
+
+msConvertDir("d:/temp/")
+
+
