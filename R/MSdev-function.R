@@ -731,3 +731,11 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 
 
 
+
+getSummarizedExperiment <- function(MSdev.obj){
+
+
+
+
+
+}
