@@ -1,8 +1,8 @@
 annotateSpectra <- function(expSpec,refSpec){
 
   to.return <- list(
-    mz = median(precursorMz(expSpec)),
-    rt = median(rtime(expSpec)),
+    mz = median(ProtGenerics::precursorMz(expSpec)),
+    rt = median(ProtGenerics::rtime(expSpec)),
     ref.mz = NA,
     ref.rt = NA,
     score = 0,
@@ -51,8 +51,8 @@ annotateSpectra <- function(expSpec,refSpec){
 annotateSpectraMSdb <- function(expSpec,refSpec){
 
   to.return <- list(
-    mz = median(precursorMz(expSpec)),
-    rt = median(rtime(expSpec)),
+    mz = median(ProtGenerics::precursorMz(expSpec)),
+    rt = median(ProtGenerics::rtime(expSpec)),
     ref.mz = NA,
     ref.rt = NA,
     score = 0,
@@ -96,7 +96,7 @@ annotateSpectraMSdb <- function(expSpec,refSpec){
 makeSpectra <- function(precursorMz ,
                         rtime ,...){
 
-  Spectra::Spectra(DataFrame(precursorMz = precursorMz,
+  Spectra::Spectra(S4Vectors::DataFrame(precursorMz = precursorMz,
                              rtime = rtime,
                              ...))
 
