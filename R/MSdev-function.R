@@ -131,6 +131,16 @@ checkSampleInfo <- function(object){
 }
 
 
+#' @title msConvert_MSdev
+#'
+#' @param object
+#'
+#' @return
+#' @export
+#' @importFrom BiocParallel  bplapply
+#' @examples
+#'
+
 msConvert_MSdev <- function(object){
 
   ### convert
@@ -200,7 +210,7 @@ xcmsProcessingMSdev <- function(object,
                                                     centWaveParam = xcms.findpeak.param
   )
 
-  pData(object@xcmsData$positiveMS1) <- cbind(pData(object@xcmsData$positiveMS1),
+  Biobase::pData(object@xcmsData$positiveMS1) <- cbind(Biobase::pData(object@xcmsData$positiveMS1),
                                               sampleInfoPos)
 
   sampleInfoNeg <-dplyr::filter(object@sampleInfo,
@@ -213,7 +223,7 @@ xcmsProcessingMSdev <- function(object,
                                                        centWaveParam = xcms.findpeak.param
   )
 
-  pData(object@xcmsData$negativeMS1) <-  cbind(pData(object@xcmsData$negativeMS1),
+  Biobase::pData(object@xcmsData$negativeMS1) <-  cbind(Biobase::pData(object@xcmsData$negativeMS1),
                                                           sampleInfoNeg)
 
   extractFeature(object)
@@ -254,10 +264,10 @@ extractSpectra_fullscan_DDA <- function(object){
     spectra.pos <- Spectra::Spectra()
     spectra.neg <- Spectra::Spectra()
   } else {
-    spectra.pos <- Spectra::Spectra(na.omit(sampleInfo$msData.file.positive),backend = MsBackendDataFrame())%>%
+    spectra.pos <- Spectra::Spectra(na.omit(sampleInfo$msData.file.positive),backend = Spectra::MsBackendDataFrame())%>%
     filterMsLevel(2)
 
-    spectra.neg <- Spectra::Spectra(na.omit(sampleInfo$msData.file.negative),backend = MsBackendDataFrame())%>%
+    spectra.neg <- Spectra::Spectra(na.omit(sampleInfo$msData.file.negative),backend = Spectra::MsBackendDataFrame())%>%
     filterMsLevel(2)
   }
 
@@ -331,7 +341,7 @@ featureCandidate<- function(object,mz.ppm = 10,
   .matchMz <- function(xcmsFeature,spectraDB){
     feature.mz_rt <- data.frame(mz = xcmsFeature$mzmed,
                                 rt = xcmsFeature$rtmed)
-    lib.precursormz <- precursorMz(spectraDB)
+    lib.precursormz <- ProtGenerics::precursorMz(spectraDB)
     lib.rtime <- rtime(spectraDB)
     lib.candidate <- apply(feature.mz_rt,1,function(x){
 
@@ -353,9 +363,9 @@ featureCandidate<- function(object,mz.ppm = 10,
   }
   object@projectInfo$MSDB_path <- spectraDatabase
   object@annotation$positiveCandidate <- .matchMz(object@xcmsData$positiveFeature,
-                                                  filterPolarity(Spectra_database,1))
+                                                  ProtGenerics::filterPolarity(Spectra_database,1))
   object@annotation$negativeCandidate <- .matchMz(object@xcmsData$negativeFeature,
-                                                  filterPolarity(Spectra_database,0))
+                                                  ProtGenerics::filterPolarity(Spectra_database,0))
   object
 
 }
@@ -366,7 +376,7 @@ annotateMSdev <- function(object){
 
     BiocParallel::bplapply(1:length(featureMS2),function(i){
       annotateSpectraMSdb(featureMS2[[i]],candidate[[i]])
-    },BPPARAM = SerialParam(
+    },BPPARAM = BiocParallel::SerialParam(
       progressbar = T))
   }
   object@annotation$positiveAnnotation <- .annotateMSdev(featureMS2 = object@spectra$positiveFeatureMS2,
@@ -425,24 +435,24 @@ getStaDataMSdev <- function(object,
   })%>%data.table::rbindlist()
 
   featurePos <- get_features_from_xcms(object@xcmsData$positiveMS1,missing = NA)
-  featurePos <- rowData(featurePos)%>%
+  featurePos <- SummarizedExperiment::rowData(featurePos)%>%
     as.data.frame()%>%
     rownames_to_column("feature_id")%>%
     dplyr::select(feature_id,qc_rsd,sample_rsd,med_intensity)%>%
     dplyr::mutate(feature_id = paste0(feature_id , "_pos"),
                   ion_mode = "positive")%>%
-    cbind(annotationPos,assay(featurePos))%>%
+    cbind(annotationPos,SummarizedExperiment::assay(featurePos))%>%
     dplyr::rename_with( ~sub(pattern = ".mzML",replacement = "",x = .x))%>%
     remove_rownames()
 
   featureNeg <- get_features_from_xcms(object@xcmsData$negativeMS1,missing = NA)
-  featureNeg <- rowData(featureNeg)%>%
+  featureNeg <- SummarizedExperiment::rowData(featureNeg)%>%
     as.data.frame()%>%
     rownames_to_column("feature_id")%>%
     dplyr::select(feature_id,qc_rsd,sample_rsd,med_intensity)%>%
     dplyr::mutate(feature_id = paste0(feature_id , "_neg"),
                   ion_mode = "negative")%>%
-    cbind(annotationNeg,assay(featureNeg))%>%
+    cbind(annotationNeg,SummarizedExperiment::assay(featureNeg))%>%
     dplyr::rename_with( ~sub(pattern = ".mzML",replacement = "",x = .x))%>%
     remove_rownames()
 
@@ -732,8 +742,17 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 
 
 
-getSummarizedExperiment <- function(MSdev.obj){
+getSummarizedExperimentMSdev <- function(MSdev.obj){
 
+  col.info <- MSdev.obj@sampleInfo%>%
+    dplyr::filter(sample.type == "Sample")%>%
+    dplyr::mutate(label = sample.name,
+                  condition = group ,
+                  replicate = 1)%>%
+    dplyr::group_by(condition)%>%
+    dplyr::mutate(replicate = 1:n())
+
+  data.unique <- make_unique(MSdev.obj@statData , names ="feature_id" , ids = "feature_id")
 
 
 
