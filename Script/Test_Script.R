@@ -3207,3 +3207,65 @@ for (i in mz.files) {
 msConvertDir("d:/temp/")
 
 
+
+msdev.escc.serum.lipidomic <- MSdev(rawDataDir = "d:/2022.12.03.ESCC.Serum.Lipidomic/rawData/",
+                                    experimentInfo =MS_Experiment[8] )
+
+checkSampleInfo(msdev.escc.serum.lipidomic)
+
+
+msdev.escc.serum.lipidomic <- msConvert_MSdev(msdev.escc.serum.lipidomic)
+msdev.escc.serum.lipidomic <- load_as_var("d:/2022.12.03.ESCC.Serum.Lipidomic/MSdev_2022_12_03.Rdata")
+msdev.escc.serum.lipidomic <- checkSampleInfo(msdev.escc.serum.lipidomic)
+
+msdev.escc.serum.lipidomic <- xcmsProcessingMSdev(msdev.escc.serum.lipidomic,
+                                                  xcms.findpeak.param =xcms::CentWaveParam(ppm = 10,snthresh = 10,
+                                                                                           peakwidth = c(5,50),
+                                                                                           prefilter = c(3,1000)) )
+
+msdev.escc.serum.lipidomic <- extractSpectra_fullscan_DDA(msdev.escc.serum.lipidomic)
+msdev.escc.serum.lipidomic <- featureSpectra_fullscan_DDA(msdev.escc.serum.lipidomic)
+msdev.escc.serum.lipidomic <- featureCandidate(msdev.escc.serum.lipidomic,
+                                               mz.ppm = 10,spectraDatabase = "d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata")
+msdev.escc.serum.lipidomic <- annotateMSdev(msdev.escc.serum.lipidomic)
+msdev.escc.serum.lipidomic <- getStaDataMSdev(msdev.escc.serum.lipidomic)
+saveMSdev(msdev.escc.serum.lipidomic)
+#msdev.escc.serum.lipidomic <- dropSpectra(msdev.escc.serum.lipidomic)
+exportMSdev(msdev.escc.serum.lipidomic)
+
+
+
+
+a <- load_as_var("C:/Users/91879/OneDrive/Documents/Code/R/Projecct/2022.1.8_MS.demo/Demo/MSdev_2022_12_04.Rdata")
+
+a <- xcmsProcessingMSdev(a)
+a  <- extractSpectra_fullscan_DDA(a )
+a <- featureSpectra_fullscan_DDA(a)
+a <- featureCandidate(a,mz.ppm = 10,spectraDatabase = "d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata")
+
+a <- annotateMSdev(a)
+a <- getStaMSdev(a)
+
+saveMSdev(a)
+library(devtools)
+load_all()
+
+a <-MSdev(rawDataDir = "d:/2022.12.5.XXD.Lipidomic/rawData/")
+a <- msConvert_MSdev(a)
+a <- xcmsProcessingMSdev(a, xcms.findpeak.param = xcms::CentWaveParam(ppm = 10,snthresh = 100,
+                                                                      peakwidth = c(5,50),
+                                                                      prefilter = c(3,1000)))
+a  <- extractSpectra_fullscan_DDA(a )
+a <- featureSpectra_fullscan_DDA(a)
+a <- featureCandidate(a,mz.ppm = 10,
+                      spectraDatabase = "d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata")
+a <- annotateMSdev(a)
+a <- getStaDataMSdev(a)
+a <- checkSampleInfo(a)
+
+
+
+
+
+
+
