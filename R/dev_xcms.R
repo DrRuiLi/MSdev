@@ -457,7 +457,7 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
                                                                   peakwidth = c(5,30),
                                                                   snthresh = 10,
                                                                   prefilter = c(3,100))){
-  xcms.xcms <-  readMSData(msDataFiles, mode = "onDisk")
+  xcms.xcms <-  MSnbase::readMSData(msDataFiles, mode = "onDisk")
   if (is.na(ion_mode)) {
     ion_mode <- polarity(xcms.xcms )%>%unique()
     if (length(ion_mode)!=1) {
@@ -482,7 +482,7 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
                                       subset = which(peaksGroup == "QC"),
                                       subsetAdjust = "average",span = 0.4)
 
-  if (length(sampleNames(xcms.xcms))>1) {
+  if (length(oligoClasses::sampleNames(xcms.xcms))>1) {
     xcms.xcms <- adjustRtime(xcms.xcms,param = peak.group.param)
   }
 
@@ -531,8 +531,8 @@ matchSpectra_Features <- function(xcmsFeatureDef, spec){
 
 
 #' @title plot_xcms_feature_intensity
-#' @description plot feature's intensity, ordered by `pData(xcms.xcms)$analysis.time.positive` or
-#'  `pData(xcms.xcms)$analysis.time.negative`
+#' @description plot feature's intensity, ordered by `Biobase::pData(xcms.xcms)$analysis.time.positive` or
+#'  `Biobase::pData(xcms.xcms)$analysis.time.negative`
 #'
 #' @param xcms.xcms
 #' @param feature_id_to_show
@@ -545,13 +545,13 @@ plot_xcms_feature_intensity <- function(xcms.xcms , feature_id_to_show ){
 
   ion_mode <- unique(fData(xcms.xcms)$polarity)
   if (ion_mode==1) {
-    sample.info <- pData(xcms.xcms)%>%
+    sample.info <- Biobase::pData(xcms.xcms)%>%
       dplyr::arrange(analysis.time.positive)%>%
       dplyr::mutate(sample.type = factor(sample.type,levels = c("Blank","QC","Sample")),
                     injecton.order = 1:nrow(.))
   }else{
 
-    sample.info <- pData(xcms.xcms)%>%
+    sample.info <- Biobase::pData(xcms.xcms)%>%
       dplyr::arrange(analysis.time.negative)%>%
       dplyr::mutate(sample.type = factor(sample.type,levels = c("Blank","QC","Sample")),
                     injecton.order = 1:nrow(.))
