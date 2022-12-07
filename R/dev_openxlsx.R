@@ -37,3 +37,19 @@ edit_df_in_excel <- function(df){
   df <- wb_to_df(wb)
 df
 }
+
+#' write.xlsx
+#'
+#' @param data
+#' @param file.dir
+#'
+#' @return
+#' @export
+#'
+#' @examples
+write.xlsx <- function(data,file.dir ){
+
+  dir.create(dirname(file.dir),recursive = T)
+  openxlsx::write.xlsx(data , file.dir)
+
+}
