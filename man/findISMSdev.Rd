@@ -4,7 +4,7 @@
 \alias{findISMSdev}
 \title{findISMSdev}
 \usage{
-findISMSdev(object, corr.thred = 0.6)
+findISMSdev(object, to.adjust = "featureRaw", corr.thred = 0.6)
 }
 \arguments{
 \item{corr.thred}{}
