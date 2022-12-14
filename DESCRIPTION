@@ -23,6 +23,7 @@ Imports:
     xcms,
     SummarizedExperiment
 Depends: 
+    R (>= 2.10),
     tidyverse
 LazyData: true
 VignetteBuilder: knitr
