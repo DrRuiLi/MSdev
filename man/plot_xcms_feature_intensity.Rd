@@ -10,6 +10,6 @@ plot_xcms_feature_intensity(xcms.xcms, feature_id_to_show)
 \item{feature_id_to_show}{}
 }
 \description{
-plot feature's intensity, ordered by \code{pData(xcms.xcms)$analysis.time.positive} or
-\code{pData(xcms.xcms)$analysis.time.negative}
+plot feature's intensity, ordered by \code{Biobase::pData(xcms.xcms)$analysis.time.positive} or
+\code{Biobase::pData(xcms.xcms)$analysis.time.negative}
 }
