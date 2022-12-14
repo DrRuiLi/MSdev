@@ -116,9 +116,12 @@ analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group ){
 #'
 #' @examples
 analyzePathwayHypertest <- function(kegg.id){
-  kegg.id <- na.omit(kegg.id)
-  kegg.pathway <- load_as_var("C:/Users/91879/OneDrive/Documents/Code/R/data/database.for.compounds.identification/kegg.pathway.database.2022.04.10.Rda")
-  N <- 3466  #number of compounds in kegg.pathway.database
+
+  MSdb:::load_KEGG_database()
+  kegg.pathway <-kegg.database$pathway.list$data
+  kegg.pathway.compound <- kegg.database$pathway.compound.df
+  kegg.id <- intersect(kegg.id,kegg.pathway.compound$COMPOUND.ID)
+  N <- length(unique(kegg.pathway.compound$COMPOUND.ID))  #number of compounds in kegg.pathway.database
   n <- length(kegg.id)
   pathway.hyper.test <- data.frame( pathway.id = 1:length(kegg.pathway) )
   for (i in 1: length(kegg.pathway)) {
@@ -379,11 +382,6 @@ odd.rate.test <- function(x,y,cov.matrix = NULL){
 
 
 }
-
-
-
-
-
 
 
 
