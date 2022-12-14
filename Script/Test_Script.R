@@ -3246,11 +3246,14 @@ a <- featureCandidate(a,mz.ppm = 10,spectraDatabase = "d:/MSdb/MSdb_LipidBlast_f
 a <- annotateMSdev(a)
 a <- getStaMSdev(a)
 
+a <- load_as_var("C:/Users/91879/OneDrive/Documents/Code/R/Projecct/2022.1.8_MS.demo/Demo3/MSdev_2022_10_15.Rdata")
+
 saveMSdev(a)
+
 library(devtools)
 load_all()
 
-a <-MSdev(rawDataDir = "d:/2022.12.5.XXD.Lipidomic/rawData/")
+a <- load_as_var("d:/2022.12.5.XXD.Lipidomic/MSdev_2022_12_05.Rdata")
 a <- msConvert_MSdev(a)
 a <- xcmsProcessingMSdev(a, xcms.findpeak.param = xcms::CentWaveParam(ppm = 10,snthresh = 100,
                                                                       peakwidth = c(5,50),
@@ -3261,7 +3264,79 @@ a <- featureCandidate(a,mz.ppm = 10,
                       spectraDatabase = "d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata")
 a <- annotateMSdev(a)
 a <- getStaDataMSdev(a)
+
 a <- checkSampleInfo(a)
+
+
+msd <- load_as_var("d:/2022.12.5.XXD.Lipidomic/MSdev_2022_12_05.Rdata")
+data.se <- getSummarizedExperimentMSdev(msd)
+data.se$condition<-sample(letters[1:3],12,replace = T)
+
+a <- DEP.test.diff(data.se,p.adj = F)
+
+
+
+
+diff.table <- plot_volcano(data.diff , list_DEP_contrast(data.diff),plot = F)
+
+plot_volcano(data.diff,list_DEP_contrast(data.diff))
+DEP.plot.volcano(data.diff)
+
+msd <- analyzeMSdevDiffMetabolites(msd)
+plotMSdevDiffHeatmap(msd)
+plotMSdevDiffVolcano(msd,p.adjusted = F,point.label = T)
+
+
+DEP.plot.volcano(data.diff)
+export::graph2png(file = "d:/2022.12.5.XXD.Lipidomic/Statistic/KO vs WT/Volcano.KO.vs.WT.png",
+                  width = 3,height = 3)
+export::graph2ppt(file = "d:/2022.12.5.XXD.Lipidomic/Statistic/KO vs WT/Volcano.KO.vs.WT.png",
+                  width = 3,height = 3)
+
+
+
+diff.table <- plot_volcano(data.diff , list_DEP_contrast(data.diff),plot = F)
+
+row.data <- rowData(data.diff)%>%
+  as.data.frame()%>%
+  arrange(feature_id)
+diff.table <- diff.table%>%
+  arrange(protein)%>%
+  cbind(row.data)
+
+write.xlsx(diff.table,file = "d:/2022.12.5.XXD.Lipidomic/Statistic/KO vs WT/Volcano.KO.vs.WT.xlsx")
+
+
+
+
+
+
+
+diff.table <- plot_volcano(data.diff , list_DEP_contrast(data.diff),plot = F)
+
+plot_volcano(data.diff,list_DEP_contrast(data.diff))
+DEP.plot.volcano(data.diff)
+
+
+
+
+
+
+
+
+
+
+# Mon Dec 12 21:27:11 2022 ------------------------------
+
+msd <- load_as_var("d:/2022.12.5.XXD.Lipidomic/MSdev_2022_12_05.Rdata")
+msd <- checkSampleInfo(msd)
+
+saveMSdev(msd)
+
+
+msd <- getSEMSdev(msd)
+msd <- analyzeMSdevDEP(msd)
+
 
 
 

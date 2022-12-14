@@ -39,7 +39,7 @@ df
 }
 
 #' write.xlsx
-#'
+#' @description write xlsx, dir will be created if not existed
 #' @param data
 #' @param file.dir
 #'

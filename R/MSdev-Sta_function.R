@@ -66,7 +66,7 @@ plotMSdevDiffHeatmap <- function(object){
       dplyr::filter(sample.name %in% colnames(diff.table))%>%
       dplyr::mutate(col.group = groupStringFactor(group),
                     col.label = label)
-    diff.row.info <- metabolites.table[diff.table$p.fdr < 0.05,]%>%
+    diff.row.info <- metabolites.table[diff.table$p.value < 0.05,]%>%
       dplyr::mutate(row.label = fixStringLength(Compound_name , 20),
                     row.group = " ")
     diff.matrix <- object@statData$metabolites%>%
@@ -374,6 +374,12 @@ plotMSdevPathway <- function(object,method = "set1",topN=20){
 
 }
 
+plotMSdevDEPvolcano <- function(object){
+
+
+
+}
+
 
 analyzeMSdevDiffMetabolites <- function(object){
 
@@ -507,6 +513,37 @@ analyzeMSdevPathway <- function(object,method = "global.test",p.adjusted=F){
 }
 
 
+analyzeMSdevDEP <- function(object){
+
+  data.se <-object@statData$data.se$data.raw$data.raw
+  sample.info <- SummarizedExperiment::colData(data.se)%>%as.data.frame()
+  sample.groups <- unique(sample.info$group)
+  groups.comb <- combn(sample.groups,2)
+
+
+  for (i in 1:ncol(groups.comb)) {
+    groups.pair <- groups.comb[,i]%>%
+      groupStringFactor()
+
+
+    group.con <- levels(groups.pair)[1]
+    group.case <- levels(groups.pair)[2]
+
+
+    diff.sample.info <- sample.info%>%
+      dplyr::filter(group %in% groups.pair)
+    data.diff <- data.se[,diff.sample.info$ID]
+    data.diff <- DEP.test.diff(data.diff)
+
+    object@statData$data.se$data.diff[[list_DEP_contrast(data.diff)]] <- data.diff
+
+  }
+
+  object
+
+}
+
+
 exportMSdev <- function(object){
 
   dir.create(paste0(object@projectInfo$projectDir,"/Statistic"),recursive = T)
@@ -517,6 +554,10 @@ exportMSdev <- function(object){
                        file = paste0(object@projectInfo$projectDir,"/Statistic/Metabolites.xlsx"))
 
 }
+
+
+
+
 
 
 
