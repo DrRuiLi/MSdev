@@ -742,7 +742,17 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 
 
 
-getSummarizedExperimentMSdev <- function(MSdev.obj){
+#' @title getSEMSdev
+#' @description extrat SummarizedExperiment::SummarizedExperiment, which combine coldata(sample info) and rowdata (metabolites/feature)
+#' and perform data filter, normalization and imputation, refer to package DEP
+#'
+#' @param MSdev.obj
+#'
+#' @return
+#' @export
+#'
+#' @examples
+getSEMSdev <- function(MSdev.obj){
 
   col.info <- MSdev.obj@sampleInfo%>%
     dplyr::filter(sample.type == "Sample")%>%
@@ -752,9 +762,15 @@ getSummarizedExperimentMSdev <- function(MSdev.obj){
     dplyr::group_by(condition)%>%
     dplyr::mutate(replicate = 1:n())
 
-  data.unique <- make_unique(MSdev.obj@statData , names ="feature_id" , ids = "feature_id")
+  data.unique <- DEP::make_unique(MSdev.obj@statData$metabolites , names ="feature_id" , ids = "feature_id")
+  data.colum <- which(colnames(data.unique )%in% col.info$sample.name)
+  data.se <- DEP::make_se(proteins_unique = data.unique,
+                     columns = data.colum,
+                     expdesign = col.info )
+  data_filt <- DEP::filter_missval(data.se, thr = min(table(col.info$group))*0.3)
+  data_norm <- DEP::normalize_vsn(data_filt)
+  data_imp <- DEP::impute(data_norm, fun = "MinProb")
 
-
-
-
+  MSdev.obj@statData$data.se$data.raw$data.raw <- data_imp
+  MSdev.obj
 }
