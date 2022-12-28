@@ -3335,12 +3335,38 @@ saveMSdev(msd)
 
 
 msd <- getSEMSdev(msd)
+
+
 msd <- analyzeMSdevDEP(msd)
 
+plotMSdevDEPvolcano(msd,omic = "l")
+
+analyzePathwayHypertest()
 
 
 
+msdev.escc <- load_as_var("d:/2022.10.27.ESCC.Serum.metablomics/MSdev_2022_11_11.Rdata")
+msdev.escc <- checkSampleInfo(msdev.escc)
+msdev.escc <- featureCandidate(msdev.escc,mz.ppm = 20,spectraDatabase = "d:/MSdb/msdb.temp.Rdata")
+msdev.escc <- annotateMSdev(msdev.escc)
+msdev.escc <- getStaDataMSdev(msdev.escc,
+                              MSDB.keys =c("Compound_name","adduct","kegg.id",
+                                           "formula","inchikey" ,"database_origin"))
+
+saveMSdev(msdev.escc)
+exportMSdev(msdev.escc)
 
 
+# Wed Dec 28 15:49:13 2022 ------------------------------
+msdev.escc <- load_as_var("d:/2022.10.2.ESCC.metabolomic/MSdev_2022_10_27.Rdata")
+#msdev.escc <- checkSampleInfo(msdev.escc)
+msdev.escc <- featureCandidate(msdev.escc,mz.ppm = 20,spectraDatabase = "d:/MSdb/msdb.temp.Rdata")
+msdev.escc <- annotateMSdev(msdev.escc)
+msdev.escc <- getStaDataMSdev(msdev.escc,
+                              MSDB.keys =c("Compound_name","adduct","kegg.id",
+                                           "formula","inchikey" ,"database_origin"))
+
+saveMSdev(msdev.escc)
+exportMSdev(msdev.escc)
 
 
