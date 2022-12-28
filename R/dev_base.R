@@ -145,3 +145,20 @@ colorMix <- function(...){
 }
 
 
+
+
+#' open.dir
+#'
+#' @param dir
+#'
+#' @return
+#' @export
+#'
+#' @examples
+open.dir <- function(dir){
+
+  system(sprintf("open %s", shQuote(dir)))
+
+}
+
+
