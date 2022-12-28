@@ -518,7 +518,7 @@ matchSpectra_Features <- function(xcmsFeatureDef, spec){
 
 
   }
-  spec.data <- as.data.frame(spectraData(spec))
+  spec.data <- as.data.frame(Spectra::spectraData(spec))
   feature_id <- apply(spec.data, 1,.matchSP,xcmsFeatureDef)
   spec$feature_id <- feature_id
   spec
