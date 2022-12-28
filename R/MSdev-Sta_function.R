@@ -374,7 +374,93 @@ plotMSdevPathway <- function(object,method = "set1",topN=20){
 
 }
 
-plotMSdevDEPvolcano <- function(object){
+plotMSdevDEPvolcano <- function(object,omic = "m",p.adjusted= F){
+
+  n.diff <- length(object@statData$data.se$data.diff)
+  metabolites.table <- object@statData$metabolites%>%
+    dplyr::select(1:17)
+
+  for (i in 1:n.diff) {
+
+    diff.title <- names(object@statData$data.se$data.diff)[i]
+    diff.dir <- paste0(object@projectInfo$projectDir,"/Statistic/",diff.title)
+    dir.create(diff.dir,recursive = T,showWarnings = F)
+    diff.se  <- object@statData$data.se$data.diff[[i]]
+
+    if (omic== "m") {
+
+      diff.volcano <- DEP.plot.volcano(
+        data.se = diff.se,
+        p.adjust = p.adjusted)+
+        labs(title = diff.title)
+
+      diff.volcano
+      diff.table <- DEP.get.diff.table(diff.se,p.adujst = p.adjusted)%>%
+        dplyr::mutate(
+          metabolites.table[match(protein, metabolites.table$feature_id),]
+
+        )%>%
+        dplyr::select(-protein)
+    }else if(omic == "l"){
+      diff.volcano <- DEP.plot.volcano.lipidomic(
+        data.se = diff.se,
+        p.adjust = p.adjusted)+
+        labs(title = diff.title)
+
+      diff.volcano
+      data("lipid.classification",package = "MSdb" )
+      diff.table <- DEP.get.diff.table(diff.se,p.adujst = p.adjusted)%>%
+        dplyr::mutate(
+          metabolites.table[match(protein, metabolites.table$feature_id),]
+        )%>%
+        dplyr::mutate(
+          Lipid_class=lipid.classification$Lipid_class[match(Lipid_subclass,lipid.classification$Lipid_subclass)],
+          .after = Lipid_subclass
+        )%>%
+        dplyr::select(-protein)
+
+      diff.lfc <-DEP.plot.lfc.lipid.class(
+        data.se = diff.se,
+        p.adjust = p.adjusted)+
+        labs(title = diff.title)
+      export::graph2png(diff.lfc,
+                        file= paste0(diff.dir,"/LFC_lipid_class_",diff.title,".pptx"),
+                        width = 5,height = 2.5)
+      export::graph2ppt(diff.volcano,
+                        file= paste0(diff.dir,"/LFC_lipid_class_",diff.title,".pptx"),
+                        width = 5,height = 2.5)
+
+
+    }
+
+
+    export::graph2png(diff.volcano,
+                      file= paste0(diff.dir,"/Volcano_",diff.title,".pptx"),
+                      width = 3,height = 3)
+    export::graph2ppt(diff.volcano,
+                      file= paste0(diff.dir,"/Volcano_",diff.title,".pptx"),
+                      width = 3,height = 3)
+    openxlsx::write.xlsx(diff.table,
+                         file = paste0(diff.dir,"/Diff_",diff.title,".xlsx"))
+
+    diff.heatmap <- DEP.plot.heatmap(
+      data.se = diff.se,
+      p.adjust = p.adjusted)
+
+    export::graph2png(diff.heatmap,
+                      file= paste0(diff.dir,"/Heatmap_",diff.title,".pptx"),
+                      width = 0.5*ncol(diff.se)+1,height = 0.1*sum(diff.table$significant)+0.5)
+    export::graph2ppt(diff.heatmap,
+                      file= paste0(diff.dir,"/Heatmap_",diff.title,".pptx"),
+                      width = 0.5*ncol(diff.se)+1,height = 0.1*sum(diff.table$significant)+0.5)
+    export::graph2pdf(diff.heatmap,
+                      file= paste0(diff.dir,"/Heatmap_",diff.title,".pptx"),
+                      width = 0.5*ncol(diff.se)+1,height = 0.1*sum(diff.table$significant)+0.5)
+
+
+
+
+  }
 
 
 
@@ -520,7 +606,7 @@ analyzeMSdevDEP <- function(object){
   sample.groups <- unique(sample.info$group)
   groups.comb <- combn(sample.groups,2)
 
-
+  object@statData$data.se$data.diff<-NULL
   for (i in 1:ncol(groups.comb)) {
     groups.pair <- groups.comb[,i]%>%
       groupStringFactor()
