@@ -4,7 +4,7 @@
 \alias{open_dir}
 \title{open_dir}
 \usage{
-open_dir(dir)
+open_dir(dir = getwd())
 }
 \arguments{
 \item{dir}{}
