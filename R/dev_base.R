@@ -192,3 +192,26 @@ cor.mtest <- function(x){
 
 
 }
+
+
+
+
+#' @title median_part
+#' @description similar to head() and tail(), return the median of a vector
+#'
+#' @param x vector
+#' @param n number of element
+#'
+#' @return
+#' @export
+#'
+#' @examples
+median_part <- function(x, n = 10){
+
+  x.indice <- seq_along(x)
+  x.median <-x[floor((median(x.indice)-n/2) : (median(x.indice)+n/2))]
+  if (length(x.median)>n) {
+    x.median <- x.median[1:n]
+  }
+  x.median
+}
