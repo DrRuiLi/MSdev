@@ -147,7 +147,7 @@ colorMix <- function(...){
 
 
 
-#' open.dir
+#' open_dir
 #'
 #' @param dir
 #'
@@ -155,10 +155,40 @@ colorMix <- function(...){
 #' @export
 #'
 #' @examples
-open.dir <- function(dir){
+open_dir <- function(dir = getwd()){
 
   system(sprintf("open %s", shQuote(dir)))
 
 }
 
 
+
+
+cor.mtest <- function(x){
+
+ index.map <- expand.grid(1:ncol(x),1:ncol(x))
+
+ cor.test.x <- function(y,x){
+
+   p <- cor.test(x[,index.map[y,1]],x[,index.map[y,2]])$p.value
+  r <-cor(x[,index.map[y,1]],x[,index.map[y,2]])
+  return(list(p=p,r=r))
+
+ }
+
+ cor.df<- BiocParallel::bplapply(1:nrow(index.map),cor.test.x,x)%>%
+   data.table::rbindlist()
+
+  cor.r.m <- cor.p.m <-
+     matrix(ncol = ncol(x),nrow = ncol(x))%>%
+    `rownames<-`(colnames(x))%>%
+    `colnames<-`(colnames(x))
+
+  cor.r.m[1:25] <- cor.df$r
+  cor.p.m[1:25] <- cor.df$p
+  return(list(p = cor.p.m,
+              r = cor.r.m))
+
+
+
+}
