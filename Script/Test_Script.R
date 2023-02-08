@@ -3370,3 +3370,81 @@ saveMSdev(msdev.escc)
 exportMSdev(msdev.escc)
 
 
+
+
+
+node <- gene.node
+node <- cpd.node
+
+a <-MetaboSignal:::get_molecule_type(nodes,"hsa")
+library(RCy3)
+a <- getNodeProperty()
+
+
+load("../../Default_Workspace/temp.Rdata")
+
+
+
+
+compoundM = c()
+if (length(grep("cpd:", nodes) > 0)) {
+  file = "https://rest.kegg.jp/list/compound"
+  response = RCurl::getURL(file)
+  metaboliteM = MetaboSignal:::convertTable(response)
+  compoundM = rbind(compoundM, metaboliteM)
+}
+if (length(grep("dr:", nodes) > 0)) {
+  file = "https://rest.kegg.jp/list/drug"
+  response = RCurl::getURL(file)
+  drugM = suppressWarnings(MetaboSignal:::convertTable(response))
+  compoundM = rbind(compoundM, drugM)
+}
+if (length(grep("gl:", nodes) > 0)) {
+  file = "https://rest.kegg.jp/list/glycan"
+  response = RCurl::getURL(file)
+  glycanM = MetaboSignal:::convertTable(response)
+  compoundM = rbind(compoundM, glycanM)
+}
+for (i in seq_along(nodes)) {
+  node = nodes[i]
+  if (grepl("cpd:|gl:|dr:", node) == TRUE) {
+    index = which(compoundM[, 1] == nodes[i])
+    if (length(index) > 0) {
+      name = compoundM[index, 2]
+      name = unlist(strsplit(name, "[;]"))
+      nodes[i] = gsub(" ", "-", name[1])
+    }
+  }
+  else if ((grepl("K", node) == TRUE | grepl(organism_code,
+                                             node) == TRUE)) {
+    nodes[i] = MetaboSignal:::From_geneID_to_symbol(node)
+    if (nchar(nodes[i]) > 12 & grepl("", node) == FALSE) {
+      nodes[i] = paste("LOC", substr(node, 5, nchar(node)),
+                       sep = "")
+    }
+    if (nchar(nodes[i]) > 12 & grepl("", node) == TRUE) {
+      nodes[i] = node
+    }
+  }
+  else if (organism_code == "hsa" & !is.na(as.numeric(node))) {
+    node_ent = mapIds(EnsDb.Hsapiens.v75, keys = node,
+                      keytype = "ENTREZID", column = "SYMBOL")
+    if (length(node_ent) == 0) {
+      nodes[i] = node
+    }
+    else if (is.na(node_ent)) {
+      nodes[i] = node
+    }
+    else {
+      nodes[i] = node_ent
+    }
+  }
+  else {
+    nodes[i] = node
+  }
+}
+return(nodes)
+
+
+
+
