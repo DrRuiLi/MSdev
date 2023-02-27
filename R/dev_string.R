@@ -1,7 +1,16 @@
-fixStringLength <- function(x , n = 10){
+#' @title str_short
+#' @description cut string with length >n and replace char > n with "..."
+#' @param x
+#' @param n
+#'
+#' @return
+#' @export
+#'
+#' @examples
+str_short <- function(x , n = 10){
 
   x.length <- nchar(x)
-  x.new <- str_sub(x , 0 , n)%>%
+  x.new <- stringr::str_sub(x , 0 , n)%>%
     paste0(ifelse(x.length > n,"...",""))
 
 }
