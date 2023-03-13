@@ -67,7 +67,7 @@ plotMSdevDiffHeatmap <- function(object){
       dplyr::mutate(col.group = groupStringFactor(group),
                     col.label = label)
     diff.row.info <- metabolites.table[diff.table$p.value < 0.05,]%>%
-      dplyr::mutate(row.label = fixStringLength(Compound_name , 20),
+      dplyr::mutate(row.label = str_short(Compound_name , 20),
                     row.group = " ")
     diff.matrix <- object@statData$metabolites%>%
       dplyr::filter(feature_id %in% diff.row.info$feature_id)%>%
@@ -195,7 +195,7 @@ plotMSdevANOVA <- function(object){
       dplyr::mutate(col.group = groupStringFactor(group),
                     col.label = label)
     anova.row.info <- metabolites.table[which(anova.table$p.fdr < 0.05),]%>%
-      dplyr::mutate(row.label = fixStringLength(Compound_name , 20),
+      dplyr::mutate(row.label = str_short(Compound_name , 20),
                     row.group = " ")
     anova.matrix <- object@statData$metabolites%>%
       dplyr::filter(feature_id %in% anova.row.info$feature_id)%>%
