@@ -45,6 +45,14 @@ groupStringFactor <- function(x){
 }
 
 
+#' @title vector2str
+#' @description
+#' @param v
+#'
+#' @return
+#' @export
+#'
+#' @examples
 vector2str <- function(v){
 
   paste0("c(\"",paste0(na.omit(v),collapse = "\",\""),"\")")%>%
