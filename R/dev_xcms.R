@@ -18,7 +18,13 @@ get_features_from_xcms <- function(xcms.xcms,missing = NA){
   rsd <- function(x){sd(x,na.rm =  T)/mean(x , na.rm = T)}
   feature.matrix.qc <- feature.matrix[,which(grepl("QC",colnames(feature.matrix)))]
   feature.matrix.sample <- feature.matrix[,which(grepl("Sample",colnames(feature.matrix)))]
-  feature.def$qc_rsd <- apply(feature.matrix.qc, 1, rsd)
+  if(sum(grepl("QC",colnames(feature.matrix)))>1){
+
+    feature.def$qc_rsd <- apply(feature.matrix.qc, 1, rsd)
+  }else(
+
+    feature.def$qc_rsd <- 0
+  )
   feature.def$sample_rsd <- apply(feature.matrix.sample, 1, rsd)
   feature.def$med_intensity <- apply(feature.matrix , 1 ,median,na.rm =T)
   SummarizedExperiment::rowData(xcms.sum) <-feature.def
@@ -478,12 +484,19 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
                                          binSize = 0.015)
   xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
 
-  peak.group.param <- PeakGroupsParam(minFraction = 0.4,
-                                      subset = which(peaksGroup == "QC"),
-                                      subsetAdjust = "average",span = 0.4)
+
 
   if (length(oligoClasses::sampleNames(xcms.xcms))>1) {
-    xcms.xcms <- adjustRtime(xcms.xcms,param = peak.group.param)
+    if (sum(peaksGroup=="QC") <2 ) {
+      #rt.adjust.param <- ObiwarpParam()
+     # xcms.xcms <- adjustRtime(xcms.xcms,param = rt.adjust.param)
+    }else{
+      ### adjust based on QC
+      rt.adjust.param <- PeakGroupsParam(minFraction = 0.4,
+                                          subset = which(peaksGroup == "QC"),
+                                          subsetAdjust = "average",span = 0.4)
+      xcms.xcms <- adjustRtime(xcms.xcms,param = rt.adjust.param)
+    }
   }
 
   message(Sys.time()," Group peaks...")
