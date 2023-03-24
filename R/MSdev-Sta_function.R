@@ -362,6 +362,10 @@ plotMSdevPathway <- function(object,method = "set1",topN=20){
     pathway.plot
     openxlsx::write.xlsx(pathway.table,
                          file = paste0(pathway.dir,"/PathwayEnrichment.",pathway.title,".xlsx"))
+    ggsave(pathway.plot,
+                      file= paste0(pathway.dir,"/PathwayEnrichment.",pathway.title,".pdf"),
+                      width = 4,height = 0.8+0.1*topN)
+
     export::graph2ppt(pathway.plot,
                       file= paste0(pathway.dir,"/PathwayEnrichment.",pathway.title,".pptx"),
                       width = 4,height = 0.8+0.1*topN)
