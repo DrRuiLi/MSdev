@@ -101,12 +101,26 @@ makeSpectra <- function(precursorMz ,
                              ...))
 
 }
-normalizeSpectra <- function(z, ...) {
-  #z[,"maxIntensity"] <- max( z[, "intensity"] )
-  z[, "intensity"] <- z[, "intensity"] /
-    max(z[, "intensity"], na.rm = TRUE) * 100
-  z
+
+
+filterSpectraIntensity <- function(sp,r){
+
+  Spectra::filterIntensity( sp, intensity =c(max(intensity(sp))*r,Inf   ) )
+
 }
 
 
 
+normalizeSpectra <- function(sp){
+
+  nf <-  function(z, ...) {
+    #z[,"maxIntensity"] <- max( z[, "intensity"] )
+    z[, "intensity"] <- z[, "intensity"] /
+      max(z[, "intensity"], na.rm = TRUE) * 100
+    z
+  }
+  sp <- Spectra::addProcessing(sp,nf)
+
+  return(sp)
+
+}
