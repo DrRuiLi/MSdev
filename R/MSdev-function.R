@@ -1,4 +1,12 @@
+load_demo <- function(){
 
+  var <- load( "C:/Users/91879/OneDrive/Documents/Code/R/Projecct/2022.1.8_MS.demo/Demo3/MSdev_2022_10_15.Rdata")
+  if (length(var)!=1) {
+    stop("Too many variabls in ",file_to_load)
+  }
+  eval(str2expression(var))
+
+}
 saveMSdev <- function(object){
   MSdev <- object
   save.dir <- dirname(object@projectInfo$MSdevFile)
@@ -774,3 +782,149 @@ getSEMSdev <- function(MSdev.obj){
   MSdev.obj@statData$data.se$data.raw$data.raw <- data_imp
   MSdev.obj
 }
+
+
+
+
+
+#' Title
+#'
+#' @param MSdev.obj
+#' @param feature_id
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_MSdev_feature_spectrum <- function(MSdev.obj,feature.id  ){
+
+  feature.data <- MSdev.obj@statData$featureRaw%>%
+    dplyr::filter(feature_id == feature.id)
+  feature.annotation <- MSdev.obj@annotation[[paste0(feature.data$ion_mode,"Annotation")]][[which(
+    rownames(MSdev.obj@xcmsData[[paste0(feature.data$ion_mode,"Feature")]])==
+      gsub(pattern = "_|pos|neg",x = feature.id,replacement = ""))]]
+
+  sp.exp <-feature.annotation$expSpec
+  sp.ref <-feature.annotation$refSpec
+
+  if (is.null(sp.exp)) {
+    return()
+  }else{
+    sp.exp <- sp.exp%>%
+      #Spectra::combineSpectra(
+      #  peaks = "intersect",minProp = 0.3,ppm = 50,
+      #  intensityFun = median,mzFun = median)%>%
+      normalizeSpectra()%>%
+      Spectra::filterIntensity(intensity = c(0.05,Inf))%>%
+      Spectra::applyProcessing()
+
+    if (is.null(sp.ref)) {
+
+      sp.exp <- sp.exp%>%
+        Spectra::combineSpectra(
+          peaks = "intersect",minProp = 0.3,ppm = 50,
+          intensityFun = median,mzFun = median)
+
+      text.to.show <- paste0("Feature ID :",feature.id,"\n",
+                             "Exp Precursor mz :",sp.exp$precursorMz,"\n",
+                             "Exp Retention time :",sp.exp$rtime,"\n",
+                             "Score: ",feature.data$score,"\n",
+                             "Compound: ",feature.data$Compound_name,"\n",
+                             "Adduct: ",feature.data$adduct,"\n",
+                             "Ref Precursor mz: ",sp.ref$precursorMz,"\n",
+                             "Ref Retention time: ",sp.ref$rtime,"\n",
+                             "INCHIKEY: ",sp.ref$inchikey,"\n",
+                             "KEGG ID: ",sp.ref$kegg.id,"\n",
+                             "Reference Source: ",sp.ref$database
+
+      )
+      Spectra::plotSpectra(sp.exp,labels = function(z) {
+        lbls <- round(mz(z)[[1L]], digits = 4)
+        lbls[intensity(z)[[1L]] <= 15] <- ""
+        lbls},
+        main = text.to.show,
+        adj = 0,
+        cex.main = 1.5,
+        cex.axis = 1,
+        labelCex = 1)
+
+    }else{
+
+      sp.score <- Spectra::compareSpectra(sp.exp,sp.ref)
+      sp.exp <- sp.exp[which.max(sp.score)]
+      text.to.show <- paste0("Feature ID :",feature.id,"\n",
+                             "Exp Precursor mz :",feature.data$mz,"\n",
+                             "Exp Retention time :",feature.data$rt,"\n",
+                             "Score: ",feature.data$score,"\n",
+                             "Compound: ",feature.data$Compound_name,"\n",
+                             "Adduct: ",feature.data$adduct,"\n",
+                             "Ref Precursor mz: ",sp.ref$precursorMz,"\n",
+                             "Ref Retention time: ",sp.ref$rtime,"\n",
+                             "INCHIKEY: ",sp.ref$inchikey,"\n",
+                             "KEGG ID: ",sp.ref$kegg.id,"\n",
+                             "Reference Source: ",sp.ref$database
+
+      )
+      Spectra::plotSpectraMirror(sp.exp,sp.ref,
+                        ylab = "relative intensity",
+                        labels = function(z) {
+                          lbls <- round(mz(z)[[1L]], digits = 4)
+                          lbls[intensity(z)[[1L]] <= 15] <- ""
+                          lbls},
+                        tolerance = 0.2,
+                        main = text.to.show,
+                        adj = 0,
+                        cex.main = 1.5,
+                        cex.axis = 1,
+                        labelCex = 1
+
+      )
+
+
+    }
+
+
+  }
+
+
+
+}
+
+
+#' Title
+#'
+#' @param MSdev.obj
+#' @param feature_id
+#' @param out.dir
+#'
+#' @return
+#' @export
+#'
+#' @examples
+export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
+
+
+
+  png(paste0(out.dir,"/",feature_id,".MSMS.png"),
+      res = 100,width = 1000,height = 800)
+  par(mar = c(2,2,17,2))
+  plot_MSdev_feature_spectrum(MSdev.obj,feature_id)
+  dev.off()
+
+
+  is.pos <-grepl(pattern = "pos",
+             x = feature_id)
+  if (is.pos) {
+    xcms.xcms <- MSdev.obj@xcmsData$positiveMS1
+  }else{
+    xcms.xcms <- MSdev.obj@xcmsData$negativeMS1}
+  gp <- plot_xcms_feature_chromatogram(xcms.xcms,
+                                       feature.id = gsub(x = feature_id,pattern = "[_|pos|neg]",replacement = ""))
+  export::graph2png(gp , file = paste0(out.dir,"/",feature_id,".Crhom.png"))
+
+}
+
+
+
+
+
