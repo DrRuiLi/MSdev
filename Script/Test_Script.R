@@ -3448,3 +3448,113 @@ return(nodes)
 
 
 
+#MSDEV_MHR  <- MSdev(rawDataDir = "d:/2023_03_07_MHR/Data/")
+MSDEV_MHR <- load_as_var("d:/2023_03_07_MHR/MSdev_2023_03_12.Rdata")
+MSDEV_MHR  <- checkSampleInfo(MSDEV_MHR )
+MSDEV_MHR  <- msConvert_MSdev(MSDEV_MHR )
+MSDEV_MHR  <- xcmsProcessingMSdev(MSDEV_MHR )
+MSDEV_MHR  <- extractSpectra_fullscan_DDA(MSDEV_MHR )
+MSDEV_MHR  <- featureSpectra_fullscan_DDA(MSDEV_MHR )
+MSDEV_MHR <- featureCandidate(MSDEV_MHR,mz.ppm = 25,spectraDatabase = "d:/MSdb/msdb.temp.Rdata")
+MSDEV_MHR <- annotateMSdev(MSDEV_MHR)
+MSDEV_MHR <- getStaDataMSdev(MSDEV_MHR,MSDB.keys = c("Compound_name",
+                                                     "adduct","formula",
+                                                     "inchikey","kegg.id" ,
+                                                     "database_origin"))
+saveMSdev(MSDEV_MHR)
+MSDEV_MHR <- dropSpectra(MSDEV_MHR)
+exportMSdev(MSDEV_MHR)
+
+
+exportMSdev(MSDEV_MHR)
+MSDEV_MHR <- analyzeMSdevDiffMetabolites(MSDEV_MHR)
+plotMSdevDiffVolcano(MSDEV_MHR,p.adjusted = F,point.label = T)
+plotMSdevDiffHeatmap(MSDEV_MHR)
+
+MSDEV_MHR <- analyzeMSdevPathway(MSDEV_MHR)
+plotMSdevPathway(MSDEV_MHR)
+
+MSDEV_SX <- MSdev(rawDataDir = "d:/2023.3.13.Gout/raw.data/")
+MSDEV_SX <- checkSampleInfo(MSDEV_SX)
+MSDEV_SX  <- msConvert_MSdev(MSDEV_SX )
+MSDEV_SX  <- xcmsProcessingMSdev(MSDEV_SX )
+MSDEV_SX  <- extractSpectra_fullscan_DDA(MSDEV_SX )
+MSDEV_SX  <- featureSpectra_fullscan_DDA(MSDEV_SX )
+saveMSdev(MSDEV_SX)
+
+
+
+
+
+MSDEV_ZLL <- load_as_var( "d:/2022_12_02_ZLL_Metabolomic/MSdev_2023_03_16.Rdata")
+MSDEV_ZLL <- checkSampleInfo(MSDEV_ZLL)
+MSDEV_ZLL  <- msConvert_MSdev(MSDEV_ZLL )
+MSDEV_ZLL  <- xcmsProcessingMSdev(MSDEV_ZLL )
+MSDEV_ZLL  <- extractSpectra_fullscan_DDA(MSDEV_ZLL )
+MSDEV_ZLL  <- featureSpectra_fullscan_DDA(MSDEV_ZLL )
+MSDEV_ZLL <- featureCandidate(MSDEV_ZLL,mz.ppm = 25,spectraDatabase = "d:/MSdb/msdb.temp.Rdata")
+MSDEV_ZLL <- annotateMSdev(MSDEV_ZLL)
+MSDEV_ZLL <- getStaDataMSdev(MSDEV_ZLL,MSDB.keys = c("Compound_name",
+                                                     "adduct","formula",
+                                                     "inchikey","kegg.id" ,
+                                                     "database_origin"))
+saveMSdev(MSDEV_ZLL)
+
+
+exportMSdev(MSDEV_ZLL)
+MSDEV_ZLL <- analyzeMSdevDiffMetabolites(MSDEV_ZLL)
+plotMSdevDiffVolcano(MSDEV_ZLL,p.adjusted = F,point.label = T)
+plotMSdevDiffHeatmap(MSDEV_ZLL)
+
+MSDEV_ZLL <- analyzeMSdevPathway(MSDEV_ZLL)
+plotMSdevPathway(MSDEV_ZLL)
+
+
+
+# Mon Mar 20 13:43:13 2023 ------------------------------
+MSDEV_SX <- load_as_var("d:/2023.3.13.Gout/MSdev_2023_03_13.Rdata")
+MSDEV_SX <- featureCandidate(MSDEV_SX,mz.ppm = 25,spectraDatabase = "d:/MSdb/msdb.HMDB.Rdata")
+MSDEV_SX <- annotateMSdev(MSDEV_SX)
+MSDEV_SX <- getStaDataMSdev(MSDEV_SX,MSDB.keys = c("Compound_name",
+                                                     "adduct","formula",
+                                                     "inchikey","kegg.id" ,
+                                                     "database_origin"))
+exportMSdev(MSDEV_SX)
+
+MSDEV_SX <- getSEMSdev(MSDEV_SX)
+saveMSdev(MSDEV_SX)
+
+
+
+ggplot(data.df)+
+  geom_line(aes(x = rt,y = intensity , col = sample.name))+
+  scale_x_continuous(limits = c(0,700))
+
+
+
+
+
+xcms.chrom <- chromatogram(xcms.sub , mz = c(xcms.feature$mzmin,xcms.feature$mzmax),
+                           rt =c(xcms.feature$rtmin,xcms.feature$rtmax))
+
+
+v <- 1+rnorm(20)*0.01
+scale(v)
+Heatmap(matrix(v,nrow = 10)  )
+
+Heatmap(matrix(scale(v),nrow = 10)  )
+
+
+a <- filterIntensity(sp.exp,
+                      intensity =c(max(intensity(sp.exp))*0.05,Inf   ))
+plotSpectra(a)
+
+
+png(paste0("TEMP.png"),
+    res = 100,width = 1000,height = 800)
+par(mar = c(2,2,17,2))
+plot_MSdev_feature_spectrum(MSDEV_SX,"FT0745_pos")
+dev.off()
+
+
+MSD <- load_as_var("d:/2022_12_02_ZLL_Metabolomic/MSdev_2023_03_16.Rdata")
