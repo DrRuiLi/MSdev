@@ -58,6 +58,12 @@ get_node_info <- function(all_nodes){
     node.name <-NA
     node.type <- "other"
 
+    if (!is.na(as.numeric(node))) {
+      node <- paste0("hsa:",node)
+    }
+
+
+
     if (grepl(pattern = "cpd",node)) {
       node.data <- KEGG.database$compound.list$data[[sub(pattern = "cpd:",x = node,replacement = "")]]
       node.name = unlist(strsplit(node.data$NAME, "[;]"))[1]
