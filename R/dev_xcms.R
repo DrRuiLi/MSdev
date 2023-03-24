@@ -33,6 +33,28 @@ get_features_from_xcms <- function(xcms.xcms,missing = NA){
 
 
 
+#' @title get_intensity_rtime_df_from_XChromatogram
+#' @description extract chomatogram data to a data.frame
+#' @param xchrom
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_intensity_rtime_df_from_XChromatogram <- function(xchrom){
+
+  data.df <- data.frame(sample.name = NULL,rt = NULL,intensity = NULL)
+  for (i in 1:ncol(xchrom)) {
+    data.df <- data.df%>%
+      rbind(data.frame(sample.name = colnames(xchrom)[i],
+                     rt = rtime(xchrom[1,i]),
+                     intensity = intensity(xchrom[1,i])))
+  }
+  return(data.df)
+
+
+}
+
 #' @title featureDefinitions_PeakSta
 #' @description extract features' median rt, sn and maxo,
 #' `xcms::featureDefinitions()` return a `DataFrame`, in which rtmin, rtmax, rtmed was median of `xcms::chromPeaks()$rt`,
@@ -210,8 +232,55 @@ plot_xcms_features_distribution <-
   }
 
 
+#' @title plot_xcms_feature_chromatogram
+#' @description extract Chromatogram from xcms according to feature's mz range and plot
+#' @param xcms.xcms
+#' @param feature.id
+#' @param sampleNames
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =NULL ){
+
+  ### select samples
+  xcms.sample.info <- Biobase::pData(xcms.xcms)
+  if (is.null(sampleNames)) {
+    sampleNames <- xcms.sample.info$sampleNames
+  }
+  xcms.sample.info <- xcms.sample.info[sampleNames,]
+  if (length(sampleNames) > 5) {
+    if (!is.null(xcms.sample.info$group)) {
+      xcms.sample.info.sub <- xcms.sample.info%>%
+        dplyr::group_by(group)%>%
+        dplyr::slice_sample(n=1)
+    }
+  }
+  xcms.sub <- filterFile(xcms.xcms,which(Biobase::sampleNames(xcms.xcms)%in% xcms.sample.info.sub$sampleNames))
+  ### mz
+  xcms.feature <- featureDefinitions(xcms.xcms)[feature.id,]
+  xcms.chrom <- chromatogram(xcms.sub , mz = c(xcms.feature$mzmin,xcms.feature$mzmax),
+                             rt =c(xcms.feature$rtmin,xcms.feature$rtmax),
+                            #rt = c(min(xcms.sub@featureData@data[["retentionTime"]]),
+                            #       max(xcms.sub@featureData@data[["retentionTime"]])),
+                             adjustedRtime  =F)
+
+  xcms.chrom.data <- get_intensity_rtime_df_from_XChromatogram(xcms.chrom)%>%
+    dplyr::mutate(group = xcms.sample.info$group[match(sample.name , xcms.sample.info$sampleNames)],
+                  group = groupStringFactor(group))
+
+  ggplot(xcms.chrom.data)+
+    geom_line(aes(x = rt,y = intensity , col = group))+
+    xlim(c(min(rtime(xcms.sub)),max(rtime(xcms.sub))))+
+    labs(col = "",x = "Retention time", y = "Intensity",
+         title = paste0(feature.id),
+         subtitle = paste0( "mz: \t",round(xcms.feature$mzmin,4),"~",round(xcms.feature$mzmax,4),"\nrt: \t",round(xcms.feature$rtmin,2),"~",round(xcms.feature$rtmax,2) ))+
+    theme_bw()+
+    theme(text = element_text(size = 8))
 
 
+}
 
 
 
@@ -585,7 +654,6 @@ plot_xcms_feature_intensity <- function(xcms.xcms , feature_id_to_show ){
 
 
 }
-
 
 
 
