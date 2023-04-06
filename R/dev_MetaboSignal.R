@@ -39,6 +39,45 @@ MetaboSignalNetworkTable2df <- function (network_table)
 }
 
 
+#' @title MetaboSignalNetworkTableStandardNodeName
+#' @description add or remove "hsa:" from network_table
+#'
+#' @param network_table
+#' @param add_hsa
+#'
+#' @return
+#' @export
+#'
+#' @examples
+MetaboSignalNetworkTableStandardNodeName <- function(network_table,add_hsa = T){
+
+  if (add_hsa) {
+    network_table <- network_table%>%
+      as.data.frame()%>%
+      dplyr::mutate(source = case_when(!is.na(as.numeric(source)) ~ paste0("hsa:",source),
+                                       T~source),
+                    target = case_when(!is.na(as.numeric(target))  ~ paste0("hsa:",target),
+                                       T ~ target))%>%
+      as.matrix()
+
+  }else{
+    network_table <- network_table%>%
+      as.data.frame()%>%
+      dplyr::mutate(source = case_when(grepl(pattern = "hsa",x = source )~ gsub(pattern = "hsa:",x = source ,replacement = ""),
+                                       T~source),
+                    target = case_when(grepl(pattern = "hsa",x = target )~ gsub(pattern = "hsa:",x = target ,replacement = ""),
+                                       T ~ target))%>%
+      as.matrix()
+
+
+
+
+  }
+  network_table
+
+}
+
+
 #' @title get_node_info
 #'
 #' @param all_nodes kegg id, currently support cpd(compound) and hsa(gene)

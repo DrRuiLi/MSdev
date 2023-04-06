@@ -66,3 +66,20 @@ isotopes_pattern_enviPat <- function(formula) {
   return(isopat)
 
 }
+
+
+#' @title formula_mz_lc8
+#' @description
+#' calculate mz of a given formula
+#'
+#' @param Formula, such as `"C2H4"`
+#'
+#' @return
+#' @export
+#'
+#' @examples
+formula_mz_lc8 <- function(Formula = "C2H4O1S2P1"){
+
+  lc8::formula_mz(Formula)
+
+}
