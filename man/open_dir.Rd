@@ -2,13 +2,15 @@
 % Please edit documentation in R/dev_base.R
 \name{open_dir}
 \alias{open_dir}
-\title{open_dir}
+\title{open_dir
+open dir by Windows}
 \usage{
 open_dir(dir = getwd())
 }
 \arguments{
-\item{dir}{}
+\item{dir}{a path of dir or file}
 }
 \description{
 open_dir
+open dir by Windows
 }
