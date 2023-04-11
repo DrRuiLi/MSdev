@@ -147,9 +147,10 @@ colorMix <- function(...){
 
 
 
-#' open_dir
+#' @title open_dir
+#' open dir by Windows
 #'
-#' @param dir
+#' @param dir a path of dir or file
 #'
 #' @return
 #' @export
@@ -215,3 +216,4 @@ median_part <- function(x, n = 10){
   }
   x.median
 }
+
