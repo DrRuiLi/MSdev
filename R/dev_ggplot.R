@@ -1,7 +1,7 @@
 
 
 
-#' @title open.ggplot.win
+#' @title open_ggplot_win
 #' @description
 #' create a temp.png file and open in Windows
 #'
@@ -14,7 +14,7 @@
 #' @export
 #'
 #' @examples
-open.ggplot.win <- function(p,width = NA,height = NA){
+open_ggplot_win <- function(p,width = NA,height = NA){
 
   temp.file <- tempfile(fileext = ".png")
   ggplot2::ggsave(filename = temp.file,plot = p,width = width,height= height)
