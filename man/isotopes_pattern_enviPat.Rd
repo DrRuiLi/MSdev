@@ -4,7 +4,7 @@
 \alias{isotopes_pattern_enviPat}
 \title{isotopes_pattern_enviPat}
 \usage{
-isotopes_pattern_enviPat(formula)
+isotopes_pattern_enviPat(chemform)
 }
 \arguments{
 \item{formula}{}
