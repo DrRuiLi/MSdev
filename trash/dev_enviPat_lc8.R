@@ -20,12 +20,12 @@ formula_calculate_lc8 <- function(Formula1 = "C2H4O1S2P1",Formula2 = "N1H1O-1",s
 #' @export
 #'
 #' @examples
-isotopes_pattern_enviPat <- function(formula) {
-  #formula <- "C80[13]C3H33[2]H12"
+isotopes_pattern_enviPat <- function(chemform) {
+  #chemform <- "C80[13]C3H33[2]H12"
   data("isotopes",package = "enviPat")
   isopat <-
     enviPat::isopattern(isotopes = isotopes,
-                        chemforms = formula,
+                        chemforms = chemform,
                         threshold = 1)[[1]]
   iso.matrix <- isopat[, 3:ncol(isopat)]
 
@@ -47,7 +47,7 @@ isotopes_pattern_enviPat <- function(formula) {
       paste0(collapse = "")
 
   }
-  formula_raw <- formula
+  formula_raw <- chemform
   select_elemet <- function(x ){
     ele_table <- lc8::my_break_formula(x)%>%as.data.frame()%>%
       filter(count >0)%>%
@@ -59,7 +59,7 @@ isotopes_pattern_enviPat <- function(formula) {
   isopat <- data.frame(formula = formulat_list ,
                        isopat[, 1:2])%>%
     rowwise()%>%
-    mutate(isotope_element = formula_calculate_lc8(formula,formula_raw , -1),
+    mutate(isotope_element = formula_calculate_lc8(chemform,formula_raw , -1),
            isotope_element = select_elemet(isotope_element))
 
 
@@ -68,18 +68,39 @@ isotopes_pattern_enviPat <- function(formula) {
 }
 
 
-#' @title formula_mz_lc8
+#' @title chemform_mz_lc8
 #' @description
-#' calculate mz of a given formula
+#' calculate mz of a given chemical formula
 #'
-#' @param Formula, such as `"C2H4"`
+#' @param chemform, such as `"C2H4"`
 #'
 #' @return
 #' @export
 #'
 #' @examples
-formula_mz_lc8 <- function(Formula = "C2H4O1S2P1"){
+chemform_mz_lc8 <- function(chemform = "C2H4O1S2P1"){
 
-  lc8::formula_mz(Formula)
+  lc8::formula_mz(chemform)
+
+}
+
+
+
+#' @title chemform_formate
+#' @description
+#' formate a chemical formula
+#'
+#' @param chemform
+#'
+#' @return
+#' @export
+#'
+#' @examples
+chemform_formate <- function(chemform = "C11H22NO4"){
+
+  data("isotopes",package = "enviPat")
+  enviPat::check_chemform(chemforms = chemform,isotopes=isotopes )$new_formula%>%
+    sub(pattern = "D(?=[0-9])",replacement = "[2]H",perl = T)### Replace D with [2]H
+
 
 }
