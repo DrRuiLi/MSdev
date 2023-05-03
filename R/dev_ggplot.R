@@ -21,3 +21,26 @@ open_ggplot_win <- function(p,width = NA,height = NA){
   open_dir(temp.file)
 
 }
+
+
+
+
+#' @title sum.patchwork
+#' @description
+#' add all ggplot by patchwork
+#'
+#' @param ggplot.list a list with all item as ggplot objective
+#'
+#' @return
+#' @export
+#'
+#' @examples
+sum.patchwork <- function(ggplot.list){
+  x <- ggplot.list
+  x.len <- length(x)
+  sum.exp <- 1
+  x.exp <- paste0( "x.sum <- ",paste0(paste0("x[[",1:x.len,"]]"),collapse = " + "))%>%
+    str2expression()
+  eval(x.exp)
+  return(x.sum)
+}
