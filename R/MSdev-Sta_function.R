@@ -81,7 +81,7 @@ plotMSdevDiffHeatmap <- function(object){
 
     export::graph2pdf(diff.heatmap,
                       file= paste0(diff.dir,"/Heatmap.",diff.title,".pptx"),
-                      width = 1*nrow(diff.col.info),height = 0.08*nrow(diff.row.info))
+                      width = 1*nrow(diff.col.info),height = 0.08*nrow(diff.row.info)+1)
 
 
 
