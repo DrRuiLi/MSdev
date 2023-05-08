@@ -3558,3 +3558,65 @@ dev.off()
 
 
 MSD <- load_as_var("d:/2022_12_02_ZLL_Metabolomic/MSdev_2023_03_16.Rdata")
+
+
+map.data<- read.csv(choose.files())
+
+
+
+ggplot(map.data)+
+    geom_jitter(aes(y = latitude,x=longitude))
+
+
+
+MSDEV_SX <- featureCandidate(MSDEV_SX,mz.ppm = 25,spectraDatabase = "d:/MSdb/msdb.HMDB.Rdata")
+MSDEV_SX <- annotateMSdev(MSDEV_SX)
+MSDEV_SX <- getStaDataMSdev(MSDEV_SX,MSDB.keys = c("Compound_name",
+                                                   "adduct","formula",
+                                                   "inchikey","kegg.id" ,
+                                                   "database_origin"))
+exportMSdev(MSDEV_SX)
+
+
+
+
+MS_dev_QE <- MSdev(rawDataDir = "d:/2023.04.29.TQC.lipidomic/rawData")
+MS_dev_QE <- checkSampleInfo(MS_dev_QE)
+MS_dev_QE <- msConvert_MSdev(MS_dev_QE)
+MS_dev_QE <- checkSampleInfo(MS_dev_QE)
+MS_dev_QE
+MS_dev_QE <- load_as_var("d:/2023.04.29.TQC.lipidomic/MSdev_2023_05_05.Rdata")
+MS_dev_QE <- xcmsProcessingMSdev(MS_dev_QE)
+MS_dev_QE <- extractSpectra_fullscan_DDA(MS_dev_QE)
+MS_dev_QE <- featureSpectra_fullscan_DDA(MS_dev_QE)
+MS_dev_QE <- featureCandidate(MS_dev_QE,mz.ppm = 10,
+                              spectraDatabase = "d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata")
+MS_dev_QE <- annotateMSdev(MS_dev_QE)
+MS_dev_QE <- getStaDataMSdev(MS_dev_QE,missing = "rowmin_half")
+saveMSdev(MS_dev_QE)
+#MS_dev_QE <- dropSpectra(MS_dev_QE)
+
+
+
+
+exportMSdev(MS_dev_QE)
+MS_dev_QE <- analyzeMSdevDiffMetabolites(MS_dev_QE  )
+plotMSdevDiffVolcano(MS_dev_QE,p.adjusted = F)
+plotMSdevDiffHeatmap(MS_dev_QE)
+
+MS_dev_QE@statData$metabolites <- MS_dev_QE@statData$metabolites %>%
+  dplyr::filter(ion_mode =="negative" )
+
+
+exportMSdev(MS_dev_QE)
+MS_dev_QE <- analyzeMSdevDiffMetabolites(MS_dev_QE  )
+plotMSdevDiffVolcano(MS_dev_QE,p.adjusted = F)
+plotMSdevDiffHeatmap(MS_dev_QE)
+
+
+
+
+
+
+
+
