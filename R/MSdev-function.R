@@ -416,7 +416,7 @@ dropSpectra <- function(object){
 #' @export
 #'
 #' @examples
-getStaDataMSdev <- function(object,
+getStaDataMSdev <- function(object,missing = NA,
                             MSDB.keys =c("Compound_name","adduct","formula","inchikey","Lipid_subclass" ,"database_origin")
                             ){
 
@@ -442,7 +442,7 @@ getStaDataMSdev <- function(object,
          "MSDB_id" )]
   })%>%data.table::rbindlist()
 
-  featurePos <- get_features_from_xcms(object@xcmsData$positiveMS1,missing = NA)
+  featurePos <- get_features_from_xcms(object@xcmsData$positiveMS1,missing = missing)
   featurePos <- SummarizedExperiment::rowData(featurePos)%>%
     as.data.frame()%>%
     rownames_to_column("feature_id")%>%
@@ -453,7 +453,7 @@ getStaDataMSdev <- function(object,
     dplyr::rename_with( ~sub(pattern = ".mzML",replacement = "",x = .x))%>%
     remove_rownames()
 
-  featureNeg <- get_features_from_xcms(object@xcmsData$negativeMS1,missing = NA)
+  featureNeg <- get_features_from_xcms(object@xcmsData$negativeMS1,missing = missing)
   featureNeg <- SummarizedExperiment::rowData(featureNeg)%>%
     as.data.frame()%>%
     rownames_to_column("feature_id")%>%
