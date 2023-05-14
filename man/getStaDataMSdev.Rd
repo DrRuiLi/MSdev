@@ -6,6 +6,7 @@
 \usage{
 getStaDataMSdev(
   object,
+  missing = NA,
   MSDB.keys = c("Compound_name", "adduct", "formula", "inchikey", "Lipid_subclass",
     "database_origin")
 )

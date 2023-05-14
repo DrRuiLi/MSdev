@@ -3614,7 +3614,7 @@ plotMSdevDiffVolcano(MS_dev_QE,p.adjusted = F)
 plotMSdevDiffHeatmap(MS_dev_QE)
 
 
-
+a.s <- lapply(a , function(x){!is.null(x)})%>%unlist()
 
 
 
