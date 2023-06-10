@@ -3580,7 +3580,7 @@ exportMSdev(MSDEV_SX)
 
 
 
-MS_dev_QE <- MSdev(rawDataDir = "d:/2023.04.29.TQC.lipidomic/rawData")
+MS_dev_QE <- load_as_var("d:/2022.10.2.ESCC.metabolomic/MSdev_2022_10_27.Rdata")
 MS_dev_QE <- checkSampleInfo(MS_dev_QE)
 MS_dev_QE <- msConvert_MSdev(MS_dev_QE)
 MS_dev_QE <- checkSampleInfo(MS_dev_QE)
@@ -3600,6 +3600,9 @@ saveMSdev(MS_dev_QE)
 
 
 exportMSdev(MS_dev_QE)
+
+
+
 MS_dev_QE <- analyzeMSdevDiffMetabolites(MS_dev_QE  )
 plotMSdevDiffVolcano(MS_dev_QE,p.adjusted = F)
 plotMSdevDiffHeatmap(MS_dev_QE)
@@ -3610,11 +3613,83 @@ MS_dev_QE@statData$metabolites <- MS_dev_QE@statData$metabolites %>%
 
 exportMSdev(MS_dev_QE)
 MS_dev_QE <- analyzeMSdevDiffMetabolites(MS_dev_QE  )
-plotMSdevDiffVolcano(MS_dev_QE,p.adjusted = F)
+plotMSdevDiffVolcano(MS_dev_QE,
+                     p.adjusted = F)
 plotMSdevDiffHeatmap(MS_dev_QE)
 
 
 a.s <- lapply(a , function(x){!is.null(x)})%>%unlist()
+
+
+
+
+
+MSdev_workflow()
+
+matched.id <- a
+
+matched.id <- a[1,,drop=F]
+isotopes.matched <- data.frame( isotope.candidate[matched.id[,1],],
+                                feature.id = feature.id[matched.id[,2]],
+                                feature.mz = featuredef[matched.id[,2],"mzmed"],
+                                feature.rt = featuredef[matched.id[,2],"rtmed"])
+if (nrow(isotopes.matched) >1) {
+  isotopes.matched <- isotopes.matched%>%
+    dplyr::mutate(rt.cluster =   cutree(hclust(dist( feature.rt )),h = rt.tol))%>%
+    dplyr::group_by(rt.cluster)%>%
+    dplyr::filter(any(""%in% isotope_element ))%>%
+    dplyr::arrange(rt.cluster,-abundance)%>%
+    dplyr::ungroup()
+
+}else{
+  isotopes.matched <- isotopes.matched%>%
+    dplyr::mutate(rt.cluster =   1)%>%
+    dplyr::group_by(rt.cluster)%>%
+    dplyr::filter(any(""%in% isotope_element ))%>%
+    dplyr::arrange(rt.cluster,-abundance)%>%
+    dplyr::ungroup()
+
+}
+
+
+isotopes.matched <- isotopes.matched%>%
+  dplyr::mutate(feature.mz.error = abs(feature.mz-m.z)/m.z*1e6)%>%
+  dplyr::group_by(rt.cluster)%>%
+  dplyr::filter(any(""%in% isotope_element ))%>%
+  dplyr::group_by(isotope_element)%>%
+  dplyr::slice_min(feature.mz.error)%>%
+  dplyr::arrange(rt.cluster,-abundance)%>%
+  dplyr::ungroup()
+
+
+
+MS_dev_obj <- load_as_var("d:/2022.12.03.ESCC.Serum.Lipidomic/MSdev_2022_12_03.Rdata")
+xcms.xcms <- MS_dev_obj@xcmsData$positiveMS1
+
+b<- na.omit(expanded.spectra)
+do.call("rbind",b) ->a
+
+a <- a%>%
+  dplyr::filter(!is.na(MSDB_id))
+
+checkSampleInfo(tqc)
+
+
+
+
+
+
+# Mon Jun  5 15:11:59 2023 ------------------------------
+msdemo <- load_as_var("../../Projecct/2022.1.8_MS.demo/Demo/MSdev_2022_12_04.Rdata")
+
+msdemo <- featureCandidate(msdemo,
+                           spectraDatabase = "d:/MSdb.2023.05.30/MSdb.database/MSdb_Spectra_database_2023_06_04.rda")
+msdemo <- annotateMSdev( msdemo  )
+msdemo <- getStaDataMSdev(msdemo,missing = "rowmin_half" )
+saveMSdev(msdemo)
+
+
+
 
 
 
