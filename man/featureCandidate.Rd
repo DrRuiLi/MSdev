@@ -6,7 +6,7 @@
 \usage{
 featureCandidate(
   object,
-  mz.ppm = 10,
+  mz.ppm = 20,
   spectraDatabase =
     "C:\\\\Users\\\\91879\\\\OneDrive\\\\Documents\\\\Code\\\\R\\\\Projecct\\\\2022.1.17_Compounds.database\\\\Spectra.integrated.database.integration.2022_02_12.Rdata"
 )

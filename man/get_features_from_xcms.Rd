@@ -9,6 +9,9 @@ get_features_from_xcms(xcms.xcms, missing = NA)
 \arguments{
 \item{xcms.xcms}{}
 }
+\value{
+a SummarizedExperiment subject
+}
 \description{
 extract feature data from xcms::XCMSnExp,
 calculate RSD of QC and Sample
