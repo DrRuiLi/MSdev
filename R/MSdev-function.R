@@ -341,39 +341,89 @@ featureSpectra_fullscan_DDA <- function(object){
 #' @export
 #'
 #' @examples
-featureCandidate<- function(object,mz.ppm = 10,
+featureCandidate<- function(object,mz.ppm = 20,
                             spectraDatabase =
                               "C:\\Users\\91879\\OneDrive\\Documents\\Code\\R\\Projecct\\2022.1.17_Compounds.database\\Spectra.integrated.database.integration.2022_02_12.Rdata")
   {
+
+  ### load spectra database
   Spectra_database <- load_as_var(spectraDatabase)
-  .matchMz <- function(xcmsFeature,spectraDB){
-    feature.mz_rt <- data.frame(mz = xcmsFeature$mzmed,
-                                rt = xcmsFeature$rtmed)
-    lib.precursormz <- ProtGenerics::precursorMz(spectraDB)
-    lib.rtime <- rtime(spectraDB)
-    lib.candidate <- apply(feature.mz_rt,1,function(x){
 
-      mz.hit <- abs( lib.precursormz-x[["mz"]]) < x[["mz"]]*mz.ppm /1e6
-      which(mz.hit   )
+  ### match exact mz to database, extract all matched record as candidate
+  {
 
-    })
-    #sum(sapply(lib.candidate, length)>0)
-    featureCandidate <- lapply(lib.candidate,  function(x){
-      sp <- spectraDB[x]
-      if (length(sp)== 0) {
-        return(NULL)
-      }else{
-        return(sp)
+    .matchMz <- function(xcmsFeature,spectraDB){
+      feature.mz_rt <- data.frame(mz = xcmsFeature$mzmed,
+                                  rt = xcmsFeature$rtmed)
+      lib.precursormz <- ProtGenerics::precursorMz(spectraDB)
+      lib.rtime <- rtime(spectraDB)
+      lib.candidate <- apply(feature.mz_rt,1,function(x){
+
+        mz.hit <- abs( lib.precursormz-x[["mz"]]) < x[["mz"]]*mz.ppm /1e6
+        which(mz.hit   )
+
+      })
+      #sum(sapply(lib.candidate, length)>0)
+      featureCandidate.list <- lapply(lib.candidate,  function(x){
+        sp <- spectraDB[x]
+        if (length(sp)== 0) {
+          return(NULL)
+        }else{
+          return(sp)
+        }
+      })
+      return(featureCandidate.list)
+
+    }
+    object@projectInfo$MSDB_path <- spectraDatabase
+    object@annotation$positiveCandidate <- .matchMz(object@xcmsData$positiveFeature,
+                                                    ProtGenerics::filterPolarity(Spectra_database,1))
+    object@annotation$negativeCandidate <- .matchMz(object@xcmsData$negativeFeature,
+                                                    ProtGenerics::filterPolarity(Spectra_database,0))
+  }
+
+  ### according to isotopes, from all candidate, expand possible isotope
+  {
+    .expand_iso <- function( featureCandidate.list,xcms.xcms){
+
+      featuredef <- featureDefinitions(xcms.xcms)%>%as.data.frame()
+      featureval <- featureValues(xcms.xcms,missing = "rowmin_half")
+      .match.featurecandidate <- function(x,featuredef,featureval){
+        if (is.null(x)) {
+          return(NULL)
+        }else{
+
+          iso.all <- list()
+          for (i in 1:length(x)) {
+            iso.table <- MSCC::chemform_isotopes_pattern_enviPat(
+              MSCC::chemform_adduct(x$formula[i],x$adduct[i]) )%>%
+              MSCC:::match_isotopes_to_featuredef(featuredef ,rt.tol = 10)%>%
+              MSCC:::match_isotopes_to_featureval(featureval)%>%
+              dplyr::mutate(MSDB_id = x$MSDB_id[i])
+
+            iso.all[[i]] <- iso.table
+
+          }
+          iso.all <- do.call("rbind",iso.all)
+
+        }
+        iso.all
+
+
       }
-    })
-    return(featureCandidate)
+
+      bplapply(featureCandidate.list,
+             .match.featurecandidate,BPPARAM = SnowParam(progressbar = T),featuredef,featureval) -> expanded.spectra
+
+
+
+
+    }
+
 
   }
-  object@projectInfo$MSDB_path <- spectraDatabase
-  object@annotation$positiveCandidate <- .matchMz(object@xcmsData$positiveFeature,
-                                                  ProtGenerics::filterPolarity(Spectra_database,1))
-  object@annotation$negativeCandidate <- .matchMz(object@xcmsData$negativeFeature,
-                                                  ProtGenerics::filterPolarity(Spectra_database,0))
+
+
   object
 
 }
@@ -464,7 +514,7 @@ getStaDataMSdev <- function(object,missing = NA,
     dplyr::rename_with( ~sub(pattern = ".mzML",replacement = "",x = .x))%>%
     remove_rownames()
 
-  featureAll <-  rbind(featurePos,featureNeg)
+  featureAll <-  dplyr::bind_rows(featurePos,featureNeg)
   featureAllanno <- MSdb:::getInfoFromMSDB(featureAll$MSDB_id,
                                        msdb_path = object@projectInfo$MSDB_path,
                                        keys =  MSDB.keys)
