@@ -1,4 +1,4 @@
-MSdev_workflow_for_lipidomic <- function(
+MSdev_workflow <- function(
     project.dir,
     MS_instrument = "AB6600",
     LC_condition = "Metabolomics"){
@@ -9,23 +9,24 @@ MSdev_workflow_for_lipidomic <- function(
   MS_dev_obj <- msConvert_MSdev(MS_dev_obj)
   MS_dev_obj
   MS_dev_obj <- xcmsProcessingMSdev(MS_dev_obj,
-                                    xcms.findpeak.param = dplyr::case_when(
-                                      MS_instrument == "AB6600" ~ MSdev_param_set$xcms.param$findpeakparam$AB6600,
-                                      MS_instrument == "QEplus" ~ MSdev_param_set$xcms.param$findpeakparam$QEplus,
-                                      T ~ MSdev_param_set$xcms.param$findpeakparam$Default))
+                                    xcms.findpeak.param = switch(MS_instrument,
+                                             "AB6600" = MSdev_param_set$xcms.param$findpeakparam$AB6600,
+                                             "QEplus" = MSdev_param_set$xcms.param$findpeakparam$QEplus)
+  )
+
   MS_dev_obj <- extractSpectra_fullscan_DDA(MS_dev_obj)
   MS_dev_obj <- featureSpectra_fullscan_DDA(MS_dev_obj)
   MS_dev_obj <- featureCandidate(MS_dev_obj,
                                  mz.ppm = 20,
-                                spectraDatabase = case_when(
-                                  LC_condition == "Metabolomics" ~ "d:/MSdb/HMDB/Spectra/HMDB_spectras_experiment_2022_08_12.Rdata",
-                                  LC_condition == "Lipidomics" ~ "d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata",
+                                spectraDatabase = switch(LC_condition,
+                                   "Metabolomics" = "d:/MSdb/msdb.HMDB.Rdata",
+                                   "Lipidomics" = "d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata",
                                   ))
   MS_dev_obj <- annotateMSdev(MS_dev_obj)
   MS_dev_obj <- getStaDataMSdev(MS_dev_obj,missing = "rowmin_half",
-                                MSDB.keys = case_when(
-                                  LC_condition == "Metabolomics"~c("Compound_name","adduct","formula","inchikey" ,"database_origin"),
-                                  LC_condition == "Lipidomics"~c("Compound_name","adduct","formula","inchikey","Lipid_subclass" ,"database_origin")
+                                MSDB.keys = switch(LC_condition,
+                                   "Metabolomics" = c("Compound_name","adduct","formula","inchikey" ,"database_origin"),
+                                  "Lipidomics" = c("Compound_name","adduct","formula","inchikey","Lipid_subclass" ,"database_origin")
                                   )
                                 )
   saveMSdev(MS_dev_obj)
@@ -43,6 +44,21 @@ return(MS_dev_obj)
 }
 
 
+
+MSdev_Stat_workflow <- function(msdev.obj){
+  exportMSdev(MS_dev_obj)
+  plotMSdevPCA(MS_dev_obj)
+
+  MS_dev_obj <- analyzeMSdevANOVA(MS_dev_obj)
+  plotMSdevANOVA(MS_dev_obj)
+
+  MS_dev_obj <- analyzeMSdevDiffMetabolites(MS_dev_obj)
+  plotMSdevDiffHeatmap(MS_dev_obj)
+  plotMSdevDiffVolcano(MS_dev_obj)
+
+  saveMSdev(MS_dev_obj)
+
+}
 
 
 MSdev_param <- function(){
