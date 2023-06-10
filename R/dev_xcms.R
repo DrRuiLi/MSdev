@@ -4,7 +4,7 @@
 #'  ( note this rely on character "QC" and "Sample" in `sampleNames(xcms.xcms)` )
 #' @param xcms.xcms
 #'
-#' @return
+#' @return a SummarizedExperiment subject
 #' @export
 #'
 #' @examples
