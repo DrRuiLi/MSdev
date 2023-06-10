@@ -12,5 +12,5 @@ featureDefinitions_PeakSta(xcms.xcms)
 \description{
 extract features' median rt, sn and maxo,
 \code{xcms::featureDefinitions()} return a \code{DataFrame}, in which rtmin, rtmax, rtmed was median of \code{xcms::chromPeaks()$rt},
-but not the median range of peaks
+but not the median range of peaks. peakRtMin, peakRtMax, peakSN, peakMaxo are median of all peaks in a feature
 }

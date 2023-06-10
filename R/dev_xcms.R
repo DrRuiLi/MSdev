@@ -55,10 +55,43 @@ get_intensity_rtime_df_from_XChromatogram <- function(xchrom){
 
 }
 
+
+#' XChromatograms_rt_unit
+#'
+#'  change rtime units, in some situation (such as SRM data from Thermo), rtime are recorded with unit "m",
+#'  this will lead to error when findChrompeaks
+#'
+#' @param xchroms `XChromatograms` or `MChromatograms` object
+#' @param unit_to "s" or "m", "s": rtime*60; "m": rtime/60
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#'
+XChromatograms_rt_unit <- function(xchroms,unit_to = "s"){
+
+
+  unit.mulit <- switch(unit_to,
+            "s" = 60,
+            "m" = 1/60)
+  rtime.max <- max(rtime(xchroms[1,1]))
+  for (i in 1:dim(xchroms)[1]) {
+      for (j in 1:dim(xchroms)[2]) {
+        xchroms[i,j]@rtime <- rtime(xchroms[i,j])*unit.mulit
+      }
+  }
+  message( "max rtime value ", round(rtime.max,0), " change to ", round(max(rtime(xchroms[1,1])),0))
+
+  return(xchroms)
+
+
+}
+
 #' @title featureDefinitions_PeakSta
 #' @description extract features' median rt, sn and maxo,
 #' `xcms::featureDefinitions()` return a `DataFrame`, in which rtmin, rtmax, rtmed was median of `xcms::chromPeaks()$rt`,
-#' but not the median range of peaks
+#' but not the median range of peaks. peakRtMin, peakRtMax, peakSN, peakMaxo are median of all peaks in a feature
 #'
 #' @param xcms.xcms
 #'
