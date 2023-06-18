@@ -162,11 +162,11 @@ msConvert_MSdev <- function(object){
                        BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
 
   }else if(object@projectInfo$rawDataFormat == ".wiff"){
-    msconvert_wiff2mzML(wiff.files  = object@sampleInfo$raw.file.positive,
+    MSconvertR::msConvert2mzML(wiff.files  = object@sampleInfo$raw.file.positive,
                        mzML.files = object@sampleInfo$msData.file.positive,
                        BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
 
-    msconvert_wiff2mzML(wiff.files  = object@sampleInfo$raw.file.negative,
+    MSconvertR::msConvert2mzML(wiff.files  = object@sampleInfo$raw.file.negative,
                        mzML.files = object@sampleInfo$msData.file.negative,
                        BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
 
