@@ -3694,4 +3694,23 @@ saveMSdev(msdemo)
 
 
 
+# Mon Jun 12 20:49:20 2023 ------------------------------
+msdev <- load_as_var("d:/MSCC.test/MSdev_2023_05_04.Rdata")
+
+isotopes.table.matched <- match_isotopes_to_featuredef(isotopes.network = compound.isotopes.network[[1]],
+                             featuredef = as.data.frame(featureDefinitions(msdev@xcmsData$positiveMS1)))
+featureval <- featureValues(msdev@xcmsData$positiveMS1, missing = "rowmin_half")
+
+isotopes.calced <- match_isotopes_to_featureval(isotopes.table.matched,
+                                                featureval,
+                                                value = "ratio_to_base")
+
+
+
+
+a <- compound.isotopes.network.match[[19]]
+
+
+
+
 
