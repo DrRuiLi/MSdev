@@ -1,5 +1,5 @@
 ###
-work_flow_mzML <- function(project.dir = "D:/MSCC.test/",
+work_flow_iso_adj <- function(project.dir = "D:/MSCC.test/",
                            compound.formula.file = "d:/MSCC.test/MSCC.compound.xlsx"){
 
 
@@ -16,19 +16,22 @@ work_flow_mzML <- function(project.dir = "D:/MSCC.test/",
 
   compound.table <- readxl::read_excel("d:/MSCC.test/MSCC.compound.xlsx")%>%
     dplyr::rowwise()%>%
-    dplyr::mutate(Chem_formula = chemform_formate(Chem_formula),
-                  Chem_formula_adduct = chemform_adduct(Chem_formula , Adduct)
+    dplyr::mutate(Chem_formula = MSCC::chemform_formate(Chem_formula),
+                  MSCC::chemform_adduct(Chem_formula , Adduct)
     )
-  compound.isotopes.network <- BiocParallel::bplapply(X = compound.table$Chem_formula_adduct,
-                                                      chemform_isotopes_pattern_enviPat,
+  compound.isotopes.network <- BiocParallel::bplapply(X = compound.table$chemform.adduct,
+                                                      MSCC::chemform_isotopes_pattern_enviPat,
                                                       BPPARAM = BiocParallel::SerialParam(progressbar = T)
   )
 
-  compound.isotopes.network.match <- match_isotopes_to_features(isotopes.network = compound.isotopes.network,
+  compound.isotopes.network.match <- match_isotopes_to_xcms_feature(isotopes.network = compound.isotopes.network,
                                                                 xcms.xcms =msdev@xcmsData$positiveMS1,
-                                                                ppm.thresh = 20
+                                                                ppm.thresh = 20,
+                                                                  value = "ratio_sub_nature"
   )
 
+  names(compound.isotopes.network.match) <- compound.table$Compound
+  xlsx.write.list(compound.isotopes.network.match,file = "D:/MSCC.test/Reuslt.xlsx")
 
 
 
