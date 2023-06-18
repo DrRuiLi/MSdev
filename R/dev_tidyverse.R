@@ -28,24 +28,26 @@ add_multi_column <- function(x, column_name){
 #' @export
 #'
 #' @examples
+
 list2df <- function(x){
 
-  list.vars <- sapply(x, names)%>%
+  list.vars <- lapply(x, names)%>%
     unlist()%>%
     unique()
 
   lapply(x , function(z){
-    z <- z[list.vars]
+    z <- z[list.vars]%>%
+      `names<-`(list.vars)
     z.is.list <- sapply(z, is.list)
     z[z.is.list] <- "large list"
     z.is.null <- sapply(z , is.null)
     z[z.is.null] <- NA
     z
   })%>%
-    data.table::rbindlist(fill = T)%>%
+    do.call("rbind",.)%>%
     as.data.frame()->x.df
   ### empty column with name NA will lead to error, unknown reason
-  x.df <- x.df[,which(!is.na(colnames(x.df)))]
+  x.df <- x.df[,which(!is.na(colnames(x.df))),drop =F]
   x.df
 
 }

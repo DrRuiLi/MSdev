@@ -53,3 +53,42 @@ write.xlsx <- function(data,file.dir ){
   openxlsx::write.xlsx(data , file.dir)
 
 }
+
+
+
+#' xlsx.write.list
+#'
+#' Write a list of data.frame (or other object could be write into wroksheet), every term will be writen to a single sheet
+#'
+#' @param df.list
+#' @param file
+#'
+#' @return
+#' @export
+#'
+#' @examples
+xlsx.write.list <- function(df.list ,file){
+
+  wb <- openxlsx::createWorkbook()
+  for (i in 1:length(df.list)) {
+
+    sheet.name <- names(df.list)[i]
+    sheet.name <- gsub(x = sheet.name,pattern = "[:;/]",replacement = "_")
+    openxlsx::addWorksheet(wb,sheetName = sheet.name)
+    openxlsx::writeData(wb ,sheet = i, x = df.list[[i]])
+
+
+  }
+  openxlsx::saveWorkbook(wb,file = file,overwrite = T)
+
+  return(invisible())
+
+}
+
+
+
+
+
+
+
+
