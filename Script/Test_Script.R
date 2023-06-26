@@ -3714,3 +3714,12 @@ a <- compound.isotopes.network.match[[19]]
 
 
 
+
+
+gout.sample <- readxl::read_excel(choose.files(),sheet = 3)
+
+a <- dplyr::filter(gout.sample,!is.na(Sample.ID))
+
+
+
+
