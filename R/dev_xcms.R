@@ -519,6 +519,40 @@ plot_xcms_peaks_ms2_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS2"
 
 
 
+plot_xcms_ms2_distribution <- function(xcms.xcms,plot.title = "MS2 Precursor distribution" ){
+
+ scan.data <- fData(xcms.xcms)%>%
+   dplyr::filter(msLevel==2)
+
+ ms1.rt <- fData(xcms.xcms)%>%
+   dplyr::filter(msLevel==1)%>%
+   dplyr::pull(retentionTime)
+
+ ggplot(scan.data)+
+   geom_vline(xintercept = ms1.rt,linewidth = 0.05,col = "black")+
+   geom_point(aes(x = retentionTime,y= precursorMZ,
+                  col = log10(precursorIntensity)),
+   )+
+   labs(title = plot.title,
+        col = "Log10\n(Intensity)",
+        size = "Peak width",
+        x = "Retention time",
+        y = "mz")+
+   guides(alpha = "none")+
+   scale_color_gradientn(breaks = c(0,3,6,9),
+                         labels = c(0,3,6,9),
+                         limits = c(0,9),
+                         values = c(0,2,4,7,9)/9,
+                         colors = c("white","white","yellow","red","red"))+
+   theme_bw()+
+   theme(text = element_text(size = 8))->peaks.dis.plot
+ peaks.dis.plot
+ export::graph2png(peaks.dis.plot,width = 25,height = 5)
+
+}
+
+
+
 plot_xcms_peaks_SN_distribution <- function(xcms.xcms,plot.title = "Peaks SNR(Signal to Noise Ratio)"){
 
 
@@ -561,7 +595,7 @@ plot_xcms_peaks_SN_distribution <- function(xcms.xcms,plot.title = "Peaks SNR(Si
 #' note that if multiple sample in xcms object, only first sample will be extracted
 #'
 #' @param xcms.xcms
-#' @param peak_id
+#' @param peak_ids
 #' @param rt_expand foldchange to expand rt range
 #'
 #' @return
