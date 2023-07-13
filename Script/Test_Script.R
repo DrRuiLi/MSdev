@@ -3726,8 +3726,72 @@ a <- dplyr::filter(gout.sample,!is.na(Sample.ID))
 
 
 
+# Wed Jul 12 14:25:27 2023 ------------------------------
+library(devtools)
+load_all()
+MSconvertR::MSConvert_check()
+
+project.dir <- "../../Projecct/2023.07.12.Pso.dev/msdata/"%>%normalizePath
+MSconvertR::msConvertDir(project.dir)
 
 
+library(xcms)
+xcms.xcms <-readMSData("../../Projecct/2023.07.12.Pso.dev/msdata/mzML/DDA30_pos_test001.mzML",
+                       mode = "onDisk")
+xcms.xcms <- findChromPeaks(xcms.xcms,param = CentWaveParam(peakwidth = c(5,50),
+                                                            ppm = 10))
+
+plot_xcms_peaks_distribution(xcms.xcms )
+plot_xcms_peaks_ms2_scans(xcms.xcms )
+plot_xcms_peaks_ms1_scans(xcms.xcms )
+plot_xcms_peaks_SN_distribution(xcms.xcms )
+plot_xcms_ms2
+
+
+#plot_xcms_peaks_SN_distribution(xcms.xcms )
+
+
+export_QE_ExclusionList_From_xcmsPeaks(xcms.xcms,peak.count.thresh = 20 )
+
+
+
+
+ms2 <- fData(xcms.xcms)
+table(ms2$msLevel)
+plot(ms2$retentionTime,ms2$precursorMZ)
+
+
+
+files <- dir("../../Projecct/2023.07.12.Pso.dev/msdata/mzML/",pattern = "mzML$",full.names = T)
+xcms.all <-readMSData(files,
+                       mode = "onDisk")
+
+
+xcms.pos <- filterPolarity(xcms.all,1)
+xcms.neg <- filterPolarity(xcms.all,0)
+
+
+xcms.scan.pos <- fData(xcms.pos)
+
+
+
+
+
+
+xcms.xcms <- readMSData("d:/WJY/mzML/std_100.mzML")
+
+a <- header(xcms.xcms)
+sp <- Spectra("D:/WJY/mzML/std_100.mzML")
+
+a <- spectraData(sp)%>%
+  as.data.frame()
+
+
+aaa <- readSRMData("d:/WJY/mzML/std_100.mzML")
+
+
+library(mzR)
+aaa <- openMSfile("d:/WJY/mzML/std_100.mzML")
 
 
 
