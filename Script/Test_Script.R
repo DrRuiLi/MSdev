@@ -3793,6 +3793,20 @@ aaa <- readSRMData("d:/WJY/mzML/std_100.mzML")
 library(mzR)
 aaa <- openMSfile("d:/WJY/mzML/std_100.mzML")
 
+# Sat Jul 15 10:13:17 2023 ------------------------------
+xcms.xcms <- xcmsProcessingMS1("../../Projecct/2023.07.12.Pseudo.dev/msdata/mzML/FS_pos_test001.mzML")
+
+
+plot_xcms_feature_chromatogram(xcms.xcms,7873)->p
+p
+
+featureChromatograms(xcms.xcms,features = 7873)%>%plot(xlim =  c(400,500))
+
+
+
+xcms.sub <- xcms.xcms%>%
+  filterMz(c(369.16,369.167))
+plot(xcms.sub,type = "XIC")
 
 
 
