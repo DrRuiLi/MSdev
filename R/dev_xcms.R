@@ -177,6 +177,8 @@ featureDefinitions_PeakSta<- function(xcms.xcms){
   feature.def$peakRtMin <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"rtmin")
   feature.def$peakRtMax <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"rtmax")
   feature.def$peakWidth <- feature.def$peakRtMax-feature.def$peakRtMin
+  feature.def$peakMzMin <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"mzmin")
+  feature.def$peakMzMax <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"mzmax")
   feature.def$peakSN <-  sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"sn")
   feature.def$peakMaxo <-  sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"maxo")
 
@@ -345,33 +347,39 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
   if (is.null(sampleNames)) {
     sampleNames <- xcms.sample.info$sampleNames
   }
-  xcms.sample.info <- xcms.sample.info[sampleNames,]
+  xcms.sample.info <- xcms.sample.info[sampleNames,,drop=F]
   if (length(sampleNames) > 5) {
     if (!is.null(xcms.sample.info$group)) {
       xcms.sample.info.sub <- xcms.sample.info%>%
         dplyr::group_by(group)%>%
         dplyr::slice_sample(n=1)
     }
+  }else{
+    xcms.sample.info.sub <- xcms.sample.info
   }
   xcms.sub <- filterFile(xcms.xcms,which(Biobase::sampleNames(xcms.xcms)%in% xcms.sample.info.sub$sampleNames))
   ### mz
   xcms.feature <- featureDefinitions(xcms.xcms)[feature.id,]
-  xcms.chrom <- chromatogram(xcms.sub , mz = c(xcms.feature$mzmin,xcms.feature$mzmax),
-                             rt =c(xcms.feature$rtmin,xcms.feature$rtmax),
-                            #rt = c(min(xcms.sub@featureData@data[["retentionTime"]]),
-                            #       max(xcms.sub@featureData@data[["retentionTime"]])),
+  mz.range <- mz.range.ppm(xcms.feature$mzmed,5)
+  rt.range <- c(min(xcms.sub@featureData@data[["retentionTime"]]),
+                max(xcms.sub@featureData@data[["retentionTime"]]))
+  xcms.chrom <- chromatogram(xcms.sub , mz = mz.range,
+                            #rt =c(xcms.feature$rtmin,xcms.feature$rtmax),
+                            rt = rt.range,
                              adjustedRtime  =F)
 
   xcms.chrom.data <- get_intensity_rtime_df_from_XChromatogram(xcms.chrom)%>%
-    dplyr::mutate(group = xcms.sample.info$group[match(sample.name , xcms.sample.info$sampleNames)],
-                  group = groupStringFactor(group))
+    dplyr::mutate(group = sample.name)
 
   ggplot(xcms.chrom.data)+
     geom_line(aes(x = rt,y = intensity , col = group))+
     xlim(c(min(rtime(xcms.sub)),max(rtime(xcms.sub))))+
     labs(col = "",x = "Retention time", y = "Intensity",
          title = paste0(feature.id),
-         subtitle = paste0( "mz: \t",round(xcms.feature$mzmin,4),"~",round(xcms.feature$mzmax,4),"\nrt: \t",round(xcms.feature$rtmin,2),"~",round(xcms.feature$rtmax,2) ))+
+         subtitle = paste0( "mz: ",round(mz.range[1],6),
+                            " ~ ",round(mz.range[2],6),
+                            "\nrt: ",round(xcms.feature$rtmin,2),
+                            " ~ ",round(xcms.feature$rtmax,2) ))+
     theme_bw()+
     theme(text = element_text(size = 8))
 
@@ -659,7 +667,7 @@ plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt_expand = 1.5){
 #' @examples
 xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
                               centWaveParam = xcms::CentWaveParam(ppm = 20,
-                                                                  peakwidth = c(5,30),
+                                                                  peakwidth = c(5,20),
                                                                   snthresh = 10,
                                                                   prefilter = c(3,100))){
   xcms.xcms <-  MSnbase::readMSData(msDataFiles, mode = "onDisk")
