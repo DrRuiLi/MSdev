@@ -249,4 +249,6 @@ mz.range.ppm <- function(mz = 200, ppm = 5){
   return(mz.range)
 }
 
-
+open_script <- function(){
+  rstudioapi::documentOpen("Script/Test_Script.R")
+}
