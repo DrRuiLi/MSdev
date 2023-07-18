@@ -3801,15 +3801,13 @@ plot_xcms_feature_chromatogram(xcms.xcms,7873)->p
 p
 
 featureChromatograms(xcms.xcms,features = 7873)%>%plot(xlim =  c(400,500))
-<<<<<<< HEAD
-=======
+
 
 
 
 xcms.sub <- xcms.xcms%>%
   filterMz(c(369.16,369.167))
 plot(xcms.sub,type = "XIC")
->>>>>>> 1c8ac9d616c82e0dbf64d094736df10cbe6f7ef7
 
 
 
