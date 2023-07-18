@@ -3808,7 +3808,12 @@ xcms.sub <- xcms.xcms%>%
   filterMz(c(369.16,369.167))
 plot(xcms.sub,type = "XIC")
 
-
+# Tue Jul 18 13:18:04 2023 ------------------------------
+#msdev.pseudo <- MSdev("../../Projecct/2023.07.12.Pseudo.dev/msdata/")
+msdev.pseudo <- load_as_var("../../Projecct/2023.07.12.Pseudo.dev/MSdev_2023_07_18.Rdata")
+msdev.pseudo <- msConvert_MSdev(msdev.pseudo)
+msdev.pseudo <- checkSampleInfo(msdev.pseudo)
+msdev.pseudo <- xcmsProcessingMSdev(msdev.pseudo)
 
 
 
