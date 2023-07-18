@@ -663,7 +663,7 @@ plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt_expand = 1.5){
 #'
 #' @return
 #' @export
-#'
+#' @import xcms
 #' @examples
 xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
                               centWaveParam = xcms::CentWaveParam(ppm = 20,
@@ -683,13 +683,13 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
   }
   xcms.xcms <- ProtGenerics::filterPolarity(xcms.xcms , ion_mode)
   message(Sys.time()," Find peaks...")
-  xcms.xcms<-findChromPeaks(xcms.xcms,
+  xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
                             param = centWaveParam)
   message(Sys.time()," Adjust RT...")
-  peak.density.param <- PeakDensityParam(sampleGroups = peaksGroup,
+  peak.density.param <- xcms::PeakDensityParam(sampleGroups = peaksGroup,
                                          minFraction = 0.4,bw = 30,
                                          binSize = 0.015)
-  xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
+  xcms.xcms <- xcms::groupChromPeaks(xcms.xcms,param = peak.density.param)
 
 
 

@@ -153,11 +153,11 @@ msConvert_MSdev <- function(object){
 
   ### convert
   if (object@projectInfo$rawDataFormat == ".raw") {
-    msconvert_raw2mzML(raw.files  = object@sampleInfo$raw.file.positive,
+    MSconvertR::msConvert2mzML(raw.files  = object@sampleInfo$raw.file.positive,
                        mzML.files = object@sampleInfo$msData.file.positive,
                        BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
 
-    msconvert_raw2mzML(raw.files  = object@sampleInfo$raw.file.negative,
+    MSconvertR::msConvert2mzML(raw.files  = object@sampleInfo$raw.file.negative,
                        mzML.files = object@sampleInfo$msData.file.negative,
                        BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
 
@@ -196,8 +196,8 @@ msConvert_MSdev <- function(object){
 }
 
 xcmsProcessingMSdev <- function(object,
-                                xcms.findpeak.param = xcms::CentWaveParam(ppm = 25,snthresh = 10,
-                                                                   peakwidth = c(5,50),
+                                xcms.findpeak.param = xcms::CentWaveParam(ppm = 10,snthresh = 100,
+                                                                   peakwidth = c(5,20),
                                                                    prefilter = c(3,1000))){
 
   ### determine xcms param

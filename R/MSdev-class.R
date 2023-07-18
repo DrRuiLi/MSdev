@@ -35,6 +35,8 @@ setMethod("initialize" , "MSdev",
                 message("rawDataDir do not exist")
 
               }
+              rawDataDir <- normalizePath(rawDataDir)
+              projectDir <- normalizePath(projectDir)
               dir.create(projectDir,recursive = T,showWarnings = F)
             }
 
