@@ -71,7 +71,9 @@ annotateSpectraMSdb <- function(expSpec,refSpec){
   rt.score <- 2- rt.error/20
   rt.score[is.na(rt.score)] <- 0
 
-  sp.score <- Spectra::compareSpectra(expSpec,refSpec)
+  expSpec.sub <-Spectra::filterMzRange(expSpec,c(0,expSpec$precursorMz-0.5))
+  refSpec.sub <-Spectra::filterMzRange(refSpec,c(0,expSpec$precursorMz-0.5))
+  sp.score <- Spectra::compareSpectra(expSpec.sub,refSpec.sub)
   sp.score[is.nan(sp.score)] <- 0
 
   score <- mz.score*0.2 + rt.score*0.2 + sp.score*0.6

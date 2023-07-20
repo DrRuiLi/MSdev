@@ -25,7 +25,14 @@ get_features_from_xcms <- function(xcms.xcms,missing = NA){
 
     feature.def$qc_rsd <- 0
   )
-  feature.def$sample_rsd <- apply(feature.matrix.sample, 1, rsd)
+
+  if(sum(grepl("Sample",colnames(feature.matrix)))>1){
+
+    feature.def$sample_rsd <- apply(feature.matrix.sample, 1, rsd)
+  }else(
+
+    feature.def$sample_rsd <- 0
+  )
   feature.def$med_intensity <- apply(feature.matrix , 1 ,median,na.rm =T)
   SummarizedExperiment::rowData(xcms.sum) <-feature.def
   return(xcms.sum)
@@ -360,7 +367,7 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
   xcms.sub <- filterFile(xcms.xcms,which(Biobase::sampleNames(xcms.xcms)%in% xcms.sample.info.sub$sampleNames))
   ### mz
   xcms.feature <- featureDefinitions(xcms.xcms)[feature.id,]
-  mz.range <- mz.range.ppm(xcms.feature$mzmed,5)
+  mz.range <- mz.range.ppm(xcms.feature$mzmed,10)
   rt.range <- c(min(xcms.sub@featureData@data[["retentionTime"]]),
                 max(xcms.sub@featureData@data[["retentionTime"]]))
   xcms.chrom <- chromatogram(xcms.sub , mz = mz.range,
