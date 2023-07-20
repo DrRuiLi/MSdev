@@ -467,7 +467,7 @@ dropSpectra <- function(object){
 #'
 #' @examples
 getStaDataMSdev <- function(object,missing = NA,
-                            MSDB.keys =c("Compound_name","adduct","formula","inchikey","Lipid_subclass" ,"database_origin")
+                            MSDB.keys =c("name","adduct","formula","inchikey" ,"database_origin")
                             ){
 
   sampleInfo <- object@sampleInfo%>%
@@ -879,12 +879,12 @@ plot_MSdev_feature_spectrum <- function(MSdev.obj,feature.id  ){
                              "Exp Precursor mz :",sp.exp$precursorMz,"\n",
                              "Exp Retention time :",sp.exp$rtime,"\n",
                              "Score: ",feature.data$score,"\n",
-                             "Compound: ",feature.data$Compound_name,"\n",
+                             "Compound: ",feature.data$name,"\n",
                              "Adduct: ",feature.data$adduct,"\n",
                              "Ref Precursor mz: ",sp.ref$precursorMz,"\n",
                              "Ref Retention time: ",sp.ref$rtime,"\n",
                              "INCHIKEY: ",sp.ref$inchikey,"\n",
-                             "KEGG ID: ",sp.ref$kegg.id,"\n",
+                             #"KEGG ID: ",sp.ref$kegg.id,"\n",
                              "Reference Source: ",sp.ref$database
 
       )
@@ -906,12 +906,12 @@ plot_MSdev_feature_spectrum <- function(MSdev.obj,feature.id  ){
                              "Exp Precursor mz :",feature.data$mz,"\n",
                              "Exp Retention time :",feature.data$rt,"\n",
                              "Score: ",feature.data$score,"\n",
-                             "Compound: ",feature.data$Compound_name,"\n",
+                             "Compound: ",feature.data$name,"\n",
                              "Adduct: ",feature.data$adduct,"\n",
                              "Ref Precursor mz: ",sp.ref$precursorMz,"\n",
                              "Ref Retention time: ",sp.ref$rtime,"\n",
                              "INCHIKEY: ",sp.ref$inchikey,"\n",
-                             "KEGG ID: ",sp.ref$kegg.id,"\n",
+                            # "KEGG ID: ",sp.ref$kegg.id,"\n",
                              "Reference Source: ",sp.ref$database
 
       )
@@ -955,6 +955,7 @@ export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
 
 
 
+
   png(paste0(out.dir,"/",feature_id,".MSMS.png"),
       res = 100,width = 1000,height = 800)
   par(mar = c(2,2,17,2))
@@ -969,8 +970,9 @@ export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
   }else{
     xcms.xcms <- MSdev.obj@xcmsData$negativeMS1}
   gp <- plot_xcms_feature_chromatogram(xcms.xcms,
-                                       feature.id = gsub(x = feature_id,pattern = "[_|pos|neg]",replacement = ""))
-  export::graph2png(gp , file = paste0(out.dir,"/",feature_id,".Crhom.png"))
+                                       feature.id = gsub(x = feature_id,pattern = "[_|pos|neg]",replacement = ""))+
+    theme(legend.position = "none")
+  export::graph2png(gp , file = paste0(out.dir,"/",feature_id,".Chrom.png"))
 
 }
 

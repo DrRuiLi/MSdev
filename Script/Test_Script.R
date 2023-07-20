@@ -3774,7 +3774,7 @@ xcms.neg <- filterPolarity(xcms.all,0)
 xcms.scan.pos <- fData(xcms.pos)
 
 
-
+xcmsProcessingMS1()
 
 
 
@@ -3821,6 +3821,58 @@ msdev.pseudo <- load_as_var("../../Projecct/2023.07.12.Pseudo.dev/MSdev_2023_07_
 msdev.pseudo <- msConvert_MSdev(msdev.pseudo)
 msdev.pseudo <- checkSampleInfo(msdev.pseudo)
 msdev.pseudo <- xcmsProcessingMSdev(msdev.pseudo)
+
+msdev.pseudo <- extractSpectra_fullscan_DDA(msdev.pseudo)
+msdev.pseudo <- featureSpectra_fullscan_DDA(msdev.pseudo)
+msdev.pseudo <- featureCandidate(msdev.pseudo,
+                               mz.ppm = 20,
+                               spectraDatabase = "d:/MSdb.2023.05.30/MSdb_Spectra_database_2023_06_06.rda")
+
+msdev.pseudo <- annotateMSdev(msdev.pseudo)
+
+
+
+msdev.pseudo <- getStaDataMSdev(msdev.pseudo)
+
+msdev.pseudo <- load_as_var("../../Projecct/2023.07.12.Pseudo.dev/MSdev_2023_07_18.Rdata")
+
+
+feature.high.score <-msdev.pseudo@statData$feature%>%
+  dplyr::filter(score >0.5)
+
+for (i in 1:10) {
+  export_MSdev_feature_MSMS(msdev.pseudo,
+                            feature_id = feature.high.score$feature_id[i],
+                            out.dir = "d:/temp/")
+}
+
+
+
+
+# Wed Jul 19 21:19:28 2023 ------------------------------
+library(xcms)
+mzml.pos.neg <- dir("../../Projecct/2023.07.12.Pseudo.dev/msdata/mzML/",
+                    "FS.+mzML$",full.names = T)
+
+xcms.pos.neg <- readMSData(mzml.pos.neg,mode = "onDisk")
+
+xcms.peaks <- findChromPeaks(xcms.pos.neg,param = CentWaveParam())
+
+xcms.peaks <- groupChromPeaks(xcms.peaks,
+                              param = PeakDensityParam(sampleGroups = rep("A",4)))
+
+aaa <- featureDefinitions(xcms.peaks)%>%
+  as.data.frame()
+
+
+
+
+features.pos <- featureDefinitions_PeakSta(msdev.pseudo@xcmsData$positiveMS1)
+
+
+
+
+
 
 
 
