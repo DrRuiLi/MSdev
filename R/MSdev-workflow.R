@@ -45,7 +45,7 @@ return(MS_dev_obj)
 
 
 
-MSdev_Stat_workflow <- function(msdev.obj){
+MSdev_Stat_workflow <- function(MS_dev_obj){
   exportMSdev(MS_dev_obj)
   plotMSdevPCA(MS_dev_obj)
 
@@ -54,7 +54,7 @@ MSdev_Stat_workflow <- function(msdev.obj){
 
   MS_dev_obj <- analyzeMSdevDiffMetabolites(MS_dev_obj)
   plotMSdevDiffHeatmap(MS_dev_obj)
-  plotMSdevDiffVolcano(MS_dev_obj)
+  plotMSdevDiffVolcano(MS_dev_obj,p.adjusted = F)
 
   saveMSdev(MS_dev_obj)
 

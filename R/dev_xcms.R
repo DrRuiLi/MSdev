@@ -174,18 +174,18 @@ featureDefinitions_PeakSta<- function(xcms.xcms){
   feature.val <- featureValues(xcms.xcms)
   peaks.data <- chromPeaks(xcms.xcms)
 
-  .xcmsPeakDataMed <- function(x,peaks.data,key = "rtmax"){
+  .xcmsPeakDataMed <- function(x,peaks.data,key = "rtmax",fun = "median"){
     x.peaks.data <- peaks.data[c(x,NA),]
-    peak.rt <- x.peaks.data[,key]
-    median(peak.rt,na.rm = T)
+    peak.key.value <- x.peaks.data[,key]
+    eval(call(fun,peak.key.value,na.rm =T))
   }
 
 
-  feature.def$peakRtMin <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"rtmin")
-  feature.def$peakRtMax <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"rtmax")
+  feature.def$peakRtMin <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,key = "rtmin",fun = "min")
+  feature.def$peakRtMax <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,key = "rtmax",fun = "max")
   feature.def$peakWidth <- feature.def$peakRtMax-feature.def$peakRtMin
-  feature.def$peakMzMin <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"mzmin")
-  feature.def$peakMzMax <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"mzmax")
+  feature.def$peakMzMin <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"mzmin",fun = "min")
+  feature.def$peakMzMax <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"mzmax",fun = "max")
   feature.def$peakSN <-  sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"sn")
   feature.def$peakMaxo <-  sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"maxo")
 
@@ -367,12 +367,15 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
   xcms.sub <- filterFile(xcms.xcms,which(Biobase::sampleNames(xcms.xcms)%in% xcms.sample.info.sub$sampleNames))
   ### mz
   xcms.feature <- featureDefinitions(xcms.xcms)[feature.id,]
-  mz.range <- mz.range.ppm(xcms.feature$mzmed,10)
-  rt.range <- c(min(xcms.sub@featureData@data[["retentionTime"]]),
-                max(xcms.sub@featureData@data[["retentionTime"]]))
+  feature.id<-rownames(xcms.feature)
+  xcms.peaks <- chromPeaks(xcms.xcms)[xcms.feature$peakidx[[1]],,drop = F]
+  mz.range <- c(min(xcms.peaks[,"mzmin"]),
+                max(xcms.peaks[,"mzmax"]))
+  rt.range <- c(min(xcms.peaks[,"rtmin"]),
+                max(xcms.peaks[,"rtmax"]))
   xcms.chrom <- chromatogram(xcms.sub , mz = mz.range,
                             #rt =c(xcms.feature$rtmin,xcms.feature$rtmax),
-                            rt = rt.range,
+                            #rt = rt.range,
                              adjustedRtime  =F)
 
   xcms.chrom.data <- get_intensity_rtime_df_from_XChromatogram(xcms.chrom)%>%
@@ -385,8 +388,8 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
          title = paste0(feature.id),
          subtitle = paste0( "mz: ",round(mz.range[1],6),
                             " ~ ",round(mz.range[2],6),
-                            "\nrt: ",round(xcms.feature$rtmin,2),
-                            " ~ ",round(xcms.feature$rtmax,2) ))+
+                            "\nrt: ",round(rt.range[1],2),
+                            " ~ ",round(rt.range[2],2) ))+
     theme_bw()+
     theme(text = element_text(size = 8))
 
