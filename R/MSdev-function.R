@@ -37,55 +37,55 @@ readInRawData <- function(object){
   projectInfo <- object@projectInfo
   msData.dir <- projectInfo$msDataDir
   raw.files <- dir(path = projectInfo$rawDataDir,
-                     pattern = paste0(projectInfo$rawDataFormat,"$"),
-                     full.names = T)
+                   pattern = paste0(projectInfo$rawDataFormat,"$"),
+                   full.names = T)
 
   ### generate sampleInfo
   {
-  .select_char <- function(char_vector){
-    if (all(is.na(char_vector))) {
-      return(NA)
+    .select_char <- function(char_vector){
+      if (all(is.na(char_vector))) {
+        return(NA)
+      }
+      max(char_vector,na.rm = T)
     }
-    max(char_vector,na.rm = T)
-  }
-  sample.info <- data.frame(raw.files = raw.files)%>%
-    dplyr::filter(!grepl(pattern = "condition",x = raw.files))%>%
-    dplyr::mutate(raw.file.positive = case_when(grepl(pattern = "pos", x = raw.files,ignore.case = T)~raw.files),
-                  raw.file.negative = case_when(grepl(pattern = "neg", x = raw.files,ignore.case = T)~raw.files))%>%
-    dplyr::mutate(sample.abbreviation= gsub(pattern = paste0("pos|neg|",projectInfo$rawDataFormat,"$"),
-                                            x = basename(raw.files) ,
-                                            ignore.case = T,
-                                            replacement = ""),
-                  sample.abbreviation = tolower(sample.abbreviation))%>%
-    dplyr::group_by(sample.abbreviation)%>%
-    dplyr::mutate(raw.file.positive = .select_char (raw.file.positive),
-                  raw.file.negative = .select_char (raw.file.negative))%>%
-    dplyr::ungroup()%>%
-    dplyr::distinct(sample.abbreviation,.keep_all = T)%>%
-    dplyr::mutate(analysis.time.positive =as.character( file.info(raw.file.positive)$mtime),
-                  analysis.time.negative = as.character(file.info(raw.file.negative)$mtime))%>%
-    dplyr::mutate(sample.type = case_when(grepl(pattern = "QC",x = sample.abbreviation,ignore.case = T)~ "QC",
-                                          grepl(pattern = "blank|blk",x = sample.abbreviation,ignore.case = T)~ "Blank",
-                                          T~"Sample"),
-                  .before = sample.abbreviation)%>%
-    dplyr::mutate(sample.name = paste0(sample.type,str_pad(1:nrow(.), ceiling(log10(nrow(.))),pad = "0")),
-                  .before = sample.type)%>%
-    dplyr::mutate(msData.file.positive = case_when(is.na(raw.file.positive)~raw.file.positive,
-                                                   T~paste0(msData.dir,"/pos/",sample.name,".mzML")),
-                  msData.file.negative = case_when(is.na(raw.file.negative)~raw.file.negative,
-                                                   T~paste0(msData.dir,"/neg/",sample.name,".mzML")))%>%
-    dplyr::arrange(analysis.time.positive)%>%
-    dplyr::mutate(no = 1:nrow(.),
-                  label = sample.abbreviation,
-                  group = sample.type,
-                  weight = NA ,
-                  xcmsProcessing = "Both")%>%
-    dplyr::select(no,sample.name,sample.type,group ,label, weight,
-                  sample.abbreviation,
-                  raw.file.positive,raw.file.negative,
-                  analysis.time.positive,analysis.time.negative,
-                  msData.file.positive,msData.file.negative,
-                  xcmsProcessing)
+    sample.info <- data.frame(raw.files = raw.files)%>%
+      dplyr::filter(!grepl(pattern = "condition",x = raw.files))%>%
+      dplyr::mutate(raw.file.positive = case_when(grepl(pattern = "pos", x = raw.files,ignore.case = T)~raw.files),
+                    raw.file.negative = case_when(grepl(pattern = "neg", x = raw.files,ignore.case = T)~raw.files))%>%
+      dplyr::mutate(sample.abbreviation= gsub(pattern = paste0("pos|neg|",projectInfo$rawDataFormat,"$"),
+                                              x = basename(raw.files) ,
+                                              ignore.case = T,
+                                              replacement = ""),
+                    sample.abbreviation = tolower(sample.abbreviation))%>%
+      dplyr::group_by(sample.abbreviation)%>%
+      dplyr::mutate(raw.file.positive = .select_char (raw.file.positive),
+                    raw.file.negative = .select_char (raw.file.negative))%>%
+      dplyr::ungroup()%>%
+      dplyr::distinct(sample.abbreviation,.keep_all = T)%>%
+      dplyr::mutate(analysis.time.positive =as.character( file.info(raw.file.positive)$mtime),
+                    analysis.time.negative = as.character(file.info(raw.file.negative)$mtime))%>%
+      dplyr::mutate(sample.type = case_when(grepl(pattern = "QC",x = sample.abbreviation,ignore.case = T)~ "QC",
+                                            grepl(pattern = "blank|blk",x = sample.abbreviation,ignore.case = T)~ "Blank",
+                                            T~"Sample"),
+                    .before = sample.abbreviation)%>%
+      dplyr::mutate(sample.name = paste0(sample.type,str_pad(1:nrow(.), ceiling(log10(nrow(.))),pad = "0")),
+                    .before = sample.type)%>%
+      dplyr::mutate(msData.file.positive = case_when(is.na(raw.file.positive)~raw.file.positive,
+                                                     T~paste0(msData.dir,"/pos/",sample.name,".mzML")),
+                    msData.file.negative = case_when(is.na(raw.file.negative)~raw.file.negative,
+                                                     T~paste0(msData.dir,"/neg/",sample.name,".mzML")))%>%
+      dplyr::arrange(analysis.time.positive)%>%
+      dplyr::mutate(no = 1:nrow(.),
+                    label = sample.abbreviation,
+                    group = sample.type,
+                    weight = NA ,
+                    xcmsProcessing = "Both")%>%
+      dplyr::select(no,sample.name,sample.type,group ,label, weight,
+                    sample.abbreviation,
+                    raw.file.positive,raw.file.negative,
+                    analysis.time.positive,analysis.time.negative,
+                    msData.file.positive,msData.file.negative,
+                    xcmsProcessing)
 
   }
   ### save
@@ -95,7 +95,7 @@ readInRawData <- function(object){
     object@processingInfo$readInRawData$done <- T
 
 
-    }
+  }
   object
 
 
@@ -154,21 +154,21 @@ msConvert_MSdev <- function(object){
   ### convert
   if (object@projectInfo$rawDataFormat == ".raw") {
     MSconvertR::msConvert2mzML(raw.files  = object@sampleInfo$raw.file.positive,
-                       mzML.files = object@sampleInfo$msData.file.positive,
-                       BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
+                               mzML.files = object@sampleInfo$msData.file.positive,
+                               BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
 
     MSconvertR::msConvert2mzML(raw.files  = object@sampleInfo$raw.file.negative,
-                       mzML.files = object@sampleInfo$msData.file.negative,
-                       BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
+                               mzML.files = object@sampleInfo$msData.file.negative,
+                               BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
 
   }else if(object@projectInfo$rawDataFormat == ".wiff"){
     MSconvertR::msConvert2mzML(wiff.files  = object@sampleInfo$raw.file.positive,
-                       mzML.files = object@sampleInfo$msData.file.positive,
-                       BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
+                               mzML.files = object@sampleInfo$msData.file.positive,
+                               BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
 
     MSconvertR::msConvert2mzML(wiff.files  = object@sampleInfo$raw.file.negative,
-                       mzML.files = object@sampleInfo$msData.file.negative,
-                       BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
+                               mzML.files = object@sampleInfo$msData.file.negative,
+                               BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
 
   }
 
@@ -197,8 +197,8 @@ msConvert_MSdev <- function(object){
 
 xcmsProcessingMSdev <- function(object,
                                 xcms.findpeak.param = xcms::CentWaveParam(ppm = 10,snthresh = 100,
-                                                                   peakwidth = c(5,20),
-                                                                   prefilter = c(3,1000))){
+                                                                          peakwidth = c(5,20),
+                                                                          prefilter = c(3,1000))){
 
   ### determine xcms param
   {
@@ -210,29 +210,29 @@ xcmsProcessingMSdev <- function(object,
 
   sampleInfoPos <-dplyr::filter(object@sampleInfo,
                                 xcmsProcessing %in% c("MS1","Both")
-                                )%>%
+  )%>%
     dplyr::filter(!is.na(msData.file.positive))
   object@xcmsData$positiveMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoPos$msData.file.positive,
-                                                       ion_mode = 1,
-                                                       peaksGroup =sampleInfoPos$sample.type,
+                                                    ion_mode = 1,
+                                                    peaksGroup =sampleInfoPos$sample.type,
                                                     centWaveParam = xcms.findpeak.param
   )
 
   Biobase::pData(object@xcmsData$positiveMS1) <- cbind(Biobase::pData(object@xcmsData$positiveMS1),
-                                              sampleInfoPos)
+                                                       sampleInfoPos)
 
   sampleInfoNeg <-dplyr::filter(object@sampleInfo,
                                 xcmsProcessing %in% c("MS1","Both")
   )%>%
     dplyr::filter(!is.na(msData.file.negative))
   object@xcmsData$negativeMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoNeg$msData.file.negative,
-                                                       ion_mode = 0,
-                                                       peaksGroup = sampleInfoNeg$sample.type,
-                                                       centWaveParam = xcms.findpeak.param
+                                                    ion_mode = 0,
+                                                    peaksGroup = sampleInfoNeg$sample.type,
+                                                    centWaveParam = xcms.findpeak.param
   )
 
   Biobase::pData(object@xcmsData$negativeMS1) <-  cbind(Biobase::pData(object@xcmsData$negativeMS1),
-                                                          sampleInfoNeg)
+                                                        sampleInfoNeg)
 
   extractFeature(object)
 
@@ -273,10 +273,10 @@ extractSpectra_fullscan_DDA <- function(object){
     spectra.neg <- Spectra::Spectra()
   } else {
     spectra.pos <- Spectra::Spectra(na.omit(sampleInfo$msData.file.positive),backend = Spectra::MsBackendDataFrame())%>%
-    filterMsLevel(2)
+      filterMsLevel(2)
 
     spectra.neg <- Spectra::Spectra(na.omit(sampleInfo$msData.file.negative),backend = Spectra::MsBackendDataFrame())%>%
-    filterMsLevel(2)
+      filterMsLevel(2)
   }
 
 
@@ -330,6 +330,16 @@ featureSpectra_fullscan_DDA <- function(object){
 }
 
 
+featureSpectra_MSdev <- function(object){
+
+  .getfeatureid <- function(sp,xcms.xcms ,mz_ppm = 10){
+    xcms.feature.def <- featureDefinitions_PeakSta(xcms.xcms)
+
+  }
+
+
+}
+
 #' @title featureCandidate
 #' @description match feature with database by mz, return all spectra matched in a list  splited by feature
 #'
@@ -344,7 +354,7 @@ featureSpectra_fullscan_DDA <- function(object){
 featureCandidate<- function(object,mz.ppm = 20,
                             spectraDatabase =
                               "C:\\Users\\91879\\OneDrive\\Documents\\Code\\R\\Projecct\\2022.1.17_Compounds.database\\Spectra.integrated.database.integration.2022_02_12.Rdata")
-  {
+{
 
   ### load spectra database
   Spectra_database <- load_as_var(spectraDatabase)
@@ -413,7 +423,7 @@ featureCandidate<- function(object,mz.ppm = 20,
       }
 
       bplapply(featureCandidate.list,
-             .match.featurecandidate,BPPARAM = SnowParam(progressbar = T),featuredef,featureval) -> expanded.spectra
+               .match.featurecandidate,BPPARAM = SnowParam(progressbar = T),featuredef,featureval) -> expanded.spectra
 
 
 
@@ -454,7 +464,7 @@ dropSpectra <- function(object){
   object@annotation$positiveCandidate <- NULL
   object@annotation$negativeCandidate <- NULL
   return(object)
-  }
+}
 
 
 #' @title getStaDataMSdev
@@ -468,7 +478,7 @@ dropSpectra <- function(object){
 #' @examples
 getStaDataMSdev <- function(object,missing = NA,
                             MSDB.keys =c("name","adduct","formula","inchikey" ,"database_origin")
-                            ){
+){
 
   sampleInfo <- object@sampleInfo%>%
     dplyr::filter(xcmsProcessing %in% c("Both","MS1"))
@@ -516,14 +526,14 @@ getStaDataMSdev <- function(object,missing = NA,
 
   featureAll <-  dplyr::bind_rows(featurePos,featureNeg)
   featureAllanno <- MSdb:::getInfoFromMSDB(featureAll$MSDB_id,
-                                       msdb_path = object@projectInfo$MSDB_path,
-                                       keys =  MSDB.keys)
+                                           msdb_path = object@projectInfo$MSDB_path,
+                                           keys =  MSDB.keys)
   featureAll<- add_column(featureAll,featureAllanno[,-1],.after = "feature_id")
   object@statData$featureRaw <-featureAll
 
   ### adjust
- # object <- adjustFeatureByIS(object)
-#  object <- adjustFeatureByGQC(object,to.adjust = "featureRaw")
+  # object <- adjustFeatureByIS(object)
+  #  object <- adjustFeatureByGQC(object,to.adjust = "featureRaw")
   object <- adjustFeatureByweight(object,to.adjust = "featureRaw")
 
   object@statData$feature <- object@statData$feature%>%
@@ -741,7 +751,7 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
     feature.matrix <- apply(feature.matrix,1,function(x){
       x[is.na(x)] <- min(x,na.rm = T)/10
       return(x)}
-      )%>%t
+    )%>%t
     cor.matrix <- cor(t(feature.matrix))
     high.cor <-apply(cor.matrix, 1, mean)>corr.thred
 
@@ -762,7 +772,7 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
     }
   feature <- feature%>%
     dplyr::mutate(internal_standard = ifelse(feature_id %in% feature.internal.standard$feature_id,
-                         internal_standard,NA))
+                                             internal_standard,NA))
   { # plot internal standard intensity
     p.list <- list()
     for (i in 1:nrow(feature.internal.standard)) {
@@ -823,8 +833,8 @@ getSEMSdev <- function(MSdev.obj){
   data.unique <- DEP::make_unique(MSdev.obj@statData$metabolites , names ="feature_id" , ids = "feature_id")
   data.colum <- which(colnames(data.unique )%in% col.info$sample.name)
   data.se <- DEP::make_se(proteins_unique = data.unique,
-                     columns = data.colum,
-                     expdesign = col.info )
+                          columns = data.colum,
+                          expdesign = col.info )
   data_filt <- DEP::filter_missval(data.se, thr = min(table(col.info$group))*0.3)
   data_norm <- DEP::normalize_vsn(data_filt)
   data_imp <- DEP::impute(data_norm, fun = "MinProb")
@@ -911,22 +921,22 @@ plot_MSdev_feature_spectrum <- function(MSdev.obj,feature.id  ){
                              "Ref Precursor mz: ",sp.ref$precursorMz,"\n",
                              "Ref Retention time: ",sp.ref$rtime,"\n",
                              "INCHIKEY: ",sp.ref$inchikey,"\n",
-                            # "KEGG ID: ",sp.ref$kegg.id,"\n",
+                             # "KEGG ID: ",sp.ref$kegg.id,"\n",
                              "Reference Source: ",sp.ref$database
 
       )
       Spectra::plotSpectraMirror(sp.exp,sp.ref,
-                        ylab = "relative intensity",
-                        labels = function(z) {
-                          lbls <- round(mz(z)[[1L]], digits = 4)
-                          lbls[intensity(z)[[1L]] <= 15] <- ""
-                          lbls},
-                        tolerance = 0.2,
-                        main = text.to.show,
-                        adj = 0,
-                        cex.main = 1.5,
-                        cex.axis = 1,
-                        labelCex = 1
+                                 ylab = "relative intensity",
+                                 labels = function(z) {
+                                   lbls <- round(mz(z)[[1L]], digits = 4)
+                                   lbls[intensity(z)[[1L]] <= 15] <- ""
+                                   lbls},
+                                 tolerance = 0.2,
+                                 main = text.to.show,
+                                 adj = 0,
+                                 cex.main = 1.5,
+                                 cex.axis = 1,
+                                 labelCex = 1
 
       )
 
@@ -964,7 +974,7 @@ export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
 
 
   is.pos <-grepl(pattern = "pos",
-             x = feature_id)
+                 x = feature_id)
   if (is.pos) {
     xcms.xcms <- MSdev.obj@xcmsData$positiveMS1
   }else{

@@ -3870,9 +3870,32 @@ aaa <- featureDefinitions(xcms.peaks)%>%
 features.pos <- featureDefinitions_PeakSta(msdev.pseudo@xcmsData$positiveMS1)
 
 
+# Sat Jul 22 19:12:12 2023 ------------------------------
+msdev.2023.7.22 <- MSdev(rawDataDir = "d:/2023_07_18-Lirui/Data/")
+msdev.2023.7.22 <- msConvert_MSdev(msdev.2023.7.22)
 
+msdev.2023.7.22 <- xcmsProcessingMSdev(msdev.2023.7.22,
+                                       xcms.findpeak.param =
+                                         CentWaveParam(peakwidth = c(5,20),
+                                                       snthresh = 100)
+)
 
-
+msdev.2023.7.22 <- extractSpectra_fullscan_DDA(msdev.2023.7.22)
+msdev.2023.7.22 <- featureSpectra_fullscan_DDA(msdev.2023.7.22)
+msdev.2023.7.22 <- featureCandidate(msdev.2023.7.22,
+                               mz.ppm = 20,
+                               spectraDatabase = "d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata"
+                               )
+msdev.2023.7.22 <- annotateMSdev(msdev.2023.7.22)
+LC_condition <- "Lipidomics"
+msdev.2023.7.22 <- getStaDataMSdev(msdev.2023.7.22,missing = "rowmin_half",
+                              MSDB.keys = switch(LC_condition,
+                                                 "Metabolomics" = c("Compound_name","adduct","formula","inchikey" ,"database_origin"),
+                                                 "Lipidomics" = c("Compound_name","adduct","formula","inchikey","Lipid_subclass" ,"database_origin")
+                              )
+)
+MS_dev_obj <- msdev.2023.7.22
+saveMSdev(MS_dev_obj)
 
 
 
