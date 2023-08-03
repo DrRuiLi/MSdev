@@ -25,7 +25,7 @@ open_ggplot_win <- function(p,width = NA,height = NA){
 
 
 
-#' @title ggplot.sum.patchwork
+#' @title ggplot_sum_patchwork
 #' @description
 #' add all ggplot by patchwork
 #'
@@ -35,7 +35,7 @@ open_ggplot_win <- function(p,width = NA,height = NA){
 #' @export
 #'
 #' @examples
-ggplot.sum.patchwork <- function(ggplot.list){
+ggplot_sum_patchwork <- function(ggplot.list){
   x <- ggplot.list
   x.len <- length(x)
   sum.exp <- 1
