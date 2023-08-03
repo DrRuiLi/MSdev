@@ -49,7 +49,7 @@ df
 #' @examples
 write.xlsx <- function(data,file.dir ){
 
-  dir.create(dirname(file.dir),recursive = T)
+  dir.create(dirname(file.dir),recursive = T,showWarnings = F)
   openxlsx::write.xlsx(data , file.dir)
 
 }

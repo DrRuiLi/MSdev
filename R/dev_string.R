@@ -58,3 +58,14 @@ vector2str <- function(v){
   paste0("c(\"",paste0(na.omit(v),collapse = "\",\""),"\")")%>%
     cat()
 }
+
+
+
+num2str <- function(x,n.digit = NA){
+
+  if (is.na(n.digit)) n.digit <- max(nchar(x))
+  sp.exp <- paste0("%0",n.digit,"d")
+  sprintf(sp.exp,x)
+
+}
+

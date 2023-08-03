@@ -39,6 +39,78 @@ get_features_from_xcms <- function(xcms.xcms,missing = NA){
 }
 
 
+get_chrom_peaks_shape_score <- function(chrom,
+                                        peak.id = chrom@chromPeakData@rownames){
+  peak.id = chrom@chromPeakData@rownames
+  peak.id <- peak.id[1]
+  peaks.data <- chromPeaks(chrom)[peak.id,,drop = F]
+  rtime <- rtime(chrom)
+  int <- intensity(chrom)
+
+  rtime <- rtime[!is.na(int)]
+  int <- int[!is.na(int)]
+
+  int.fit <-peak.gasssian.fit(rtime,
+                    peak.apex.intensity = peaks.data[1,"maxo"],
+                    peak.apex.rt = peaks.data[1,"rt"],
+                    peak.half.width = min(peaks.data[1,"rtmax"]-peaks.data[1,"rt"],
+                                          peaks.data[1,"rt"]-peaks.data[1,"rtmin"])/2)
+  int[is.na(int)] <- 0
+
+
+  #sum(abs(int-int.fit)/sum(int.fit))
+  #cor(int,int.fit)
+  #sqrt(mean((int-int.fit)^2))/mean(int.fit)
+  r2 <- 1-sum((int-int.fit)^2)/sum( (int-mean(int))^2 )
+  r2.adj <- 1-(1-r2)*(length(int)-1)/(length(int)-2)
+  r2.adj
+}
+
+#' @title get_xcms_peaks_chrom
+#' @description
+#' extract chromatograph from XCMSnExp,
+#' if `all.sample` = F, only the samples, in which given peaks.id are detected will be return,
+#' else extract from all samples
+#'
+#' @param xcms.xcms
+#' @param peaks.id
+#' @param all.sample
+#' @param rt one of c("all","identity","expand")
+#'
+#' @return XChromatograms
+#' @import xcms
+#' @export
+#'
+#' @examples
+get_xcms_peaks_chrom <- function(xcms.xcms,
+                                 peaks.id ,
+                                 all.sample =F,
+                                 rt = "expand"){
+
+  peaks.data <- xcms::chromPeaks(xcms.xcms)
+  if(is.numeric(peaks.id)) { peaks.id <-rownames(peaks.data)[peaks.id]}
+  peaks.data <- peaks.data[peaks.id,,drop=F]
+  xcms.sub <- MSnbase::filterFile(xcms.xcms,unique(peaks.data[,"sample"]))
+  if (all.sample)  xcms.sub <- xcms.xcms
+  if (nrow(xcms.sub)*nrow(peaks.data) >5000) {
+    bp <-BiocParallel::SnowParam(progressbar = T)
+  }else{
+    bp <-BiocParallel::SerialParam(progressbar = F)
+  }
+
+  rtr <- switch (rt,
+    "all" = c(min(rtime(xcms.sub)),max(rtime(xcms.sub))),
+    "expand" = apply(peaks.data[,c("rtmin","rtmax"),drop =F],1,expand_range,multi = 1)%>%t,
+    "identity" = peaks.data[,c("rtmin","rtmax"),drop =F]
+
+  )
+  x.chrom <-  xcms::chromatogram(xcms.sub,
+                          mz = peaks.data[,c("mzmin","mzmax")],
+                          rt = rtr,
+                          aggregationFun = "max",
+                          BPPARAM = bp)
+  return(x.chrom)
+}
 
 #' @title get_intensity_rtime_df_from_XChromatogram
 #' @description extract chomatogram data to a data.frame
@@ -50,15 +122,21 @@ get_features_from_xcms <- function(xcms.xcms,missing = NA){
 #' @examples
 get_intensity_rtime_df_from_XChromatogram <- function(xchrom){
 
-  data.df <- data.frame(sample.name = NULL,rt = NULL,intensity = NULL)
-  for (i in 1:ncol(xchrom)) {
-    data.df <- data.df%>%
-      rbind(data.frame(sample.name = colnames(xchrom)[i],
-                     rt = rtime(xchrom[1,i]),
-                     intensity = intensity(xchrom[1,i])))
+  .extract.chrom <- function(i,j){
+    this.chrom <- xchrom[i,j]
+    data.frame(
+      rt = rtime(this.chrom),
+      intensity =intensity(this.chrom),
+      row =i,col = j
+    )
   }
-  return(data.df)
+  bp.matrix <- expand.grid(1:nrow(xchrom),1:ncol(xchrom))
+  xchrom.data <- BiocParallel::bpmapply(.extract.chrom,
+                                        bp.matrix[,1],bp.matrix[,2],
+                         BPPARAM = BiocParallel::SerialParam(progressbar = F),SIMPLIFY=F)%>%
+    do.call("rbind",.)
 
+  return(xchrom.data)
 
 }
 
@@ -109,48 +187,44 @@ XChromatograms_rt_unit <- function(xchroms,unit_to = "s"){
 plot_XChromatograms <- function(xchrom , norm = T,move = T){
 
 
-  message("this function are not updated ")
-
-  extract_xchrom <- function(i,xchrom){
-    x <- xchrom[i]
-
-    rt <- rtime(x)
-    intensity <- intensity(x)
-
-    data.frame(adduct.id = i,rt , intensity)
-  }
-
   if (norm) {
     xchrom <- normalise(xchrom)
-    if (move) {
-      chrom.data <- lapply(1:nrow(xchrom), extract_xchrom,xchrom)%>%
-        data.table::rbindlist()%>%
-        mutate(intensity = intensity*100,
-               intensity = case_when(is.na(intensity)~ 0 ,
-                                     T~intensity),
-               rt = rt +adduct.id*3,
-               intensity = intensity+adduct.id*3)%>%
-        mutate(adduct.id = as.factor(adduct.id))
-    }else{
-      chrom.data <- lapply(1:nrow(xchrom), extract_xchrom,xchrom)%>%
-        data.table::rbindlist()%>%
-        mutate(intensity = intensity*100,
-               intensity = case_when(is.na(intensity)~ 0 ,
-                                     T~intensity))%>%
-        mutate(adduct.id = as.factor(adduct.id))
+    chrom.data <- get_intensity_rtime_df_from_XChromatogram(xchrom)%>%
+      dplyr::mutate(peaks.origin = paste0("peak_",num2str(row),"_sample_",num2str(col)),
+                    peaks.origin = factor(peaks.origin,level = unique(peaks.origin)))%>%
+      dplyr::group_by(peaks.origin)%>%
+      dplyr::mutate(peaks.idx =cur_group_id(),
+                    intensity = intensity*100
+      )%>%
+      dplyr::ungroup()
+  }else{
+    chrom.data <- get_intensity_rtime_df_from_XChromatogram(xchrom)%>%
+      dplyr::mutate(peaks.origin = paste0("peak_",num2str(row),"_sample_",num2str(col)),
+                    peaks.origin = factor(peaks.origin,level = unique(peaks.origin)))%>%
+      dplyr::group_by(peaks.origin)%>%
+      dplyr::mutate(peaks.idx =cur_group_id(),
+                    #intensity = case_when(is.na(intensity)~ 0 ,
+                    #                      T~intensity)
+      )%>%
+      dplyr::ungroup()
 
+  }
+
+
+    if (move) {
+      chrom.data <- chrom.data%>%
+        dplyr::mutate(rt = rt +peaks.idx*3,
+                      intensity = intensity+peaks.idx*3)
     }
 
-  }else{
-    chrom.data <- lapply(1:nrow(xchrom), extract_xchrom,xchrom)%>%
-      data.table::rbindlist()%>%
-      mutate(adduct.id = as.factor(adduct.id))
-  }
+
+
+
 
 
 
   ggplot(chrom.data)+
-    geom_line(aes(x = rt , y = intensity , col = adduct.id),size = 1)+
+    geom_line(aes(x = rt , y = intensity , col = peaks.origin),linewidth = 0.5)+
     theme_bw()
 
 
@@ -620,35 +694,33 @@ plot_xcms_peaks_SN_distribution <- function(xcms.xcms,plot.title = "Peaks SNR(Si
 #' @export
 #'
 #' @examples
-plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt_expand = 1.5){
+plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt = "expand"){
 
-  xcms.peaks <- chromPeaks(xcms.xcms)%>%
-    as.data.frame()
-  xcms.peaks <- xcms.peaks[peak_id,]
-  mz.range <-c(xcms.peaks$mzmin,xcms.peaks$mzmax)
-  rt.range <-c(xcms.peaks$rtmin,xcms.peaks$rtmax)
-  rt.range <- rt.range+diff(rt.range)*c(-rt_expand,rt_expand)
-  rt.range[rt.range <0 ] <- 0
-  rt.range[rt.range > max(rtime(xcms.xcms))] <-max(rtime(xcms.xcms))
-  xcms.chrom <- chromatogram(xcms.xcms ,
-                             mz = mz.range,
-                             rt = rt.range
-                             )
-  xcms.chrom <- xcms.chrom[1,1]
-  chrom.data <- data.frame(rt = rtime(xcms.chrom),
-                           intensity = intensity(xcms.chrom))%>%
-    #dplyr::filter(!is.na(intensity))%>%
-    dplyr::mutate(fill = rt > min(rt.range)&rt <max(rt.range))
+  peaks.data <- chromPeaks(xcms.xcms)[peak_id,,drop = F]
+  peak_id <- rownames(peaks.data)
+  mz.range <- c(peaks.data[,c("mzmin","mzmax")])
+  rt.range <- c(peaks.data[,c("rtmin","rtmax")])
+  xcms.chrom <- get_xcms_peaks_chrom(xcms.xcms,peaks.id = peak_id,rt = rt)
+  chrom.data <- get_intensity_rtime_df_from_XChromatogram(xcms.chrom)%>%
+    dplyr::mutate(fill = rt > min(rt.range)&rt <max(rt.range),
+                  fit = peak.gasssian.fit(rt,
+                                          peak.apex.intensity = peaks.data[1,"maxo"],
+                                          peak.apex.rt = peaks.data[1,"rt"],
+                                          peak.half.width = min(peaks.data[1,"rtmax"]-peaks.data[1,"rt"],
+                                                                peaks.data[1,"rt"]-peaks.data[1,"rtmin"])/2
+                  ))
 
   ggplot(chrom.data)+
     geom_line(aes(x = rt,y = intensity),linetype = 1)+
     geom_area(aes(x = rt,y = intensity, fill = fill))+
+    geom_point(aes(x = rt, y = fit))+
     scale_fill_manual(values = c("FALSE" = "transparent","TRUE" = "grey"))+
-    labs(title = paste0(xcms.chrom@chromPeakData@rownames),
-         subtitle = paste0("mz:",paste0(sprintf("%.5f",xcms.chrom@mz),collapse = " - "), ";     ",
+    labs(title = paste0(peak_id),
+         subtitle = paste0("mz:",paste0(sprintf("%.5f",mz.range),collapse = " - "), ";     ",
                            "rt:",paste0(sprintf("%.2f",rt.range),collapse = " - "),"\n",
-                           "mz error = ",sprintf("%.2f",mean(diff(xcms.chrom@mz)/xcms.chrom@mz)*1e6)," ppm;     ",
-                           "peak width = ", sprintf("%.2f",diff(rt.range))
+                           "mz error = ",sprintf("%.2f",mean(diff(mz.range)/mz.range)*1e6)," ppm;     ",
+                           "peak width = ", sprintf("%.2f",diff(rt.range)),"\n",
+                           "shape score = ",get_chrom_peaks_shape_score(xcms.chrom[1,1])
                            ),
          x = "Retention time")+
     guides(fill = "none")+
@@ -694,7 +766,11 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
   xcms.xcms <- ProtGenerics::filterPolarity(xcms.xcms , ion_mode)
   message(Sys.time()," Find peaks...")
   xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
-                            param = centWaveParam)
+                            param = centWaveParam,
+                            BPPARAM  = BiocParallel::SnowParam(progressbar = T))
+  mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
+  xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
+                                      BPPARAM  = BiocParallel::SerialParam(progressbar = T))
   message(Sys.time()," Adjust RT...")
   peak.density.param <- xcms::PeakDensityParam(sampleGroups = peaksGroup,
                                          minFraction = 0.4,bw = 30,
@@ -719,7 +795,7 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
   message(Sys.time()," Group peaks...")
 
   peak.density.param <- PeakDensityParam(sampleGroups =peaksGroup,
-                                         minFraction = 0.5,bw = 30,
+                                         minFraction = 0.4,bw = 30,
                                          binSize = 0.015)
   xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
   xcms.xcms <- fillChromPeaks(xcms.xcms,param = FillChromPeaksParam())
