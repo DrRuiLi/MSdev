@@ -57,10 +57,14 @@ groupMz <- function(x,ppm.thresh = 10){
 
   x.table <-x.table %>%
     dplyr::group_by(mz.group)%>%
-    dplyr::mutate(mz.width = max(mz)-min(mz),
+    dplyr::mutate(mz.center = median(mz),
+                  mz.diff = abs(mz.center - mz),
+                  mz.ppm = mz.diff/mz*1e6,
+                  mz.width = max(mz)-min(mz),
                   mz.width.ppm = mz.width/mz)%>%
     dplyr::ungroup()%>%
-    dplyr::arrange(raw.order)
+    dplyr::arrange(raw.order)%>%
+    dplyr::select(-raw.order)
   return(x.table)
 
 
@@ -252,5 +256,24 @@ mz.range.ppm <- function(mz = 200, ppm = 5){
 
 open_script <- function(){
   rstudioapi::documentOpen("Script/Test_Script.R")
+}
+
+
+expand_range <- function(x= c(5,10),add = 0,multi = 0){
+
+  x <- c(x[1]-diff(x)*multi-add,
+         x[2]+diff(x)*multi+add)
+  return(x)
+}
+
+
+peak.gasssian.fit <- function(
+    rt ,
+    peak.apex.intensity,
+    peak.apex.rt,
+    peak.half.width){
+
+  peak.apex.intensity * exp(-(rt-peak.apex.rt)^2/2/peak.half.width^2)
+
 }
 
