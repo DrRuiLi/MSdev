@@ -1,4 +1,4 @@
-#' @title ggplot.roc
+#' @title ggplot_roc
 #'
 #' @description
 #' plot ROC of train and test
@@ -11,7 +11,7 @@
 #' @export
 #'
 #' @examples
-ggplot.roc <- function(roc.train,roc.test){
+ggplot_roc <- function(roc.train,roc.test){
 
 
   #roc.train <- roc(sample(letters[1:2],replace = T,1000),runif(1000))
