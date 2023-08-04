@@ -69,7 +69,7 @@ export_QE_ExclusionList_From_xcmsPeaks <- function(xcms.xcms,peak.count.thresh =
                   Comment =  "Export from xcms")
   export::graph2png(gp,file =paste0(dirname(raw.file),"/ExclusionList_From_",basename(raw.file),".png") ,
                     width =5,height = 4)
-  write_csv(exclusion.list,file =paste0(dirname(raw.file),"/ExclusionList_From_",basename(raw.file),".csv")     )
+  write_csv(exclusion.list,file =paste0(dirname(raw.file),"/ExclusionList_From_",basename(raw.file),".csv"))
   return(gp)
 
 }
