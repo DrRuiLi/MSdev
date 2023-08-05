@@ -112,7 +112,28 @@ get_xcms_peaks_chrom <- function(xcms.xcms,
   return(x.chrom)
 }
 
-#' @title get_intensity_rtime_df_from_XChromatogram
+
+get_xcms_features_chrom <- function(){
+
+
+
+}
+
+
+get_chrom_peaks_gaussian_fit <- function(xchrom){
+
+  peaks.info <- chromPeaks(chrom)
+  peaks.data <- get_chroms_data(chrom)
+  nls(formula = intensity ~ gaussian_functioin(rt ,a,b,c),
+      data = peaks.data,control = nls.control(warnOnly = T),
+      start = list(a = peaks.info[,"maxo"],
+                   b = peaks.info[,"rt"],
+                   c = mean(diff(peaks.info[,c("rtmin","rtmax")])))) -> gaussian.fit
+
+}
+
+
+#' @title get_chroms_data
 #' @description extract chomatogram data to a data.frame
 #' @param xchrom
 #'
@@ -120,7 +141,7 @@ get_xcms_peaks_chrom <- function(xcms.xcms,
 #' @export
 #'
 #' @examples
-get_intensity_rtime_df_from_XChromatogram <- function(xchrom){
+get_chroms_data <- function(xchrom){
 
   .extract.chrom <- function(i,j){
     this.chrom <- xchrom[i,j]
@@ -129,6 +150,9 @@ get_intensity_rtime_df_from_XChromatogram <- function(xchrom){
       intensity =intensity(this.chrom),
       row =i,col = j
     )
+  }
+  if (class(xchrom) %in% c("XChromatogram","Chromatogram")) {
+    xchrom <- XChromatograms(list(xchrom))
   }
   bp.matrix <- expand.grid(1:nrow(xchrom),1:ncol(xchrom))
   xchrom.data <- BiocParallel::bpmapply(.extract.chrom,
