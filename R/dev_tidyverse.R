@@ -68,3 +68,7 @@ dplyr_copy_row <- function(df,nrow.idx,n){
 
 
 }
+
+
+
+
