@@ -3899,3 +3899,55 @@ saveMSdev(MS_dev_obj)
 
 
 
+# Sat Aug  5 08:53:57 2023 ------------------------------
+msdev.fs <- MSdev("d:/2023.08.03.ms.dev/Result/")
+msdev.fs <- checkSampleInfo(msdev.fs)
+msdev.fs <- msConvert_MSdev(msdev.fs)
+msdev.fs <- xcmsProcessingMSdev(msdev.fs)
+
+saveMSdev(msdev.fs)
+
+### pos
+{
+  xcms.xcms<- msdev.fs@xcmsData$positiveMS1
+  xcms.featuers <- featureDefinitions_PeakSta(xcms.xcms)
+  hist(xcms.featuers$peakMaxo%>%log10())
+  hist(xcms.featuers$peakSN%>%log10())
+  qe.inclue.list <-export_QE_InclusionList_From_xcmsFeature(xcms.xcms)
+  qe.inclue.list <- qe.inclue.list[xcms.featuers$peakSN > 1e4,]%>%
+    split_df(2)
+  for (i in 1:length(qe.inclue.list)) {
+    file.to.save <- paste0("d:/2023.08.03.ms.dev/QE.include.list.pos",LETTERS[i],".csv")
+    write.csv(qe.inclue.list[[i]],file = file.to.save)
+  }
+
+
+}
+
+
+### neg
+{
+  xcms.xcms<- msdev.fs@xcmsData$negativeMS1
+  xcms.featuers <- featureDefinitions_PeakSta(xcms.xcms)
+  hist(xcms.featuers$peakMaxo%>%log10())
+  hist(xcms.featuers$peakSN%>%log10())
+  qe.inclue.list <-export_QE_InclusionList_From_xcmsFeature(xcms.xcms)
+  qe.inclue.list <- qe.inclue.list[xcms.featuers$peakSN > 1e4,]%>%
+    split_df(2)
+  for (i in 1:length(qe.inclue.list)) {
+    file.to.save <- paste0("d:/2023.08.03.ms.dev/QE.include.list.neg",LETTERS[i],".csv")
+    write.csv(qe.inclue.list[[i]],file = file.to.save)
+  }
+
+}
+
+# Sat Aug  5 14:09:03 2023 ------------------------------
+
+
+
+
+
+
+
+
+
