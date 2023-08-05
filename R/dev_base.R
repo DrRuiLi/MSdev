@@ -267,13 +267,20 @@ expand_range <- function(x= c(5,10),add = 0,multi = 0){
 }
 
 
-peak.gasssian.fit <- function(
-    rt ,
-    peak.apex.intensity,
-    peak.apex.rt,
-    peak.half.width){
 
-  peak.apex.intensity * exp(-(rt-peak.apex.rt)^2/2/peak.half.width^2)
+
+gaussian_functioin <- function(x , a =1,b = 0,c = 0.5){
+
+  a * exp(-(x-b)^2/2/c^2)
+}
+
+
+
+split_df <- function(df,n = 2){
+
+
+  split(df,f = sample(1:n,nrow(df),replace = T))
+
 
 }
 
