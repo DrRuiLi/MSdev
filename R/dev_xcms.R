@@ -213,7 +213,7 @@ plot_XChromatograms <- function(xchrom , norm = T,move = T){
 
   if (norm) {
     xchrom <- normalise(xchrom)
-    chrom.data <- get_intensity_rtime_df_from_XChromatogram(xchrom)%>%
+    chrom.data <- get_chroms_data(xchrom)%>%
       dplyr::mutate(peaks.origin = paste0("peak_",num2str(row),"_sample_",num2str(col)),
                     peaks.origin = factor(peaks.origin,level = unique(peaks.origin)))%>%
       dplyr::group_by(peaks.origin)%>%
@@ -222,7 +222,7 @@ plot_XChromatograms <- function(xchrom , norm = T,move = T){
       )%>%
       dplyr::ungroup()
   }else{
-    chrom.data <- get_intensity_rtime_df_from_XChromatogram(xchrom)%>%
+    chrom.data <- get_chroms_data(xchrom)%>%
       dplyr::mutate(peaks.origin = paste0("peak_",num2str(row),"_sample_",num2str(col)),
                     peaks.origin = factor(peaks.origin,level = unique(peaks.origin)))%>%
       dplyr::group_by(peaks.origin)%>%
