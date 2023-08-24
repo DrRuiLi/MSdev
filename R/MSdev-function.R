@@ -198,6 +198,8 @@ msConvert_MSdev <- function(object){
 xcmsProcessingMSdev <- function(object,
                                 xcms.findpeak.param = xcms::CentWaveParam(ppm = 10,snthresh = 100,
                                                                           peakwidth = c(5,20),
+                                                                          fitgauss = T,
+                                                                          verboseColumns = T,
                                                                           prefilter = c(3,1000))){
 
   ### determine xcms param
