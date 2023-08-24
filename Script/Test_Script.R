@@ -3947,6 +3947,59 @@ saveMSdev(msdev.fs)
 
 
 
+ggplot(xcms.features.transition)+
+  geom_histogram(aes(x = peakWidth),col = "white")+
+  xlim(c(0,100))
+
+
+pdf("d:/temp/temp.pdf")
+for (i in seq_len(nrow(xcms.features.chrom))) {
+  message(i,"...")
+  plot_XChromatograms(xcms.features.chrom[i,],F,F)%>%
+    plot()
+
+}
+dev.off()
+
+
+
+
+
+
+
+
+
+
+ggplot()+
+  geom_segment(data = inclusion.list,
+               aes(y = mz,
+                   yend = mz,
+                   x = rtmin,
+                   xend = rtmax,
+                   col = comment))+
+  geom_point(data = sp.data,
+             aes(x =retentionTime ,
+                 y =  precursorMZ,
+                 fill = collisionEnergy),
+             stroke =0,
+             col = "transparent",
+             pch = 21,
+             alpha = 0.8,
+             show.legend = T)+
+  scale_fill_manual(values = col.list)+
+  scale_color_manual(values = "grey",labels = c("Ion Windows"))+
+  labs(x = "Retention Time",
+       y = "Mz",
+       col = NULL)+
+  theme_classic()+
+  ylim(c(150,170))
+
+export::graph2png(file = paste0(project.dir,"/Figure/Inclusion.windows.MS2.png"),
+                  width = 5,height = 3)
+
+plot_xcms_peaks_distribution(filterFile(xcms.xcms,5),type = "l")+xlim(c(195,230))->p
+export::graph2png(p , file = paste0(project.dir,"Figure/temp.png"),
+                  width = 4,height =4)
 
 
 

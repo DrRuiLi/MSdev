@@ -71,6 +71,34 @@ groupMz <- function(x,ppm.thresh = 10){
 }
 
 
+cluster_ion <- function(mz,rt , ppm.thresh =10, rt.tol = 15){
+
+  .cluster_rt <- function(rt,rt.tol){
+    if (length(rt)==1) {
+      return(1)
+    }
+    dist(rt)%>%
+      hclust()%>%
+      cutree(h = rt.tol)
+
+  }
+
+  ion.df <- data.frame(mz,rt)%>%
+    dplyr::mutate(groupMz(mz,ppm.thresh = ppm.thresh))%>%
+    dplyr::group_by(mz.group)%>%
+    dplyr::mutate(rt.cluster = .cluster_rt(rt,rt.tol))%>%
+    dplyr::group_by(mz.group,rt.cluster)%>%
+    dplyr::mutate(ion.cluster = paste0("Ion_cluster",sprintf("%08d",cur_group_id())))%>%
+    dplyr::ungroup()%>%
+    dplyr::pull(ion.cluster)
+  return(ion.df)
+
+
+
+
+}
+
+
 
 #' @title matrixSub
 #' @description expand 2 vector to matrix and "`-`"
@@ -283,4 +311,6 @@ split_df <- function(df,n = 2){
 
 
 }
+
+
 
