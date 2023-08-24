@@ -272,5 +272,104 @@ ggplotSpectraMirror<- function(sp1,sp2){
 
 
 
+ggplotSpectra<- function(sp,label.top = 10){
+
+  sp.data <-get_Spectra_data(sp)%>%
+    dplyr::mutate(x = mz,
+                  xend = mz,
+                  y = 0,
+                  yend = intensity,
+                  int.rank = rank(-intensity) ,
+                  matched = intensity > max(intensity,na.rm = T)/10 )
+
+  label.df <- dplyr::filter(sp.data , int.rank  < label.top)
+  ymax.abs <- max(abs(sp.data$intensity))
+  ggplot(sp.data)+
+    geom_hline(yintercept = 0 , size = 0.2,col = "grey")+
+    geom_segment(aes(x = x,y =y,xend = xend,
+                     yend = yend,col = matched),
+                 size = 0.2,
+                 show.legend = F)+
+    geom_point(aes(x = x, y = yend , alpha = matched,col = matched),
+               show.legend = F,size = 0.5)+
+    ggrepel::geom_text_repel(aes(x = x, y = yend ,
+                                 label = format(mz,digit = 4,nsmall = 4)),
+                             size =2,
+                             col = "#00000088",
+                             segment.size = 0.1,
+                             data = label.df)+
+    scale_color_manual(values = c(`FALSE` = "grey",`TRUE` = "#80B1D3"))+
+    scale_alpha_manual(values = c(`FALSE` = 0,`TRUE` =1))+
+    scale_y_continuous(expand = expansion(0,0))+
+    labs(x = "Mz",y = "Intensity")+
+    theme_classic()+
+    theme(axis.line = element_line(linewidth = 0.1),
+          axis.ticks = element_line(linewidth = 0.1))->p
+  p
+
+
+}
+
+
+ggplotSpectra_CE<-function(sp){
+
+  sp.data <- get_Spectra_data(sp)%>%
+    dplyr::mutate(x = mz,
+                  xend = mz,
+                  y = 0,
+                  yend = intensity,
+                  int.rank = rank(-intensity) ,
+                  matched = intensity > max(intensity,na.rm = T)/10 )%>%
+    dplyr::group_by(collisionEnergy)%>%
+    dplyr::mutate(step = cur_group_id()-1)%>%
+    dplyr::ungroup()%>%
+    dplyr::mutate(xstep = step * max(x,na.rm = T)/100*5,
+                  ystep = step * max(yend,na.rm = T)/100*5,
+                  x = x+xstep,
+                  xend = xend + xstep,
+                  y = y+ystep,
+                  yend = yend + ystep,
+                  collisionEnergy= factor(collisionEnergy))%>%
+    dplyr::mutate(groupMz(mz))%>%
+    dplyr::group_by(mz.group)%>%
+    dplyr::mutate( highlight = length(unique(collisionEnergy)) <
+                                        length(levels(collisionEnergy))*0.5,
+                   hx = min(x),
+                   hxend = max(x),
+                   hy = min(y),
+                   hyend =max(y))
+
+  col.list <- randomcoloR::distinctColorPalette(length(unique(sp.data$step)))
+  label.df <- dplyr::filter(sp.data , int.rank  < 5)
+  ymax.abs <- max(abs(sp.data$yend))
+  ggplot(sp.data)+
+    geom_segment(aes(x = hx,y =hy,xend = hxend,
+                     yend = hyend) ,col = "grey",linewidth =1)+
+    geom_hline(aes( yintercept= ystep , col = collisionEnergy))+
+    geom_segment(aes(x = x,y =y,xend = xend,
+                     yend = yend,col = collisionEnergy),
+                 linewidth = 0.5,alpha = 0.7,
+                 show.legend = F)+
+    geom_point(aes(x = x, y = yend ,col = collisionEnergy),
+               show.legend = F,size = 0.5)+
+    ggrepel::geom_text_repel(aes(x = x, y = yend ,
+                                 label = format(mz,digit = 4,nsmall = 4)),
+                             size =2,
+                             col = "#00000088",
+                             segment.size = 0.1,
+                             data = label.df)+
+    scale_color_manual(values = col.list)+
+    scale_y_continuous(expand = expansion(0,0),lim = c(0,ymax.abs*1.05))+
+    labs(x = "Mz",y = "Intensity")+
+    theme_classic()+
+    theme(axis.line = element_line(linewidth = 0.1),
+          axis.ticks = element_line(linewidth = 0.1))->p
+  p
+
+
+
+
+}
+
 
 
