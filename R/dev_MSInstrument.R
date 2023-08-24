@@ -74,3 +74,41 @@ export_QE_ExclusionList_From_xcmsPeaks <- function(xcms.xcms,peak.count.thresh =
   return(gp)
 
 }
+
+
+determine_SRM_DWtime <- function(srm.list){
+
+  median.peak.width <- median(srm.list$peakRtMax- srm.list$peakRtMin)/2
+  median.peak.width <- 5
+  time.seq <- seq(0,max(srm.list$peakRtMax),median.peak.width)
+  scan.time <- 1
+  dwt.list <- list()
+  for (i in 1:(length(time.seq)-1)) {
+    time.window <- time.seq[c(i,i+1)]
+
+    dwt.list[[i]] <- srm.list%>%
+      dplyr::mutate(in.window = peakRtMin < time.window[2] & peakRtMax > time.window[1] )%>%
+      dplyr::group_by(in.window)%>%
+      dplyr::mutate(ion_count = n( ),
+                    part =1/log(peakMaxo),
+                    dwt = scan.time *part/sum(part) *1000,
+                    dwt = case_when(in.window~dwt,T~NA))
+
+
+  }
+
+  dwt.matrix <- sapply(dwt.list,function(x){
+    x$dwt
+  },USE.NAMES = T)
+  srm.list$dwt.mean <- apply(dwt.matrix , 1 , mean,na.rm =T)
+  srm.list <- srm.list%>%
+    dplyr::mutate(dwt = case_when(dwt.mean > 50~50,
+                                  T~dwt.mean))
+  time.window.count <- sapply(dwt.list,function(x){
+    min(x$ion_count)
+  })
+return(srm.list)
+
+
+
+}
