@@ -4,7 +4,7 @@
 \alias{get_xcms_peaks_chrom}
 \title{get_xcms_peaks_chrom}
 \usage{
-get_xcms_peaks_chrom(xcms.xcms, peaks.id, all.sample = F, rt = "expand")
+get_xcms_peaks_chrom(xcms.xcms, peaks.id, all.sample = F, rt.range = "expand")
 }
 \arguments{
 \item{rt}{one of c("all","identity","expand")}
