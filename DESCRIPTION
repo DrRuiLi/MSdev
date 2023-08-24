@@ -21,6 +21,7 @@ Imports:
     Spectra,
     webchem,
     xcms,
+    MSnbase,
     SummarizedExperiment
 Depends: 
     R (>= 3.5.0),
