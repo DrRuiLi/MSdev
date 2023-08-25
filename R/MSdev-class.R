@@ -48,7 +48,7 @@ setMethod("initialize" , "MSdev",
               rawDataFileCount = NULL,
               msDataDir =paste0(projectDir , "/msData"),
               experimentTime = NULL,
-              msAcquisition = "unknown",
+              msAcquisition = "DDA",
               sampleCount = NA,
               MSdevFile = paste0(projectDir , "/MSdev",date_suffix(),".Rdata")
             )

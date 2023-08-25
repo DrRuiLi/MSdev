@@ -1012,6 +1012,17 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
 
 }
 
+xcmsProcessingMRM <- function(msDataFiles, peaksGroup =NA,
+                              centWaveParam ){
+
+  xcms.mrm <- readSRMData(msDataFiles)
+  xcms.peaks <- findChromPeaks()
+
+
+}
+
+
+
 
 
 

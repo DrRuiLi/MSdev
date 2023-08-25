@@ -191,6 +191,7 @@ colorMix <- function(...){
 open_dir <- function(dir = getwd()){
 
   system(sprintf("open %s", shQuote(dir)))
+  return(dir)
 
 }
 
