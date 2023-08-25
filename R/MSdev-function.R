@@ -195,20 +195,22 @@ msConvert_MSdev <- function(object){
   }
 }
 
-xcmsProcessingMSdev <- function(object,
-                                xcms.findpeak.param = xcms::CentWaveParam(ppm = 10,snthresh = 100,
-                                                                          peakwidth = c(5,20),
-                                                                          fitgauss = T,
-                                                                          verboseColumns = T,
-                                                                          prefilter = c(3,1000))){
 
-  ### determine xcms param
-  {
-    if (is.na(xcms.findpeak.param)) {
+xcmsProcessingMSdev <- function(object){
 
-    }
+  MS.mode <- object@projectInfo$msAcquisition
+  switch(MS.mode,
+         DDA ~ xcmsProcessingMSdev.DDA(object),
+         SRM ~ xcmsProcessingMSdev.MRM(object))
 
-  }
+
+
+
+}
+
+xcmsProcessingMSdev.DDA <- function(object){
+
+  xcms.param <- get_MSdev_param(object )
 
   sampleInfoPos <-dplyr::filter(object@sampleInfo,
                                 xcmsProcessing %in% c("MS1","Both")
@@ -217,7 +219,7 @@ xcmsProcessingMSdev <- function(object,
   object@xcmsData$positiveMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoPos$msData.file.positive,
                                                     ion_mode = 1,
                                                     peaksGroup =sampleInfoPos$sample.type,
-                                                    centWaveParam = xcms.findpeak.param
+                                                    centWaveParam = xcms.param$findpeak.param
   )
 
   Biobase::pData(object@xcmsData$positiveMS1) <- cbind(Biobase::pData(object@xcmsData$positiveMS1),
@@ -230,7 +232,7 @@ xcmsProcessingMSdev <- function(object,
   object@xcmsData$negativeMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoNeg$msData.file.negative,
                                                     ion_mode = 0,
                                                     peaksGroup = sampleInfoNeg$sample.type,
-                                                    centWaveParam = xcms.findpeak.param
+                                                    centWaveParam = xcms.param$findpeak.param
   )
 
   Biobase::pData(object@xcmsData$negativeMS1) <-  cbind(Biobase::pData(object@xcmsData$negativeMS1),
@@ -245,6 +247,25 @@ xcmsProcessingMSdev <- function(object,
 
 }
 
+
+xcmsProcessingMSdev.MRM <- function(object){
+
+  xcms.param <- get_MSdev_param(object )
+  sampleInfoPos <-object@sampleInfo%>%
+    dplyr::filter(!is.na(msData.file.positive))
+
+  object@xcmsData$positiveMS1  <- xcmsProcessingMRM(msDataFiles = sampleInfoPos$msData.file.positive,
+                                                    peaksGroup =sampleInfoPos$sample.type,
+                                                    centWaveParam = xcms.param$findpeak.param
+  )
+
+  Biobase::pData(object@xcmsData$positiveMS1) <- cbind(Biobase::pData(object@xcmsData$positiveMS1),
+                                                       sampleInfoPos)
+
+
+
+}
+
 extractFeature <- function(object){
 
   object@xcmsData$positiveFeature <- as.data.frame(featureDefinitions(object@xcmsData$positiveMS1))
@@ -253,8 +274,46 @@ extractFeature <- function(object){
 
 }
 
+get_MSdev_param <- function(object){
+
+  MS.mode <- object@projectInfo$msAcquisition
+  MS.instru <-object@experimentInfo@Mass_Spectrum[[1]]$Instrument
+  MS.LC.rate <- object@experimentInfo@Chroma_gradient[[1]]$Flow_rate%>%mean
+  MS.LC.time<- object@experimentInfo@Chroma_gradient[[1]]$time%>%max
+  cwp <- CentWaveParam(fitgauss = T,verboseColumns = T)
+
+  ### ppm
+  cwp@ppm <- switch(MS.instru,
+                    "Thermo QE plus" = 20,
+                    "SCIEX TripleTOF 6600" = 25,
+                   20)
+
+  cwp@peakwidth <-switch(as.character(MS.LC.rate),
+                         "0.5" = c(5,20),
+                         c(0,20))
+
+  cwp@snthresh <- switch(MS.instru,
+                         "Thermo QE plus" = 1000,
+                         "SCIEX TripleTOF 6600" = 100,
+                         "Thermo Quantis" = 0,
+                         100)
+  cwp@prefilter <- switch(MS.instru,
+                         "Thermo QE plus" = c(5,100),
+                         "SCIEX TripleTOF 6600" = c(5,100),
+                         "Thermo Quantis" = c(5,10),
+                         c(5,10))
 
 
+
+  msdev.param <- list(findpeak.param = cwp)
+
+
+  return(msdev.param)
+
+
+
+
+}
 
 
 #' @title extractSpectra_fullscan_DDA
