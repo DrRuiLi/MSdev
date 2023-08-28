@@ -76,17 +76,28 @@ export_QE_ExclusionList_From_xcmsPeaks <- function(xcms.xcms,peak.count.thresh =
 }
 
 
-determine_SRM_DWtime <- function(srm.list){
+get_MRM_list <- function(feature_def_sta){
 
-  median.peak.width <- median(srm.list$peakRtMax- srm.list$peakRtMin)/2
+
   median.peak.width <- 5
-  time.seq <- seq(0,max(srm.list$peakRtMax),median.peak.width)
+  time.max <-max(xcms.features.transition$peakRtMax)
+
+  feature_def_sta.calc <- feature_def_sta%>%
+    dplyr::mutate(peakRtMin = peakRtMin-10,
+                  peakRtMax = peakRtMax+10,
+                  peakRtMin = case_when(peakRtMin <0~0,
+                                        T~peakRtMin),
+                  peakRtMax = case_when(peakRtMax >time.max~time.max,
+                                        T~peakRtMax))
+  #median.peak.width <- median(srm.list$peakRtMax- srm.list$peakRtMin)/2
+
+  time.seq <- seq(0,time.max+median.peak.width,median.peak.width)
   scan.time <- 1
   dwt.list <- list()
   for (i in 1:(length(time.seq)-1)) {
     time.window <- time.seq[c(i,i+1)]
 
-    dwt.list[[i]] <- srm.list%>%
+    dwt.list[[i]] <- feature_def_sta.calc%>%
       dplyr::mutate(in.window = peakRtMin < time.window[2] & peakRtMax > time.window[1] )%>%
       dplyr::group_by(in.window)%>%
       dplyr::mutate(ion_count = n( ),
@@ -100,14 +111,32 @@ determine_SRM_DWtime <- function(srm.list){
   dwt.matrix <- sapply(dwt.list,function(x){
     x$dwt
   },USE.NAMES = T)
-  srm.list$dwt.mean <- apply(dwt.matrix , 1 , mean,na.rm =T)
-  srm.list <- srm.list%>%
-    dplyr::mutate(dwt = case_when(dwt.mean > 50~50,
-                                  T~dwt.mean))
+  feature_def_sta.calc$dwt.mean <- apply(dwt.matrix , 1 , mean,na.rm =T)
+
   time.window.count <- sapply(dwt.list,function(x){
     min(x$ion_count)
   })
-return(srm.list)
+
+
+  srm.list <- feature_def_sta.calc%>%
+    dplyr::mutate(dwt = case_when(dwt.mean > 50~50,
+                                  T~dwt.mean),
+                  peakRtMin = peakRtMin/60,
+                  peakRtMax= peakRtMax/60
+                  )%>%
+    dplyr::select(Compound = feature.id,
+                  `Start Time (min)` =peakRtMin,
+                  `End Time (min)`=peakRtMax,
+                  `Precursor (m/z)`=precursorMz,
+                  `Product (m/z)` = productMz,
+                  `Collision Energy (V)` = collisionEnergy,
+                  `Dwell Time (ms)` = dwt,
+                  everything(),
+                  -peakidx
+                  )
+
+
+  return(srm.list)
 
 
 
