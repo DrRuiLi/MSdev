@@ -1049,5 +1049,82 @@ export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
 
 
 
+get_MS_sampleinfo <- function(raw.data.dir,
+                              rawDataFormat=".raw"){
+
+
+  raw.files <- dir(path = raw.data.dir,
+                   pattern = paste0(rawDataFormat,"$"),
+                   full.names = T)
+
+  ### generate sampleInfo
+  {
+    .select_char <- function(char_vector){
+      if (all(is.na(char_vector))) {
+        return(NA)
+      }
+      max(char_vector,na.rm = T)
+    }
+    sample.info <- data.frame(raw.files = raw.files)%>%
+      dplyr::filter(!grepl(pattern = "condition",x = raw.files))%>%
+      dplyr::mutate(ms.labels = gsub(pattern = paste0(rawDataFormat,"$"),
+                                     x = basename(raw.files),
+                                     ignore.case = T,
+                                     replacement = "") ,
+                    ms.name = gsub(pattern = "[^0-9A-z]",
+                                           x = ms.labels ,
+                                           replacement = "_"),
+                    polarity = case_when(grepl("pos",x= ms.name, ignore.case =T)~"Posigive",
+                                         grepl("neg",x= ms.name, ignore.case =T)~"Posigive",
+                                         T~NA))%>%
+      dplyr::group_by(ms.name)%>%
+      dplyr::mutate(raw.files = .select_char(raw.files))%>%
+      dplyr::ungroup()%>%
+      dplyr::distinct(ms.name,.keep_all = T)%>%
+      dplyr::mutate(analysis.time = as.character(file.info(raw.files)$mtime))%>%
+      dplyr::mutate(sample.labels = gsub(pattern = paste0("pos|neg|"),
+                                         x = ms.labels,
+                                         ignore.case = T,
+                                         replacement = ""),
+                    sample.labels = gsub(pattern = paste0("_$"),
+                                         x = sample.labels,
+                                         ignore.case = T,
+                                         replacement = ""),
+                    sample.name =  gsub(pattern = "[^0-9A-z]",
+                                        x = sample.labels ,
+                                        replacement = "_"),
+                    sample.type = case_when(grepl(pattern = "QC",x = sample.labels,ignore.case = T)~ "QC",
+                                            grepl(pattern = "blank|blk",x = sample.labels,ignore.case = T)~ "Blank",
+                                            T~"Sample"),
+                    .before = sample.labels)%>%
+      dplyr::mutate(msData.files = case_when(is.na(raw.files)~raw.files,
+                                             T~paste0(dirname(raw.files),"/mzML/",ms.name,".mzML")))%>%
+      dplyr::arrange(analysis.time)%>%
+      dplyr::mutate(no = 1:nrow(.),
+                    group = case_when(sample.type=="Sample"~gsub(
+                      pattern = "[^A-Za-z]",
+                      x= sample.labels,
+                      replacement = ""
+                    ),
+                    T~sample.type),
+                    weight = NA ,
+                    xcmsProcessing = "Both")%>%
+      dplyr::select(no,sample.name,sample.type,sample.labels,group, weight,
+                    raw.files,
+                    polarity,
+                    analysis.time,
+                    msData.files,
+                    ms.name,
+                    xcmsProcessing)
+
+
+  }
+  message("Default sample group:")
+  show(table(sample.info$group))
+
+  return(sample.info)
+
+
+}
 
 
