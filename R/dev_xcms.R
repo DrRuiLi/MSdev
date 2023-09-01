@@ -363,13 +363,13 @@ XChromatograms_fill_2point <- function(xchroms){
 #' @export
 #'
 #' @examples
-plot_XChromatograms <- function(xchroms , norm = T,move = T){
+plot_XChromatograms <- function(xchroms , norm = T,move = T,column.group = 1:ncol(xchroms)){
 
 
   if (norm) {
     xchroms <- normalise(xchroms)
     chrom.data <- get_chroms_data(xchroms)%>%
-      dplyr::mutate(peaks.origin = paste0("peak_",num2str(row),"_sample_",num2str(col)),
+      dplyr::mutate(peaks.origin = paste0("peak_",num2str(row),"_",column.group[col]),
                     peaks.origin = factor(peaks.origin,level = unique(peaks.origin)))%>%
       dplyr::group_by(peaks.origin)%>%
       dplyr::mutate(peaks.idx =cur_group_id(),
@@ -378,7 +378,7 @@ plot_XChromatograms <- function(xchroms , norm = T,move = T){
       dplyr::ungroup()
   }else{
     chrom.data <- get_chroms_data(xchroms)%>%
-      dplyr::mutate(peaks.origin = paste0("peak_",num2str(row),"_sample_",num2str(col)),
+      dplyr::mutate(peaks.origin = paste0("peak_",num2str(row),"_",column.group[col]),
                     peaks.origin = factor(peaks.origin,level = unique(peaks.origin)))%>%
       dplyr::group_by(peaks.origin)%>%
       dplyr::mutate(peaks.idx =cur_group_id(),
@@ -406,6 +406,7 @@ plot_XChromatograms <- function(xchroms , norm = T,move = T){
     geom_line(aes(x = rt , y = intensity , col = peaks.origin),
               linewidth = 0.5,alpha = 0.8)+
     scale_color_manual(values = randomcoloR::distinctColorPalette(length(unique(chrom.data$peaks.idx))))+
+    labs(x = "Retention time", y = "Intensity")+
     theme_bw()
 
 

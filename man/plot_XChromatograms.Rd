@@ -4,7 +4,12 @@
 \alias{plot_XChromatograms}
 \title{plot_XChromatograms}
 \usage{
-plot_XChromatograms(xchroms, norm = T, move = T)
+plot_XChromatograms(
+  xchroms,
+  norm = T,
+  move = T,
+  column.group = 1:ncol(xchroms)
+)
 }
 \arguments{
 \item{move}{}
