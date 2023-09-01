@@ -167,6 +167,9 @@ match_isotopes_to_featuredef <- function(isotopes.network,
     dplyr::ungroup()
 
 
+  if (nrow(isotopes.matched)==0) {
+    return(NULL)
+  }
 
   isotopes.table.matched <- isotope.candidate %>%
     MSdev:::add_multi_column(unique(isotopes.matched$rt.cluster))%>%
