@@ -4002,5 +4002,12 @@ export::graph2png(p , file = paste0(project.dir,"Figure/temp.png"),
                   width = 4,height =4)
 
 
+sample.info <- get_MS_sampleinfo("d:/2023.08.22.Pseudo/Result/" )
 
 
+runInfo(mzr.dda)
+
+
+mzfile <- dir("d:/2023.08.03.ms.dev/msData/pos/",full.names = T)
+mzr.mrm <- openMSfile("d:/2023.08.27.mrm.test/Result/mzML/QC_POS001.mzML")
+mzr.dda <- openMSfile("d:/2023.08.05.ms.dev/msData/neg/Sample07.mzML")
