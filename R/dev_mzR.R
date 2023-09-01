@@ -23,3 +23,47 @@ getmsExpTime<- function(msDataFiles){
   return(msdata)
 
 }
+
+
+
+
+
+
+
+#' get_MSinfo_mzR
+#' get MS experiment time by mzR
+#'
+#' @param msDataFiles
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_MSinfo_mzR<- function(msDataFiles){
+
+  msdata <- data.frame(files = msDataFiles,
+                       ExpTime = NA,
+                       msLevels = NA,
+                       manufacturer=NA,
+                       model =NA
+                       )
+  for (i in 1:length(msDataFiles)) {
+    #cat(i,"\n")
+    if (is.na(msDataFiles[i])) {
+      next
+
+    }
+    msmzR <- mzR::openMSfile(msDataFiles[i])
+    msrunInfo <- mzR::runInfo(msmzR)
+    msinstru <- mzR::instrumentInfo(msmzR)
+    msdata$ExpTime[i] <- msrunInfo$startTimeStamp
+    msdata$msLevels[i] <- case_when(is_empty(msrunInfo$msLevels)~NA,
+                                 T~paste0(msrunInfo$msLevels,collapse = ";"))
+    msdata$manufacturer[i] <- msinstru$manufacturer
+    msdata$model[i] <- msinstru$model
+
+    mzR::close(msmzR)
+  }
+  return(msdata)
+
+}
