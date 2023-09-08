@@ -69,3 +69,18 @@ num2str <- function(x,n.digit = NA){
 
 }
 
+
+
+str_add <- function(x , n = 1, add.type = "numeric"){
+
+  if (add.type == "numeric") {
+
+      x.char <- str_extract(x,pattern = "[^0-9]+")
+      x.num <- str_extract(x , "[0-9]+")
+      x <- paste0(x.char,num2str(as.numeric(x.num)+n,
+                                 n.digit = max(nchar(x.num))))
+
+    }
+return(x)
+
+}

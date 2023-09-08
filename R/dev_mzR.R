@@ -44,6 +44,7 @@ get_MSinfo_mzR<- function(msDataFiles){
   msdata <- data.frame(files = msDataFiles,
                        ExpTime = NA,
                        msLevels = NA,
+                       polarity = NA,
                        manufacturer=NA,
                        model =NA
                        )
@@ -56,9 +57,12 @@ get_MSinfo_mzR<- function(msDataFiles){
     msmzR <- mzR::openMSfile(msDataFiles[i])
     msrunInfo <- mzR::runInfo(msmzR)
     msinstru <- mzR::instrumentInfo(msmzR)
+    msheader <- mzR::header(msmzR)
     msdata$ExpTime[i] <- msrunInfo$startTimeStamp
     msdata$msLevels[i] <- case_when(is_empty(msrunInfo$msLevels)~NA,
-                                 T~paste0(msrunInfo$msLevels,collapse = ";"))
+                                 T~max(msrunInfo$msLevels))
+    msdata$polarity[i] <- case_when(is_empty(unique(msheader$polarity))~NA,
+                                    T~paste0(unique(msheader$polarity),collapse = ";"))
     msdata$manufacturer[i] <- msinstru$manufacturer
     msdata$model[i] <- msinstru$model
 

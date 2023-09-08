@@ -126,15 +126,28 @@ checkSampleInfo <- function(object){
 .updateProjectInfoFromSampleInfo <- function(object){
 
   object@sampleInfo -> sampleInfo
-  object@projectInfo$sampleCount <- sum(sampleInfo$sample.type=="Sample")
-  object@projectInfo$rawDataFileCount <- sum(!is.na(sampleInfo$raw.file.positive),
-                                             !is.na(sampleInfo$raw.file.negative))
-  sampleInfo <- object@sampleInfo%>%
-    dplyr::mutate(pos = ifelse(is.na(raw.file.positive),NA,"positive"),
-                  neg = ifelse(is.na(raw.file.negative),NA,"negative"))%>%
-    pivot_longer(c("pos","neg"),names_to = "ion_mode",values_to = "p")
-  object@projectInfo$rawDatafiles <- table(sampleInfo$p,sampleInfo$sample.type)
 
+  if ("scanType"%in% colnames(sampleInfo)) {
+    object@projectInfo$msAcquisition <- unique(sampleInfo$scanType)
+  }
+  if ("msLevels"%in% colnames(sampleInfo)) {
+    object@projectInfo$msLevel <- unique(sampleInfo$msLevels)
+  }
+  if ("polarity"%in% colnames(sampleInfo)) {
+    object@projectInfo$polarity <- unique(sampleInfo$polarity)
+  }
+  if ("manufacturer"%in% colnames(sampleInfo)) {
+    object@projectInfo$msManufacturer <- unique(sampleInfo$manufacturer)
+  }
+  if ("model"%in% colnames(sampleInfo)) {
+    object@projectInfo$msModel <- unique(sampleInfo$model)
+  }
+  object@projectInfo$sampleCount <- sampleInfo%>%
+    dplyr::filter(sample.type=="Sample")%>%
+    dplyr::pull(sample.name)%>%unique()%>%length()
+  object@projectInfo$rawDataFileCount <- sum(!is.na(sampleInfo$raw.files))
+  p.index <- c("-1"="Unknow","0"="Negative","1"="Positive")
+  object@projectInfo$rawDatafiles <-table(p.index[sampleInfo$polarity],sampleInfo$sample.type)
   object
 }
 
@@ -151,35 +164,28 @@ checkSampleInfo <- function(object){
 
 msConvert_MSdev <- function(object){
 
-  ### convert
-  if (object@projectInfo$rawDataFormat == ".raw") {
-    MSconvertR::msConvert2mzML(raw.files  = object@sampleInfo$raw.file.positive,
-                               mzML.files = object@sampleInfo$msData.file.positive,
-                               BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
 
-    MSconvertR::msConvert2mzML(raw.files  = object@sampleInfo$raw.file.negative,
-                               mzML.files = object@sampleInfo$msData.file.negative,
-                               BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
-
-  }else if(object@projectInfo$rawDataFormat == ".wiff"){
-    MSconvertR::msConvert2mzML(wiff.files  = object@sampleInfo$raw.file.positive,
-                               mzML.files = object@sampleInfo$msData.file.positive,
-                               BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
-
-    MSconvertR::msConvert2mzML(wiff.files  = object@sampleInfo$raw.file.negative,
-                               mzML.files = object@sampleInfo$msData.file.negative,
-                               BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
-
-  }
-
-  ### update SampleInfo
+  ### filter files
   {
-    sampleInfo <-object@sampleInfo
-    sampleInfo$analysis.time.positive <- getmsExpTime(sampleInfo$msData.file.positive)$ExpTime
-    sampleInfo$analysis.time.negative <- getmsExpTime(sampleInfo$msData.file.negative)$ExpTime
-    sampleInfo -> object@sampleInfo
+    sample.info <- object@sampleInfo%>%
+      dplyr::mutate(raw.exist = file.exists(raw.files),
+                    ms.exist = file.exists(msData.files))%>%
+      dplyr::filter(raw.exist,!ms.exist)
 
   }
+
+  ### convert
+
+   if (nrow(sample.info)) {
+     MSconvertR::msConvert2mzML(raw.files  = object@sampleInfo$raw.files,
+                                mzML.files = object@sampleInfo$msData.files,
+                                BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
+
+
+   }
+
+  object <- get_MSdev_MSinfo(object)
+
   ### return
   {
     object@processingInfo$rawDataConvert <- list(
@@ -196,12 +202,75 @@ msConvert_MSdev <- function(object){
 }
 
 
+get_MSdev_MSinfo <- function(object){
+
+
+  ### define acquite Type
+  ### note, these model string are identified by mzR
+  {
+    HRMS <- c("Q Exactive Plus","TripleTOF 6600")
+    TQMS <- c("TSQ Quantis")
+    model.df <- data.frame(
+      model = c(HRMS,TQMS),
+      type = c( rep("HRMS",length(HRMS)),
+                rep("TQMS",length(TQMS)))
+    )
+
+  }
+
+  ### update SampleInfo
+  {
+    sampleInfo <-object@sampleInfo%>%
+      dplyr::mutate(get_MSinfo_mzR(msData.files),
+                    msType = model.df$type[match(model,model.df$model)],
+                    scanType = case_when(msType=="HRMS"&msLevels=="1" ~ "FS",
+                                         msType=="HRMS"&msLevels=="2" ~ "DDA",
+                                         msType=="TQMS" ~ "MRM",
+                                         T~NA),
+                    xcmsProcessing = case_when(scanType=="FS"~ "MS1",
+                                               scanType=="DDA" ~ "Both",
+                                               scanType=="MRM" ~ "MRM",
+                                               T~NA))
+    sampleInfo -> object@sampleInfo
+
+  }
+  object <- .updateProjectInfoFromSampleInfo(object)
+  return(object)
+
+}
+
+
+get_MSdev_newSamples <- function(object,
+                                 raw.data.dir = object@projectInfo$rawDataDir){
+  sample.info <- object@sampleInfo
+  sample.info.new <- get_MS_sampleinfo(raw.data.dir,
+                                       rawDataFormat = object@projectInfo$rawDataFormat,F)%>%
+    dplyr::filter(!raw.files%in% sample.info$raw.files)
+  message("Get ",nrow(sample.info.new)," samples")
+
+  object@sampleInfo <- sample.info%>%
+    bind_rows(sample.info.new)
+  object <- msConvert_MSdev(object)
+  show(object)
+  object
+
+}
+
+
 xcmsProcessingMSdev <- function(object){
 
   MS.mode <- object@projectInfo$msAcquisition
-  switch(MS.mode,
-         DDA ~ xcmsProcessingMSdev.DDA(object),
-         SRM ~ xcmsProcessingMSdev.MRM(object))
+
+  if ("FS" %in% MS.mode|"DDA" %in% MS.mode) {
+    object <- xcmsProcessingMSdev.DDA(object)
+    return(object)
+  }
+
+  if ("MRM" %in% MS.mode) {
+    object <-  xcmsProcessingMSdev.MRM(object)
+    return(object)
+  }
+
 
 
 
@@ -211,36 +280,36 @@ xcmsProcessingMSdev <- function(object){
 xcmsProcessingMSdev.DDA <- function(object){
 
   xcms.param <- get_MSdev_param(object )
-
-  sampleInfoPos <-dplyr::filter(object@sampleInfo,
+  sampleInfo <-dplyr::filter(object@sampleInfo,
                                 xcmsProcessing %in% c("MS1","Both")
   )%>%
-    dplyr::filter(!is.na(msData.file.positive))
-  object@xcmsData$positiveMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoPos$msData.file.positive,
-                                                    ion_mode = 1,
-                                                    peaksGroup =sampleInfoPos$sample.type,
-                                                    centWaveParam = xcms.param$findpeak.param
-  )
+    dplyr::filter(!is.na(msData.files))
 
-  Biobase::pData(object@xcmsData$positiveMS1) <- cbind(Biobase::pData(object@xcmsData$positiveMS1),
-                                                       sampleInfoPos)
+  polarity.index <- c("0" = "Negative","1"="Positive")
+  for (i in c(0,1)) {
+    sample.info.polarity <- sampleInfo%>%
+      dplyr::filter(polarity %in% c(i,-1))
+    polarity.tag <- paste0(polarity.index[as.character(i)],"MS1")
 
-  sampleInfoNeg <-dplyr::filter(object@sampleInfo,
-                                xcmsProcessing %in% c("MS1","Both")
-  )%>%
-    dplyr::filter(!is.na(msData.file.negative))
-  object@xcmsData$negativeMS1  <- xcmsProcessingMS1(msDataFiles = sampleInfoNeg$msData.file.negative,
-                                                    ion_mode = 0,
-                                                    peaksGroup = sampleInfoNeg$sample.type,
-                                                    centWaveParam = xcms.param$findpeak.param
-  )
-
-  Biobase::pData(object@xcmsData$negativeMS1) <-  cbind(Biobase::pData(object@xcmsData$negativeMS1),
-                                                        sampleInfoNeg)
-
-  extractFeature(object)
+    if (!nrow(sample.info.polarity)) {
+      object@xcmsData[[polarity.tag]] <-NA
+      next
+    }
+    object@xcmsData[[polarity.tag]]  <-
+      xcmsProcessingMS1(msDataFiles = sample.info.polarity$msData.files,
+                        ion_mode = i,
+                        peaksGroup =sample.info.polarity$sample.type,
+                        centWaveParam = xcms.param$findpeak.param
+    )
+    Biobase::pData(object@xcmsData[[polarity.tag]] ) <-
+      cbind(Biobase::pData(object@xcmsData[[polarity.tag]]),
+            sample.info.polarity)
 
 
+  }
+
+
+  object
 
 
 
@@ -268,8 +337,8 @@ xcmsProcessingMSdev.MRM <- function(object){
 
 extractFeature <- function(object){
 
-  object@xcmsData$positiveFeature <- as.data.frame(featureDefinitions(object@xcmsData$positiveMS1))
-  object@xcmsData$negativeFeature <- as.data.frame(featureDefinitions(object@xcmsData$negativeMS1))
+  object@xcmsData$positiveFeature <- as.data.frame(featureDefinitions(object@xcmsData$PositiveMS1))
+  object@xcmsData$negativeFeature <- as.data.frame(featureDefinitions(object@xcmsData$NegativeMS1))
   object
 
 }
@@ -277,28 +346,28 @@ extractFeature <- function(object){
 get_MSdev_param <- function(object){
 
   MS.mode <- object@projectInfo$msAcquisition
-  MS.instru <-object@experimentInfo@Mass_Spectrum[[1]]$Instrument
+  MS.instru <-object@projectInfo$msModel
   MS.LC.rate <- object@experimentInfo@Chroma_gradient[[1]]$Flow_rate%>%mean
   MS.LC.time<- object@experimentInfo@Chroma_gradient[[1]]$time%>%max
   cwp <- CentWaveParam(fitgauss = T,verboseColumns = T)
 
   ### ppm
   cwp@ppm <- switch(MS.instru,
-                    "Thermo QE plus" = 20,
-                    "SCIEX TripleTOF 6600" = 25,
+                    "Q Exactive Plus" = 20,
+                    "TripleTOF 6600" = 25,
                    20)
 
   cwp@peakwidth <-switch(as.character(MS.LC.rate),
                          "0.5" = c(5,20),
-                         c(0,20))
+                         c(5,20))
 
   cwp@snthresh <- switch(MS.instru,
-                         "Thermo QE plus" = 1000,
+                         "Q Exactive Plus" = 100,
                          "SCIEX TripleTOF 6600" = 100,
                          "Thermo Quantis" = 0,
                          100)
   cwp@prefilter <- switch(MS.instru,
-                         "Thermo QE plus" = c(5,100),
+                         "Q Exactive Plus" = c(5,100),
                          "SCIEX TripleTOF 6600" = c(5,100),
                          "Thermo Quantis" = c(5,10),
                          c(5,10))
@@ -348,6 +417,26 @@ extractSpectra_fullscan_DDA <- function(object){
 }
 
 
+
+extract_Spectra_MSdev <- function(object){
+
+  sampleInfo <- object@sampleInfo%>%
+    dplyr::filter(xcmsProcessing %in% c("Both","MS2"))
+
+  if (nrow(sampleInfo)==0) {
+    sp <- Spectra::Spectra()
+  } else {
+    sp <- Spectra::Spectra(na.omit(sampleInfo$msData.files),backend = Spectra::MsBackendDataFrame())%>%
+      filterMsLevel(2)
+    sp$sp_id <- paste0("MS2_SP",num2str(1:length(sp)))
+    Spectra::spectraNames(sp) <- sp$sp_id
+  }
+
+  object@spectra$MS2_Spectra <- sp
+  return(object)
+}
+
+
 #' @title featureSpectra_fullscan_DDA
 #' @description extrat spectra from `MSdev@spectra` according to mz and rt of feature,
 #' extracted spectra store in `object@spectra$positiveFeatureMS2` and `object@spectra$negativeFeatureMS2`,
@@ -391,12 +480,51 @@ featureSpectra_fullscan_DDA <- function(object){
 }
 
 
-featureSpectra_MSdev <- function(object){
+match_Spectra_to_feature_MSdev <- function(object){
 
-  .getfeatureid <- function(sp,xcms.xcms ,mz_ppm = 10){
-    xcms.feature.def <- featureDefinitions_PeakSta(xcms.xcms)
+
+  object@spectra$MS2_Spectra$ms2_matched_feature <-NA
+  for (i in 0:1) {
+    pol <- ifelse(i==0,"Negative","Positive")
+    sp.ms2 <- object@spectra$MS2_Spectra%>%
+      filterPolarity(i)
+    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
+      as.data.frame()
+    sp.ms2.data <- Spectra::spectraData(sp.ms2)%>%
+      as.data.frame()%>%
+      dplyr::mutate(precursorMZ = precursorMz,
+                    retentionTime = rtime)%>%
+      get_xcms_scan_feature_id(featuredef = xcms.fdf)
+    object@spectra$MS2_Spectra[sp.ms2.data$sp_id] <-
+      sp.ms2[sp.ms2.data$sp_id]
+
+    ### update MS2_Spectra
+    sp.ms2.total <-object@spectra$MS2_Spectra %>%
+      Spectra::spectraData()%>%
+      as.data.frame()%>%
+      dplyr::mutate(ms2_matched_feature = case_when(
+        polarity==i ~ sp.ms2.data[sp_id,]$ms2_matched_feature,
+        T~ms2_matched_feature
+      ))
+    Spectra::spectraData(object@spectra$MS2_Spectra ) <- DataFrame(sp.ms2.total)
+
+    ### update xcms featuredef
+    xcms.fdf <- xcms.fdf %>%
+      dplyr::rowwise()%>%
+      dplyr::mutate(ms2_sp = sp.ms2.data$sp_id[grep(pattern = feature_id ,
+                                                    x = sp.ms2.data$ms2_matched_feature
+      )]%>%
+                      paste0(collapse = ";"))%>%
+      dplyr::ungroup()
+     xcms::featureDefinitions(xcms.xcms) <- xcms.fdf%>%
+      DataFrame()
+     xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+
 
   }
+
+  return(object)
 
 
 }
@@ -1050,7 +1178,8 @@ export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
 
 
 get_MS_sampleinfo <- function(raw.data.dir,
-                              rawDataFormat=".raw"){
+                              rawDataFormat=".raw",
+                              verbose=T){
 
 
   raw.files <- dir(path = raw.data.dir,
@@ -1074,9 +1203,9 @@ get_MS_sampleinfo <- function(raw.data.dir,
                     ms.name = gsub(pattern = "[^0-9A-z]",
                                            x = ms.labels ,
                                            replacement = "_"),
-                    polarity = case_when(grepl("pos",x= ms.name, ignore.case =T)~"Posigive",
-                                         grepl("neg",x= ms.name, ignore.case =T)~"Posigive",
-                                         T~NA))%>%
+                    polarity = case_when(grepl("pos",x= ms.name, ignore.case =T)~"1",
+                                         grepl("neg",x= ms.name, ignore.case =T)~"0",
+                                         T~"-1"))%>%
       dplyr::group_by(ms.name)%>%
       dplyr::mutate(raw.files = .select_char(raw.files))%>%
       dplyr::ungroup()%>%
@@ -1119,12 +1248,189 @@ get_MS_sampleinfo <- function(raw.data.dir,
 
 
   }
-  message("Default sample group:")
-  show(table(sample.info$group))
+
+  if (verbose ) {
+    message("Default sample group:")
+    show(table(sample.info$group))
+  }
 
   return(sample.info)
 
 
 }
 
+
+get_MSdev_Inclusion_Queue <- function(object){
+
+  for (i in 0:1) {
+    polarity <-ifelse(i==0,"Negative","Positive")
+    polarity.tag <- paste0(polarity,"MS1")
+    xcms.xcms <- object@xcmsData[[polarity.tag]]
+    if (is.na(xcms.xcms)) {
+      next
+    }
+    feature.rsd <- get_features_from_xcms(xcms.xcms)@elementMetadata%>%as.data.frame()
+    feature.stat <- featureDefinitions_PeakSta(xcms.xcms)%>%
+      cbind(feature.rsd[,c("qc_rsd","sample_rsd","med_intensity")])
+    dda.mine.queue <- feature.stat%>%
+      dplyr::mutate( qc_rsd.score = (log(0.3)-log(qc_rsd)),
+                     MS1.score = qc_rsd.score*log10(peakMaxo)  )%>%
+      dplyr::arrange(-MS1.score)%>%
+      rownames_to_column("feature.id")%>%
+      dplyr::mutate(CE10=10,CE20=20,CE30=30,CE40=40,CE50=50)%>%
+      pivot_longer(CE10:CE50,names_to = "CE.tag",values_to = "collisionEnergy")%>%
+      dplyr::mutate(DDA.id= paste0(feature.id,"_",CE.tag),
+                    acquired =F,
+                    acquired.in.list = NA,
+                    queued.in.list = NA,
+                    queued.time = 0)
+
+    object@statData[[paste0("DDA_mine_queue_",polarity)]] <- dda.mine.queue
+    object@statData[[paste0("DDA_mine_list_",polarity)]] <- list()
+
+  }
+
+
+  object
+
+}
+
+get_MSdev_Inclusion_List <- function(object){
+
+  for (i in 0:1) {
+    polarity <-ifelse(i==0,"Negative","Positive")
+    DDA.queue <- object@statData[[paste0("DDA_mine_queue_",polarity)]]
+    if ( is.null(DDA.queue)) {
+      next
+    }
+    DDA.mine.list <-DDA.queue%>%
+      dplyr::ungroup()%>%
+      dplyr::filter(!acquired)%>%
+      dplyr::mutate(ion.cluster = cluster_ion(mzmed,
+                                              rtmed,
+                                              rt.tol = 60))%>%
+      dplyr::group_by(ion.cluster)%>%
+      dplyr::slice_max(MS1.score,n=1,with_ties =F)%>%
+      dplyr::ungroup()%>%
+      dplyr::slice_max(MS1.score,n=5000,with_ties =F)%>%
+      dplyr::mutate(feature.id = paste0(feature.id ,"_", CE.tag))
+
+    ### update list
+    queue.list <- object@statData[[paste0("DDA.mine.list.",polarity)]]
+    if (length(queue.list)) {
+
+      list.name =str_add( max(names(queue.list)),1)
+      queue.list <- append(queue.list,
+                            list( DDA.mine.list))
+      names(queue.list)[length(queue.list)] <-list.name
+
+    }else{
+      list.name <- "DDA.mine.list001"
+      queue.list <- list("DDA.mine.list001" = DDA.mine.list)
+
+    }
+    object@statData[[paste0("DDA.mine.list.",polarity)]] <-queue.list
+
+    DDA.mine.list.qe <- feature_def_to_QE_inclusion(DDA.mine.list,polarity = polarity)
+    write.csv(DDA.mine.list.qe,
+              file = paste0(object@projectInfo$projectDir,"/",
+                            list.name,".csv"))
+
+    ### update DDA.queue
+    DDA.queue <- DDA.queue %>%
+      dplyr::mutate(queued.in.list = case_when(
+        DDA.id %in% DDA.mine.list$feature.id ~ paste0(queued.in.list,";",list.name),
+        T~queued.in.list),
+        queued.time = case_when(
+          DDA.id %in% DDA.mine.list$feature.id ~ queued.time+1,
+          T~queued.time))
+    DDA.queue -> object@statData[[paste0("DDA.mine.queue.",polarity)]]
+
+  }
+
+
+  object
+
+}
+
+
+get_MSdev_MS2acquisitionStat <- function(object){
+
+  assign_ms2_list <- function(pmz,rt,ce ,il){
+
+    il %>%
+      dplyr::filter(abs(mzmed-pmz)/pmz < 1e-5,
+                    rtmed < rtmax,
+                    rtmed > rtmin,
+                    collisionEnergy==ce)%>%
+      dplyr::pull( DDA.id)->x
+    if (length(x)==0) {
+      return(NA)
+
+    }
+    return(paste0(x,collapse = ";"))
+
+  }
+
+  for (i in 0:1) {
+
+    polarity <-ifelse(i==0,"Negative","Positive")
+    DDA.queue <- object@statData[[paste0("DDA.mine.queue.",polarity)]]
+    if ( is.null(DDA.queue)) {
+      next
+    }
+    sample.info <- object@sampleInfo%>%
+      dplyr::filter(polarity %in% c(i,-1),
+                    msLevels %in% c(2))
+    xcms.xcms <- readMSData(sample.info$msData.files,mode = "onDisk")
+    xcms.scan <- get_xcms_scan_Stat(xcms.xcms)%>%
+      dplyr::filter(msLevel==2)%>%
+      dplyr::rowwise()%>%
+      dplyr::mutate(assigned.id = assign_ms2_list(pmz = precursorMZ,
+                                    rt = retentionTime,
+                                    ce = collisionEnergy,
+                                    il = DDA.queue))%>%
+      dplyr::filter(!is.na(assigned.id))%>%
+      dplyr::ungroup()
+    ms2.stat <- xcms.scan%>%
+      dplyr::ungroup()%>%
+      dplyr::group_by(fileIdx)%>%
+      dplyr::mutate(total.id = paste0(assigned.id,collapse = ";"))%>%
+      dplyr::distinct(fileIdx,total.id)%>%
+      dplyr::mutate(files = sampleNames(xcms.xcms)[fileIdx])
+
+    ms2.list <-lapply(ms2.stat$total.id,function(x){
+              strsplit(x,";")%>%unlist()
+            })
+    for (i in 1:length(ms2.list)) {
+      ids <- ms2.list[[i]]
+      a <-  ids%in% DDA.queue$DDA.id
+      DDA.queue <- DDA.queue%>%
+        dplyr::ungroup()%>%
+        dplyr::mutate(acquired = case_when(DDA.id %in% ids~T,
+                                           T~acquired),
+                      acquired.time = case_when(
+                        DDA.id %in% ids~paste0(acquired.time,
+                                               ";",sampleNames(xcms.xcms)[i]),
+                                                T~acquired.time))%>%
+        dplyr::ungroup()%>%
+        dplyr::mutate(fail.time = case_when(acquired~0,
+                                            T~queued.time))%>%
+        dplyr::group_by(feature.id)%>%
+        dplyr::mutate(
+          acquired = case_when(any(fail.time >3)~T,
+                                           T~acquired))
+
+    }
+
+    DDA.queue -> object@statData[[paste0("DDA.mine.queue.",polarity)]]
+
+
+
+  }
+
+
+  return(object)
+
+}
 

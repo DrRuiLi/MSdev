@@ -4011,3 +4011,176 @@ runInfo(mzr.dda)
 mzfile <- dir("d:/2023.08.03.ms.dev/msData/pos/",full.names = T)
 mzr.mrm <- openMSfile("d:/2023.08.27.mrm.test/Result/mzML/QC_POS001.mzML")
 mzr.dda <- openMSfile("d:/2023.08.05.ms.dev/msData/neg/Sample07.mzML")
+
+
+
+
+msdev.test <- MSdev("d:/2023.08.03.ms.dev/Result/")
+msdev.test <- MSdev("d:/2023.08.27.mrm.test/Result/")
+msdev.test <- MSdev("d:/2023.08.05.ms.dev/Result/")
+msdev.test <- msConvert_MSdev(msdev.test)
+msdev.test <- checkSampleInfo(msdev.test)
+a <- msdev.test@sampleInfo
+
+
+a <- dda.ion.windows%>%
+  dplyr::group_by(mz.group)%>%
+  dplyr::filter(any(duplicated(mz.group)))
+
+
+
+charToRaw("abs")->strtest
+rawToChar(strtest)
+as.raw(61)
+strtest[3]+1
+
+ggplot(DDA.mine.list)+
+  geom_histogram(aes(x = rtmed),col = "red",
+                 binwidth = 3)
+
+
+
+xcms.list1 <- readMSData("d:/2023.09.02.DDA.mine/Pos/rawData/mzML/DDA_pos_mine_list001.mzML",
+                         mode = "onDisk")
+xcms.scans <- get_xcms_scan_Stat(xcms.list1)
+
+ggplot(xcms.scans)+
+  geom_point(aes(x = retentionTime, y = ms2.count))
+
+
+featureDefinitions_PeakSta()
+
+
+chromPeaks(xcms.xcms)[unlist(feature.def.df["FT3387","peakidx"]),]
+
+
+plot_xcms_peaks_SN_distribution(xcms.xcms )
+
+a <- groupChromPeaks(xcms.xcms,
+                     param = NearestPeaksParam(
+                       sampleGroups = rep("a",5)))
+featureDefinitions(a)
+
+get_xcms_scan_feature_id()
+
+
+
+
+xcms.scan <- xcms.scan%>%
+  dplyr::mutate(cluster_ion(precursorMZ ,retentionTime ))
+
+# Tue Sep  5 20:37:32 2023 ------------------------------
+xcms.ms2 <- readMSData(msdev.ddamine@sampleInfo$msData.files,
+                        mode = "onDisk")
+xcms.scan <-get_xcms_scan_Stat(xcms.ms2)
+
+
+xcms.scan.ms1 <- xcms.scan%>%
+  dplyr::filter(msLevel == 2)%>%
+  dplyr::mutate(a = cluster_ion(precursorMZ,
+                                retentionTime,2.5))
+
+
+ggplot(xcms.scan)+
+  geom_jitter(aes(x = retentionTime , y = cycle_time),
+              col = "red",alpha = 0.2,
+              width = 0.3,height = 0.3)
+
+
+i=3
+scan.mz.group[mz.match$row[i]]
+feature.def$mzmed[mz.match$col[i]]
+
+
+assign.feature<- function(x,fdf){
+
+  x$precursorMZ
+}
+
+a <- apply(xcms.scan.ms2,1,
+              assign.feature,
+              fdf = featuredef)
+
+assign_ms2_list <- function(pmz,rt,il){
+
+  il %>%
+    dplyr::filter(abs(mzmed-pmz)/pmz < 1e-5,
+                  rt < rtmax,
+                  rt > rtmin)%>%
+    dplyr::pull(feature_id)->x
+  if (length(x)==0) {
+    return(NA)
+
+  }
+  return(paste0(x,collapse = ";"))
+
+}
+
+
+sp.data <-xcms.scan.ms2%>%
+  dplyr::filter(msLevel%in% c(2))%>%
+  dplyr::rowwise()%>%
+  dplyr::mutate(id.list = assign_ms2_list(pmz = precursorMZ,
+                                          rt =retentionTime,
+                                          il = featuredef))%>%
+  dplyr::ungroup()
+
+
+a <- sapply(xcms.scan.ms2$id.list, nchar)
+table(a)
+
+
+
+msdev.pdn <- MSdev("d:/2023_09_05_PDN/Data/")
+msdev.pdn <- msConvert_MSdev(msdev.pdn)
+checkSampleInfo(msdev.pdn)
+msdev.pdn <- xcmsProcessingMSdev(msdev.pdn)
+saveMSdev(msdev.pdn)
+
+msdev.pdn <- load_as_var("d:/2023_09_05_PDN/MSdev_2023_09_07.Rdata")
+Sys.time()
+msdev.pdn <- extract_Spectra_MSdev(msdev.pdn)
+Sys.time()
+msdev.pdn <- match_Spectra_to_feature_MSdev(msdev.pdn)
+Sys.time()
+
+
+load("d:/MSdb.2023.05.30/LipidBlast.rda")
+sp.list1 <- msdev.pdn@spectra$MS2_Spectra
+sp.list2 <- Spectra_database
+
+compare.df <- data.frame(
+  id1 = sample(1:1000,100),
+  id2 = sample(1:1000,100)
+)
+
+
+bplapply(1:14 , function(x,compare.df,sp.list1,sp.list2){
+  sp1 <- sp.list1[compare.df$id1[x]]
+  sp2 <- sp.list2[compare.df$id2[x]]
+  compareSpectra(sp1,sp2)
+},compare.df,
+sp.list1,sp.list2,BPPARAM = seri(progressbar = T))
+
+
+
+make_sp_compare_list <- function(x){
+  sp1 <- sp.list1[x[1]]
+  sp2 <- sp.list2[x[2]]
+  list(sp1,sp2)
+}
+sp.compare.list <- apply(compare.df,1,
+                         make_sp_compare_list)
+
+spcf <- function(x){
+
+  compareSpectra(x[[1]],x[[2]])
+}
+a <- bplapply(sp.compare.list,spcf,
+         BPPARAM = SnowParam())
+
+sapply(sp.ms2.data$ms2_matched_feature,nchar)%>%
+  table()
+
+
+
