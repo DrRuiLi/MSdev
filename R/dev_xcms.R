@@ -445,8 +445,10 @@ featureDefinitions_PeakSta<- function(xcms.xcms){
   feature.def$peakMzMax <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"mzmax",fun = "max")
   feature.def$peakSN <-  sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"sn")
   feature.def$peakMaxo <-  sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"maxo")
-
-  feature.def.df <- as.data.frame(feature.def)
+  feature.def$polarity <- polarity(xcms.xcms)%>%unique()
+  feature.def.df <- as.data.frame(feature.def)%>%
+    dplyr::mutate(feature_id = rownames(.),
+                  .before = mzmed)
   feature.def.df
 }
 
@@ -462,6 +464,42 @@ get_xcms_feature_def_stat <- function(xcms.xcms){
 
 
 
+get_xcms_feature_val_stat <- function(xcms.xcms) {
+
+  xcms.pdata <- Biobase::pData(xcms.xcms)
+  featureval <- featureValues(xcms.xcms)
+  if ("sample.type" %in% colnames(xcms.pdata)) {
+    qc.rsd <- featureval[,xcms.pdata%>%dplyr::filter(sample.type =="QC")%>%
+                 dplyr::pull(sampleNames)]%>%
+      apply(1,function(x){
+        sd(x,na.rm =T)/mean(x,na.rm=T)
+      })
+    sample.rsd <- featureval[,xcms.pdata%>%
+                               dplyr::filter(sample.type =="Sample")%>%
+                 dplyr::pull(sampleNames)]%>%
+      apply(1,function(x){
+        sd(x,na.rm =T)/mean(x,na.rm=T)
+      })
+  }else{
+    qc.rsd <- NA
+    sample.rsd <- NA
+
+  }
+
+  fdf <- featureDefinitions(xcms.xcms)
+  fdf$qc_rsd <- qc.rsd
+  fdf$sample_rsd <- sample.rsd
+  fdf -> featureDefinitions(xcms.xcms)
+  return(xcms.xcms)
+}
+
+
+get_xcms_feature_stat <- function(xcms.xcms){
+  xcms.xcms <- xcms.xcms %>%
+    get_xcms_feature_def_stat()%>%
+    get_xcms_feature_val_stat()
+  return(xcms.xcms)
+}
 
 
 
@@ -959,6 +997,9 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
                                                                   fitgauss = T,
                                                                   verboseColumns = T,
                                                                   prefilter = c(3,100))){
+  if (!length(msDataFiles)) {
+    return(NA)
+  }
   xcms.xcms <-  MSnbase::readMSData(msDataFiles, mode = "onDisk")
   if (is.na(ion_mode)) {
     ion_mode <- polarity(xcms.xcms )%>%unique()
@@ -1006,6 +1047,7 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
                                          binSize = 0.015)
   xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
   xcms.xcms <- fillChromPeaks(xcms.xcms,param = FillChromPeaksParam())
+  xcms.xcms <- get_xcms_feature_stat(xcms.xcms )
   return(xcms.xcms)
 
 
@@ -1103,17 +1145,80 @@ plot_xcms_feature_intensity <- function(xcms.xcms , feature_id_to_show ){
 get_xcms_scan_Stat <- function(xcms.xcms){
 
   xcms.fdata <- fData(xcms.xcms)%>%
-    dplyr::group_by(fileIdx)%>%
+    dplyr::mutate(fileStr = num2str(fileIdx),
+                  spStr = num2str(spIdx)
+                  )%>%
+    dplyr::group_by(fileStr)%>%
     dplyr::mutate(x = 2-msLevel,
-                  x = cumsum(x),
-                  scan_group = paste0(cur_group_id(),"_",x))%>%
-    dplyr::group_by(scan_group)%>%
-    dplyr::mutate(ms2.count = sum(msLevel==2),
-                  cycle.time = max(retentionTime)-min(retentionTime))
+                  ms1_no = cumsum(x))%>%
+    dplyr::ungroup()%>%
+    dplyr::mutate(ms1_no_str = num2str(ms1_no))%>%
+    dplyr::group_by(fileIdx)%>%
+    dplyr::arrange(fileIdx,retentionTime  )%>%
+    dplyr::mutate(scan_time = c(diff(retentionTime),0),
+                  ms1_group = paste0(fileStr,"_",ms1_no_str))%>%
+    dplyr::group_by(ms1_group)%>%
+    dplyr::mutate(ms2_count = sum(msLevel==2),
+                  ms1_group_rt = min(retentionTime),
+                  cycle_time = max(retentionTime)-min(retentionTime))%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fileStr)%>%
+    dplyr::mutate(cycle_time = c(diff(ms1_group_rt),0))%>%
+    dplyr::group_by(ms1_group)%>%
+    dplyr::mutate(cycle_time = max(cycle_time))%>%
+    dplyr::mutate(scan_id = paste0(fileStr,"_",spStr))%>%
+    dplyr::ungroup()%>%
+    dplyr::select(scan_id,ms1_no,ms1_group,ms1_group_rt,
+                  ms2_count,cycle_time,scan_time,everything(),
+                  -c(x,fileStr,spStr,ms1_no_str))
 
   xcms.fdata
 }
 
 
+#' get_xcms_scan_feature_id
+#'
+#'  match xcms scan of msLevel 2 to feature Definitions
+#'  based on precursorMZ, retentionTime in `xcms.scan`;
+#'  peakRtMin, peakRtMax, feature_id in `featuredef`
+#'
+#' @param xcms.scan
+#' @param featuredef
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_xcms_scan_feature_id <- function(xcms.scan,
+                                     featuredef ){
 
+  assign_ms2 <- function(pmz,prt,il){
+
+    il %>%
+      dplyr::filter(abs(mzmed-pmz)/pmz < 1e-5,
+                    prt < peakRtMax,
+                    prt > peakRtMin)%>%
+      dplyr::pull(feature_id)->x
+    if (length(x)==0) {
+      return(NA)
+
+    }
+    return(paste0(x,collapse = ";"))
+
+  }
+
+
+  xcms.scan <- xcms.scan%>%
+    dplyr::filter(msLevel == 2)%>%
+    dplyr::rowwise()%>%
+    dplyr::mutate(ms2_matched_feature = assign_ms2(pmz = precursorMZ,
+                                       prt =retentionTime,
+                                       il = featuredef))%>%
+    dplyr::ungroup()
+
+  return(xcms.scan)
+
+
+
+}
 

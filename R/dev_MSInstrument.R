@@ -141,3 +141,37 @@ get_MRM_list <- function(feature_def_sta){
 
 
 }
+
+
+
+feature_def_to_QE_inclusion <- function(feature.def,
+                                        polarity){
+
+  var.map <-c(mzmed = "Mass [m/z]",
+              peakRtMin = "Start [min]" ,
+              peakRtMax= "End [min]",
+              collisionEnergy = "(N)CE",
+              feature.id = "Comment")
+
+  qe.inclusion.list <- feature.def %>%
+    dplyr::mutate( peakRtMin = peakRtMin/60,
+                   peakRtMax = peakRtMax/60,
+                   peakRtMin = case_when(peakRtMin <0~0,
+                                         T~peakRtMin),
+                   `(N)CE type` = "CE",
+                   Polarity = polarity
+                   )%>%
+    dplyr::select(names(var.map),everything(),-peakidx)
+
+  names(qe.inclusion.list)[match(names(var.map),names(qe.inclusion.list))] <- var.map
+
+  data("QEinclusionListTemplate")
+  qe.inclusion.list[,colnames(qe.inclusion.list)%in% colnames(QEinclusionListTemplate)]
+
+}
+
+
+
+
+
+

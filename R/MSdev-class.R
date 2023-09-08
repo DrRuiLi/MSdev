@@ -16,63 +16,63 @@ MSdev <- function(rawDataDir =
                     "C:/Users/91879/OneDrive/Documents/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data",
                   projectDir = dirname(rawDataDir),
                   experimentInfo = MS_Exp()){
-  new("MSdev",rawDataDir,projectDir,experimentInfo)
+  .Object <- new("MSdev")
+  {
+
+    ### check param
+    {
+      if (!dir.exists(rawDataDir)) {
+        message("rawDataDir do not exist")
+
+      }
+      rawDataDir <- normalizePath(rawDataDir)
+      projectDir <- normalizePath(projectDir)
+      dir.create(projectDir,recursive = T,showWarnings = F)
+    }
+
+    .Object@projectInfo = list(
+      creatTime = Sys.time(),
+      projectDir =projectDir,
+      rawDataDir =rawDataDir,
+      rawDataFormat = NULL,
+      rawDataFileCount = NULL,
+      msDataDir =paste0(rawDataDir , "/msData"),
+      experimentTime = NULL,
+      msAcquisition = "Unknow",
+      msLevel= NA,
+      polarity = -1,
+      sampleCount = NA,
+      MSdevFile = paste0(projectDir , "/MSdev",date_suffix(),".Rdata")
+    )
+    .Object@experimentInfo = experimentInfo
+
+    ### check raw data
+    {
+      rowDataFile <- dir(.Object@projectInfo$rawDataDir)
+      .Object@projectInfo$rawDataFormat =
+        dplyr::case_when(any(grepl(pattern = ".wiff$", x = rowDataFile))~".wiff",
+                         any(grepl(pattern = ".raw$", x = rowDataFile))~".raw",
+                         any(grepl(pattern = ".lcd$", x = rowDataFile))~".lcd")
+      rowDataFile <- dir(path = .Object@projectInfo$rawDataDir,
+                         pattern =paste0(.Object@projectInfo$rawDataFormat,"$") ,
+                         full.names = T)
+      .Object@projectInfo$rawDataFileCount <- length(rowDataFile)
+      .Object@projectInfo$experimentTime <- max(file.info(rowDataFile)$mtime)
+
+    }
+    .Object@sampleInfo <- get_MS_sampleinfo(.Object@projectInfo$rawDataDir,
+                                            rawDataFormat = .Object@projectInfo$rawDataFormat,
+                                            verbose = F)
+    .Object <- .updateProjectInfoFromSampleInfo(.Object )
+    .Object@processingInfo$readInRawData$done <- T
+    saveMSdev(.Object)
+    .Object
+
+  }
 
 }
 
 
-
-setMethod("initialize" , "MSdev",
-          function(.Object,
-                   rawDataDir,
-                   projectDir,
-                   experimentInfo
-                   ){
-
-            ### check param
-            {
-              if (!dir.exists(rawDataDir)) {
-                message("rawDataDir do not exist")
-
-              }
-              rawDataDir <- normalizePath(rawDataDir)
-              projectDir <- normalizePath(projectDir)
-              dir.create(projectDir,recursive = T,showWarnings = F)
-            }
-
-            .Object@projectInfo = list(
-              creatTime = Sys.time(),
-              projectDir =projectDir,
-              rawDataDir =rawDataDir,
-              rawDataFormat = NULL,
-              rawDataFileCount = NULL,
-              msDataDir =paste0(projectDir , "/msData"),
-              experimentTime = NULL,
-              msAcquisition = "DDA",
-              sampleCount = NA,
-              MSdevFile = paste0(projectDir , "/MSdev",date_suffix(),".Rdata")
-            )
-            .Object@experimentInfo = experimentInfo
-
-            ### check raw data
-            {
-              rowDataFile <- dir(.Object@projectInfo$rawDataDir)
-              .Object@projectInfo$rawDataFormat =
-                dplyr::case_when(any(grepl(pattern = ".wiff$", x = rowDataFile))~".wiff",
-                        any(grepl(pattern = ".raw$", x = rowDataFile))~".raw",
-                        any(grepl(pattern = ".lcd$", x = rowDataFile))~".lcd")
-              rowDataFile <- dir(path = .Object@projectInfo$rawDataDir,
-                                 pattern =paste0(.Object@projectInfo$rawDataFormat,"$") ,
-                                 full.names = T)
-              .Object@projectInfo$rawDataFileCount <- length(rowDataFile)
-              .Object@projectInfo$experimentTime <- max(file.info(rowDataFile)$mtime)
-
-            }
-            .Object <- readInRawData(.Object)
-            saveMSdev(.Object)
-            .Object
-
-          })
 
 
 
