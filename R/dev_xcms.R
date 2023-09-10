@@ -1144,7 +1144,7 @@ plot_xcms_feature_intensity <- function(xcms.xcms , feature_id_to_show ){
 
 get_xcms_scan_Stat <- function(xcms.xcms){
 
-  xcms.fdata <- fData(xcms.xcms)%>%
+  xcms.fdata <-Biobase::fData(xcms.xcms)%>%
     dplyr::mutate(fileStr = num2str(fileIdx),
                   spStr = num2str(spIdx)
                   )%>%
@@ -1192,13 +1192,13 @@ get_xcms_scan_Stat <- function(xcms.xcms){
 get_xcms_scan_feature_id <- function(xcms.scan,
                                      featuredef ){
 
-  assign_ms2 <- function(pmz,prt,il){
+  assign_ms2 <- function(pmz,prt,xcms.featuredef){
 
-    il %>%
-      dplyr::filter(abs(mzmed-pmz)/pmz < 1e-5,
-                    prt < peakRtMax,
-                    prt > peakRtMin)%>%
-      dplyr::pull(feature_id)->x
+
+    mz.pass <- abs(xcms.featuredef$mzmed - pmz)/pmz <1e-5
+    rt.pass <- (xcms.featuredef$peakRtMax > prt)&(xcms.featuredef$peakRtMin < prt)
+
+    x <- xcms.featuredef$feature_id[mz.pass&rt.pass]
     if (length(x)==0) {
       return(NA)
 
@@ -1207,14 +1207,21 @@ get_xcms_scan_feature_id <- function(xcms.scan,
 
   }
 
+  if (sum(xcms.scan$msLevel >1) > 10000) {
+    bpp<-BiocParallel::SnowParam(progressbar = T)
+  }else{
+    bpp<-BiocParallel::SerialParam(progressbar = T)
+
+  }
 
   xcms.scan <- xcms.scan%>%
     dplyr::filter(msLevel == 2)%>%
-    dplyr::rowwise()%>%
-    dplyr::mutate(ms2_matched_feature = assign_ms2(pmz = precursorMZ,
-                                       prt =retentionTime,
-                                       il = featuredef))%>%
-    dplyr::ungroup()
+    dplyr::mutate(ms2_matched_feature =
+                    BiocParallel::bpmapply(assign_ms2 ,
+                             pmz = precursorMZ,
+                             prt = retentionTime,
+                             MoreArgs = list(xcms.featuredef = featuredef),
+                             BPPARAM = bpp))
 
   return(xcms.scan)
 

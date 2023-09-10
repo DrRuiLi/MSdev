@@ -487,7 +487,7 @@ match_Spectra_to_feature_MSdev <- function(object){
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
     sp.ms2 <- object@spectra$MS2_Spectra%>%
-      filterPolarity(i)
+      ProtGenerics::filterPolarity(i)
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
       as.data.frame()
@@ -496,8 +496,6 @@ match_Spectra_to_feature_MSdev <- function(object){
       dplyr::mutate(precursorMZ = precursorMz,
                     retentionTime = rtime)%>%
       get_xcms_scan_feature_id(featuredef = xcms.fdf)
-    object@spectra$MS2_Spectra[sp.ms2.data$sp_id] <-
-      sp.ms2[sp.ms2.data$sp_id]
 
     ### update MS2_Spectra
     sp.ms2.total <-object@spectra$MS2_Spectra %>%

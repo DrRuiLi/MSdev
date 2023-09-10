@@ -4184,3 +4184,25 @@ sapply(sp.ms2.data$ms2_matched_feature,nchar)%>%
 
 
 
+xcms.xcms <- msdev.pdn@xcmsData$PositiveMS1
+xcms.featuredef <- featureDefinitions(xcms.xcms)%>%as.data.frame()
+xcms.scan <- get_xcms_scan_Stat(xcms.xcms )%>%
+  dplyr::filter(msLevel==2)
+
+a <- get_xcms_scan_feature_id
+
+
+
+
+n <- 100
+pmz <- xcms.scan$precursorMZ[1:n]
+prt <- xcms.scan$retentionTime[1:n]
+
+system.time(A <- bpmapply(assign_ms2 ,
+                          pmz=pmz,
+                          prt = prt,
+                          MoreArgs = list(xcms.featuredef = xcms.featuredef),
+                          BPPARAM = SnowParam(progressbar = T)))
+
+
+
