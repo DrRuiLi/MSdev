@@ -4205,4 +4205,62 @@ system.time(A <- bpmapply(assign_ms2 ,
                           BPPARAM = SnowParam(progressbar = T)))
 
 
+xcms.scans <- get_xcms_scan_Stat(msdev.pdn@xcmsData$PositiveMS1)
+
+ggplot(xcms.scans)+
+  geom_histogram(aes(x = scan_time , fill = factor(msLevel)),
+                   position = "dodge")
+
+ggplot(xcms.scans)+
+  geom_histogram(aes(x = cycle_time ),
+                 position = "dodge")
+
+ggplot(xcms.scans)+
+  geom_histogram(aes(x = ms2_count ),
+                 position = "dodge")
+
+
+
+get_xcms_MS_report()
+
+
+
+library(patchwork)
+
+
+open_ggplot_win(p1)
+
+msdev.ddamine <- load_as_var("d:/temp/MSdev_2023_09_02.back.Rdata")
+
+
+dda.queue <- msdev.ddamine@statData$DDA.mine.queue.Positive
+a <- dda.queue%>%
+  dplyr::mutate(detected = str_extract(acquired.time,"[0-9]+")%>%as.numeric() )%>%
+  dplyr::group_by(feature.id)%>%
+  dplyr::mutate(detected = min(detected,na.rm = T))%>%
+  dplyr::distinct(feature.id,detected)
+
+plot.df <- data.frame(
+  x = 1:6,
+  y = c( sum(a$detected<=1,na.rm = T),
+         sum(a$detected<=2,na.rm = T),
+         sum(a$detected<=3,na.rm = T),
+         sum(a$detected<=4,na.rm = T),
+         sum(a$detected<=5,na.rm = T),
+         sum(a$detected<=6,na.rm = T))
+)%>%
+  dplyr::mutate(total = 4073-y)%>%
+  pivot_longer(2:3)
+
+
+ggplot(plot.df)+
+  geom_bar(aes(x = x,y = value,fill = factor(x),
+               alpha = name ),col = "black",stat = "identity",show.legend = F)+
+  labs(x = "DDA mine Cycle",
+      y = "Count of peaks with MS2")+
+  theme_bw()->p
+
+open_ggplot_win(p,5,4)
+
+
 
