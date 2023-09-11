@@ -596,22 +596,27 @@ plot_xcms_features_distribution <-
       as.data.frame() %>%
       mutate(mz = mzmed, rt = rtmed)
     xcms.features$maxo <-
-      apply(featureValues(xcms.xcms, value = "maxo"), 1, mean, na.rm = T)
+      apply(featureValues(xcms.xcms, value = "maxo"), 1, median, na.rm = T)
 
     xcms.process.type <-
       processHistory(xcms.xcms) %>% sapply(processType)
     xcms.findpeak.param <-
       processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]] %>%
       processParam()
+    ### generate scale
+    maxo.range <- quantile(log10((xcms.features$maxo)))
+    peak.witdh.range <- quantile(xcms.features$peakWidth)
+
     ggplot(xcms.features) +
       geom_point(aes(
         x = rt,
         y = mz,
         col = log10(maxo),
         alpha = log10(maxo) / 10,
-        size = (rtmax - rtmin)
+        size =peakWidth
       ),) +
-      scale_size(range = c(2,6)) +
+      scale_size_continuous(breaks  = peak.witdh.range[2:4],
+                            labels = round(peak.witdh.range[2:4])) +
       xlim(c(0, 800)) +
       labs(
         title = plot.title,
@@ -636,6 +641,7 @@ plot_xcms_features_distribution <-
                             values = c(0,2,4,7,9)/9,
                             colors = c("white","white","yellow","red","red"))+
       theme(text = element_text(size = 8)) -> peaks.dis.plot
+    peaks.dis.plot
     return(peaks.dis.plot)
 
 
@@ -1224,6 +1230,17 @@ get_xcms_scan_feature_id <- function(xcms.scan,
                              BPPARAM = bpp))
 
   return(xcms.scan)
+
+
+
+}
+
+
+
+
+get_xcms_MS_report <- function(xcms.xcms){
+
+  p1 <-plot_xcms_features_distribution(xcms.xcms)
 
 
 
