@@ -4264,3 +4264,14 @@ open_ggplot_win(p,5,4)
 
 
 
+
+msdev.pdn <- load_as_var("d:/2023_09_05_PDN/MSdev_2023_09_07.Rdata")
+msdev.pdn <- xcmsProcessingMSdev(
+  msdev.pdn   )
+
+xcms.xcms <- msdev.pdn@xcmsData$PositiveMS1
+
+
+
+
+
