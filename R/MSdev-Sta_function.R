@@ -1,5 +1,5 @@
 
-plotMSdevPCA <- function(object){
+plotMSdevPCA <- function(object,showlabel=F){
 
   sample.info <- object@sampleInfo%>%
     dplyr::filter(xcmsProcessing%in% c("Both","MS1"),
@@ -8,8 +8,9 @@ plotMSdevPCA <- function(object){
     column_to_rownames("feature_id")%>%
     dplyr::select(sample.info$sample.name)%>%
     t
+  rownames(pca.matrix) <-sample.info$label
 
-  plotPCA(pca.matrix,sample.info$group)->p
+  plotPCA(pca.matrix,sample.info$group,showlabel = showlabel)->p
   dir.create(paste0(object@projectInfo$projectDir,"/Statistic"),recursive = T)
   export::graph2ppt(p,
                     file= paste0(object@projectInfo$projectDir,"/Statistic/PCA.pptx"),

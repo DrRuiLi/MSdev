@@ -152,24 +152,33 @@ analyzePathwayHypertest <- function(kegg.id){
   pathway.hyper.test
 }
 
-plotPCA <- function(pca.matrix,pca.group){
+plotPCA <- function(pca.matrix,pca.group,showlabel = F){
 
   pca.pca <- ropls::opls(x = pca.matrix,
                          predI = 5)
   pca.data <- data.frame(pca.group,
+                         pca.label = rownames(pca.matrix),
                          pca.pca@scoreMN)
   col.list <-
     ggsci::pal_lancet()(length(unique(pca.data$pca.group)))
   names(col.list) <- unique(pca.data$pca.group)
   col.list["QC"] <- "grey"
   #col.list["Blank"] <- "grey"
-  ggplot(pca.data) +
-    geom_point(
-      aes(x = p1, y = p2 , col = pca.group),
-      size = 1,
-      alpha = 0.9,
-      pch = 16
-    ) +
+
+  if (showlabel) {
+    p<-  ggplot(pca.data) +
+      geom_text(aes(x = p1, y = p2 , label = pca.label,col = pca.group))
+
+  }else{
+    p <- ggplot(pca.data) +
+      geom_point(
+        aes(x = p1, y = p2 , col = pca.group),
+        size = 1,
+        alpha = 0.9,
+        pch = 16
+      )
+  }
+    p+
     stat_ellipse(aes(x = p1, y = p2 , fill = pca.group),
                  alpha = 0.2,
                  geom = "polygon") +
