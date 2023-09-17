@@ -616,7 +616,8 @@ plot_xcms_features_distribution <-
         size =peakWidth
       ),) +
       scale_size_continuous(breaks  = peak.witdh.range[2:4],
-                            labels = round(peak.witdh.range[2:4])) +
+                            labels = round(peak.witdh.range[2:4]),
+                            range = c(0,10)) +
       xlim(c(0, 800)) +
       labs(
         title = plot.title,
@@ -640,6 +641,7 @@ plot_xcms_features_distribution <-
                             limits = c(0,9),
                             values = c(0,2,4,7,9)/9,
                             colors = c("white","white","yellow","red","red"))+
+      theme_bw()+
       theme(text = element_text(size = 8)) -> peaks.dis.plot
     peaks.dis.plot
     return(peaks.dis.plot)
@@ -762,7 +764,7 @@ plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"
     processParam()
   xcms.peaks <- chromPeaks(xcms.xcms)%>%
     as.data.frame()
-  xcms.scans <- fData(xcms.xcms)%>%
+  xcms.scans <- get_xcms_scan_Stat(xcms.xcms)%>%
     dplyr::filter(msLevel== 1)
   peaks_scans <- function(x,xcms.scans){
     sum(x["rtmax"] > xcms.scans$retentionTime  & x["rtmin"] < xcms.scans$retentionTime )
@@ -1022,9 +1024,9 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
   xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
                             param = centWaveParam,
                             BPPARAM  = BiocParallel::SnowParam(progressbar = T))
-  mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
-  xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
-                                      BPPARAM  = BiocParallel::SerialParam(progressbar = T))
+  #mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
+  #xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
+  #                                    BPPARAM  = BiocParallel::SerialParam(progressbar = T))
   message(Sys.time()," Adjust RT...")
   peak.density.param <- xcms::PeakDensityParam(sampleGroups = peaksGroup,
                                          minFraction = 0.4,bw = 30,
@@ -1236,13 +1238,100 @@ get_xcms_scan_feature_id <- function(xcms.scan,
 }
 
 
+plot_xcms_TIC <- function(xcms.xcms){
 
 
-get_xcms_MS_report <- function(xcms.xcms){
+  xcms.pdata <- Biobase::pData(xcms.xcms)
+  xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
+  xcms.scan <- xcms.scan%>%
+    dplyr::mutate(tic = MSnbase::tic(xcms.xcms),
+                  group = xcms.pdata$group[fileIdx])%>%
+    dplyr::filter(msLevel==1)
 
-  p1 <-plot_xcms_features_distribution(xcms.xcms)
+  col.scale <- c("grey","#38C291",ggsci::pal_aaas()(10))
+  names(col.scale) <- c("Blank","QC",
+                        setdiff(unique(xcms.scan$group),c("Blank","QC")))
+
+  ggplot(xcms.scan)+
+    geom_line(aes(x = retentionTime , y = tic,col = group,group=fileIdx))+
+    scale_color_manual(values = col.scale)+
+    labs(title = "TIC",x = "Retention Time", y = "Intensity", col = "")+
+    theme_classic()->p
+  p
 
 
 
 }
+
+plot_xcms_adjustedRT <- function(xcms.xcms){
+
+
+  xcms.pdata <- Biobase::pData(xcms.xcms)%>%
+    dplyr::arrange(ExpTime)%>%
+    dplyr::mutate(injection_order = 1:n())
+  xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
+  xcms.scan <- xcms.scan%>%
+    dplyr::mutate(adrt = adjustedRtime(xcms.xcms),
+                  group = xcms.pdata$group[fileIdx],
+                  injection_order = xcms.pdata$injection_order[fileIdx])%>%
+    dplyr::filter(msLevel==1)
+
+ #col.scale <- c("grey","#38C291",ggsci::pal_aaas()(10))
+ #names(col.scale) <- c("Blank","QC",
+ #                      setdiff(unique(xcms.scan$group),c("Blank","QC")))
+
+  ggplot(xcms.scan)+
+    geom_line(aes(x = retentionTime ,
+                  y = adrt-retentionTime,
+                  col = injection_order,group=fileIdx))+
+    scale_color_gradient(low = "#FFD700",high = "#EE0000")+
+    labs(title = "Retention Time adjust",
+         x = "Retention Time", y = "Adjusted Error",
+         col = "Injection")+
+    theme_classic()->p
+  p
+
+
+
+}
+
+
+plot_xcms_scan <- function(xcms.xcms){
+
+  xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
+  xcms.scan$precursorMZ <- estimatePrecursorIntensity(xcms.xcms,
+                                          BPPARAM = BatchtoolsParam(progressbar = T,
+                                                                    log = F))
+
+
+  ggplot(xcms.scan)+
+    geom_point(aes(x = retentionTime ,
+                   y = precursorMZ ,
+                   col = log10(precursorIntensity)))
+
+
+}
+
+
+get_xcms_MS_report <- function(xcms.xcms){
+
+
+  p.tic <- plot_xcms_TIC(xcms.xcms)
+  p.rtadj <- plot_xcms_adjustedRT(xcms.xcms )
+  p.feature.dis <-plot_xcms_features_distribution(xcms.xcms)
+
+
+  ### scan
+  #plot_xcms_peaks_ms1_scans(xcms.xcms)
+  plot_xcms_peaks_ms2_scans(xcms.xcms)
+
+
+
+  p1 <- p.tic/p.rtad+(p.feature.dis)
+
+  pdf("d:/temp/aaa.pdf")
+  plot(p1)
+  dev.off()
+
+  }
 
