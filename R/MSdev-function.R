@@ -367,10 +367,10 @@ get_MSdev_param <- function(object){
                          "Thermo Quantis" = 0,
                          100)
   cwp@prefilter <- switch(MS.instru,
-                         "Q Exactive Plus" = c(5,100),
-                         "SCIEX TripleTOF 6600" = c(5,100),
-                         "Thermo Quantis" = c(5,100),
-                         c(5,100))
+                         "Q Exactive Plus" = c(3,100),
+                         "SCIEX TripleTOF 6600" = c(3,100),
+                         "Thermo Quantis" = c(3,100),
+                         c(3,100))
 
 
 
