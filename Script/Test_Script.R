@@ -4271,6 +4271,36 @@ msdev.pdn <- xcmsProcessingMSdev(
 
 xcms.xcms <- msdev.pdn@xcmsData$PositiveMS1
 
+a <- "C:\\Users\\91879\\OneDrive\\桌面\\UC96B和J7-C USB检测仪使用说明以及手机蓝牙APP软件等各种资料\\电能表电脑正式版-V2.0.1\\Umeter.txt"
+
+data <- readLines(a,encoding = "UTF-8")
+data <- read.csv()
+
+
+
+
+mzfile <- "d:/temp/MIX4_05_40.mzML"
+xcms.xcms <- readSRMData(mzfile)
+xcms.fdata <- fData(xcms.xcms)
+xcms.to.ana <- xcms.xcms[c(25,26),]
+xcms.to.ana <- XChromatograms_rt_unit(xcms.to.ana)
+
+plot_XChromatograms(xcms.to.ana,F,F)+
+  xlim(c(400,600))
+
+xcms.peaks <- findChromPeaks(xcms.to.ana,
+                             param = CentWaveParam(peakwidth = c(5,30)),
+                             BPPARAM = SerialParam() )
+
+chromPeaks(xcms.peaks)
+plot(xcms.peaks[2,],xlim = c(450,550))
+
+
+
+
+
+
+
 
 
 
