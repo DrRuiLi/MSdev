@@ -34,7 +34,7 @@ add_rejections_no_p.adj <- function(data.se , alpha = 0.05,lfc = 1){
 
   for (i in contrasts) {
 
-    n.sig <- grep(paste0(i,"_significant"),names(data.aaa@elementMetadata@listData))
+    n.sig <- grep(paste0("^",i,"_significant"),names(data.aaa@elementMetadata@listData))
 
 
     data.aaa@elementMetadata@listData[["significant"]]<-
@@ -75,39 +75,49 @@ DEP.test.diff <- function(data.se){
 }
 
 DEP.get.diff.table <- function(data.se,
+                               lfc = 0.5,
                                contrast = list_DEP_contrast(data.se )[1],
-                               p.adujst = T
+                               p.adjust = T
                                ){
-  if (p.adujst) {
-    data.se <- DEP::add_rejections(data.se)
+  if (length(grep("_significant", colnames(rowData(data.se))))<1) {
+    if (p.adjust) {
+      data.se <- DEP::add_rejections(data.se)
 
-  } else{
-    data.se <- add_rejections_no_p.adj(data.se)
+    } else{
+      data.se <- add_rejections_no_p.adj(data.se,lfc = lfc)
+    }
   }
 
   diff.table.adj <- DEP::plot_volcano(data.se,
-                                      contrast = list_DEP_contrast(data.se )[1],
+                                      contrast = contrast,
                                       plot = F,adjusted = T)
   diff.table <- DEP::plot_volcano(data.se,
-                                  contrast = list_DEP_contrast(data.se )[1],
+                                  contrast =contrast,
                                   plot = F,adjusted = F)
   diff.table<- diff.table%>%
     dplyr::mutate(`adjusted_p_value_-log10` = diff.table.adj$`adjusted_p_value_-log10`,
                   .after = `p_value_-log10`)
 
+  data.row <- rowData(data.se)%>%as.data.frame()
+  diff.table<-diff.table%>%
+    dplyr::mutate(data.row[protein,1:15])
   diff.table
 }
 
 DEP.plot.volcano <- function(data.se,
+                             lfc = 0.5,
                              contrast = list_DEP_contrast(data.se )[1],
                              p.adjust = F,
                              show.label = T){
-  if (p.adjust) {
-    data.se <- DEP::add_rejections(data.se)
+  if (length(grep("_significant", colnames(rowData(data.se))))<1) {
+    if (p.adjust) {
+      data.se <- DEP::add_rejections(data.se)
 
-  } else{
-    data.se <- add_rejections_no_p.adj(data.se)
+    } else{
+      data.se <- add_rejections_no_p.adj(data.se,lfc = lfc)
+    }
   }
+
 
   volcano.data <- DEP::plot_volcano(data.se,contrast,plot = F,adjusted = p.adjust )%>%
     dplyr::mutate(diff = case_when(log2_fold_change > 0 & significant~ "up",
@@ -127,9 +137,10 @@ DEP.plot.volcano <- function(data.se,
 
   ggplot(volcano.data, aes(log2_fold_change, p)) +
     geom_point(aes(col = diff),size = 0.1) +
-    labs( x = expression(log[2] ~ "Fold change")) +
+    labs(title = contrast ,
+         x = expression(log[2] ~ "Fold change")) +
     labs(y = expression(-log[10] ~ "P-value"))+
-    geom_vline(xintercept = c(-1,1),lty = 2,size = 0.2) +
+    geom_vline(xintercept = c(-lfc,lfc),lty = 2,size = 0.2) +
     geom_hline(yintercept = c(-log10(0.05)),lty = 2,size = 0.2) +
     xlim(c(-x.max,x.max))+
     ylim(c(0,y.max))+
@@ -149,7 +160,7 @@ DEP.plot.volcano <- function(data.se,
     theme(legend.position = "none",
           text = element_text(size = 4),
           panel.border = element_rect(size = 0.2),
-          plot.title = element_text(size = 6),
+          plot.title = element_text(size = 6,hjust = 0),
           axis.text = element_text(size = 4),
           axis.title.x = element_text(size = 6),
           axis.title.y = element_text(size = 6)
@@ -166,7 +177,7 @@ DEP.plot.volcano <- function(data.se,
                                aes(label = Compound_name), size = 1,
                                box.padding = unit(0.1, "lines"),
                                point.padding = unit(0.1, "lines"),
-                               segment.size = 0.5)
+                               segment.size = 0.1)
   }
   return(p)
 
@@ -371,17 +382,20 @@ DEP.plot.heatmap <- function(data.se,
                              contrast = list_DEP_contrast(data.se )[1],
                              p.adjust = F){
 
-  if (p.adjust) {
-    data.se <- DEP::add_rejections(data.se)
+  if (length(grep("_significant", colnames(rowData(data.se))))<1) {
+    if (p.adjust) {
+      data.se <- DEP::add_rejections(data.se)
 
-  } else{
-    data.se <- add_rejections_no_p.adj(data.se)
+    } else{
+      data.se <- add_rejections_no_p.adj(data.se,lfc = lfc)
+    }
   }
+
 
   col.info <-SummarizedExperiment::colData(data.se)%>%
     as.data.frame()%>%
     dplyr::mutate(col.group = condition,
-                  col.label = label)
+                  col.label = sample.label)
   row.info <-DEP::plot_volcano(data.se,contrast,plot = F,adjusted = p.adjust )%>%
     dplyr::mutate(SummarizedExperiment::rowData(data.se[protein,])%>%
                     as.data.frame()

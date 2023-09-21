@@ -196,7 +196,12 @@ open_dir <- function(dir = getwd()){
 }
 
 
+open_R_libPath <- function(){
 
+open_dir(.libPaths()[1])
+
+
+}
 
 cor.mtest <- function(x){
 

@@ -152,6 +152,16 @@ analyzePathwayHypertest <- function(kegg.id){
   pathway.hyper.test
 }
 
+#' plotPCA
+#'
+#' @param pca.matrix
+#' @param pca.group
+#' @param showlabel
+#'
+#' @return
+#' @export
+#'
+#' @examples
 plotPCA <- function(pca.matrix,pca.group,showlabel = F){
 
   pca.pca <- ropls::opls(x = pca.matrix,
@@ -167,7 +177,8 @@ plotPCA <- function(pca.matrix,pca.group,showlabel = F){
 
   if (showlabel) {
     p<-  ggplot(pca.data) +
-      geom_text(aes(x = p1, y = p2 , label = pca.label,col = pca.group))
+      geom_text(aes(x = p1, y = p2 , label = pca.label,col = pca.group),
+                size = 2,show.legend = F)
 
   }else{
     p <- ggplot(pca.data) +
@@ -204,6 +215,138 @@ plotPCA <- function(pca.matrix,pca.group,showlabel = F){
       axis.title = element_text(size = 8),
       panel.border = element_rect(fill = NA, size = 0.1)
     ) -> p
+  p
+
+
+}
+
+
+
+plotPLSDA<- function(plsda.matrix,plsda.group,showlabel = F){
+
+  plsda.plsda <- ropls::opls(x = plsda.matrix,
+                             y =plsda.group,
+                         predI = 5)
+  plsda.data <- data.frame(plsda.group,
+                         plsda.label = rownames(plsda.matrix),
+                         plsda.plsda@scoreMN)
+  col.list <-
+    ggsci::pal_lancet()(length(unique(plsda.data$plsda.group)))
+  names(col.list) <- unique(plsda.data$plsda.group)
+  col.list["QC"] <- "grey"
+  #col.list["Blank"] <- "grey"
+
+  if (showlabel) {
+    p<-  ggplot(plsda.data) +
+      geom_text(aes(x = p1, y = p2 , label = plsda.label,col = plsda.group),
+                size = 2,show.legend = F)
+
+  }else{
+    p <- ggplot(plsda.data) +
+      geom_point(
+        aes(x = p1, y = p2 , col = plsda.group),
+        size = 1,
+        alpha = 0.9,
+        pch = 16
+      )
+  }
+  p+
+    stat_ellipse(aes(x = p1, y = p2 , fill = plsda.group),
+                 alpha = 0.2,
+                 geom = "polygon") +
+    scale_color_manual(values = col.list) +
+    scale_fill_manual(values = col.list) +
+    #xlim(-40,40)+
+    #ylim(-20,20)+
+    xlab(paste0("PC1 (", round(plsda.plsda@modelDF[["R2X"]][1] * 100, 2), "%)")) +
+    ylab(paste0("PC2 (", round(plsda.plsda@modelDF[["R2X"]][2] * 100, 2), "%)")) +
+    labs(
+      title = "PLSDA",
+      col = "Group",
+      fill = "Group"
+    ) +
+    theme_bw() +
+    theme(
+      text = element_text(size = 8),
+      aspect.ratio = 1,
+      legend.key.size = unit(0.1, "inch"),
+      legend.text = element_text(size = 8),
+      legend.title = element_text(size = 8),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 8),
+      panel.border = element_rect(fill = NA, size = 0.1)
+    ) -> p
+  p
+
+
+}
+
+plotOPLSDA<- function(oplsda.matrix,oplsda.group,showlabel = F){
+
+  oplsda.oplsda <- ropls::opls(x = oplsda.matrix,
+                             y =oplsda.group,
+                             orthoI= 1,
+                             predI = 5)
+  oplsda.data <- data.frame(oplsda.group,
+                           oplsda.label = rownames(oplsda.matrix),
+                           oplsda.oplsda@scoreMN,
+                           oplsda.oplsda@orthoScoreMN)
+  col.list <-
+    ggsci::pal_lancet()(length(unique(oplsda.data$oplsda.group)))
+  names(col.list) <- unique(oplsda.data$oplsda.group)
+  col.list["QC"] <- "grey"
+  #col.list["Blank"] <- "grey"
+
+  if (showlabel) {
+    p<-  ggplot(oplsda.data) +
+      geom_text(aes(x = p1, y = p2 , label = oplsda.label,col = oplsda.group),
+                size = 2,show.legend = F)
+
+  }else{
+    p <- ggplot(oplsda.data) +
+      geom_point(
+        aes(x = p1, y = o1 , col = oplsda.group),
+        size = 1,
+        alpha = 0.9,
+        pch = 16
+      )
+  }
+  xmax <- max(abs(oplsda.data$p1))*1.05
+  ymax <- max(abs(oplsda.data$o1))*1.05
+  p+
+    stat_ellipse(aes(x = p1, y = o1 , fill = oplsda.group),
+                 alpha = 0.2,
+                 geom = "polygon") +
+    geom_hline(yintercept = 0 , linetype = "dashed")+
+    geom_vline(xintercept = 0 , linetype = "dashed")+
+    geom_text(aes(x = xmax*0.1,y=ymax*0.8 ,
+                  label = paste0("R2X = ",oplsda.oplsda@summaryDF$`R2X(cum)`,"\n",
+                                 "R2Y = ",oplsda.oplsda@summaryDF$`R2Y(cum)`)),
+              hjust = "left",check_overlap = T)+
+    scale_color_manual(values = col.list) +
+    scale_fill_manual(values = col.list) +
+    #xlim(-40,40)+
+    #ylim(-20,20)+
+    xlab(paste0("PC1 (", round(oplsda.oplsda@modelDF[["R2X"]][1] * 100, 2), "%)")) +
+    ylab(paste0("PC2 (", round(oplsda.oplsda@modelDF[["R2X"]][2] * 100, 2), "%)")) +
+    labs(
+      title = "PLSDA",
+      col = "Group",
+      fill = "Group"
+    ) +
+    xlim(c(-xmax,xmax))+
+    ylim(c(-ymax,ymax))+
+    theme_bw() +
+    theme(
+      text = element_text(size = 8),
+      aspect.ratio = 1,
+      legend.key.size = unit(0.1, "inch"),
+      legend.text = element_text(size = 8),
+      legend.title = element_text(size = 8),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 8),
+      panel.border = element_rect(fill = NA, size = 0.1)
+    )->p
   p
 
 
@@ -270,13 +413,13 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
   ComplexHeatmap::Heatmap(heatmap.matrix,
                           name = "Z score",
                           cluster_column_slices = F,
-                          column_split = col.info$col.group,
-                          row_split = row.info$row.group,
+                          column_split = col.info$column_split,
+                          row_split = row.info$column_split,
 
 
-                          column_labels = col.info$col.label,
+                          column_labels = col.info$column_labels,
                           column_names_rot =- 45,
-                          row_labels = row.info$row.label,
+                          row_labels = str_short(row.info$row_labels,20),
                           row_names_side = "left",
                           row_names_gp = grid::gpar(fontsize= 6),
                           column_names_gp  = grid::gpar(fontsize= 6),
@@ -291,6 +434,9 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
 
 plotPathwayEnrichment <- function(pathway.table,top = 20 , method = "set1"){
 
+if (!"diff"%in%colnames(pathway.table)) {
+  pathway.table$diff <- "NA"
+}
   pathway.table <- pathway.table%>%
     dplyr::group_by(diff)%>%
     dplyr::arrange(-p.value)%>%
@@ -314,7 +460,8 @@ plotPathwayEnrichment <- function(pathway.table,top = 20 , method = "set1"){
    ggplot(pathway.table)+
      geom_bar(aes(x = pathway.name , y = enrich.ratio , fill = log10p),
               col ="black",stat = "identity",size = 0.01)+
-     scale_fill_gradient2(low = "white" ,mid = "white",high = "#DC0000")+
+     scale_fill_gradient2(low = "white" ,mid = "yellow",high = "#DC0000",
+                          midpoint = median(-log10(x = pathway.table$p.value)))+
      labs(x = NULL ,y = "Enrich Ratio", fill = "-Log10(P)")+
      coord_flip()+
      theme_classic()+
