@@ -26,27 +26,70 @@ list_DEP_contrast <- function(data.se){
 #' @return
 #'
 #' @examples
-add_rejections_no_p.adj <- function(data.se , alpha = 0.05,lfc = 1){
+DEP_add_rejections <- function(data.se , p.adjust = T,lfc = 0.5){
 
-  data.aaa <- DEP::add_rejections(data.se , alpha ,lfc )
-  sum(data.aaa@elementMetadata@listData$significant)
-  contrasts <-list_DEP_contrast(data.aaa )
+  if (any(grepl(pattern = "significant",names(data.diff@elementMetadata@listData)))) {
+    message("significant existed, skip")
+    data.diff <- data.se
+  }else{
+    data.diff <- DEP::add_rejections(data.se , alpha = 0.05 ,lfc )
+  }
 
-  for (i in contrasts) {
+  data.diff <- DEP_p_adjust(data.diff)
+  if (p.adjust) {
+    contrasts <-list_DEP_contrast(data.diff )
+    for (i in contrasts) {
+      n.sig <- grep(paste0("^",i,"_significant$"),names(data.diff@elementMetadata@listData))
+      data.diff@elementMetadata@listData[["significant"]]<-
+        data.diff@elementMetadata@listData[[n.sig]] <-
+        (data.diff@elementMetadata@listData[[paste0(i,"_p.adj")]] < 0.05 &
+           abs(data.diff@elementMetadata@listData[[paste0(i,"_diff")]]) > lfc)
 
-    n.sig <- grep(paste0("^",i,"_significant"),names(data.aaa@elementMetadata@listData))
+    }
 
 
-    data.aaa@elementMetadata@listData[["significant"]]<-
-      data.aaa@elementMetadata@listData[[n.sig]] <-
-        (data.aaa@elementMetadata@listData[[paste0(i,"_p.val")]] < alpha&
-           abs(data.aaa@elementMetadata@listData[[paste0(i,"_diff")]]) > lfc)
+  }else{
+    contrasts <-list_DEP_contrast(data.diff )
+    for (i in contrasts) {
+      n.sig <- grep(paste0("^",i,"_significant$"),names(data.diff@elementMetadata@listData))
+      data.diff@elementMetadata@listData[["significant"]]<-
+        data.diff@elementMetadata@listData[[n.sig]] <-
+        (data.diff@elementMetadata@listData[[paste0(i,"_p.val")]] < 0.05 &
+           abs(data.diff@elementMetadata@listData[[paste0(i,"_diff")]]) > lfc)
+
+    }
 
   }
-  data.aaa
+
+
+  data.diff
 
 }
 
+DEP_p_adjust <- function(data.se , p.adjust.method = "fdr"){
+
+
+  for (i in list_DEP_contrast(data.se)) {
+
+    p.val <- data.se@elementMetadata[[paste0(i,"_p.val")]]
+    p.adj <- data.se@elementMetadata[[paste0(i,"_p.adj")]]
+    data.se@elementMetadata[[paste0(i,"_p.adj")]] <- p.adjust(p.val ,
+                                                              method =p.adjust.method )
+
+  }
+  return(data.se)
+
+}
+
+DEP_check_sig <- function(data.se){
+
+  if (length(grep("_significant", colnames(rowData(data.se))))<1) {
+
+    stop("non signifcant, please run DEP_add_rejections")
+  }
+
+
+}
 
 
 #' @title DEP.test.diff
@@ -58,11 +101,12 @@ add_rejections_no_p.adj <- function(data.se , alpha = 0.05,lfc = 1){
 #' @export
 #'
 #' @examples
-DEP.test.diff <- function(data.se){
+DEP_test_diff <- function(data.se){
 
   groups <- data.se$condition%>%
     groupStringFactor()
-  data.diff<- DEP::test_diff(data.se,type = "all",control = levels(groups)[1])
+  data.diff<- DEP::test_diff(data.se,type = "all",
+                             control = levels(groups)[1])
   #data.diff<- add_rejections(data.diff,alpha = 0.05,lfc =1)
 #
   #if (!p.adj) {
@@ -74,19 +118,10 @@ DEP.test.diff <- function(data.se){
   data.diff
 }
 
-DEP.get.diff.table <- function(data.se,
-                               lfc = 0.5,
-                               contrast = list_DEP_contrast(data.se )[1],
-                               p.adjust = T
+DEP_get_diff_table <- function(data.se,
+                               contrast = list_DEP_contrast(data.se )[1]
                                ){
-  if (length(grep("_significant", colnames(rowData(data.se))))<1) {
-    if (p.adjust) {
-      data.se <- DEP::add_rejections(data.se)
-
-    } else{
-      data.se <- add_rejections_no_p.adj(data.se,lfc = lfc)
-    }
-  }
+  DEP_check_sig(data.se)
 
   diff.table.adj <- DEP::plot_volcano(data.se,
                                       contrast = contrast,
@@ -98,48 +133,54 @@ DEP.get.diff.table <- function(data.se,
     dplyr::mutate(`adjusted_p_value_-log10` = diff.table.adj$`adjusted_p_value_-log10`,
                   .after = `p_value_-log10`)
 
-  data.row <- rowData(data.se)%>%as.data.frame()
-  diff.table<-diff.table%>%
-    dplyr::mutate(data.row[protein,1:15])
   diff.table
 }
 
-DEP.plot.volcano <- function(data.se,
-                             lfc = 0.5,
+DEP_plot_volcano <- function(data.se,
                              contrast = list_DEP_contrast(data.se )[1],
-                             p.adjust = F,
                              show.label = T){
   if (length(grep("_significant", colnames(rowData(data.se))))<1) {
-    if (p.adjust) {
-      data.se <- DEP::add_rejections(data.se)
 
-    } else{
-      data.se <- add_rejections_no_p.adj(data.se,lfc = lfc)
-    }
+    stop("non signifcant, please run DEP_add_rejections")
   }
 
 
-  volcano.data <- DEP::plot_volcano(data.se,contrast,plot = F,adjusted = p.adjust )%>%
-    dplyr::mutate(diff = case_when(log2_fold_change > 0 & significant~ "up",
-                                   log2_fold_change < 0 & significant~ "down",
-                                   T~ "no"))
+  volcano.data <- DEP_get_diff_table(data.se,contrast = contrast)
+
+  volcano.sig <- volcano.data%>%
+    dplyr::filter(significant)
+  lfc <- min(abs(volcano.sig$log2_fold_change))
+  lfc <- ifelse(is.infinite(lfc),0,lfc)
+  p.sig <- volcano.data[(abs(volcano.data$log2_fold_change)>lfc  )&
+                         (volcano.data$`p_value_-log10` > -log10(0.05)),  ]
+
+  p.adjust <- ifelse(any(!p.sig$protein%in% volcano.sig$protein),
+                     T,F)
 
   if (p.adjust) {
-    volcano.data$p<-volcano.data$`adjusted_p_value_-log10`
+    volcano.data$y <-volcano.data$`adjusted_p_value_-log10`
 
   }else{
-    volcano.data$p <- volcano.data$`p_value_-log10`
+    volcano.data$y <- volcano.data$`p_value_-log10`
   }
+
+  volcano.data <- volcano.data %>%
+    dplyr::mutate(diff = case_when(log2_fold_change > 0 & significant~ "up",
+                                   log2_fold_change < 0 & significant~ "down",
+                                   T~ "no") )
+
 
 
   x.max <- max(abs(volcano.data$log2_fold_change))
-  y.max <- max(volcano.data$p)
+  y.max <- max(volcano.data$y)
+  if (y.max==0 ) y.max <- 1
 
-  ggplot(volcano.data, aes(log2_fold_change, p)) +
+  ggplot(volcano.data, aes(log2_fold_change, y)) +
     geom_point(aes(col = diff),size = 0.1) +
     labs(title = contrast ,
          x = expression(log[2] ~ "Fold change")) +
-    labs(y = expression(-log[10] ~ "P-value"))+
+    labs(y = ifelse(p.adjust,expression(-log[10] ~ "Adjusted P"),
+                    expression(-log[10] ~ "P-value")))+
     geom_vline(xintercept = c(-lfc,lfc),lty = 2,size = 0.2) +
     geom_hline(yintercept = c(-log10(0.05)),lty = 2,size = 0.2) +
     xlim(c(-x.max,x.max))+

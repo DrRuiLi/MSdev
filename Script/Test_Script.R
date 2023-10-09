@@ -4298,10 +4298,113 @@ plot(xcms.peaks[2,],xlim = c(450,550))
 
 
 
+ADD_P <-function (diff, alpha = 0.05, lfc = 1)
+{
+  if (is.integer(alpha))
+    alpha <- as.numeric(alpha)
+  if (is.integer(lfc))
+    lfc <- as.numeric(lfc)
+  assertthat::assert_that(inherits(diff, "SummarizedExperiment"),
+                          is.numeric(alpha), length(alpha) == 1, is.numeric(lfc),
+                          length(lfc) == 1)
+  row_data <- rowData(diff, use.names = FALSE) %>% as.data.frame()
+  if (any(!c("name", "ID") %in% colnames(row_data))) {
+    stop("'name' and/or 'ID' columns are not present in '",
+         deparse(substitute(diff)), "'\nRun make_unique() and make_se() to obtain the required columns",
+         call. = FALSE)
+  }
+  if (length(grep("_p.adj|_diff", colnames(row_data))) < 1) {
+    stop("'[contrast]_diff' and/or '[contrast]_p.adj' columns are not present in '",
+         deparse(substitute(diff)), "'\nRun test_diff() to obtain the required columns",
+         call. = FALSE)
+  }
+  cols_p <- grep("_p.adj", colnames(row_data))
+  cols_diff <- grep("_diff", colnames(row_data))
+  if (length(cols_p) == 1) {
+    rowData(diff)$significant <- row_data[, cols_p] <= alpha &
+      abs(row_data[, cols_diff]) >= lfc
+    rowData(diff)$contrast_significant <- rowData(diff,
+                                                  use.names = FALSE)$significant
+    colnames(rowData(diff))[ncol(rowData(diff, use.names = FALSE))] <- gsub("p.adj",
+                                                                            "significant", colnames(row_data)[cols_p])
+  }
+  if (length(cols_p) > 1) {
+    p_reject <- row_data[, cols_p] <= alpha
+    p_reject[is.na(p_reject)] <- FALSE
+    diff_reject <- abs(row_data[, cols_diff]) >= lfc
+    diff_reject[is.na(diff_reject)] <- FALSE
+    sign_df <- p_reject & diff_reject
+    sign_df <- cbind(sign_df, significant = apply(sign_df,
+                                                  1, function(x) any(x)))
+    colnames(sign_df) <- gsub("_p.adj", "_significant",
+                              colnames(sign_df))
+    sign_df <- cbind(name = row_data$name, as.data.frame(sign_df))
+    rowData(diff) <- merge(rowData(diff, use.names = FALSE),
+                           sign_df, by = "name")
+  }
+  return(diff)
+}
+
+data.se <- data.analysis$data.se$group1
+data.diff <- DEP::test_diff(data.se, type  = "all")
+data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+data.diff.no.adj <- DEP_add_rejections(data.diff,p.adjust = F)
+
+
+data.diff.adj@elementMetadata@listData$significant%>%sum
+
+
+
+for (i in names(data.analysis$diff.table)) {
+
+  diff.table <-data.analysis$diff.table[[i]]
+  lp <- diff.table$`p_value_-log10`
+  lfdr <- -log10(p.adjust(10^-lp))
 
 
 
 
+}
+
+
+
+b<- a%>%
+  gather(variable, value , c("protein","significant"))%>%
+  mutate(variable = case_match(variable,
+    "protein" ~ "a",
+    "significant" ~ "b",
+    .default = variable
+  )) %>%
+  spread(variable, value)
+
+
+
+
+diff.table.p.adj.eval <- diff.table[,1:4]%>%
+  dplyr::mutate(rawlp = `p_value_-log10`,
+                rawlfdr = `adjusted_p_value_-log10`)%>%
+  dplyr::mutate(p = 10^-rawlp,
+                p.fdr = 10^-rawlfdr,
+                p.fdr.holm = p.adjust(p,
+                                      method  = "fdr"),
+                lp.fdr.holm = -log10(p.fdr.holm))
+
+
+p.df <- data.frame( p = p.val,
+                    p.adj =p.adj)
+
+for (i in p.adjust.methods) {
+  p.adj <- p.adjust(p.df$p , method = i)
+  p.df[,i] <- p.adj
+  message(i," sig: ",sum(p.adj <0.05))
+}
+
+
+
+
+
+
+xcms.xcms <- xcmsProcessingMS1("d:/temp/Raw_data_from_Metaboligt/mzML/NB_Plasma_QC_HILIC_Pos_025.mzML")
 
 
 

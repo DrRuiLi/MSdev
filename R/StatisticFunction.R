@@ -117,9 +117,8 @@ analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group ){
 #' @examples
 analyzePathwayHypertest <- function(kegg.id){
 
-  MSdb:::load_KEGG_database(show.info =F)
-  kegg.pathway <-KEGG.database$pathway.list$data
-  kegg.pathway.compound <- KEGG.database$pathway.compound.df
+  kegg.pathway <- MSdb::get_KEGG_pathway()
+  kegg.pathway.compound <- MSdb::get_KEGG_compound_pathway_df()
   kegg.id <- intersect(kegg.id,kegg.pathway.compound$COMPOUND.ID)
   N <- length(unique(kegg.pathway.compound$COMPOUND.ID))  #number of compounds in kegg.pathway.database
   n <- length(kegg.id)
