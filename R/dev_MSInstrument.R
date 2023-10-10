@@ -144,34 +144,64 @@ get_MRM_list <- function(feature_def_sta){
 
 
 
-feature_def_to_QE_inclusion <- function(feature.def,
-                                        polarity){
 
+QE_list_2feature_def <- function(table_to_trans ){
+
+ # featureDefinitions_PeakSta(MSdev@xcmsData$PositiveMS1)->table_to_trans
+ # table_to_trans <- dda.acq.list
   var.map <-c(mzmed = "Mass [m/z]",
               peakRtMin = "Start [min]" ,
               peakRtMax= "End [min]",
               collisionEnergy = "(N)CE",
-              feature.id = "Comment")
+              feature_id = "Comment",
+              polarity = "Polarity")
+  if (any(colnames(table_to_trans) %in% var.map) ) {
+    type <- "QE_list"
+    rt_multi <- 60
 
-  qe.inclusion.list <- feature.def %>%
-    dplyr::mutate( peakRtMin = peakRtMin/60,
-                   peakRtMax = peakRtMax/60,
-                   peakRtMin = case_when(peakRtMin <0~0,
-                                         T~peakRtMin),
-                   `(N)CE type` = "CE",
-                   Polarity = polarity
-                   )%>%
-    dplyr::select(names(var.map),everything(),-peakidx)
+    var.map.matched <- var.map[var.map%in% colnames(table_to_trans)]
+    table_transed <- table_to_trans[,var.map.matched]
+    colnames(table_transed) <- names(var.map.matched)
 
-  names(qe.inclusion.list)[match(names(var.map),names(qe.inclusion.list))] <- var.map
 
-  data("QEinclusionListTemplate")
-  qe.inclusion.list[,colnames(qe.inclusion.list)%in% colnames(QEinclusionListTemplate)]
+  }else if (any(colnames(table_to_trans) %in% names(var.map))) {
+
+    type <- "feature_df"
+    rt_multi <- 1/60
+
+    var.map.matched <- var.map[names(var.map)%in% colnames(table_to_trans)]
+    table_transed <- table_to_trans[,names(var.map.matched)]
+
+
+  }else{
+    stop("var not match")
+  }
+
+  if ("peakRtMin" %in% names(var.map.matched))
+    table_transed$peakRtMin <- table_transed$peakRtMin *rt_multi
+  if ("peakRtMax" %in% names(var.map.matched))
+    table_transed$peakRtMax <- table_transed$peakRtMax *rt_multi
+  if ("polarity" %in% names(var.map.matched)){
+    if (type =="feature_df") {
+      table_transed$polarity <- ifelse(table_transed$polarity == 0,"Negative","Positive")
+    }
+    if (type =="QE_list") {
+      table_transed$polarity <- ifelse(table_transed$polarity == "Positive",1,0)
+    }
+  }
+
+  if (type =="feature_df"){
+    colnames(table_transed) <- var.map.matched
+  }else{
+    colnames(table_transed) <- names(var.map.matched)
+
+    }
+
+  return(table_transed)
+
+
 
 }
-
-
-
 
 
 
