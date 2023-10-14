@@ -145,7 +145,7 @@ get_xcms_peaks_chrom <- function(xcms.xcms,
                     rtr = x[,c("rtmin","rtmax")],
                     sample = x[,"sample"])
     },xcms.x=xcms.xcms ,peaks.data=peaks.data,
-    BPPARAM = SerialParam( progressbar = T))
+    BPPARAM = SerialParam( progressbar = F))
 
     x.chrom <- XChromatograms(unlist(x.chrom.split))
 
@@ -1334,46 +1334,6 @@ get_xcms_MS_report <- function(xcms.xcms){
   dev.off()
 
   }
-
-
-
-get_ms2_feature <- function(precursorMz,
-                            rtime ,
-                            feature_def
-                            ){
-
-  assign_ms2_list <- function(pmz,prt ,feature_def){
-
-    feature_def %>%
-      dplyr::mutate(mz.ppm = abs(mzmed-pmz)/pmz,
-                    rt.mean = (peakRtMin+peakRtMax)/2,
-                    rt.error = abs(prt - rt.mean))%>%
-      dplyr::filter( mz.ppm< 1e-5,
-                    prt < peakRtMax,
-                    prt > peakRtMin)%>%
-      dplyr::slice_min(rt.error)%>%
-      dplyr::slice_min(mz.ppm)%>%
-      dplyr::pull( feature_id)->x
-    if (length(x)==0) {
-      return(NA)
-
-    }
-    return(x)
-
-  }
-
-  ion.df <- data.frame(mz = precursorMz,
-                       rt = rtime)%>%
-    dplyr::rowwise()%>%
-    dplyr::mutate(feature_id = assign_ms2_list(mz,rt,feature_def))%>%
-    dplyr::ungroup()
-
-
-  return(ion.df$feature_id)
-
-
-}
-
 
 
 

@@ -4408,3 +4408,93 @@ xcms.xcms <- xcmsProcessingMS1("d:/temp/Raw_data_from_Metaboligt/mzML/NB_Plasma_
 
 
 
+library(xcms)
+
+xcms.xcms <- readMSData("d:/Target.SIM.test.mzML",mode = "onDisk")
+#xcms.srm <- readSRMData("d:/Target.SIM.test.mzML")
+xcms.peaks <- findChromPeaks(xcms.xcms,
+                             param = CentWaveParam(
+                               peakwidth = c(5,30),
+                               mzCenterFun ="mean",
+                               mzdiff = -0.005))
+xcms.peaks.info <- chromPeaks(xcms.peaks)%>%
+  as.data.frame()%>%
+  dplyr::mutate(mzdiff = mzmax-mzmin ,.after = mzmax)
+
+i <- 161
+get_xcms_peaks_chrom(xcms.peaks,i,
+                     rt.range = "expand")%>%
+  plot_XChromatograms()
+
+xcms.peaks%>%
+  filterMz(mz = c(xcms.peaks.info$mzmin[i]-0.001,
+                  xcms.peaks.info$mzmax[i]+0.008))%>%
+  plot(type ="XIC")
+
+xcms.features <- groupChromPeaks(xcms.peaks,
+                                 param = PeakDensityParam(sampleGroups = "A",
+                                                          binSize = 0.025))
+feature_def <- featureDefinitions_PeakSta(xcms.features)
+feature.chrom <- featureChromatograms(xcms.features,
+                                      features = 2,
+                                      expandRt = 2222)
+plot(feature.chrom)
+#plot_xcms_feature_chromatogram(xcms.features,9)
+
+
+
+xcms.scan <- xcms.scan%>%
+  dplyr::mutate(cycle_ion_count = NA,
+                cycle_ion_ms2_count = NA,
+                ms2_hit = F,
+                ms2_feature_id = NA,
+                temp_var = scan_id)%>%
+  remove_rownames()%>%
+  column_to_rownames("temp_var")
+
+
+
+plot_dda_cycle_stat(dda.parse$xcms.scan,
+               dda.parse$feature_def)
+
+
+
+#####
+
+ggplot(xcms.scan.ms1)+
+  geom_histogram(aes(y = ms2_count),
+                 binwidth = 1,
+                 fill = "#1E80DE",col = "white")+
+  geom_vline(xintercept = 0)+
+  geom_jitter(aes(x = -retentionTime ,
+                  y = ms2_count,
+                  col = log10(totIonCurrent)),
+              width = 0,
+              height = 0.1,
+              alpha = 0.8,
+              size = 1)+
+  labs(y = "MS1 cycle count",x = " ")+
+  #scale_y_reverse()+
+  scale_x_reverse()+
+  ggsci::scale_color_gsea()+
+  theme_bw()+
+  theme()
+
+ggplot(xcms.scan.ms1)+
+  geom_jitter(aes(x = -retentionTime ,
+                  y = ms2_count,
+                  col = log10(totIonCurrent)),
+              width = 0,
+              height = 0.1,
+              alpha = 0.8,
+              size = 1)+
+  labs(y = "",col = "Log10 TIC")+
+  ggsci::scale_color_gsea()+
+  theme_bw()+
+  theme(axis.text.y.left = element_blank(),
+        axis.ticks.y.left = element_blank(),
+        axis.line.y.left  = element_blank())
+
+
+
+
