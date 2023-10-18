@@ -123,6 +123,18 @@ DEP_get_diff_table <- function(data.se,
                                ){
   DEP_check_sig(data.se)
 
+
+  if (contrast == "all") {
+    table.list <- list()
+    for (i in 1:length( list_DEP_contrast(data.se ))) {
+      i_contrast <-  list_DEP_contrast(data.se )[i]
+      table.list[[i_contrast]] <- DEP_get_diff_table(data.se ,
+                                                   contrast = i_contrast)
+    }
+    return(table.list)
+  }
+
+
   diff.table.adj <- DEP::plot_volcano(data.se,
                                       contrast = contrast,
                                       plot = F,adjusted = T)
@@ -142,6 +154,17 @@ DEP_plot_volcano <- function(data.se,
   if (length(grep("_significant", colnames(rowData(data.se))))<1) {
 
     stop("non signifcant, please run DEP_add_rejections")
+  }
+
+  if (contrast == "all") {
+    p.vol.list <- list()
+    for (i in 1:length( list_DEP_contrast(data.se ))) {
+      i_contrast <-  list_DEP_contrast(data.se )[i]
+      p.vol.list[[i_contrast]] <- DEP_plot_volcano(data.se ,
+                                                   contrast = i_contrast,
+                                                   show.label = show.label)
+    }
+    return(p.vol.list)
   }
 
 
@@ -455,6 +478,56 @@ DEP.plot.heatmap <- function(data.se,
 
 
 }
+
+
+#' DEP_export_data
+#' wirte coldata and rowdata to excel
+#'
+#' @param data.se
+#' @param file_path
+#'
+#' @return
+#' @export
+#'
+#' @examples
+DEP_export_data <- function(data.se,file_path){
+
+  col.data <- colData(data.se)%>%as.data.frame()
+  row.data <- rowData(data.se)%>%as.data.frame()
+
+  data.to.write <-list(sample_info = col.data,
+                       compound = row.data)
+
+  xlsx.write.list(data.to.write,file = file_path)
+  return(invisible())
+
+}
+
+
+DEP_plot_PCA <- function(data.se,
+                         col.group =NULL,
+                         showlabel = F){
+
+  se.coldata <- colData(data.se)%>%
+    as.data.frame()
+  pca.matrix <- assay(data.se)%>%
+    `colnames<-`(se.coldata$label)%>%t
+
+  if (is.null(col.group)) {
+    col.group <- ggsci::pal_npg()(length(unique(se.coldata$condition)))
+  }
+ plotPCA(pca.matrix,
+                  pca.group = se.coldata$condition,
+                  showlabel = showlabel)+
+    scale_color_manual(values = col.group)+
+    scale_fill_manual(values = col.group)->p.pca
+
+return(p.pca)
+
+}
+
+
+
 
 
 
