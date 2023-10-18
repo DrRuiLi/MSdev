@@ -56,7 +56,8 @@ ggplot_ggsci <- function(pal = "npg"){
   ggsci_pal <- names(ggsci_db)
   pal <- match.arg(pal,ggsci_pal)
   pal.col <- ggsci_db[[pal]][[1]]
-  message("Show color palette from ggsci: ", crayon::magenta(pal))
+  message("Show color palette from ggsci: ",
+          crayon::magenta(pal))
   scales::show_col(pal.col)
 
   return(pal.col)
