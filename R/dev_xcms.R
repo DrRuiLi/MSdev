@@ -1023,7 +1023,7 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
   message(Sys.time()," Find peaks...")
   xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
                             param = centWaveParam,
-                            BPPARAM  = BiocParallel::SerialParam(progressbar = T))
+                            BPPARAM  = BiocParallel::SnowParam(progressbar = T))
   #mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
   #xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
   #                                    BPPARAM  = BiocParallel::SerialParam(progressbar = T))
