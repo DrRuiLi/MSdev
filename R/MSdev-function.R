@@ -1,12 +1,5 @@
-load_demo <- function(){
 
-  var <- load( "C:/Users/91879/OneDrive/Documents/Code/R/Projecct/2022.1.8_MS.demo/Demo3/MSdev_2022_10_15.Rdata")
-  if (length(var)!=1) {
-    stop("Too many variabls in ",file_to_load)
-  }
-  eval(str2expression(var))
 
-}
 saveMSdev <- function(object){
   MSdev <- object
   save.dir <- dirname(object@projectInfo$MSdevFile)
