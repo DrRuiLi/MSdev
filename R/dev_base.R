@@ -289,6 +289,10 @@ mz.range.ppm <- function(mz = 200, ppm = 5){
 
 
 open_script <- function(){
+
+  if (!file.exists("./Script/Test_Script.R")) {
+    file.create("./Script/Test_Script.R")
+  }
   rstudioapi::documentOpen("./Script/Test_Script.R")
 }
 
