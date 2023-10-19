@@ -1,4 +1,4 @@
-MSdev_workflow <- function(
+MSdev_1.2_workflow <- function(
     project.dir,
     MS_instrument = "AB6600",
     LC_condition = "Metabolomics"){
@@ -94,4 +94,7 @@ MSdev_param <- function(){
 
 
 }
+
+
+
 
