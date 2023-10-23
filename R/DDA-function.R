@@ -1,3 +1,13 @@
+#' get_DDA_scan_stat
+#' stimulate DDA cycle and assign ms2 to feature, now just support single file
+#' @param xcms.scan
+#' @param feature_def
+#' @param dynamic_time
+#'
+#' @return
+#' @export
+#'
+#' @examples
 get_DDA_scan_stat <- function(xcms.scan ,
                               feature_def,
                               dynamic_time = 60){
@@ -127,9 +137,6 @@ get_ms2_feature <- function(precursorMz,
 
 
 }
-
-
-
 
 
 plot_dda_acquisition <- function(xcms.scan , feature_def) {

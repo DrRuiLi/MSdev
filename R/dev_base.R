@@ -314,6 +314,16 @@ gaussian_functioin <- function(x , a =1,b = 0,c = 0.5){
 
 
 
+#' split_df
+#' random split data.frame
+#'
+#' @param df
+#' @param n
+#'
+#' @return
+#' @export
+#'
+#' @examples
 split_df <- function(df,n = 2){
 
 
