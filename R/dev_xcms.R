@@ -800,6 +800,16 @@ plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"
 
 
 
+#' Title
+#'
+#' @param xcms.xcms
+#' @param plot.title
+#'
+#' @return
+#' @export
+#' @import xcms
+#'
+#' @examples
 plot_xcms_peaks_ms2_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS2"){
 
   xcms.process.type <- processHistory(xcms.xcms) %>% sapply( processType )
@@ -807,7 +817,7 @@ plot_xcms_peaks_ms2_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS2"
     processParam()
   xcms.peaks <- chromPeaks(xcms.xcms)%>%
     as.data.frame()
-  xcms.scans <- fData(xcms.xcms)%>%
+  xcms.scans <- Biobase::fData(xcms.xcms)%>%
     dplyr::filter(msLevel== 2)
   peaks_scans <- function(x,xcms.scans){
     sum(x["rtmax"] > xcms.scans$retentionTime  & x["rtmin"] < xcms.scans$retentionTime&
