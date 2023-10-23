@@ -96,5 +96,19 @@ MSdev_param <- function(){
 }
 
 
+MSdev_1.3_workflow <- function(){
+
+  msdev.demo <- load_demo("MSdev")
+  msdev.demo <- checkSampleInfo(msdev.demo)
+  msdev.demo <- msConvert_MSdev(msdev.demo)
+  msdev.demo <- xcmsProcessingMSdev(msdev.demo)
+  msdev.demo <- extract_Spectra_MSdev(msdev.demo)
+  msdev.demo <- match_Spectra_to_feature_MSdev(msdev.demo)
+
+
+
+
+}
+
 
 
