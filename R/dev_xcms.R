@@ -502,6 +502,106 @@ get_xcms_feature_stat <- function(xcms.xcms){
 }
 
 
+#' match feature to database based on mz and rt
+#' MSDB_id in db with mz error < mz.ppm will b
+#'
+#' @param xcms.xcms
+#' @param db.path
+#' @param mz.ppm
+#' @param rt.tol
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_xcms_feature_ms1_candidate <- function(xcms.xcms ,
+                                           db.path,
+                                           mz.ppm= 25,
+                                           rt.tol = Inf){
+
+
+  ### load spectra database
+  Spectra_database <- load_as_var(db.path)
+  Spectra_database <- filterPolarity(Spectra_database,
+                  unique(polarity(xcms.xcms)))
+  Spectra_database.df <- Spectra::spectraData(Spectra_database)%>%
+    as.data.frame()
+
+  ### match database
+  xcms.featuredef <- featureDefinitions(xcms.xcms)%>%
+    as.data.frame()
+
+  matched.df <- match_mz_rt(xcms.featuredef$mzmed,xcms.featuredef$rtmed,
+                            precursorMz(Spectra_database),
+                            rtime(Spectra_database),
+                            mz.ppm = mz.ppm,
+                            rt.tol = rt.tol)
+  xcms.featuredef$candidate <- sapply(1:nrow(xcms.featuredef),function(i){
+    idx <- matched.df$ion2[matched.df$ion1 == i]
+    Spectra_database.df$MSDB_id[as.numeric(idx)]
+  })
+
+  featureDefinitions(xcms.xcms) <- DataFrame(xcms.featuredef)
+
+  return(xcms.xcms)
+
+}
+
+
+get_xcms_feature_ms2_score <- function(xcms.xcms ,
+                                       db.path,
+                                       sp.ms2){
+
+
+  ### load spectra database
+  Spectra_database <- load_as_var(db.path)
+  Spectra_database <- filterPolarity(Spectra_database,
+                                     unique(polarity(xcms.xcms)))
+  spectraNames(Spectra_database) <- Spectra_database$MSDB_id
+
+  xcms.fdf <- featureDefinitions(xcms.xcms)
+
+  sp.exp <- sapply(1:nrow(xcms.fdf),function(i){
+
+    x <- xcms.fdf$ms2_id[[i]]
+    if (length(x)==0) {
+      sp <- makeSpectra(xcms.fdf$mzmed[i],
+                        xcms.fdf$rtmed[i])
+    }else
+    sp <- list(sp.ms2[x])
+    return(sp)
+  })
+
+  sp.ref <- sapply(xcms.fdf$candidate, function(x){
+    list(Spectra_database[x])
+  })
+
+  xcms.annotation <- BiocParallel::bplapply(1:length(sp.exp),function(i){
+    annotateSpectraMSdb(sp.exp[[i]],sp.ref[[i]])
+  },BPPARAM = BiocParallel::SerialParam(
+    progressbar = T))
+
+  xcms.annotation <-lapply(xcms.annotation, function(x){
+    x[c( "ref.mz" ,
+         "ref.rt" ,
+         "score" ,
+         "MSDB_id" )]
+  })%>%data.table::rbindlist()
+  xcms.fdf<-xcms.fdf%>%
+    as.data.frame()%>%
+    dplyr::mutate(MSDB_id = xcms.annotation$MSDB_id,
+                  score = xcms.annotation$score,
+                  mz_ref = xcms.annotation$ref.mz,
+                  rt_ref = xcms.annotation$ref.rt)
+
+
+  featureDefinitions(xcms.xcms) <- DataFrame(xcms.fdf)
+
+  return(xcms.xcms)
+
+}
+
+
 
 #' @title plot_xcms_peaks_distribution
 #' @description export peaks data by xcms::chromPeaks and plot by ggplot2
@@ -1194,7 +1294,7 @@ get_xcms_scan_Stat <- function(xcms.xcms){
 }
 
 
-#' get_xcms_scan_feature_id
+#' get_xcms_ms2_feature_id
 #'
 #'  match xcms scan of msLevel 2 to feature Definitions
 #'  based on precursorMZ, retentionTime in `xcms.scan`;
@@ -1207,39 +1307,35 @@ get_xcms_scan_Stat <- function(xcms.xcms){
 #' @export
 #'
 #' @examples
-get_xcms_scan_feature_id <- function(xcms.scan,
+get_xcms_ms2_feature_id <- function(xcms.scan,
                                      featuredef ){
 
-  assign_ms2 <- function(pmz,prt,xcms.featuredef){
-
-
-    mz.pass <- abs(xcms.featuredef$mzmed - pmz)/pmz <1e-5
-    rt.pass <- (xcms.featuredef$peakRtMax > prt)&(xcms.featuredef$peakRtMin < prt)
-
-    x <- xcms.featuredef$feature_id[mz.pass&rt.pass]
-    if (length(x)==0) {
-      return(NA)
-
-    }
-    return(paste0(x,collapse = ";"))
-
-  }
-
-  if (sum(xcms.scan$msLevel >1) > 10000) {
-    bpp<-BiocParallel::SnowParam(progressbar = T)
-  }else{
-    bpp<-BiocParallel::SerialParam(progressbar = T)
-
-  }
-
   xcms.scan <- xcms.scan%>%
-    dplyr::filter(msLevel == 2)%>%
-    dplyr::mutate(ms2_matched_feature =
-                    BiocParallel::bpmapply(assign_ms2 ,
-                             pmz = precursorMZ,
-                             prt = retentionTime,
-                             MoreArgs = list(xcms.featuredef = featuredef),
-                             BPPARAM = bpp))
+    dplyr::filter(msLevel == 2)
+
+  match.df <- match_mz_rt(featuredef$mzmed,featuredef$rtmed,
+                          xcms.scan$precursorMZ,
+                          xcms.scan$retentionTime)
+  match.df <- match.df%>%
+    dplyr::mutate(featuredef[ion1,],
+                  sp_id = xcms.scan$sp_id[ion2],
+                  sp_rt = xcms.scan$retentionTime[ion2])%>%
+    dplyr::filter(sp_rt < peakRtMax&sp_rt>peakRtMin )%>%
+    dplyr::group_by(sp_id)%>%
+    dplyr::slice_min(mz.error)
+
+
+
+  xcms.scan$ms2_matched_feature <- sapply(
+    1:nrow(xcms.scan),
+    function(i){
+      fid <- match.df$feature_id[match.df$ion2==i]
+      if (length(fid)==0) {
+        return(NA)
+      }
+      return(fid)
+    }
+  )
 
   return(xcms.scan)
 
@@ -1263,7 +1359,9 @@ plot_xcms_TIC <- function(xcms.xcms){
                         setdiff(unique(xcms.scan$group),c("Blank","QC")))
 
   ggplot(xcms.scan)+
-    geom_line(aes(x = retentionTime , y = tic,col = group,group=fileIdx))+
+    geom_line(aes(x = retentionTime , y = tic,
+                  col = group,
+                  group=fileIdx))+
     scale_color_manual(values = col.scale)+
     labs(title = "TIC",x = "Retention Time", y = "Intensity", col = "")+
     theme_classic()->p
@@ -1323,12 +1421,14 @@ plot_xcms_scan <- function(xcms.xcms){
 }
 
 
-get_xcms_MS_report <- function(xcms.xcms){
+get_xcms_MS_report <- function(xcms.xcms ,
+                               file.path){
 
 
+  file.path <- "d:/temp/xcms.report.pdf"
   p.tic <- plot_xcms_TIC(xcms.xcms)
   p.rtadj <- plot_xcms_adjustedRT(xcms.xcms )
-  p.feature.dis <-plot_xcms_features_distribution(xcms.xcms)
+  p.feature.dis <- plot_xcms_features_distribution(xcms.xcms)
 
 
   ### scan

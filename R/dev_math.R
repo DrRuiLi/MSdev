@@ -206,3 +206,59 @@ gaussian_functioin <- function(x , a =1,b = 0,c = 0.5){
   a * exp(-(x-b)^2/2/c^2)
 }
 
+
+
+
+#' match 2 list of ion based on mz and rt
+#'
+#' @param mz1
+#' @param rt1
+#' @param mz2
+#' @param rt2
+#' @param mz.ppm
+#' @param rt.tol
+#'
+#' @return
+#' @export
+#'
+#' @examples
+match_mz_rt <- function(mz1,rt1,mz2,rt2,
+                        mz.ppm = 10,
+                        rt.tol = Inf){
+
+  names(mz2) <- names(rt2) <- 1:length(mz2)
+
+  mz.match <- sapply(mz1, function(x){
+
+   mz.error <- abs(x - mz2)/x
+   mz.error[ which(mz.error < mz.ppm*1e-6)]
+  })
+
+  rt.match <- sapply(1:length(mz1) ,  function(i){
+
+   rt <-rt1[i]
+   mz.matched.id <- names(mz.match[[i]])
+   rt.error <- abs(rt - rt2[mz.matched.id])
+   rt.error
+  })
+
+  matched.df <- sapply(1:length(mz1),function(i){
+
+   if (length(mz.match[[i]])!=0) {
+     df <-data.frame(ion1 = i,
+                ion2 = as.numeric(names(mz.match[[i]])),
+                mz.error = mz.match[[i]],
+                rt.error = rt.match[[i]])
+      return(df)
+   }
+
+    return(NULL)
+  })%>% data.table::rbindlist()
+
+  return(matched.df)
+
+}
+
+
+
+
