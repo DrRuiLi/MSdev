@@ -94,28 +94,6 @@ readInRawData <- function(object){
 
 }
 
-#' @title checkSampleInfo
-#' @description manually check sampleInfo using excel
-#' @param object a `MSdev` object
-#'
-#' @return a `MSdev` object
-#' @export
-#'
-#' @examples
-checkSampleInfo <- function(object){
-
-  sampleInfo <- object@sampleInfo
-  sampleInfo <- edit_df_in_excel(sampleInfo)
-  ### save
-  {
-    object@sampleInfo <- sampleInfo
-    object <- .updateProjectInfoFromSampleInfo(object )
-
-  }
-
-  object
-}
-
 .updateProjectInfoFromSampleInfo <- function(object){
 
   object@sampleInfo -> sampleInfo
@@ -145,55 +123,6 @@ checkSampleInfo <- function(object){
 }
 
 
-#' @title msConvert_MSdev
-#'
-#' @param object
-#'
-#' @return
-#' @export
-#' @importFrom BiocParallel  bplapply
-#' @examples
-#'
-
-msConvert_MSdev <- function(object){
-
-
-  ### filter files
-  {
-    sample.info <- object@sampleInfo%>%
-      dplyr::mutate(raw.exist = file.exists(raw.files),
-                    ms.exist = file.exists(msData.files))%>%
-      dplyr::filter(raw.exist,!ms.exist)
-
-  }
-
-  ### convert
-
-   if (nrow(sample.info)) {
-     MSconvertR::msConvert2mzML(raw.files  = object@sampleInfo$raw.files,
-                                mzML.files = object@sampleInfo$msData.files,
-                                BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
-
-
-   }
-
-  object <- get_MSdev_MSinfo(object)
-
-  ### return
-  {
-    object@processingInfo$rawDataConvert <- list(
-      done = T,
-      time = Sys.time(),
-      rawFormat =object@projectInfo$rawDataFormat,
-      msDataFormat =".mzML"
-
-    )
-    saveMSdev(object )
-    return(object)
-
-  }
-}
-
 
 get_MSdev_MSinfo <- function(object){
 
@@ -211,8 +140,10 @@ get_MSdev_MSinfo <- function(object){
 
   }
 
+
+
   ### update SampleInfo
-  {
+  if (!"manufacturer"%in%colnames(object@sampleInfo) ) {
     sampleInfo <-object@sampleInfo%>%
       dplyr::mutate(get_MSinfo_mzR(msData.files),
                     msType = model.df$type[match(model,model.df$model)],
@@ -250,7 +181,7 @@ get_MSdev_newSamples <- function(object,
 }
 
 
-xcmsProcessingMSdev <- function(object){
+MSdev_xcmsProcessing <- function(object){
 
   MS.mode <- object@projectInfo$msAcquisition
 
@@ -411,24 +342,6 @@ extractSpectra_fullscan_DDA <- function(object){
 
 
 
-extract_Spectra_MSdev <- function(object){
-
-  sampleInfo <- object@sampleInfo%>%
-    dplyr::filter(xcmsProcessing %in% c("Both","MS2"))
-
-  if (nrow(sampleInfo)==0) {
-    sp <- Spectra::Spectra()
-  } else {
-    sp <- Spectra::Spectra(na.omit(sampleInfo$msData.files),backend = Spectra::MsBackendDataFrame())%>%
-      filterMsLevel(2)
-    sp$sp_id <- paste0("MS2_SP",num2str(1:length(sp)))
-    Spectra::spectraNames(sp) <- sp$sp_id
-  }
-
-  object@spectra$MS2_Spectra <- sp
-  return(object)
-}
-
 
 #' @title featureSpectra_fullscan_DDA
 #' @description extrat spectra from `MSdev@spectra` according to mz and rt of feature,
@@ -472,53 +385,6 @@ featureSpectra_fullscan_DDA <- function(object){
   object
 }
 
-
-match_Spectra_to_feature_MSdev <- function(object){
-
-
-  object@spectra$MS2_Spectra$ms2_matched_feature <-NA
-  for (i in 0:1) {
-    pol <- ifelse(i==0,"Negative","Positive")
-    sp.ms2 <- object@spectra$MS2_Spectra%>%
-      ProtGenerics::filterPolarity(i)
-    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
-    xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
-      as.data.frame()
-    sp.ms2.data <- Spectra::spectraData(sp.ms2)%>%
-      as.data.frame()%>%
-      dplyr::mutate(precursorMZ = precursorMz,
-                    retentionTime = rtime)%>%
-      get_xcms_scan_feature_id(featuredef = xcms.fdf)
-
-    ### update MS2_Spectra
-    sp.ms2.total <-object@spectra$MS2_Spectra %>%
-      Spectra::spectraData()%>%
-      as.data.frame()%>%
-      dplyr::mutate(ms2_matched_feature = case_when(
-        polarity==i ~ sp.ms2.data[sp_id,]$ms2_matched_feature,
-        T~ms2_matched_feature
-      ))
-    Spectra::spectraData(object@spectra$MS2_Spectra ) <- DataFrame(sp.ms2.total)
-
-    ### update xcms featuredef
-    xcms.fdf <- xcms.fdf %>%
-      dplyr::rowwise()%>%
-      dplyr::mutate(ms2_sp = sp.ms2.data$sp_id[grep(pattern = feature_id ,
-                                                    x = sp.ms2.data$ms2_matched_feature
-      )]%>%
-                      paste0(collapse = ";"))%>%
-      dplyr::ungroup()
-     xcms::featureDefinitions(xcms.xcms) <- xcms.fdf%>%
-      DataFrame()
-     xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
-
-
-  }
-
-  return(object)
-
-
-}
 
 #' @title featureCandidate
 #' @description match feature with database by mz, return all spectra matched in a list  splited by feature
