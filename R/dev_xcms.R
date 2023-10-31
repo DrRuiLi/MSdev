@@ -414,7 +414,7 @@ plot_XChromatograms <- function(xchroms , norm = T,move = T,column.group = 1:nco
 }
 
 
-#' @title featureDefinitions_PeakSta
+#'  stat featureDefinitions based on chrompeaks
 #' @description extract features' median rt, sn and maxo,
 #' `xcms::featureDefinitions()` return a `DataFrame`, in which rtmin, rtmax, rtmed was median of `xcms::chromPeaks()$rt`,
 #' but not the median range of peaks. peakRtMin, peakRtMax, peakSN, peakMaxo are median of all peaks in a feature
@@ -424,10 +424,9 @@ plot_XChromatograms <- function(xchroms , norm = T,move = T,column.group = 1:nco
 #' @return
 #' @export
 #'
-featureDefinitions_PeakSta<- function(xcms.xcms){
+get_xcms_feature_def_stat <- function(xcms.xcms){
 
   feature.def <- featureDefinitions(xcms.xcms)
-  feature.val <- featureValues(xcms.xcms)
   peaks.data <- chromPeaks(xcms.xcms)
 
   .xcmsPeakDataMed <- function(x,peaks.data,key = "rtmax",fun = "median"){
@@ -436,7 +435,6 @@ featureDefinitions_PeakSta<- function(xcms.xcms){
     peak.key.value <- x.peaks.data[,key]
     eval(call(fun,peak.key.value,na.rm =T))
   }
-
 
   feature.def$peakRtMin <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,key = "rtmin",fun = "min")
   feature.def$peakRtMax <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,key = "rtmax",fun = "max")
@@ -449,15 +447,7 @@ featureDefinitions_PeakSta<- function(xcms.xcms){
   feature.def.df <- as.data.frame(feature.def)%>%
     dplyr::mutate(feature_id = rownames(.),
                   .before = mzmed)
-  feature.def.df
-}
-
-
-get_xcms_feature_def_stat <- function(xcms.xcms){
-
-  xcms.def <- featureDefinitions_PeakSta(xcms.xcms)%>%
-    DataFrame()
-  featureDefinitions(xcms.xcms)<-xcms.def
+  featureDefinitions(xcms.xcms)<-feature.def%>%DataFrame()
   return(xcms.xcms)
 
 }
