@@ -12,6 +12,7 @@ str_short <- function(x , n = 10){
   x.length <- nchar(x)
   x.new <- stringr::str_sub(x , 0 , n)%>%
     paste0(ifelse(x.length > n,"...",""))
+  return(x.new)
 
 }
 

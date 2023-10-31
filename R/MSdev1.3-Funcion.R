@@ -142,7 +142,8 @@ MSdev_match_Spectra_to_feature <- function(object){
 
 }
 
-MSdev_annotation <- function(object,db.path = "d:/MSdb/msdb.HMDB.Rdata"){
+MSdev_annotation <- function(object,
+                             db.path = "d:/MSdb/msdb.HMDB.Rdata"){
 
 
   for (i in 0:1) {
@@ -161,3 +162,26 @@ MSdev_annotation <- function(object,db.path = "d:/MSdb/msdb.HMDB.Rdata"){
 
 
 }
+
+
+
+
+MSdev_get_Stat<-function(object){
+
+  sample.info <- object@sampleInfo
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+

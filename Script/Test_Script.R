@@ -265,6 +265,23 @@ b <- lapply(a, function(x){
 
 
 
-pos.def <- featureDefinitions(msdev.demo@xcmsData$PositiveMS1)%>%as.data.frame()
-neg.def <- featureDefinitions(msdev.demo@xcmsData$NegativeMS1)%>%as.data.frame()
+pos.def <- featureDefinitions(msdev.demo@xcmsData$PositiveMS1)%>%
+  as.data.frame()
+
+neg.def <- featureDefinitions(msdev.demo@xcmsData$NegativeMS1)%>%
+  as.data.frame()
+
 xcms.def <- rbind(pos.def,neg.def)
+
+
+
+
+
+
+
+
+
+
+
+
+
