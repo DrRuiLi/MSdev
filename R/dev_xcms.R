@@ -784,8 +784,8 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
                             #rt = rt.range,
                              adjustedRtime  =F)
 
-  xcms.chrom.data <- get_intensity_rtime_df_from_XChromatogram(xcms.chrom)%>%
-    dplyr::mutate(group = sample.name)
+  xcms.chrom.data <- get_chroms_data(xcms.chrom)%>%
+    dplyr::mutate(group = sampleNames[col])
 
   ggplot(xcms.chrom.data)+
     geom_line(aes(x = rt,y = intensity , col = group))+
@@ -1042,27 +1042,24 @@ plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt = "expand"){
   peak_id <- rownames(peaks.data)
   mz.range <- c(peaks.data[,c("mzmin","mzmax")])
   rt.range <- c(peaks.data[,c("rtmin","rtmax")])
-  xcms.chrom <- get_xcms_peaks_chrom(xcms.xcms,peaks.id = peak_id,rt = rt)
+  xcms.chrom <- get_xcms_peaks_chrom(xcms.xcms,
+                                     peaks.id = peak_id,
+                                     rt = rt)
   chrom.data <- get_chroms_data(xcms.chrom)%>%
-    dplyr::mutate(fill = rt > min(rt.range)&rt <max(rt.range),
-                  fit = gaussian_functioin(rt,
-                                          peak.apex.intensity = peaks.data[1,"maxo"],
-                                          peak.apex.rt = peaks.data[1,"rt"],
-                                          peak.half.width = min(peaks.data[1,"rtmax"]-peaks.data[1,"rt"],
-                                                                peaks.data[1,"rt"]-peaks.data[1,"rtmin"])/2
-                  ))
+    dplyr::mutate(fill = rt > min(rt.range)&rt <max(rt.range)
+                 )
 
   ggplot(chrom.data)+
     geom_line(aes(x = rt,y = intensity),linetype = 1)+
     geom_area(aes(x = rt,y = intensity, fill = fill))+
-    geom_point(aes(x = rt, y = fit))+
+    #geom_point(aes(x = rt, y = fit))+
     scale_fill_manual(values = c("FALSE" = "transparent","TRUE" = "grey"))+
     labs(title = paste0(peak_id),
-         subtitle = paste0("mz:",paste0(sprintf("%.5f",mz.range),collapse = " - "), ";     ",
+         subtitle = paste0("mz:",paste0(sprintf("%.4f",mz.range),collapse = " - "), ";     ",
                            "rt:",paste0(sprintf("%.2f",rt.range),collapse = " - "),"\n",
-                           "mz error = ",sprintf("%.2f",mean(diff(mz.range)/mz.range)*1e6)," ppm;     ",
-                           "peak width = ", sprintf("%.2f",diff(rt.range)),"\n",
-                           "shape score = ",get_chrom_peaks_shape_score(xcms.chrom[1,1])
+                           "mz range = ",sprintf("%.2f",mean(diff(mz.range)/mz.range)*1e6)," ppm;     ",
+                           "peak width = ", sprintf("%.2f",diff(rt.range)),"\n"
+                          # "shape score = ",get_chrom_peaks_shape_score(xcms.chrom[1,1])
                            ),
          x = "Retention time")+
     guides(fill = "none")+
