@@ -24,6 +24,7 @@ Imports:
     MSnbase
 Depends: 
     R (>= 3.5.0),
+    xcms,
     tidyverse
 LazyData: true
 VignetteBuilder: knitr

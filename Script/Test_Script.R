@@ -276,12 +276,26 @@ xcms.def <- rbind(pos.def,neg.def)
 
 
 
+msdev.pep <- MSdev("d:/2023_10_31-Lirui/Data/")
+
+msdev.pep <- MSdev_msConvert(msdev.pep)
+msdev.pep <- MSdev_checkSampleInfo(msdev.pep)
+msdev.pep <- MSdev_xcmsProcessing(msdev.pep)
+saveMSdev(msdev.pep)
+
+
+xcms.neg <- msdev.pep@xcmsData$NegativeMS1
+xcms.neg.def <- featureDefinitions(xcms.neg)%>%as.data.frame()
+xcms.neg.peaks <- chromPeaks(xcms.neg)%>%as.data.frame()
 
 
 
+xcms.pos <- msdev.pep@xcmsData$PositiveMS1
+xcms.pos.def <- featureDefinitions(xcms.pos)%>%as.data.frame()
+xcms.pos.peaks <- chromPeaks(xcms.pos)%>%as.data.frame()
 
 
-
+plot_xcms_feature_chromatogram(xcms.pos,"FT0820")
 
 
 
