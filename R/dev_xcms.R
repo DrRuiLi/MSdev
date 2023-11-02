@@ -779,10 +779,9 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
                 max(xcms.peaks[,"mzmax"]))
   rt.range <- c(min(xcms.peaks[,"rtmin"]),
                 max(xcms.peaks[,"rtmax"]))
-  xcms.chrom <- chromatogram(xcms.sub , mz = mz.range,
-                            #rt =c(xcms.feature$rtmin,xcms.feature$rtmax),
-                            #rt = rt.range,
-                             adjustedRtime  =F)
+  xcms.chrom <- extract_chrom(xcms.sub ,
+                              mzr = mz.range,
+                              rtr = rt.range)
 
   xcms.chrom.data <- get_chroms_data(xcms.chrom)%>%
     dplyr::mutate(group = sampleNames[col])
@@ -792,8 +791,8 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
     xlim(c(min(rtime(xcms.sub)),max(rtime(xcms.sub))))+
     labs(col = "",x = "Retention time", y = "Intensity",
          title = paste0(feature.id),
-         subtitle = paste0( "mz: ",round(mz.range[1],6),
-                            " ~ ",round(mz.range[2],6),
+         subtitle = paste0( "mz: ",round(mz.range[1],4),
+                            " ~ ",round(mz.range[2],4),
                             "\nrt: ",round(rt.range[1],2),
                             " ~ ",round(rt.range[2],2) ))+
     theme_bw()+
