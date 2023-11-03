@@ -1,11 +1,11 @@
-#' @title list_DEP_contrast
+#' @title DEP_list_contrast
 #' @description return contrasts in data.se from DEP::test_diff
 #' @param data.se
 #'
 #' @return
 #'
 #' @examples
-list_DEP_contrast <- function(data.se){
+DEP_list_contrast <- function(data.se){
 
   contrast <- grep(names(data.se@elementMetadata@listData),
                    pattern = "vs.+diff",value = T)%>%
@@ -37,7 +37,7 @@ DEP_add_rejections <- function(data.se , p.adjust = T,lfc = 0.5){
 
   data.diff <- DEP_p_adjust(data.diff)
   if (p.adjust) {
-    contrasts <-list_DEP_contrast(data.diff )
+    contrasts <-DEP_list_contrast(data.diff )
     for (i in contrasts) {
       n.sig <- grep(paste0("^",i,"_significant$"),names(data.diff@elementMetadata@listData))
       data.diff@elementMetadata@listData[["significant"]]<-
@@ -49,7 +49,7 @@ DEP_add_rejections <- function(data.se , p.adjust = T,lfc = 0.5){
 
 
   }else{
-    contrasts <-list_DEP_contrast(data.diff )
+    contrasts <-DEP_list_contrast(data.diff )
     for (i in contrasts) {
       n.sig <- grep(paste0("^",i,"_significant$"),names(data.diff@elementMetadata@listData))
       data.diff@elementMetadata@listData[["significant"]]<-
@@ -69,7 +69,7 @@ DEP_add_rejections <- function(data.se , p.adjust = T,lfc = 0.5){
 DEP_p_adjust <- function(data.se , p.adjust.method = "fdr"){
 
 
-  for (i in list_DEP_contrast(data.se)) {
+  for (i in DEP_list_contrast(data.se)) {
 
     p.val <- data.se@elementMetadata[[paste0(i,"_p.val")]]
     p.adj <- data.se@elementMetadata[[paste0(i,"_p.adj")]]
@@ -119,15 +119,16 @@ DEP_test_diff <- function(data.se){
 }
 
 DEP_get_diff_table <- function(data.se,
-                               contrast = list_DEP_contrast(data.se )[1]
+                               contrast = DEP_list_contrast(data.se )[1],
+                               keep.all =F
                                ){
   DEP_check_sig(data.se)
 
 
   if (contrast == "all") {
     table.list <- list()
-    for (i in 1:length( list_DEP_contrast(data.se ))) {
-      i_contrast <-  list_DEP_contrast(data.se )[i]
+    for (i in 1:length( DEP_list_contrast(data.se ))) {
+      i_contrast <-  DEP_list_contrast(data.se )[i]
       table.list[[i_contrast]] <- DEP_get_diff_table(data.se ,
                                                    contrast = i_contrast)
     }
@@ -141,15 +142,23 @@ DEP_get_diff_table <- function(data.se,
   diff.table <- DEP::plot_volcano(data.se,
                                   contrast =contrast,
                                   plot = F,adjusted = F)
+  row.data <- rowData(data.se)%>%as.data.frame()
   diff.table<- diff.table%>%
     dplyr::mutate(`adjusted_p_value_-log10` = diff.table.adj$`adjusted_p_value_-log10`,
                   .after = `p_value_-log10`)
+  if (keep.all) {
+    diff.table<- diff.table%>%
+      dplyr::mutate(
+        row.data[match(protein ,row.data$name),
+                 !colnames(row.data)%in% "significant"])
+
+  }
 
   diff.table
 }
 
 DEP_plot_volcano <- function(data.se,
-                             contrast = list_DEP_contrast(data.se )[1],
+                             contrast = DEP_list_contrast(data.se )[1],
                              show.label = T){
   if (length(grep("_significant", colnames(rowData(data.se))))<1) {
 
@@ -158,8 +167,8 @@ DEP_plot_volcano <- function(data.se,
 
   if (contrast == "all") {
     p.vol.list <- list()
-    for (i in 1:length( list_DEP_contrast(data.se ))) {
-      i_contrast <-  list_DEP_contrast(data.se )[i]
+    for (i in 1:length( DEP_list_contrast(data.se ))) {
+      i_contrast <-  DEP_list_contrast(data.se )[i]
       p.vol.list[[i_contrast]] <- DEP_plot_volcano(data.se ,
                                                    contrast = i_contrast,
                                                    show.label = show.label)
@@ -251,7 +260,7 @@ DEP_plot_volcano <- function(data.se,
 }
 
 DEP.plot.volcano.lipidomic <- function(data.se,
-                                       contrast = list_DEP_contrast(data.se )[1],
+                                       contrast = DEP_list_contrast(data.se )[1],
                                        p.adjust = F,
                                        show.label = T){
   if (p.adjust) {
@@ -344,7 +353,7 @@ DEP.plot.volcano.lipidomic <- function(data.se,
 }
 
 DEP.plot.lfc.lipid.class <- function(data.se,
-                                     contrast = list_DEP_contrast(data.se )[1],
+                                     contrast = DEP_list_contrast(data.se )[1],
                                      p.adjust = F){
   if (p.adjust) {
     data.se <- DEP::add_rejections(data.se)
@@ -443,7 +452,7 @@ DEP.plot.lfc.lipid.class <- function(data.se,
 }
 
 DEP.plot.heatmap <- function(data.se,
-                             contrast = list_DEP_contrast(data.se )[1],
+                             contrast = DEP_list_contrast(data.se )[1],
                              p.adjust = F){
 
   if (length(grep("_significant", colnames(rowData(data.se))))<1) {
@@ -526,8 +535,35 @@ return(p.pca)
 
 }
 
+DEP_pathway_enrich <- function(data.se,
+                               contrast ,
+                               method = c("HyperTest","GlobalTest")){
+
+  method <- match.arg(method)
+  if (method == "HyperTest") {
+    pathway.table <- DEP_get_diff_table(data.se,
+                                        contrast = contrast,
+                                        keep.all = T)%>%
+        dplyr::filter(significant)%>%
+        dplyr::pull(kegg.id)%>%
+      analyzePathwayHyperTest()
+
+  }
+  if (method == "GlobalTest") {
+
+    data.se <- data.se[!is.na(rowData(data.se)$kegg.id),
+                       data.se$condition%in% strsplit(contrast,"_vs_")[[1]]]
+    pathway.matrix <- assay(data.se)
+    rownames(pathway.matrix) <- rowData(data.se)$kegg.id
+    pathway.table <-  analyzePathwayGlobalTest(t(pathway.matrix) ,data.se$condition)
+
+
+  }
+
+  return(pathway.table)
 
 
 
+}
 
 
