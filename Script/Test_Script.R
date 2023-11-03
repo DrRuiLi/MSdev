@@ -298,4 +298,11 @@ xcms.pos.peaks <- chromPeaks(xcms.pos)%>%as.data.frame()
 plot_xcms_feature_chromatogram(xcms.pos,"FT0820")
 
 
+export_graph2pdf(hm,
+                 "a.pdf",append = T,
+                 width = 5,height = 5)
+export_graph2pdf(p,
+                 "a.pdf",append = T,
+                 width = 5,height = 3)
+
 
