@@ -73,4 +73,57 @@ colored_text <- function(x , color = "#E64B35"){
 
 
 
+#' export plot to pdf file
+#' pdf() and export::graph2pdf() not support `append` arg
+#' using qpdf::pdf_combine() to realize that function
+#'
+#' @param p
+#' @param file_path
+#' @param append
+#' @param ...
+#'
+#' @return
+#' @export
+#'
+#' @examples
+export_graph2pdf <- function(p ,
+                             file_path ,
+                             append = F,
+                             ...
+                             ){
+
+  file_path <- normalizePath(file_path)
+  tpf1 <- paste0(tempfile(),".pdf")
+  tpf2 <- paste0(tempfile(),".pdf")
+  export::graph2pdf(plot_multi_formate(p),
+                    file = tpf1,...)
+
+  if (append & file.exists(file_path)) {
+    qpdf::pdf_combine(input = c(file_path,tpf1),
+                      output = tpf2)
+  }else{
+    tpf2 <- tpf1
+  }
+  message("Exported graph as ",file_path)
+  file.copy(tpf2,file_path,overwrite = T)
+  file.remove(tpf1,tpf2)
+  return(invisible())
+
+}
+
+plot_multi_formate <- function(p){
+
+
+  if ("Heatmap" %in% class(p)) {
+
+    ComplexHeatmap::draw(p)
+
+  }else{
+
+    plot(p)
+  }
+
+
+}
+
 
