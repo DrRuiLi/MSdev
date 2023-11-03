@@ -64,7 +64,7 @@ analyzeANOVA <- function(anova.matrix , anova.group){
 #' @examples
 analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group ){
 
-  kegg.pathway <- load_as_var("C:/Users/91879/OneDrive/Documents/Code/R/data/database.for.compounds.identification/kegg.pathway.database.2022.04.10.Rda")
+  kegg.pathway <- load_as_var("C:/Users/91879/OneDrive/Code/R/data/database.for.compounds.identification/kegg.pathway.database.2022.04.10.Rda")
   pathway.matrix <-data.frame( group = groupStringFactor(pathway.group),
                                scale(pathway.matrix))
   global.test.result <- data.frame(pathway.name =0,
@@ -115,7 +115,7 @@ analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group ){
 #' @export
 #'
 #' @examples
-analyzePathwayHypertest <- function(kegg.id){
+analyzePathwayHyperTest <- function(kegg.id){
 
   kegg.pathway <- MSdb::get_KEGG_pathway()
   kegg.pathway.compound <- MSdb::get_KEGG_compound_pathway_df()
