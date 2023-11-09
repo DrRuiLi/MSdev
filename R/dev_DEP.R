@@ -130,7 +130,8 @@ DEP_get_diff_table <- function(data.se,
     for (i in 1:length( DEP_list_contrast(data.se ))) {
       i_contrast <-  DEP_list_contrast(data.se )[i]
       table.list[[i_contrast]] <- DEP_get_diff_table(data.se ,
-                                                   contrast = i_contrast)
+                                                   contrast = i_contrast,
+                                                   keep.all = keep.all)
     }
     return(table.list)
   }
