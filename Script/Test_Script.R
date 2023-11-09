@@ -305,4 +305,36 @@ export_graph2pdf(p,
                  "a.pdf",append = T,
                  width = 5,height = 3)
 
+# Sat Nov  4 15:58:26 2023 ------------------------------
+### cluster
+group.cluster  <- kmeans(t(heatmap.matrix),centers = 3)$cluster
+Heatmap(heatmap.matrix,name = "Z-score",
+        cluster_columns =cluster_between_groups(heatmap.matrix,
+                                              group.cluster),
+        cluster_column_slices = F,
+        show_row_names = F,
+        show_row_dend = F,
+        show_column_names = F,
+        show_column_dend = T,
+       # column_split = heatmap.coldata$Phase,
+        top_annotation = HeatmapAnnotation(
+          df = heatmap.coldata[,c("Phase",
+                                  "Flare")],
+          col = list(Phase = col.group,Flare = col.group))
+)->hm
+
+export::graph2png(draw(hm),
+                  file = paste0(project.dir,"/Figure/P1.heatmap.png"),
+                  width = 10,height = 6)
+
+
+
+# Thu Nov  9 13:56:55 2023 ------------------------------
+msdev.glu <- MSdev("d:/231108_Glc_Tracing_rawdata/rawData/")
+msdev.glu <- MSdev_msConvert(msdev.glu)
+msdev.glu <- MSdev_checkSampleInfo(msdev.glu)
+msdev.glu <- MSdev_xcmsProcessing(msdev.glu)
+
+
+
 

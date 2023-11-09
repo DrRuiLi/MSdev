@@ -10,3 +10,14 @@ setwdActivedFilePath <- function(){
   setwd(path)
 
 }
+
+
+setRStudioDir <- function(path = rstudioapi::getSourceEditorContext()$path){
+
+  rstudioapi::filesPaneNavigate(path)
+
+}
+
+
+
+
