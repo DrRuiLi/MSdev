@@ -280,7 +280,7 @@ plot_dda_cycle_stat <- function(xcms.scan){
     geom_histogram(aes(y = ms2_count),
                    binwidth = 1,
                    fill = "#1E80DE",col = "white")+
-    labs(y = "MS1 cycle count",x = " ")+
+    labs(y = "MS2 count",x = "MS1 cycle count")+
     #scale_y_reverse()+
     scale_x_reverse()+
     ggsci::scale_color_gsea()+
@@ -305,7 +305,7 @@ plot_dda_cycle_stat <- function(xcms.scan){
       axis.line.y.left  = element_blank())->p2
 
 
-  p1+p2+plot_layout(widths = c(1,2))
+  p1+p2+plot_layout(widths = c(1,4))
 
 }
 
