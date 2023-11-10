@@ -214,20 +214,24 @@ xcmsProcessingMSdev.DDA <- function(object){
     sample.info.polarity <- sampleInfo%>%
       dplyr::filter(polarity %in% c(i,-1))
     polarity.tag <- paste0(polarity.index[as.character(i)],"MS1")
-
     if (!nrow(sample.info.polarity)) {
-      object@xcmsData[[polarity.tag]] <-NA
+      xcms.xcms <-NA
       next
     }
-    object@xcmsData[[polarity.tag]]  <-
+    xcms.xcms <-
       xcmsProcessingMS1(msDataFiles = sample.info.polarity$msData.files,
                         ion_mode = i,
                         peaksGroup =sample.info.polarity$sample.type,
                         centWaveParam = xcms.param$findpeak.param
     )
-    Biobase::pData(object@xcmsData[[polarity.tag]] ) <-
-      cbind(Biobase::pData(object@xcmsData[[polarity.tag]]),
+
+    Biobase::pData(xcms.xcms ) <-
+      cbind(Biobase::pData(xcms.xcms),
             sample.info.polarity)
+
+    xcms.xcms <- get_xcms_feature_stat(xcms.xcms )
+    xcms.xcms -> object@xcmsData[[polarity.tag]]
+
 
 
   }
