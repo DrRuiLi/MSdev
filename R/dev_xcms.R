@@ -447,7 +447,7 @@ get_xcms_feature_def_stat <- function(xcms.xcms){
   feature.def.df <- as.data.frame(feature.def)%>%
     dplyr::mutate(feature_id = rownames(.),
                   .before = mzmed)
-  featureDefinitions(xcms.xcms)<-feature.def%>%DataFrame()
+  featureDefinitions(xcms.xcms)<-feature.def.df%>%DataFrame()
   return(xcms.xcms)
 
 }
@@ -460,13 +460,13 @@ get_xcms_feature_val_stat <- function(xcms.xcms) {
   featureval <- featureValues(xcms.xcms)
   if ("sample.type" %in% colnames(xcms.pdata)) {
     qc.rsd <- featureval[,xcms.pdata%>%dplyr::filter(sample.type =="QC")%>%
-                 dplyr::pull(sampleNames)]%>%
+                 dplyr::pull(sampleNames),drop=F]%>%
       apply(1,function(x){
         sd(x,na.rm =T)/mean(x,na.rm=T)
       })
     sample.rsd <- featureval[,xcms.pdata%>%
                                dplyr::filter(sample.type =="Sample")%>%
-                 dplyr::pull(sampleNames)]%>%
+                 dplyr::pull(sampleNames),drop=F]%>%
       apply(1,function(x){
         sd(x,na.rm =T)/mean(x,na.rm=T)
       })
@@ -608,7 +608,9 @@ plot_xcms_peaks_distribution <- function(xcms.xcms,plot.title = "Peaks distribut
 
   xcms.peaks <- chromPeaks(xcms.xcms)%>%
     as.data.frame()%>%
-    dplyr::mutate(as.data.frame(chromPeakData(xcms.xcms)))%>%
+    dplyr::mutate(as.data.frame(chromPeakData(xcms.xcms)),
+                  peak_id = rownames(.),
+                  merged = grepl(peak_id,pattern = "CPM"))%>%
     dplyr::filter(!is.na(maxo),
                   rtmax-rtmin <60,
                   !merged)
@@ -816,7 +818,7 @@ plot_xcms_peaks_mzerror_density <- function(xcms.xcms,
   xcms.findpeak.param <- processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
     processParam()
   ggplot(xcms.peaks,aes(x = mz , y = ppm)) +
-    stat_density_2d(aes(fill= ..level..),
+    stat_density_2d(aes(fill= after_stat(level)),
                     contour = T,
                     geom = "polygon",bins = 100)+
     geom_point(size = 0.1,alpha = 0.1)+
@@ -979,9 +981,9 @@ plot_xcms_ms2_distribution <- function(xcms.xcms,plot.title = "MS2 Precursor dis
                          colors = c("white","white","yellow","red","red"))+
    theme_bw()+
    theme(text = element_text(size = 8))->peaks.dis.plot
- peaks.dis.plot
- open_ggplot_win(peaks.dis.plot,width = 25,height = 5)
 
+ open_ggplot_win(peaks.dis.plot,width = 25,height = 5)
+ peaks.dis.plot
 }
 
 
@@ -1133,8 +1135,10 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
 
   if (length(oligoClasses::sampleNames(xcms.xcms))>1) {
     if (sum(peaksGroup=="QC") <2 ) {
-      #rt.adjust.param <- ObiwarpParam()
-     # xcms.xcms <- adjustRtime(xcms.xcms,param = rt.adjust.param)
+      rt.adjust.param <- PeakGroupsParam(minFraction = 0.4,
+                                         #subset = which(peaksGroup == "QC"),
+                                         subsetAdjust = "previous",span = 0.4)
+      xcms.xcms <- adjustRtime(xcms.xcms,param = rt.adjust.param)
     }else{
       ### adjust based on QC
       rt.adjust.param <- PeakGroupsParam(minFraction = 0.4,
@@ -1151,7 +1155,6 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
                                          binSize = 0.015)
   xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
   xcms.xcms <- fillChromPeaks(xcms.xcms,param = FillChromPeaksParam())
-  xcms.xcms <- get_xcms_feature_stat(xcms.xcms )
   return(xcms.xcms)
 
 
@@ -1393,9 +1396,9 @@ plot_xcms_adjustedRT <- function(xcms.xcms){
 plot_xcms_scan <- function(xcms.xcms){
 
   xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
-  xcms.scan$precursorMZ <- estimatePrecursorIntensity(xcms.xcms,
-                                          BPPARAM = BatchtoolsParam(progressbar = T,
-                                                                    log = F))
+ #xcms.scan$precursorMZ <- estimatePrecursorIntensity(xcms.xcms,
+ #                                        BPPARAM = BatchtoolsParam(progressbar = T,
+ #                                                                  log = F))
 
 
   ggplot(xcms.scan)+
