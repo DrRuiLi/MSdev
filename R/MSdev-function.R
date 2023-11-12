@@ -127,7 +127,7 @@ readInRawData <- function(object){
 get_MSdev_MSinfo <- function(object){
 
 
-  ### define acquite Type
+  ### define acquire Type
   ### note, these model string are identified by mzR
   {
     HRMS <- c("Q Exactive Plus","TripleTOF 6600")
@@ -154,11 +154,18 @@ get_MSdev_MSinfo <- function(object){
                     xcmsProcessing = case_when(scanType=="FS"~ "MS1",
                                                scanType=="DDA" ~ "Both",
                                                scanType=="MRM" ~ "MRM",
-                                               T~NA))
+                                               T~NA))%>%
+      dplyr::group_by(sample.name)%>%
+      dplyr::mutate(polarity_paired = case_when(
+        "0"%in%polarity&"1"%in%polarity~T,
+        "0;1"%in% polarity~T,
+        T~F
+      ),
+      .after = polarity)%>%
+      dplyr::ungroup()
     sampleInfo -> object@sampleInfo
 
   }
-  object <- .updateProjectInfoFromSampleInfo(object)
   return(object)
 
 }
@@ -212,7 +219,7 @@ xcmsProcessingMSdev.DDA <- function(object){
   polarity.index <- c("0" = "Negative","1"="Positive")
   for (i in c(0,1)) {
     sample.info.polarity <- sampleInfo%>%
-      dplyr::filter(polarity %in% c(i,-1))
+      dplyr::filter(polarity %in% c(i,-1,"0;1"))
     polarity.tag <- paste0(polarity.index[as.character(i)],"MS1")
     if (!nrow(sample.info.polarity)) {
       xcms.xcms <-NA

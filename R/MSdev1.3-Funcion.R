@@ -57,6 +57,7 @@ MSdev_msConvert<- function(object){
   }
 
   object <- get_MSdev_MSinfo(object)
+  object <- .updateProjectInfoFromSampleInfo(object)
 
   ### return
   {
@@ -166,14 +167,59 @@ MSdev_annotation <- function(object,
 
 
 
-MSdev_get_Stat<-function(object){
+MSdev_get_Stat <- function(object){
 
-  sample.info <- object@sampleInfo
+  sample.info <- object@sampleInfo%>%
+    dplyr::filter(polarity_paired)
+  col.order <- sample.info%>%
+    dplyr::distinct(sample.name)%>%
+    dplyr::pull(sample.name)
+  se <- list()
+  for (i in 0:1) {
+    pol <- ifelse(i==0,"Negative","Positive")
+    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    if (is.null(xcms.xcms)) {
+      se[[pol]] <- SummarizedExperiment()
+      next
+    }
+    se[[pol]] <- get_xcms_feature_se(xcms.xcms)[,col.order]
+    se[[pol]]$sampleNames<- NULL
+    se[[pol]]$no<- NULL
+    se[[pol]]$raw.files<- NULL
+    se[[pol]]$polarity<- NULL
+    se[[pol]]$analysis.time<- NULL
+    se[[pol]]$msData.files<- NULL
+    se[[pol]]$ms.name<- NULL
+    se[[pol]]$files<- NULL
+    se[[pol]]$ExpTime<- NULL
+  }
+  feature.se <- do.call("rbind",se)
+
+  ### retrieve data
+  db.info <- MSdb::getInfoFromMSDB(rowData(feature.se)$MSDB_id,
+                                   object@projectInfo$MSdbPath)
+  rowData(feature.se) <- cbind(rowData(feature.se),db.info)
 
 
+  ### filter
+  .uniqueFeatures <- function(score,intensity){
+    score <- ifelse(score >0.3 , 10,1)
+    unique.score <- score*log10(intensity)
+    unique.score
+
+  }
+  rda <- rowData(feature.se)%>%
+    as.data.frame()%>%
+    dplyr::filter(qc_rsd < 0.3)%>%
+    dplyr::group_by(inchikey)%>%
+    dplyr::slice_max(.uniqueFeatures(score,peakMaxo))%>%
+    ungroup()
+  metabolite.se <- feature.se[rda$feature_id,]
 
 
-
+  object@statData$feature.se <- feature.se
+  object@statData$metabolite.se <- metabolite.se
+  object
 
 }
 
