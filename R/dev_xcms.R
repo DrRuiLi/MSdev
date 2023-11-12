@@ -39,6 +39,34 @@ get_features_from_xcms <- function(xcms.xcms,missing = NA){
 }
 
 
+get_xcms_feature_se <- function(xcms.xcms,...){
+
+  pol <- c("0" = "neg","1" = "pos")
+
+  xcms.xcms <- get_xcms_feature_stat(xcms.xcms)
+  sample.info <- pData(xcms.xcms)
+  rownames(sample.info) <- sample.info$sample.name
+
+  featuredef <- featureDefinitions(xcms.xcms)%>%
+    as.data.frame()%>%
+    dplyr::mutate(xcms_feature_id = feature_id,
+                  feature_id = paste0(feature_id ,"_",pol[as.character(polarity)] ))
+  rownames(featuredef) <- featuredef$feature_id
+
+  featureval <- featureValues(xcms.xcms,...)
+  colnames(featureval) <- pData(xcms.xcms)$sample.name
+  rownames(featureval) <- featuredef$feature_id
+
+  feature.se <- SummarizedExperiment(assays = featureval,
+                       rowData = featuredef,
+                       colData =sample.info
+                      )
+  return(feature.se)
+
+
+}
+
+
 get_chrom_peaks_shape_score <- function(chrom,
                                         peak.id = chrom@chromPeakData@rownames){
   peak.id = chrom@chromPeakData@rownames
