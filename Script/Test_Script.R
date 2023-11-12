@@ -331,6 +331,7 @@ export::graph2png(draw(hm),
 
 # Thu Nov  9 13:56:55 2023 ------------------------------
 msdev.glu <- MSdev("d:/231108_Glc_Tracing_rawdata/rawData/")
+msdev.glu <- load_as_var("D:/231108_Glc_Tracing_rawdata/MSdev_2023_11_09.Rdata")
 msdev.glu <- MSdev_msConvert(msdev.glu)
 msdev.glu <- MSdev_checkSampleInfo(msdev.glu)
 msdev.glu <- MSdev_xcmsProcessing(msdev.glu)
@@ -341,20 +342,7 @@ msdev.glu <- MSdev_get_Stat(msdev.glu)
 
 
 
-xcms.xcms <- msdev.glu@xcmsData$PositiveMS1%>%
-  filterFile(1)
-xcms.xcms <- xcms::groupChromPeaks(xcms.xcms,param = PeakDensityParam("A"))%>%
-  get_xcms_feature_stat()
-xcms.scan <- get_xcms_scan_Stat(xcms.xcms )
-xcms.fdf <- featureDefinitions(xcms.xcms)%>%as.data.frame()
-xcms.scan <- get_DDA_scan_stat(xcms.scan,xcms.fdf)
 
-
-p <- plot_dda_acquisition(xcms.scan$xcms.scan ,xcms.scan$feature_def)
-
-
-p+xlim(c(0,50))+
-  ylim(c(200,250))
 
 
 
