@@ -1464,6 +1464,15 @@ get_xcms_MS_report <- function(xcms.xcms ,
 
 
 
+get_xcms_peaks_stat <- function(xcms.xcms){
 
+  xcms.peaks <- chromPeaks(xcms.xcms)%>%
+    as.data.frame()%>%
+    rownames_to_column("peak_id")%>%
+    dplyr::mutate(peakWidth = rtmax-rtmin,
+                  mzWidth = mzmax-mzmin,
+                  mzError = mzWidth/mz*1e6)
+  return(xcms.peaks)
 
+}
 

@@ -343,6 +343,38 @@ msdev.glu <- MSdev_get_Stat(msdev.glu)
 
 
 
+fella.graph <- generateResultsGraph(fella.fella,
+                                    method = "diffusion",
+                                    plimit = 5,
+                                    nlimit = 1000 ,
+                                    threshold = 0.05,
+                                    thresholdConnectedComponent = 0.1,
+                                    LabelLengthAtPlot = 100,
+                                    data = fella.data)
+
+createNetworkFromIgraph(fella.graph)
+
+
+fella.graph <- fella_igraph(fella.fella)
+createNetworkFromIgraph(fella.graph)
+
+
+load("d:/MSdb/msdb.HMDB.Rdata")
+A <- spectraData(Spectra_database)%>%
+  as.data.frame()
+
+# Mon Nov 13 18:45:48 2023 ------------------------------
+feature.se <- msdev.glu@statData$feature.se
+feature.df <- rowData(feature.se)%>%
+  as.data.frame()
+
+a.peaks <- as.data.frame(a.peaks)
+ggplot(a.peaks)+
+  geom_point(aes(x = sampleNames(xcms.xcms)[sample], y = log10(maxo)))
+
+
+
+# Tue Nov 14 08:47:13 2023 ------------------------------
 
 
 
