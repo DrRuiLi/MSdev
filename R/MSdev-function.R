@@ -283,17 +283,18 @@ get_MSdev_param <- function(object){
   MS.mode <- object@projectInfo$msAcquisition
   MS.instru <-object@projectInfo$msModel
   MS.LC.rate <- object@experimentInfo@Chroma_gradient[[1]]$Flow_rate%>%mean
-  MS.LC.time<- object@experimentInfo@Chroma_gradient[[1]]$time%>%max
+  MS.LC.time <- object@experimentInfo@Chroma_gradient[[1]]$time%>%max
   cwp <- CentWaveParam(fitgauss = T,verboseColumns = T)
 
   ### ppm
   cwp@ppm <- switch(MS.instru,
-                    "Q Exactive Plus" = 20,
+                    "Q Exactive Plus" = 10,
                     "TripleTOF 6600" = 25,
                    20)
 
   cwp@peakwidth <-switch(as.character(MS.LC.rate),
                          "0.5" = c(5,20),
+                         "0.3" = c(10,50),
                          c(5,20))
 
   cwp@snthresh <- switch(MS.instru,
@@ -302,7 +303,7 @@ get_MSdev_param <- function(object){
                          "Thermo Quantis" = 0,
                          100)
   cwp@prefilter <- switch(MS.instru,
-                         "Q Exactive Plus" = c(3,100),
+                         "Q Exactive Plus" = c(3,1000),
                          "SCIEX TripleTOF 6600" = c(3,100),
                          "Thermo Quantis" = c(3,100),
                          c(3,100))
