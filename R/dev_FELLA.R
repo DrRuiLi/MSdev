@@ -10,17 +10,35 @@ fella_enrich <- function(cpd_kegg,
   return(fella.fella)
 }
 
-fella_igraph <- function(fella.fella){
+#' Title
+#'
+#' @param fella.fella
+#'
+#' @return
+#' @export
+#' @import igraph
+#'
+#' @examples
+fella_igraph <- function(fella.fella,
+                         p = 0.05,
+                         node = 1000){
 
   fella.graph <- generateResultsGraph(fella.fella,
                                       method = "diffusion",
                                       plimit = 5,
-                                      nlimit = 1000 ,
-                                      threshold = 0.05,
+                                      nlimit = node ,
+                                      threshold = p,
                                       thresholdConnectedComponent = 0.05,
                                       LabelLengthAtPlot = 100,
                                       data = fella.data)
+  fella.pscore <- FELLA::getPscores(fella.fella,
+                                    method = "diffusion")
   com <- V(fella.graph)$com
+  v.name <- V(fella.graph)$name
+  V(fella.graph)$p.enrich <- fella.pscore[v.name]
+  cf <-  circlize::colorRamp2(breaks = c(0,1.30103,5),
+                       colors = c("white","white","#D21E31"))
+  V(fella.graph)$col.enrich <- cf(-log10(fella.pscore[v.name]))%>%str_sub(.,1,7)
   V(fella.graph)$type <- dplyr::case_when(
     com==1 ~"Pathway",
     com==2~"Module",
