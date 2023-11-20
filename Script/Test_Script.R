@@ -376,5 +376,48 @@ ggplot(a.peaks)+
 
 # Tue Nov 14 08:47:13 2023 ------------------------------
 
+a <- chemform_adduct(compound.tca$Formula,adduct = "[M+H]+")
+cp <- get_xcms_peaks_stat(msdev.glu@xcmsData$PositiveMS1)
+b <- match_mz_rt(mz1 = a$chemform.adduct.mz,
+                 mz2 = cp$mz,
+                 mz.ppm = 5)
+
+# Fri Nov 17 16:39:13 2023 ------------------------------
+msdev.demo <- MSdev("C:\\Users\\91879\\OneDrive\\Code\\R\\Projecct\\2022.1.8_MS.demo\\Demo/raw.data/")
+msdev.demo <- MSdev_checkSampleInfo(msdev.demo)
+msdev.demo <- MSdev_msConvert(msdev.demo)
+msdev.demo <- MSdev_xcmsProcessing(msdev.demo)
+msdev.demo <- MSdev_extract_Spectra(msdev.demo)
+msdev.demo <- MSdev_match_Spectra_to_feature(msdev.demo)
+msdev.demo <- MSdev_annotation(msdev.demo)
+msdev.demo <- MSdev_get_Stat(msdev.demo)
+
+
+a <- xcms.peaks%>%
+  dplyr::mutate(baseline = intb/sn,
+                scan.no = scmax-scmin)
+
+
+# Mon Nov 20 12:20:28 2023 ------------------------------
+msdev.ms2 <- MSdev("d:/2023.11.MSIP/231114_qc_ms2/rawData/")
+msdev.ms2 <- MSdev_msConvert(msdev.ms2)
+msdev.ms2 <- MSdev_checkSampleInfo(msdev.ms2)
+msdev.ms2 <- MSdev_xcmsProcessing(msdev.ms2)
+
+
+
+
+
+
+xcms.prm <- readMSData("d:/2023.11.MSIP/231114_qc_ms2/rawData/mzML/qc_10_prm.mzML",
+                       mode = "onDisk")
+xcms.scan <- get_xcms_scan_Stat(xcms.prm)
+
+ggplot(xcms.scan)+
+  geom_point(aes(x = retentionTime,
+                  y = precursorMZ,
+                 col = as.factor(precursorMZ)))
+
+
 
 

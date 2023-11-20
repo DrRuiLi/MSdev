@@ -1075,19 +1075,22 @@ plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt = "expand"){
                                      peaks.id = peak_id,
                                      rt = rt)
   chrom.data <- get_chroms_data(xcms.chrom)%>%
-    dplyr::mutate(fill = rt > min(rt.range)&rt <max(rt.range)
-                 )
+    dplyr::mutate(fill = rt > min(rt.range)&rt <max(rt.range),
+                  sample = sampleNames(xcms.xcms)[row]
+                 )%>%
+    dplyr::filter(!is.na(intensity))
 
   ggplot(chrom.data)+
-    geom_line(aes(x = rt,y = intensity),linetype = 1)+
-    geom_area(aes(x = rt,y = intensity, fill = fill))+
+    geom_line(aes(x = rt,y = intensity,col =sample),linetype = 1)+
+    geom_area(aes(x = rt,y = intensity, fill = sample),
+              stat = "identity",alpha = 0.1)+
     #geom_point(aes(x = rt, y = fit))+
     scale_fill_manual(values = c("FALSE" = "transparent","TRUE" = "grey"))+
     labs(title = paste0(peak_id),
-         subtitle = paste0("mz:",paste0(sprintf("%.4f",mz.range),collapse = " - "), ";     ",
-                           "rt:",paste0(sprintf("%.2f",rt.range),collapse = " - "),"\n",
-                           "mz range = ",sprintf("%.2f",mean(diff(mz.range)/mz.range)*1e6)," ppm;     ",
-                           "peak width = ", sprintf("%.2f",diff(rt.range)),"\n"
+         subtitle = paste0("mz:",paste0(sprintf("%.4f",range(mz.range)),collapse = " - "), ";     ",
+                           "rt:",paste0(sprintf("%.2f",range(rt.range)),collapse = " - "),"\n",
+                           "mz range = ",sprintf("%.2f",mean(diff(range(mz.range))/mz.range)*1e6)," ppm;     ",
+                           "peak width = ", sprintf("%.2f",diff(range(rt.range))),"\n"
                           # "shape score = ",get_chrom_peaks_shape_score(xcms.chrom[1,1])
                            ),
          x = "Retention time")+
@@ -1476,3 +1479,72 @@ get_xcms_peaks_stat <- function(xcms.xcms){
 
 }
 
+
+
+get_xcms_centwave_tune <- function(xcms.xcms,
+                                   iteration = 10){
+
+  cwp <- CentWaveParam(peakwidth = c(5,20),
+                       verboseColumns=T,fitgauss = T)
+  xcms.tune.df <- data.frame(
+    No = 1:iteration,
+    ppm = cwp@ppm,
+    pwmin = cwp@peakwidth[1],
+    pwmax = cwp@peakwidth[2],
+    snthresh = cwp@snthresh,
+    prefilter = cwp@prefilter[1],
+    prefilter.int = cwp@prefilter[2],
+    peaks.no = NA,
+    mze.range = NA,
+    pw.range = NA
+  )
+  xcms.tune.list <- list()
+  for (i in 1:iteration) {
+
+    message("run ",i," ", Sys.time())
+    show(cwp)
+
+    ### record param
+    xcms.tune.df$ppm[i] <- cwp@ppm
+    xcms.tune.df$pwmin[i] <- cwp@peakwidth[1]
+    xcms.tune.df$pwmax[i] <- cwp@peakwidth[2]
+    xcms.tune.df$snthresh[i] <- cwp@snthresh
+    xcms.tune.df$prefilter[i] <- cwp@prefilter[1]
+    xcms.tune.df$prefilter.int[i] <- cwp@prefilter[2]
+
+
+    ### run
+    xcms.interation <- findChromPeaks(
+      xcms.xcms,
+      param = cwp,
+      BPPARAM  =SerialParam()
+    )
+    xcms.peaks <- get_xcms_peaks_stat(xcms.interation)%>%
+      dplyr::mutate(scan.no = scmax-scmin)
+    xcms.peaks.high.sn <- xcms.peaks%>%
+      dplyr::slice_max(sn , n = round(nrow(.)*0.1))
+
+    ### result
+    pw <- xcms.peaks.high.sn$peakWidth
+    mze <- xcms.peaks.high.sn$mzError
+    xcms.tune.df$peaks.no[i] <- nrow(xcms.peaks)
+    xcms.tune.df$mze.range[i] <- paste0(quantile(mze,c(0.05,0.95))%>%round,collapse = "-")
+    xcms.tune.df$pw.range[i] <- paste0(quantile(pw,c(0.25,0.75))%>%round,collapse = "-")
+
+    ### update param
+    cwp@ppm <- quantile(mze,0.5)
+    cwp@peakwidth <- quantile(pw,c(0.25,0.75))
+    #cwp@snthresh <- quantile(xcms.peaks$sn,0.05)
+    #cwp@prefilter[1] <- quantile(xcms.peaks$scan.no,0.05)
+
+    ### record
+    xcms.tune.list[[i]] <- xcms.interation
+
+
+  }
+
+
+
+
+
+}

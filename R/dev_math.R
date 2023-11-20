@@ -222,7 +222,8 @@ gaussian_functioin <- function(x , a =1,b = 0,c = 0.5){
 #' @export
 #'
 #' @examples
-match_mz_rt <- function(mz1,rt1,mz2,rt2,
+match_mz_rt <- function(mz1,rt1 =seq_along(mz1),
+                        mz2,rt2 =seq_along(mz2),
                         mz.ppm = 10,
                         rt.tol = Inf){
 

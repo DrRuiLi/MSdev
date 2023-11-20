@@ -19,5 +19,8 @@ setRStudioDir <- function(path = rstudioapi::getSourceEditorContext()$path){
 }
 
 
+getActivedFilePath <- function(){
+  rstudioapi::getSourceEditorContext()$path
 
+}
 
