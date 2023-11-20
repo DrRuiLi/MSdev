@@ -4,7 +4,14 @@
 \alias{match_mz_rt}
 \title{match 2 list of ion based on mz and rt}
 \usage{
-match_mz_rt(mz1, rt1, mz2, rt2, mz.ppm = 10, rt.tol = Inf)
+match_mz_rt(
+  mz1,
+  rt1 = seq_along(mz1),
+  mz2,
+  rt2 = seq_along(mz2),
+  mz.ppm = 10,
+  rt.tol = Inf
+)
 }
 \arguments{
 \item{rt.tol}{}
