@@ -409,15 +409,3 @@ msdev.ms2 <- MSdev_xcmsProcessing(msdev.ms2)
 
 
 
-xcms.prm <- readMSData("d:/2023.11.MSIP/231114_qc_ms2/rawData/mzML/qc_10_prm.mzML",
-                       mode = "onDisk")
-xcms.scan <- get_xcms_scan_Stat(xcms.prm)
-
-ggplot(xcms.scan)+
-  geom_point(aes(x = retentionTime,
-                  y = precursorMZ,
-                 col = as.factor(precursorMZ)))
-
-
-
-

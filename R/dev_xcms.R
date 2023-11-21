@@ -1548,3 +1548,19 @@ get_xcms_centwave_tune <- function(xcms.xcms,
 
 
 }
+
+
+
+get_xcms_Spectra <- function(xcms.xcms){
+
+  xcms.files <- paste0(dirname(xcms.xcms),"/",sampleNames(xcms.xcms))
+  xcms.sp <- Spectra(xcms.files,
+                         backend = MsBackendDataFrame(),
+                         BPPARAM = SerialParam(progressbar = T))
+
+
+  return(xcms.sp)
+
+}
+
+
