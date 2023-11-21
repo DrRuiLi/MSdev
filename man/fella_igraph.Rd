@@ -4,7 +4,7 @@
 \alias{fella_igraph}
 \title{Title}
 \usage{
-fella_igraph(fella.fella)
+fella_igraph(fella.fella, p = 0.05, node = 1000)
 }
 \arguments{
 \item{fella.fella}{}

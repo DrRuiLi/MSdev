@@ -25,6 +25,7 @@ Imports:
 Depends: 
     R (>= 3.5.0),
     xcms,
+    Spectra,
     tidyverse
 LazyData: true
 VignetteBuilder: knitr
