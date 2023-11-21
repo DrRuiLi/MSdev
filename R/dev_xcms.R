@@ -1557,10 +1557,13 @@ get_xcms_Spectra <- function(xcms.xcms){
   xcms.sp <- Spectra(xcms.files,
                          backend = MsBackendDataFrame(),
                          BPPARAM = SerialParam(progressbar = T))
-
-
   return(xcms.sp)
 
 }
+
+
+setMethod(f = "filepaths",signature = "XCMSnExp",definition = function(object){
+  paste0(dirname(object),"/",sampleNames(object))
+})
 
 
