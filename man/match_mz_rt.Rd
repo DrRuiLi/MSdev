@@ -2,13 +2,14 @@
 % Please edit documentation in R/dev_math.R
 \name{match_mz_rt}
 \alias{match_mz_rt}
-\title{match 2 list of ion based on mz and rt}
+\title{match 2 list of ion based on mz and rt
+return all matched, include multiple match}
 \usage{
 match_mz_rt(
   mz1,
-  rt1 = seq_along(mz1),
+  rt1 = rep(NA, length(mz1)),
   mz2,
-  rt2 = seq_along(mz2),
+  rt2 = rep(NA, length(mz2)),
   mz.ppm = 10,
   rt.tol = Inf
 )
@@ -18,4 +19,5 @@ match_mz_rt(
 }
 \description{
 match 2 list of ion based on mz and rt
+return all matched, include multiple match
 }
