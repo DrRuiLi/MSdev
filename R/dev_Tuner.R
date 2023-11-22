@@ -1,12 +1,21 @@
 
 
 
+#' get xcms param by Autotuner
+#'
+#' @param xcms.xcms
+#'
+#' @return
+#' @export
+#' @import Autotuner
+#'
+#' @examples
 get_xcms_Autotuner <- function(xcms.xcms ){
 
   xcms.xcms <- filterFile(xcms.xcms,
                           which(pData(xcms.xcms)$sample.type!="Blank"))
 
-  autotuner <- Autotuner::createAutotuner(
+  autotuner <- createAutotuner(
     data_paths = filepaths(xcms.xcms),
     runfile = pData(xcms.xcms),
     file_col = "msData.files",
