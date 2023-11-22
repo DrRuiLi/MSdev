@@ -107,7 +107,7 @@ makeSpectra <- function(precursorMz ,
 
 filterSpectraIntensity <- function(sp,ratio){
 
-  Spectra::filterIntensity( sp, intensity = function(z) z/max(z) > r )
+  Spectra::filterIntensity( sp, intensity = function(z) z/max(z) > ratio )
 
 }
 
@@ -196,10 +196,11 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
 
 combineSpectra_groupby_ce <- function(sp,minProp = 0.5){
 
-  combineSpectra(sp,peaks = "intersect",
+  sp.ce <- Spectra::combineSpectra(sp,peaks = "intersect",
+                                   intensityFun = median,
                  f = sp$collisionEnergy,
                  minProp=minProp,
-                 ppm = 25)
+                 ppm = 5)
 
 
 }
@@ -225,7 +226,7 @@ get_Spectra_transition <- function(sp){
 }
 
 
-plot_Spectra_Mirror<- function(sp1,sp2){
+plot_Spectra_Mirror<- function(sp1,sp2,show.label = "rtime"){
 
   sp.data <-rbind(get_Spectra_data(sp1)%>%
                     dplyr::mutate(sp.id=1),
@@ -250,6 +251,16 @@ plot_Spectra_Mirror<- function(sp1,sp2){
                  show.legend = F)+
     geom_point(aes(x = x, y = yend , alpha = matched,col = matched),
                show.legend = F,size = 0.5)+
+    geom_text(aes(x = quantile(range(sp.data$x),0.8),
+                  y =ymax.abs*0.8,
+                  label = paste0(show.label," = \n",sp1[[show.label]])),
+              size = 2,
+              check_overlap = T)+
+    geom_text(aes(x = quantile(range(sp.data$x),0.8),
+                  y = -ymax.abs*0.8,
+                  label = paste0(show.label," = \n",sp2[[show.label]])),
+              size = 2,
+              check_overlap = T)+
     ggrepel::geom_text_repel(aes(x = x, y = yend ,
                                  label = format(mz,digit = 4,nsmall = 4)),
                              size =2,
@@ -313,6 +324,7 @@ plot_Spectra<- function(sp,label.top = 10){
 
 plot_Spectra_CE<-function(sp){
 
+
   sp.data <- get_Spectra_data(sp)%>%
     dplyr::mutate(x = mz,
                   xend = mz,
@@ -367,6 +379,53 @@ plot_Spectra_CE<-function(sp){
   p
 
 
+
+
+}
+
+
+plot_Spectra_product_CE_curve <- function(sp){
+
+  sp.data <- get_Spectra_data(sp)%>%
+    dplyr::mutate(x = mz,
+                  xend = mz,
+                  y = 0,
+                  yend = intensity,
+                  int.rank = rank(-intensity) ,
+                  matched = intensity > max(intensity,na.rm = T)/10 )%>%
+    dplyr::group_by(collisionEnergy)%>%
+    dplyr::mutate(step = cur_group_id()-1)%>%
+    dplyr::ungroup()%>%
+    dplyr::mutate(xstep = step * max(x,na.rm = T)/100*5,
+                  ystep = step * max(yend,na.rm = T)/100*5,
+                  x = x+xstep,
+                  xend = xend + xstep,
+                  y = y+ystep,
+                  yend = yend + ystep,
+                  cex = as.numeric(collisionEnergy),
+                  collisionEnergy= factor(collisionEnergy))%>%
+    dplyr::mutate(groupMz(mz))%>%
+    dplyr::group_by(mz.group)%>%
+    dplyr::mutate( highlight = length(unique(collisionEnergy)) >
+                     length(levels(collisionEnergy))*0.5,
+                   hx = min(x),
+                   hxend = max(x),
+                   hy = min(y),
+                   hyend =max(y))%>%
+    dplyr::ungroup()%>%
+    dplyr::filter(highlight)
+
+  ggplot(sp.data,aes(x = cex , y = intensity ,col = mz.group))+
+    geom_point()+
+    geom_smooth(formula = y~x,method = "loess")+
+    scale_color_manual(values = randomcoloR::distinctColorPalette(30),
+                       labels = sprintf("%.4f",unique(sp.data$mz)))+
+    labs(x = "Collision Energy",y = "Intensity normalized to Precursor",
+         col = "Product mz")+
+    guides(col = guide_legend(ncol = 3))+
+    theme_bw()+
+    theme(legend.position = "right")->p
+  p
 
 
 }

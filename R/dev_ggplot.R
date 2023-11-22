@@ -120,7 +120,7 @@ plot_multi_formate <- function(p){
 
   }else{
 
-    plot(p)
+    p
   }
 
 
