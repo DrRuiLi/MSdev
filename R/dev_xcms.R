@@ -1304,7 +1304,7 @@ get_xcms_scan_Stat <- function(xcms.xcms){
     dplyr::mutate(cycle_time = c(diff(ms1_group_rt),0))%>%
     dplyr::group_by(ms1_group)%>%
     dplyr::mutate(cycle_time = max(cycle_time))%>%
-    dplyr::mutate(scan_id = paste0(fileStr,"_",spStr))%>%
+    dplyr::mutate(scan_id = paste0("scan_",fileStr,"_",spStr))%>%
     dplyr::ungroup()%>%
     dplyr::select(scan_id,ms1_no,ms1_group,ms1_group_rt,
                   ms2_count,cycle_time,scan_time,everything(),
@@ -1554,9 +1554,11 @@ get_xcms_centwave_tune <- function(xcms.xcms,
 get_xcms_Spectra <- function(xcms.xcms){
 
   xcms.files <- paste0(dirname(xcms.xcms),"/",sampleNames(xcms.xcms))
+  xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
   xcms.sp <- Spectra(xcms.files,
                          backend = MsBackendDataFrame(),
                          BPPARAM = SerialParam(progressbar = T))
+  spectraNames(xcms.sp) <- xcms.sp$scan_id <- xcms.scan$scan_id
   return(xcms.sp)
 
 }

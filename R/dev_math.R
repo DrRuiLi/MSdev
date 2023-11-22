@@ -210,6 +210,7 @@ gaussian_functioin <- function(x , a =1,b = 0,c = 0.5){
 
 
 #' match 2 list of ion based on mz and rt
+#' return all matched, include multiple match
 #'
 #' @param mz1
 #' @param rt1
@@ -222,20 +223,20 @@ gaussian_functioin <- function(x , a =1,b = 0,c = 0.5){
 #' @export
 #'
 #' @examples
-match_mz_rt <- function(mz1,rt1 =seq_along(mz1),
-                        mz2,rt2 =seq_along(mz2),
+match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
+                        mz2,rt2 =rep( NA,length(mz2)),
                         mz.ppm = 10,
                         rt.tol = Inf){
 
   names(mz2) <- names(rt2) <- 1:length(mz2)
 
-  mz.match <- sapply(mz1, function(x){
+  mz.match <- lapply(mz1, function(x){
 
    mz.error <- abs(x - mz2)/x
    mz.error[ which(mz.error < mz.ppm*1e-6)]
   })
 
-  rt.match <- sapply(1:length(mz1) ,  function(i){
+  rt.match <- lapply(1:length(mz1) ,  function(i){
 
    rt <-rt1[i]
    mz.matched.id <- names(mz.match[[i]])
@@ -243,7 +244,7 @@ match_mz_rt <- function(mz1,rt1 =seq_along(mz1),
    rt.error
   })
 
-  matched.df <- sapply(1:length(mz1),function(i){
+  matched.df <- lapply(1:length(mz1),function(i){
 
    if (length(mz.match[[i]])!=0) {
      df <-data.frame(ion1 = i,
@@ -257,6 +258,35 @@ match_mz_rt <- function(mz1,rt1 =seq_along(mz1),
   })%>% data.table::rbindlist()
 
   return(matched.df)
+
+}
+
+
+#' match 2 list of ion based on mz and rt
+#' return the closest match
+#'
+#'
+#' @param mz1
+#' @param mz2
+#' @param mz.ppm
+#'
+#' @return
+#' @export
+#'
+#' @examples
+match_mz <- function(mz1,mz2,mz.ppm = 10){
+
+  match.df <- match_mz_rt(mz1= mz1,
+                          mz2= mz2,
+                          mz.ppm = mz.ppm)
+  match.df <- match.df%>%
+    dplyr::group_by(ion1)%>%
+    dplyr::slice_min(mz.error)
+
+  mz.match <- rep(NA,length(mz1))
+  mz.match[match.df$ion1] <- match.df$ion2
+
+  return(mz.match)
 
 }
 
