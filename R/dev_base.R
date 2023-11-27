@@ -79,6 +79,10 @@ colorMix <- function(...){
 #' @examples
 open_dir <- function(dir = getwd()){
 
+  if (!file.info(dir)$isdir) {
+    dir <- dirname(dir)
+
+  }
   system(sprintf("open %s", shQuote(dir)))
   return(dir)
 
