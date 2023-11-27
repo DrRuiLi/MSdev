@@ -407,4 +407,52 @@ msdev.ms2 <- MSdev_xcmsProcessing(msdev.ms2)
 
 
 
+####
+plot_Spectra_Precursor_Int(xcms.sp[sample(1:737,1)],
+                           precursor.ratio = 1e-3)
+
+ggplot(sp.data)+
+  geom_segment(aes(x = hx,y =hy,xend = hxend,
+                   yend = hyend) ,col = "grey",linewidth =1)+
+  geom_hline(aes( yintercept= ystep , col = collisionEnergy))+
+  geom_segment(aes(x = x,y =y,xend = xend,
+                   yend = yend,col = collisionEnergy),
+               linewidth = 0.5,alpha = 0.7,
+               show.legend = F)+
+  geom_point(aes(x = x, y = yend ,col = collisionEnergy),
+             show.legend = F,size = 0.5)+
+  ggrepel::geom_text_repel(aes(x = x, y = yend ,
+                               label = format(mz,digit = 4,nsmall = 4)),
+                           size =2,
+                           col = "#00000088",
+                           segment.size = 0.1,
+                           data = label.df)+
+  scale_color_manual(values = col.list)+
+  scale_y_continuous(expand = expansion(0,0),lim = c(0,ymax.abs*1.05))+
+  facet_grid(vars(collisionEnergy))+
+  labs(x = "Mz",y = "Intensity")+
+  theme_classic()+
+  theme(axis.line = element_line(linewidth = 0.1),
+        axis.ticks = element_line(linewidth = 0.1))->p
+p
+
+
+msdev <- load_as_var("d:/2023.11.MSIP/231114_qc_ms2/MSdev_2023_11_21.Rdata")
+
+xcms.xcms <- msdev@xcmsData$NegativeMS1
+xcms.sp <- get_xcms_Spectra(xcms.xcms)
+xcms.sp <- xcms.sp[msLevel(xcms.sp)==2]
+
+
+
+
+
+mz_formula(180.0639 , 1)->a
+chemform_mz(a$formula)
+
+
+
+
+
+
 
