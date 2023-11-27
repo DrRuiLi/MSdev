@@ -92,6 +92,22 @@ export_graph2pdf <- function(p ,
                              ...
                              ){
 
+  if("list" %in% class(p)){
+    if((!append) & file.exists(file_path)){
+      pdf(file_path)
+      dev.off()
+    }
+    for(i in seq_along(p)){
+
+      export_graph2pdf(p[[i]],file_path = file_path ,append = T,...)
+
+
+    }
+    return(invisible())
+
+
+  }
+
   file_path <- normalizePath(file_path)
   tpf1 <- paste0(tempfile(),".pdf")
   tpf2 <- paste0(tempfile(),".pdf")
