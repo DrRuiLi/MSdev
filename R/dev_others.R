@@ -10,12 +10,14 @@ getPCADataFrom_ropls <- function(obj.rops){
 
 plot_cpd_pathview <- function(cpd,
                               pathway.id,
-                              dir.to.save ){
+                              dir.to.save ,
+                              ...){
 
   wd <- getwd()
   setwd(dir.to.save)
-  pathview(cpd.data = cpd,pathway.id = pathway.id,
-           kegg.dir = "D:/pathview/")
+  pathview::pathview(cpd.data = cpd,pathway.id = pathway.id,
+           kegg.dir = "D:/pathview/",
+           ...)
   setwd(wd)
 
 }
