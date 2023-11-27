@@ -145,7 +145,10 @@ normalizeSpectra <- function(sp){
 normalizeSpectra_by_precursorIntensity <- function(sp){
 
   if (!length(sp)) return(sp)
-  sp$precursorIntensity[sp$precursorIntensity==0] <- sp$totIonCurrent[sp$precursorIntensity==0]
+  if(all(sp$precursorIntensity==0)){
+    sp$precursorIntensity[sp$precursorIntensity==0] <- sp$totIonCurrent[sp$precursorIntensity==0]
+    warning("No precursor intensity, replace with TIC")
+  }
   nf <-  function(z,  precursorIntensity ,...) {
     #z[,"maxIntensity"] <- max( z[, "intensity"] )
     z[, "intensity"] <- z[, "intensity"] / precursorIntensity * 100
@@ -311,7 +314,9 @@ plot_Spectra<- function(sp,label.top = 10){
                              data = label.df)+
     scale_color_manual(values = c(`FALSE` = "grey",`TRUE` = "#80B1D3"))+
     scale_alpha_manual(values = c(`FALSE` = 0,`TRUE` =1))+
-    scale_y_continuous(expand = expansion(0,0))+
+    scale_y_continuous(expand = expansion(0,0),
+                       #limits = c(0,ymax.abs*1.1),
+                       labels = scales::scientific)+
     labs(x = "Mz",y = "Intensity")+
     theme_classic()+
     theme(axis.line = element_line(linewidth = 0.1),
@@ -493,3 +498,96 @@ plot_Spectra_RT<-function(sp){
 
 
 
+plot_Spectra_similarity <- function(sp,col_title = NULL){
+
+  if(length(sp) > 100){
+    sp <- sp[sample(seq_along(sp),100)]
+    warning("Too many Spectra")
+  }
+
+  sp.data <- spectraData(sp)%>%as.data.frame()%>%
+    dplyr::arrange(collisionEnergy,rtime)
+  sp <- sp[rownames(sp.data)]
+  sp.simlilarity <- compareSpectra(sp)
+  colnames(sp.simlilarity) <- sp.data$rtime%>%round(0)
+  Heatmap(sp.simlilarity,
+          name = "Spectra\nSimilarity",
+          col = circlize::colorRamp2(
+            breaks = c(0,0.25,0.5,0.75,1),
+            colors = c("#395586","#0094B2",
+                       "#FFE8E9","#FF737B",
+                       "#E32237")
+                          ),
+          top_annotation = HeatmapAnnotation(
+            "Precursor\nIntensity" = anno_lines(sp.data$precursorIntensity,
+                                   #pt_gp = gpar(col=sp.data$collisionEnergy),
+                                   add_points = T),
+            "Collision\nEnergy" = anno_barplot(sp.data$collisionEnergy,
+                              gp = gpar(fill =sp.data$collisionEnergy ),
+                              bar_width = 1),
+            annotation_height = unit(1.5,"inch"),
+            show_annotation_name = T),
+          column_title = col_title,
+          cluster_columns = F,
+          cluster_rows = F,
+          show_row_names = F,
+          show_column_names = T)
+
+}
+
+
+plot_Spectra_Precursor_Int <- function(sp,
+                                       precursor.ratio = 0.01,
+                                       label.top = 10){
+
+  sp.data <-get_Spectra_data(sp)%>%
+    dplyr::mutate(x = mz,
+                  xend = mz,
+                  y = 0,
+                  yend = intensity,
+                  int.rank = rank(-intensity) ,
+                  matched = intensity > max(intensity,na.rm = T)/10 )
+
+  label.df <- dplyr::filter(sp.data , int.rank  < label.top)
+  ymax.abs <- max(abs(sp.data$intensity))
+  ggplot(sp.data)+
+    geom_hline(yintercept = 0 , linewidth = 0.2,col = "grey")+
+    geom_segment(aes(x = x,y =y,xend = xend,
+                     yend = yend,col = matched),
+                 linewidth = 0.2,
+                 show.legend = F)+
+    geom_point(aes(x = x, y = yend , alpha = matched,col = matched),
+               show.legend = F,size = 0.5)+
+    geom_hline(
+      yintercept =precursorIntensity(sp)*precursor.ratio
+      #yintercept = median(sp.data$intensity)
+               )+
+    geom_text(aes(x = quantile(range(x),0.9),
+                  y = quantile(range(yend),0.9),
+                  label = format(precursorIntensity(sp),
+                                 digit = 3,scientific=T)),
+              check_overlap = T)+
+    ggrepel::geom_text_repel(aes(x = x, y = yend ,
+                                 label = format(mz,digit = 4,nsmall = 4)),
+                             size =2,
+                             col = "#00000088",
+                             segment.size = 0.1,
+                             data = label.df)+
+    scale_color_manual(values = c(`FALSE` = "grey",`TRUE` = "#80B1D3"))+
+    scale_alpha_manual(values = c(`FALSE` = 0,`TRUE` =1))+
+    scale_y_log10(labels = scales::scientific,
+                  expand = expansion(0,0))+
+    labs(x = "Mz",y = "Intensity")+
+    theme_classic()+
+    theme(axis.line = element_line(linewidth = 0.1),
+          axis.ticks = element_line(linewidth = 0.1))->p
+  p
+
+
+}
+
+setMethod("plotSpec",
+          signature = "Spectra",
+          definition = function(object){
+            plot_Spectra(object)
+          })
