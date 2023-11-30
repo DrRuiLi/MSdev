@@ -20,7 +20,6 @@ Imports:
     enviPat,
     Spectra,
     webchem,
-    xcms,
     MSnbase
 Depends: 
     R (>= 3.5.0),
