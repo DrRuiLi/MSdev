@@ -19,7 +19,7 @@ open_ggplot_win <- function(p,width = NA,height = NA){
   temp.file <- tempfile(fileext = ".png")
   ggplot2::ggsave(filename = temp.file,plot = p,
                   width = width,height= height,dpi = 600)
-  open_dir(temp.file)
+  open_file(temp.file)
 
 }
 
