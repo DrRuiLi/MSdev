@@ -453,6 +453,94 @@ chemform_mz(a$formula)
 
 
 
+# Wed Nov 29 10:36:13 2023 ------------------------------
+library(SummarizedExperiment)
+yx.data <- read.csv("d:/temp/GSEA-tWt_con_vs_tKo_con.all.annot1.txt",sep = "\t")
 
+assay.data <- yx.data%>%
+  dplyr::distinct(gene_name,.keep_all = T)%>%
+  column_to_rownames("gene_name")
+
+col.data <- data.frame(label = colnames(assay.data))%>%
+  dplyr::mutate(condition = sub(pattern = "[0-9_].",x = label ,replacement = ""),
+                replicate = 1:n(),
+                )
+row.data <- data.frame(name = rownames(assay.data),
+                       ID = rownames(assay.data),
+                       Compound_name = rownames(assay.data) )
+data.se <- SummarizedExperiment(assays = assay.data,rowData = row.data,
+                     colData = col.data)
+
+data.diff <- DEP_test_diff(data.se)
+data.diff <- DEP_add_rejections(data.diff,p.adjust = F,lfc = 1)
+
+#plot_volcano(data.diff,contrast = DEP_list_contrast(data.diff),add_names = T)
+DEP_plot_volcano(data.diff,contrast = DEP_list_contrast(data.diff),show.label = T)->p
+open_ggplot_win(p,3,3)
+
+
+yx.data <- read.csv("d:/temp/tWt_con_vs_tKo_con.all.annot1.txt",sep = "\t")
+yx.data <- yx.data%>%
+  dplyr::mutate(lp = -log10(padj),
+                regulated = factor(regulated,level = c("up","FALSE","down")))
+
+ggplot(yx.data)+
+  geom_point(aes(x= log2FoldChange ,y = lp ,col = regulated))+
+  scale_color_manual(values = c( "#E24348","#6AC6E4","#2B62AD"),
+                     labels = c("Up","No diff","Down"))+
+  geom_hline(yintercept = 1.31)+
+  geom_vline(xintercept = c(-1,1))+
+  labs(x = "Log 2 (Fold Change)",
+       y = "-Log 10 (adjusted P value)",
+       col = "")+
+  xlim(c(-3,3))+
+  ylim(c(0,5))+
+  theme_bw()+
+  theme(text = element_text(family =  "TT Arial"),
+        legend.position = c(0.5,0.9),
+        legend.background = element_rect(fill = "transparent"),
+        legend.key = element_rect(fill = "transparent"))->p
+open_ggplot_win(p,4,4)
+export::graph2ppt(p,file = "d:/temp/volcano.pptx",width = 4,height =4)
+
+
+# Thu Nov 30 10:05:13 2023 ------------------------------
+sp  <- sp[msLevel(sp)==2]
+export(sp[1],file = "d:/temp/temp.msp",
+       backend = MsBackendMsp(),
+       mapping = spectraVariableMapping(MsBackendMsp(),format = "msp"))
+CFM_annotate(spectrum_file = "D:/temp/temp.msp",
+               output_file = "d:/temp/result.txt",
+               id = "Test3")
+# Thu Nov 30 12:09:44 2023 ------------------------------
+msdev.ms2 <- load_as_var("d:/2023.11.MSIP/20231126Tune/MSdev_2023_11_27.Rdata")
+xcms.xcms <- msdev.ms2@xcmsData$NegativeMS1
+xcms.xcms <- filterFile(xcms.xcms,1)
+xcms.sp <- get_xcms_Spectra(xcms.xcms)
+xcms.ms2.sp <- xcms.sp[msLevel(xcms.sp)==2]
+plot_Spectra(xcms.ms2.sp[109])
+
+#xcms.xcms <- msdev.temp
+sp <-xcms.ms2.sp
+sp.data <- spectraData(sp)%>%as.data.frame()%>%
+  filter(msLevel ==2)
+
+ggplot(sp.data)+
+  geom_point(aes(x = log10(precursorIntensity),
+                 y = log10(totIonCurrent),
+                 col = injectionTime),
+             alpha = 0.3)+
+  scale_color_gsea()
+
+# Thu Nov 30 18:09:33 2023 ------------------------------
+msdev.ms2 <- load_as_var("d:/2023.08.05.ms.dev/MSdev_2023_08_18.Rdata")
+xcms.xcms <- msdev.ms2@xcmsData$NegativeMS1
+#xcms.xcms <- filterFile(xcms.xcms,2)
+xcms.sp <- get_xcms_Spectra(xcms.xcms)
+xcms.ms2.sp <- filterMsLevel(xcms.sp,2)
+plot_Spectra_Injection(xcms.ms2.sp)
+
+a <- get_xcms_precursor_intensity(xcms.xcms ,
+                                  BPPARAM = SerialParam(progressbar = T))
 
 
