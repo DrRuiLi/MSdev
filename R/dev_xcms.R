@@ -1557,7 +1557,8 @@ get_xcms_Spectra <- function(xcms.xcms){
   xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
   xcms.sp <- Spectra(xcms.files,
                          backend = MsBackendDataFrame(),
-                         BPPARAM = SerialParam(progressbar = T))
+                         BPPARAM = SerialParam(progressbar = T))%>%
+    filterPolarity(unique(polarity(xcms.xcms)))
   spectraNames(xcms.sp) <- xcms.sp$scan_id <- xcms.scan$scan_id
   return(xcms.sp)
 
@@ -1568,4 +1569,11 @@ setMethod(f = "filepaths",signature = "XCMSnExp",definition = function(object){
   paste0(dirname(object),"/",sampleNames(object))
 })
 
+
+get_xcms_precursor_intensity <- function(xcms.xcms,...){
+
+  estimatePrecursorIntensity(xcms.xcms,
+                             method = "previous",...)
+
+}
 
