@@ -219,7 +219,8 @@ xcmsProcessingMSdev.DDA <- function(object){
   polarity.index <- c("0" = "Negative","1"="Positive")
   for (i in c(0,1)) {
     sample.info.polarity <- sampleInfo%>%
-      dplyr::filter(polarity %in% c(i,-1,"0;1"))
+      #dplyr::filter(polarity %in% c(i,-1,"0;1"))%>%
+      dplyr::filter(grepl(i,polarity))
     polarity.tag <- paste0(polarity.index[as.character(i)],"MS1")
     if (!nrow(sample.info.polarity)) {
       xcms.xcms <-NA
