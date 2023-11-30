@@ -591,3 +591,59 @@ setMethod("plotSpec",
           definition = function(object){
             plot_Spectra(object)
           })
+
+
+export_Spectra <- function(sp,
+                           format = "msp",
+                           file ){
+  bk = switch(format,
+              "msp" = MsBackendMsp::MsBackendMsp(),
+              "mona" = MsBackendMsp::MsBackendMsp(),
+              "mgf" = MsBackendMgf::MsBackendMgf())
+  Spectra::export(sp,
+                  file = file,
+                  mapping = spectraVariableMapping(bk),
+                  backend = bk)
+
+
+}
+
+load_Spectra <- function(file) {
+
+  format <- get_file_formate(file)
+
+  bk = switch(format,
+              "msp" = MsBackendMsp::MsBackendMsp(),
+              "mona" = MsBackendMsp::MsBackendMsp(),
+              "mgf" = MsBackendMgf::MsBackendMgf())
+
+  Spectra(file,source = bk ,
+          BPPARAM = SerialParam())
+}
+
+plot_Spectra_Injection <- function(sp){
+
+  sp.data <- spectraData(sp)%>%as.data.frame()
+  ggplot(sp.data)+
+    geom_point(aes(x = log10(precursorIntensity),
+                   y = log10(totIonCurrent),
+                   col = injectionTime),
+               shape = 19,
+               size = 2,
+               stroke = 0,
+               #col = "transparent",
+               alpha = 0.3)+
+    ggsci::scale_fill_gsea()+
+    ggsci::scale_color_gsea()+
+    theme_bw()
+
+
+}
+
+
+
+get_Spectra_CFM <- function(sp){
+
+
+
+}
