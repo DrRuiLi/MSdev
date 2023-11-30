@@ -91,14 +91,18 @@ open_dir <- function(dir = getwd()){
 
 open_R_libPath <- function(){
 
-open_dir(.libPaths()[1])
+  open_dir(.libPaths()[1])
 
 
 }
 
 
 
+open_file <- function(dir){
+  system(sprintf("open %s", shQuote(dir)))
+  return(dir)
 
+}
 
 open_script <- function(){
 
@@ -137,3 +141,11 @@ seq_unique <- function(x){
 }
 
 
+
+get_file_formate <- function(file){
+
+
+  str_extract(pattern  = "\\.[^\\.]*$",string = basename(file))%>%
+    sub("\\.",x = .,"")
+
+}
