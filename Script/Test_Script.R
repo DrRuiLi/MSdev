@@ -29,7 +29,8 @@ open_ggplot_win(p.patch,5,4)
 
 
 ###
-ggdraw()+draw_plot(p.sp,0,0,1,1)+
+ggdraw()+
+  draw_plot(p.sp,0,0,1,1)+
   draw_plot(p,0.8,0.8,.1,.1)->p.patch
 
 
@@ -50,6 +51,12 @@ f_smile_sdf <- function (smiles)
   #cid(sdf) = sdfid(sdf)
   sdf
 }
+
+
+
+
+# Mon Dec  4 14:17:07 2023 ------------------------------
+
 
 
 
