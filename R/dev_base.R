@@ -136,7 +136,7 @@ split_df <- function(df,n = 2){
 
 seq_unique <- function(x){
 
-  seq_along(unique(x))
+  seq_along(na.omit(unique(x)))
 
 }
 
