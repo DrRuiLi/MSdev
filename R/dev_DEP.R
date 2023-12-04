@@ -495,7 +495,7 @@ DEP.plot.heatmap <- function(data.se,
 #'
 #' @param data.se
 #' @param file_path
-#'
+#' @import SummarizedExperiment
 #' @return
 #' @export
 #'
@@ -503,7 +503,8 @@ DEP.plot.heatmap <- function(data.se,
 DEP_export_data <- function(data.se,file_path){
 
   col.data <- colData(data.se)%>%as.data.frame()
-  row.data <- rowData(data.se)%>%as.data.frame()
+  row.data <- rowData(data.se)%>%as.data.frame()%>%
+    cbind(assay(data.se))
 
   data.to.write <-list(sample_info = col.data,
                        compound = row.data)
