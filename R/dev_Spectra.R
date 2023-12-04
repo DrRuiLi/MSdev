@@ -128,14 +128,25 @@ filterSpectra_below_PrecursorMz <- function(sp){
 
 
 
-normalizeSpectra <- function(sp){
+normalizeSpectra <- function(sp,norm_to = "tic"){
 
-  nf <-  function(z, ...) {
-    #z[,"maxIntensity"] <- max( z[, "intensity"] )
-    z[, "intensity"] <- z[, "intensity"] /
-      max(z[, "intensity"], na.rm = TRUE) * 100
-    z
+  if (norm_to == "tic") {
+    nf <-  function(z, ...) {
+      #z[,"maxIntensity"] <- max( z[, "intensity"] )
+      z[, "intensity"] <- z[, "intensity"] /
+        sum(z[, "intensity"], na.rm = TRUE) * 100
+      z
+    }
   }
+  if (norm_to == "max") {
+    nf <-  function(z, ...) {
+      #z[,"maxIntensity"] <- max( z[, "intensity"] )
+      z[, "intensity"] <- z[, "intensity"] /
+        max(z[, "intensity"], na.rm = TRUE) * 100
+      z
+    }
+  }
+
   sp <- Spectra::addProcessing(sp,nf)
 
   return(sp)

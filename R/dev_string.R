@@ -85,3 +85,12 @@ str_add <- function(x , n = 1, add.type = "numeric"){
 return(x)
 
 }
+
+
+str_formate <- function(str){
+
+  str
+  gsub(x = str , pattern =  "[^A-z0-9]" ,
+       replacement = "_",perl = T)
+
+}

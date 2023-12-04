@@ -58,11 +58,14 @@ list2df <- function(x){
 
 
 
-dplyr_copy_row <- function(df,nrow.idx,n){
+dplyr_copy_row <- function(df,nrow.idx,n.rnow){
 
+  if (n.rnow==0) {
+    return(df)
+  }
   df.to.add <- df[nrow.idx,] %>%
-    add_multi_column(1:n)%>%
-    tidyr::pivot_longer(as.character(1:n))%>%
+    add_multi_column(1:n.rnow)%>%
+    tidyr::pivot_longer(as.character(1:n.rnow))%>%
     dplyr::select(-name,-value)
   rbind(df,df.to.add)
 
