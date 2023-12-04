@@ -130,7 +130,7 @@ get_MSdev_MSinfo <- function(object){
   ### define acquire Type
   ### note, these model string are identified by mzR
   {
-    HRMS <- c("Q Exactive Plus","TripleTOF 6600")
+    HRMS <- c("Q Exactive Plus","TripleTOF 6600","Orbitrap Exploris 480")
     TQMS <- c("TSQ Quantis")
     model.df <- data.frame(
       model = c(HRMS,TQMS),

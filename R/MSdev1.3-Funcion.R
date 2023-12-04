@@ -197,6 +197,7 @@ MSdev_get_Stat <- function(object){
 
   ### retrieve data
   db.info <- MSdb::getInfoFromMSDB(rowData(feature.se)$MSDB_id,
+                                   keys = c("name","adduct","formula","inchikey","Lipid_subclass"),
                                    object@projectInfo$MSdbPath)
   rowData(feature.se) <- cbind(rowData(feature.se),db.info)
 

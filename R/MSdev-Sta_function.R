@@ -638,11 +638,12 @@ analyzeMSdevDEP <- function(object){
 exportMSdev <- function(object){
 
   dir.create(paste0(object@projectInfo$projectDir,"/Statistic"),recursive = T)
-  openxlsx::write.xlsx(object@sampleInfo,
-                       file = paste0(object@projectInfo$projectDir,"/Statistic/Sample.info.xlsx"))
-
-  openxlsx::write.xlsx(object@statData$metabolites,
-                       file = paste0(object@projectInfo$projectDir,"/Statistic/Metabolites.xlsx"))
+  DEP_export_data(object@statData$metabolite.se,
+                  file = paste0(object@projectInfo$projectDir,"/Statistic/Metabolites.xlsx")
+                  )
+  DEP_export_data(object@statData$feature.se,
+                  file = paste0(object@projectInfo$projectDir,"/Statistic/Features.xlsx")
+  )
 
 }
 
