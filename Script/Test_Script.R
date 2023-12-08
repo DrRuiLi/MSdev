@@ -171,3 +171,61 @@ shinyApp(ui= ui,server = get_server(cfm.data ))
 # Thu Dec  7 14:32:55 2023 ------------------------------
 
 
+msdev.agc <- MSdev("d:/2023.11.MSIP/20231205_MS2_PARAM/Result/")
+msdev.agc <- MSdev_msConvert(msdev.agc)
+msdev.agc <- MSdev_checkSampleInfo(msdev.agc)
+msdev.agc <- MSdev_xcmsProcessing(msdev.agc)
+saveMSdev(msdev.agc)
+
+
+msdev.agc <- load_as_var("d:/2023.11.MSIP/20231205_MS2_PARAM/MSdev_2023_12_08.Rdata")
+xcms.xcms <- msdev.agc@xcmsData$NegativeMS1
+xcms.xcms <- xcms_get_dda_ms2_assignment(xcms.xcms)
+plot_xcms_dda_acquisition(xcms.xcms)
+xcms.scam <- get_xcms_scan_Stat(xcms.xcms )%>%
+  dplyr::filter(!is.na(precursorMZ))%>%
+  dplyr::mutate(groupMz(precursorMZ))
+table(sampleNames(xcms.xcms)[xcms.scam$fileIdx],xcms.scam$mz.center)
+
+sp <- get_xcms_Spectra(xcms.xcms)
+sp <- filterMsLevel(sp,2)
+plot_Spectra_Injection(sp)
+
+
+
+files <- unique(sp.data$dataOrigin)
+sp.data <- spectraData(sp)%>%as.data.frame()%>%
+  dplyr::mutate(condition = basename(dataOrigin),
+                condition = factor(condition,level = unique(condition)))%>%
+  dplyr::filter(dataOrigin %in% files[c(5)])
+sp.data$injectionTime
+ggplot(sp.data)+
+  geom_point(aes(x = log10(precursorIntensity),
+                 y = log10(totIonCurrent),
+                 col = injectionTime),
+             shape = 19,
+             size = 2,
+             stroke = 0,
+             #col = "transparent",
+             alpha = 0.5)+
+  #ggsci::scale_fill_gsea()+
+  ggsci::scale_color_gsea()+
+  theme_bw()
+
+
+
+ggplot(sp.data)+
+  geom_jitter(aes(x = condition,
+                 y = totIonCurrent))+
+  scale_y_log10()
+
+
+xcms.xcms <- load_demo("xcms")
+xcms.xcms <- xcms_get_dda_ms2_assignment(xcms.xcms)
+plot_xcms_dda_acquisition(xcms.xcms)->p
+open_ggplot_win(p,16,9)
+
+
+
+
+
