@@ -56,8 +56,118 @@ f_smile_sdf <- function (smiles)
 
 
 # Mon Dec  4 14:17:07 2023 ------------------------------
+library(igraph)
+g <- make_graph(~ Alice-Bob:Claire:Frank, Claire-Alice:Dennis:Frank:Esther,
+                George-Dennis:Frank, Dennis-Esther)
+
+plot(g,layout = layout_randomly(g))
+
+# Wed Dec  6 09:30:46 2023 ------------------------------
+nodes <- data.frame(id = 1:3)
+edges <- data.frame(from = c(1,2), to = c(1,3))
+visNetwork(nodes, edges) %>%
+  visNodes(shape = "square",
+           title = "I'm a node", borderWidth = 3)
+visNetwork(nodes, edges) %>%
+  visNodes(color = list(hover = "green")) %>%
+  visInteraction(hover = TRUE)
+
+visNetwork(nodes, edges) %>% visNodes(color = "red")
 
 
 
+
+
+
+
+
+# Wed Dec  6 12:53:13 2023 ------------------------------
+cfm.data <- read_CFM_annotate_result()
+
+
+
+
+temp.path <- "d:/temp/"
+node.data <- cfm.data$fragment_define2%>%
+  dplyr::mutate(id = fragment_id,
+                name = fragment_id,
+                label = smile,
+                checked = check_smile(smile),
+                formula = get_smile_formula(smile),
+                image =  paste0(temp.path,"Node",id,".png"),
+                shape = "image")%>%
+  column_to_rownames("fragment_id")
+edge.data <- cfm.data$fragment_transition%>%
+  dplyr::mutate(arrows = "to",
+                formula = get_smile_formula(smile),
+                formula.mz = chemform_mz(formula))%>%
+  dplyr::mutate(from.mz = node.data[`from`,"fragment_mz"],
+                to.mz = node.data[`to`,"fragment_mz"],
+                diff.mz = from.mz-to.mz)
+
+
+for (i in 1:nrow(node.data)) {
+
+  if (node.data$checked[i]) {
+
+    p <- ggplot_sdf(smiles2sdf(node.data$smile[i])[[1]],show_ele = T)
+    export::graph2png(p,
+      file = node.data$image[i],
+      width = 2,height = 2
+    )
+  }
+
+}
+
+
+visNetwork(node.data[1:10,], edge.data) %>%
+  visNodes(shapeProperties = list(useBorderWithImage = TRUE),
+           image = "file:///D:/temp/Node0.png") %>%
+  visLayout(randomSeed = 2)
+
+
+
+
+ig <- graph_from_data_frame(edge.data,vertices = node.data)
+
+
+# Wed Dec  6 17:59:21 2023 ------------------------------
+
+
+cfm.data <-read_CFM_annotate_result()
+
+#name.map <- paste0("nd",1:nrow(node.data))
+#names(name.map) <- node.data$id
+#$emp.path <- "d:/temp/"
+
+node.data <- cfm.data$fragment_define2%>%
+  dplyr::mutate(id = fragment_id,
+                #name = name.map[id],
+                checked = check_smile(smile),
+                formula = get_smile_formula(smile),
+                label = formula,
+                #image =  paste0("/pic/Node",id,".png"),
+                #image.name =  paste0("Node",id,".png"),
+                shape = "image")
+edge.data <- cfm.data$fragment_transition%>%
+  dplyr::mutate(arrows = "to",
+                formula = get_smile_formula(smile),
+                formula.mz = chemform_mz(formula))%>%
+  dplyr::mutate(from.mz = node.data[`from`,"fragment_mz"],
+                to.mz = node.data[`to`,"fragment_mz"],
+                diff.mz = from.mz-to.mz
+                #from=name.map[from],
+               # to = name.map[to]
+               )
+
+visNetwork(node.data[1:10,],edge.data)%>%
+  visNodes(image = "aaa:///Node0.png")
+
+
+
+
+load_all()
+shinyApp(ui= ui,server = get_server(cfm.data ))
+# Thu Dec  7 14:32:55 2023 ------------------------------
 
 
