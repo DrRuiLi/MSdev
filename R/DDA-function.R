@@ -1,4 +1,4 @@
-#' get_DDA_scan_stat
+#' xcms_get_dda_scan_stimulate
 #' stimulate DDA cycle and assign ms2 to feature, now just support single file
 #' @param xcms.scan
 #' @param feature_def
@@ -8,11 +8,11 @@
 #' @export
 #'
 #' @examples
-get_DDA_scan_stat <- function(xcms.scan ,
-                              feature_def,
+xcms_get_dda_scan_stimulate <- function(xcms.xcms ,
                               dynamic_time = 60){
 
-  xcms.scan <- xcms.scan%>%
+  xcms.xcms <- xcms_get_scan_Stat(xcms.xcms)
+  xcms.scan <- fData(xcms.xcms)%>%
     dplyr::mutate(cycle_ion_count = NA,
                   cycle_ion_ms2_count = NA,
                   ms2_hit = F,
@@ -20,11 +20,13 @@ get_DDA_scan_stat <- function(xcms.scan ,
                   temp_var = scan_id)%>%
     remove_rownames()%>%
     column_to_rownames("temp_var")
-  feature_def <- feature_def%>%
+  feature_def <- featureDefinitions(xcms.xcms)%>%
     as.data.frame()%>%
     dplyr::mutate(temp_var = feature_id)%>%
     remove_rownames()%>%
     column_to_rownames("temp_var")
+
+
 
   xcms.scan.ms1 <- xcms.scan %>%
     dplyr::filter(msLevel ==1)
@@ -41,11 +43,6 @@ get_DDA_scan_stat <- function(xcms.scan ,
     cycle.feature <- feature_def.temp%>%
       dplyr::filter(peakRtMin < cycle.rt[1]&peakRtMax > cycle.rt[1])
 
-   # if ("FT0222" %in% cycle.feature$feature_id) {
-   #   t1 <- cycle.feature["FT0222","peakRtMin"]
-   #   t2 <- cycle.feature["FT0222","peakRtMax"]
-   #   message(i,";",round(cycle.rt[1],0),";",round(t1,0),"~",round(t2,0))
-   # }
 
     cycle.ms2 <-xcms.scan.ms2 %>%
       dplyr::filter(ms1_group %in% xcms.scan.ms1$ms1_group[i])
@@ -93,7 +90,10 @@ get_DDA_scan_stat <- function(xcms.scan ,
   feature_def$ms2_acquire_count <-feature_def.temp$ms2_acquire_count
   feature_def$ms2_acquired <- feature_def.temp$ms2_acquired
 
-  return(list(xcms.scan = xcms.scan,feature_def=feature_def))
+  featureDefinitions(xcms.xcms) <- DataFrame(feature_def)
+  rownames(xcms.scan) <- rownames(fData(xcms.xcms))
+  fData(xcms.xcms) <- xcms.scan
+  return(xcms.xcms)
 
 
 }
@@ -101,49 +101,78 @@ get_DDA_scan_stat <- function(xcms.scan ,
 
 
 
-get_ms2_feature <- function(precursorMz,
-                            rtime ,
-                            feature_def
-){
+#' xcms_get_dda_ms2_assignment
+#'
+#'  match xcms scan of msLevel 2 to feature Definitions
+#'  based on precursorMZ, retentionTime in `xcms.scan`;
+#'  peakRtMin, peakRtMax, feature_id in `featuredef`
+#'
+#' @param xcms.xcms
+#' @param featuredef
+#'
+#' @return
+#' @export
+#'
+#' @examples
+xcms_get_dda_ms2_assignment <- function(xcms.xcms){
 
-  assign_ms2_list <- function(pmz,prt ,feature_def){
+  xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
+  featuredef <- featureDefinitions(xcms.xcms)%>%as.data.frame()
+  match.df <- match_mz_rt(featuredef$mzmed,featuredef$rtmed,
+                          xcms.scan$precursorMZ,
+                          xcms.scan$retentionTime)
+  match.df <- match.df%>%
+    dplyr::mutate(featuredef[ion1,],
+                  scan_id = xcms.scan$scan_id[ion2],
+                  scan_rt = xcms.scan$retentionTime[ion2])%>%
+    dplyr::filter(scan_rt < peakRtMax&scan_rt>peakRtMin )%>%
+    dplyr::group_by(scan_id)%>%
+    dplyr::slice_min(mz.error)
 
-    feature_def %>%
-      dplyr::mutate(mz.ppm = abs(mzmed-pmz)/pmz,
-                    rt.mean = (peakRtMin+peakRtMax)/2,
-                    rt.error = abs(prt - rt.mean))%>%
-      dplyr::filter( mz.ppm< 1e-5,
-                     prt < peakRtMax,
-                     prt > peakRtMin)%>%
-      dplyr::slice_min(rt.error)%>%
-      dplyr::slice_min(mz.ppm)%>%
-      dplyr::pull( feature_id)->x
-    if (length(x)==0) {
-      return(NA)
 
+
+  xcms.scan$ms2_feature_id <- sapply(
+    1:nrow(xcms.scan),
+    function(i){
+      fdf <- match.df[match.df$ion2==i,]
+      fid <- fdf$feature_id[which.min(fdf$mz.error)]
+      if (length(fid)==0) {
+        return(NA)
+      }
+      return(fid)
     }
-    return(x)
+  )
+  xcms.scan$ms2_hit <- !is.na(xcms.scan$ms2_feature_id)
 
-  }
+  featuredef$ms2_scan_id <- sapply(featuredef$feature_id,
+                                   function(fid){
+                                     xcms.scan$scan_id[which(xcms.scan$ms2_feature_id==fid)]
+                                   })
 
-  ion.df <- data.frame(mz = precursorMz,
-                       rt = rtime)%>%
-    dplyr::rowwise()%>%
-    dplyr::mutate(feature_id = assign_ms2_list(mz,rt,feature_def))%>%
-    dplyr::ungroup()
+  fData(xcms.xcms) <- xcms.scan
+  featureDefinitions(xcms.xcms) <- featuredef%>%
+    dplyr::mutate(ms2_acquire_count = sapply(ms2_scan_id,length) ,
+                  ms2_acquired= ms2_acquire_count>0)%>%
+    DataFrame()
 
 
-  return(ion.df$feature_id)
+  return(xcms.xcms)
+
 
 
 }
 
 
-plot_dda_acquisition <- function(xcms.scan , feature_def) {
+plot_xcms_dda_acquisition <- function(xcms.xcms) {
 
-  xcms.scan.ms2 <- xcms.scan%>%
+  if (!"ms2_feature_id" %in%colnames(xcms.xcms@featureData@data)) {
+    xcms.xcms <- xcms_get_dda_ms2_assignment(xcms.xcms)
+  }
+  xcms.scan.ms2 <- fData(xcms.xcms)%>%
     dplyr::filter(msLevel == 2)
 
+  feature_def <- featureDefinitions(xcms.xcms)%>%
+    as.data.frame()
 
   ggplot()+
     geom_segment(data = feature_def,
@@ -151,7 +180,7 @@ plot_dda_acquisition <- function(xcms.scan , feature_def) {
                      y= mzmed , yend = mzmed , col = ms2_acquired))+
     geom_point(data = xcms.scan.ms2, aes(x = retentionTime , y = precursorMZ,
                                          fill = ms2_hit),pch = 21)+
-    scale_x_continuous(breaks = seq(0,max(xcms.scan$retentionTime),60))+
+    scale_x_continuous(breaks = seq(0,max(xcms.scan.ms2$retentionTime),60))+
     #xlim(c(0,150))+
     #ylim(c(0,1200))+
     labs(x = "Acquisition windows",
@@ -165,10 +194,11 @@ plot_dda_acquisition <- function(xcms.scan , feature_def) {
 
 
 
-plot_dda_cycle <- function( xcms.scan,
+plot_xcms_dda_cycle_stimulate <- function( xcms.xcms,
                             topn =20){
 
 
+  xcms.scan <- fData(xcms.xcms)
 
   plot.data <- xcms.scan%>%
     dplyr::filter(msLevel==1)%>%
@@ -213,8 +243,10 @@ plot_dda_cycle <- function( xcms.scan,
 }
 
 
-plot_dda_feature_stat <- function(feature_def){
+plot_xcms_dda_feature_stat <- function(xcms.xcms){
 
+  feature_def <- featureDefinitions(xcms.xcms)%>%
+    as.data.frame()
   ggplot(feature_def,
          aes( x = 1 , fill = ms2_acquired))+
     geom_bar(show.legend = F)+
@@ -224,7 +256,7 @@ plot_dda_feature_stat <- function(feature_def){
     theme_void()->p1
 
   ggplot(feature_def,
-         aes( y = log10(med_intensity),
+         aes( y = peakWidth,
                           x = ms2_acquired,
                           col = ms2_acquired))+
     geom_boxplot(alpha = 1,outlier.size = 0,
@@ -232,19 +264,19 @@ plot_dda_feature_stat <- function(feature_def){
     geom_jitter(size = 0.1,alpha = 0.3,
                 show.legend = F)+
     labs(x = "MS2 acquired" , y = "Peak width")+
+    ylim(c(0,50))+
     theme_classic()+
     theme(axis.text.x  = element_blank(),
           axis.title.x = element_blank())->p2
 
   ggplot(feature_def,
-         aes( y = peakWidth,
+         aes( y = log10(peakMaxo),
               x = ms2_acquired,
               col = ms2_acquired))+
     geom_boxplot(alpha = 1,outlier.size = 0,
                  show.legend = F)+
     geom_jitter(size = 0.1,alpha = 0.3,
                 show.legend = F)+
-    ylim(c(0,20))+
     labs(x = "MS2 acquired" , y = "Log10 intensity")+
     theme_classic()+
     theme(axis.text.x  = element_blank(),
@@ -252,15 +284,15 @@ plot_dda_feature_stat <- function(feature_def){
 
 
   ggplot(feature_def)+
-    stat_density2d(aes(x = log10(med_intensity),
+    stat_density2d(aes(x = log10(peakMaxo),
                        y = peakWidth,
                        col = ms2_acquired),
                    n = 100)+
     labs(col = "MS2 acquired" ,
          y = "Peak width",
          x = "Log10 intensity")+
-    xlim(c(4,8))+
-    ylim(c(0,20))+
+    #xlim(c(4,8))+
+    ylim(c(0,50))+
     theme_bw()+
     theme(legend.position = c(0.8,0.8),
           legend.background = element_rect(fill = "transparent"))->p4
@@ -272,9 +304,10 @@ plot_dda_feature_stat <- function(feature_def){
 
 }
 
-plot_dda_cycle_stat <- function(xcms.scan){
+plot_xcms_dda_cycle_stat <- function(xcms.xcms){
 
 
+  xcms.scan <- fData(xcms.xcms)
   xcms.scan.ms1 <- dplyr::filter(xcms.scan,msLevel == 1)
   ggplot(xcms.scan.ms1)+
     geom_histogram(aes(y = ms2_count),

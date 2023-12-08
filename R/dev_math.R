@@ -262,7 +262,7 @@ match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
 }
 
 
-#' match 2 list of ion based on mz and rt
+#' match 2 list of ion based on mz
 #' return the closest match
 #'
 #'

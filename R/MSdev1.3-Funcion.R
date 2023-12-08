@@ -108,11 +108,8 @@ MSdev_match_Spectra_to_feature <- function(object){
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
       as.data.frame()
-    sp.ms2.data <- Spectra::spectraData(sp.ms2)%>%
-      as.data.frame()%>%
-      dplyr::mutate(precursorMZ = precursorMz,
-                    retentionTime = rtime)%>%
-      get_xcms_ms2_feature_id(featuredef = xcms.fdf)
+    sp.ms2.data <- get_Spectra_ms2_feature_id(sp.ms2,xcms.fdf)
+
 
     ### update MS2_Spectra
     sp.ms2.total <-object@spectra$MS2_Spectra %>%

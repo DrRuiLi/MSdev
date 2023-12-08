@@ -452,7 +452,7 @@ plot_XChromatograms <- function(xchroms , norm = T,move = T,column.group = 1:nco
 #' @return
 #' @export
 #'
-get_xcms_feature_def_stat <- function(xcms.xcms){
+xcms_get_feature_def_stat <- function(xcms.xcms){
 
   feature.def <- featureDefinitions(xcms.xcms)
   peaks.data <- chromPeaks(xcms.xcms)
@@ -1308,60 +1308,21 @@ get_xcms_scan_Stat <- function(xcms.xcms){
     dplyr::ungroup()%>%
     dplyr::select(scan_id,ms1_no,ms1_group,ms1_group_rt,
                   ms2_count,cycle_time,scan_time,everything(),
-                  -c(x,fileStr,spStr,ms1_no_str))
+                  -c(x,fileStr,spStr,ms1_no_str))%>%
+    as.data.frame()
+  suppressMessages(row.names(xcms.fdata) <- rownames(fData(xcms.xcms)))
 
   xcms.fdata
 }
 
 
-#' get_xcms_ms2_feature_id
-#'
-#'  match xcms scan of msLevel 2 to feature Definitions
-#'  based on precursorMZ, retentionTime in `xcms.scan`;
-#'  peakRtMin, peakRtMax, feature_id in `featuredef`
-#'
-#' @param xcms.scan
-#' @param featuredef
-#'
-#' @return
-#' @export
-#'
-#' @examples
-get_xcms_ms2_feature_id <- function(xcms.scan,
-                                     featuredef ){
-
-  xcms.scan <- xcms.scan%>%
-    dplyr::filter(msLevel == 2)
-
-  match.df <- match_mz_rt(featuredef$mzmed,featuredef$rtmed,
-                          xcms.scan$precursorMZ,
-                          xcms.scan$retentionTime)
-  match.df <- match.df%>%
-    dplyr::mutate(featuredef[ion1,],
-                  sp_id = xcms.scan$sp_id[ion2],
-                  sp_rt = xcms.scan$retentionTime[ion2])%>%
-    dplyr::filter(sp_rt < peakRtMax&sp_rt>peakRtMin )%>%
-    dplyr::group_by(sp_id)%>%
-    dplyr::slice_min(mz.error)
-
-
-
-  xcms.scan$ms2_matched_feature <- sapply(
-    1:nrow(xcms.scan),
-    function(i){
-      fid <- match.df$feature_id[match.df$ion2==i]
-      if (length(fid)==0) {
-        return(NA)
-      }
-      return(fid)
-    }
-  )
-
-  return(xcms.scan)
-
-
-
+xcms_get_scan_Stat <- function(xcms.xcms){
+  xcms.fdata <- get_xcms_scan_Stat(xcms.xcms )
+  fData(xcms.xcms) <- xcms.fdata
+  return(xcms.xcms)
 }
+
+
 
 
 plot_xcms_TIC <- function(xcms.xcms){

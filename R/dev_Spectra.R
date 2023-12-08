@@ -219,7 +219,46 @@ combineSpectra_groupby_ce <- function(sp,minProp = 0.5){
 
 }
 
+get_Spectra_ms2_feature_id <- function(sp,
+                                    featuredef ){
 
+
+
+  sp.data <- Spectra::spectraData(sp)%>%
+    as.data.frame()%>%
+    dplyr::mutate(precursorMZ = precursorMz,
+                  retentionTime = rtime)%>%
+    dplyr::filter(msLevel == 2)
+
+  match.df <- match_mz_rt(featuredef$mzmed,featuredef$rtmed,
+                          sp.data$precursorMZ,
+                          sp.data$retentionTime)
+  match.df <- match.df%>%
+    dplyr::mutate(featuredef[ion1,],
+                  sp_id = sp.data$sp_id[ion2],
+                  sp_rt = sp.data$retentionTime[ion2])%>%
+    dplyr::filter(sp_rt < peakRtMax&sp_rt>peakRtMin )%>%
+    dplyr::group_by(sp_id)%>%
+    dplyr::slice_min(mz.error)
+
+
+
+  sp.data$ms2_matched_feature <- sapply(
+    1:nrow(sp.data),
+    function(i){
+      fid <- match.df$feature_id[match.df$ion2==i]
+      if (length(fid)==0) {
+        return(NA)
+      }
+      return(fid)
+    }
+  )
+
+  return(sp.data)
+
+
+
+}
 
 get_Spectra_transition <- function(sp){
 
