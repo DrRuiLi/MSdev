@@ -2,7 +2,7 @@
 % Please edit documentation in R/dev_math.R
 \name{match_mz}
 \alias{match_mz}
-\title{match 2 list of ion based on mz and rt
+\title{match 2 list of ion based on mz
 return the closest match}
 \usage{
 match_mz(mz1, mz2, mz.ppm = 10)
@@ -11,6 +11,6 @@ match_mz(mz1, mz2, mz.ppm = 10)
 \item{mz.ppm}{}
 }
 \description{
-match 2 list of ion based on mz and rt
+match 2 list of ion based on mz
 return the closest match
 }
