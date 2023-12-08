@@ -86,3 +86,46 @@ ggplot_sdf <- function(sdf,
   p
   return(p)
 }
+
+
+
+check_sdf <- function(sdf){
+
+  atom.matrix <- atomcountMA(sdf)
+  atom.matrix <- atom.matrix[,setdiff(colnames(atom.matrix),"0"),drop =F]
+  apply(atom.matrix,1,sum) >0
+
+}
+
+check_smile <- function(smile){
+
+  smile.sdf <- suppressWarnings(smiles2sdf(smile))
+  check_sdf(smile.sdf)
+
+}
+
+
+
+get_sdf_formula <- function(sdf){
+
+  sdf.checked <- check_sdf(sdf)
+  sdf.formula <- character()
+  sdf.formula[sdf.checked] <- MF(sdf[sdf.checked],addH=T)
+  sdf.formula <- MSCC::chemform_formate(sdf.formula)
+  return(sdf.formula)
+}
+
+
+get_smile_formula <- function(smile){
+
+  smile.sdf <- suppressWarnings(smiles2sdf(smile))
+  smile.formula <- get_sdf_formula(smile.sdf)
+  smile.formula <- case_when(smile=="O"~"H2O1",
+                 smile=="[HH]"~"H2",
+                 T~smile.formula)
+
+  return(smile.formula)
+}
+
+
+

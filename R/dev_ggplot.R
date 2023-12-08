@@ -108,11 +108,11 @@ export_graph2pdf <- function(p ,
 
   }
 
-  file_path <- normalizePath(file_path)
+  file_path <- normalizePath(file_path,mustWork = F)
   tpf1 <- paste0(tempfile(),".pdf")
   tpf2 <- paste0(tempfile(),".pdf")
-  export::graph2pdf(plot_multi_formate(p),
-                    file = tpf1,...)
+  suppressMessages(export::graph2pdf(plot_multi_formate(p),
+                                     file = tpf1,...))
 
   if (append & file.exists(file_path)) {
     qpdf::pdf_combine(input = c(file_path,tpf1),
@@ -122,7 +122,7 @@ export_graph2pdf <- function(p ,
   }
   message("Exported graph as ",file_path)
   file.copy(tpf2,file_path,overwrite = T)
-  file.remove(tpf1,tpf2)
+  suppressWarnings(file.remove(tpf1,tpf2))
   return(invisible())
 
 }

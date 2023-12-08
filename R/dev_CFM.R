@@ -229,12 +229,27 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
 
   }
 
+  ### re id
+  {
+    fragment.id.new <- paste0("Fragment",num2str(1:nrow(session.data.3)))%>%
+      `names<-`(session.data.3$fragment_id)
+    peak.assignment <-peak.assignment%>%
+      dplyr::mutate(fragment_id =fragment.id.new[fragment_id] )
+    session.data.3 <- session.data.3%>%
+      dplyr::mutate(fragment_id =fragment.id.new[fragment_id] )%>%
+      `rownames<-`(.$fragment_id)
+    session.data.4 <- session.data.4%>%
+      dplyr::mutate(from = fragment.id.new[from],
+                    to = fragment.id.new[to])
+
+  }
+
   cfm.data <- list(
     peak.assignment = peak.assignment,
     fragment_define1 = session.data.2,
     fragment_define2 = session.data.3,
     fragment_transition = session.data.4
-  )%>%
+  )
 
     return(invisible(cfm.data))
 }
