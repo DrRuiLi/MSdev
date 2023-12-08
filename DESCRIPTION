@@ -19,6 +19,7 @@ Imports:
     BiocParallel,
     enviPat,
     Spectra,
+    ChemmineR,
     webchem,
     MSnbase
 Depends: 
