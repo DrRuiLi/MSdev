@@ -4,7 +4,7 @@
 \alias{get_cfm_shiny_server}
 \title{Generate Server for shiny}
 \usage{
-get_cfm_shiny_server(shiny_sever_data)
+get_cfm_shiny_server()
 }
 \description{
 Generate Server for shiny

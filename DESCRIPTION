@@ -19,13 +19,24 @@ Imports:
     BiocParallel,
     enviPat,
     Spectra,
+    plotly,
     ChemmineR,
+    shiny,
+    SummarizedExperiment,
     webchem,
     MSnbase
 Depends: 
     R (>= 3.5.0),
+    igraph,
     xcms,
     Spectra,
+    enviPat,
+    Spectra,
+    plotly,
+    ChemmineR,
+    shiny,
+    SummarizedExperiment,
+    webchem,
     tidyverse
 LazyData: true
 VignetteBuilder: knitr

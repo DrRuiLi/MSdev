@@ -227,5 +227,244 @@ open_ggplot_win(p,16,9)
 
 
 
+cfm_data <- read_CFM_annotate_result()
+
+
+lw <- 5
+sw <- 3
+
+case_when(width = case_when(bond_type== 1 ~ lw,
+                            bond_type== 2  ) )
+
+bond.data<- bond.data%>%
+  dplyr::mutate(bond_id = num2str(1:n()))%>%
+  dplyr::slice(rep(1:n(),bond_type) )%>%
+  dplyr::group_by( bond_id )%>%
+  dplyr::mutate( id = 1:n(),
+                 width = id*5,
+                 color = (id%%2 +(bond_type+1)%%2)%%2,
+                 color = ifelse(color==0,"white","grey"))
+
+nodes <- data.frame(id = 1:4)
+edges <- data.frame(from = c(2,4,3,3,2), to = c(1,2,4,2,1))
+
+visNetwork(nodes, edges, width = "100%")
+
+
+
+"[O-]CC1OC(O)C(O)C(O)C1O"%>%
+  smiles2sdf()%>%
+  `[[`(1)%>%
+  get_sdf_igraph()%>%
+  vis_sdf_igraph(highlight = 1:3)
+
+
+
+vis_sdf_igraph(graph.from)
+vis_sdf_igraph(graph.to)
+
+
+
+###
+ggplot(fragment.data,
+       aes(x = (dis.to.root),
+           y =retrieve.ratio ,
+           group =dis.to.root,
+           col = dis.to.root))+
+  labs(title = "Fragment Atom Tracealibity",
+       x = "Distance to root",
+       y = "Traciable atom ratio",
+       col = "Distance to root")+
+  geom_boxplot()+
+  ggforce::geom_sina()+
+  scale_color_gsea()+
+  theme_bw()->p
+open_ggplot_win(p,5,3)
+
+
+a <- shortest_paths(frag.trans.graph,1)$vpath%>%
+  sapply(length)
+
+
+
+visIgraph(trans.graph)%>%
+  visNodes()%>%
+  visOptions(
+    highlightNearest = T,
+    nodesIdSelection = list(
+      enabled=T,
+      useLabels = F
+    ),
+    manipulation = TRUE)
+# Thu Dec 14 15:34:46 2023 ------------------------------
+cfm.data <- read_CFM_annotate_result()
+f3 <- cfm.data$fragment_transition
+f3$smile[!check_smile(f3$smile)]%>%table()
+f3.sdf[[1]]
+
+a <- read.SDFset("d:/temp/Structure2D_COMPOUND_CID_783.sdf"  )
+b <- read.SDFset("D:/temp/Structure2D_COMPOUND_CID_962.sdf")
+smile_map <- c(a,b)
+
+smile_map@ID <- c("[HH]","O")
+c[["H2"]]
+
+
+a <- peak.assignment%>%
+  dplyr::mutate(fragment_id = unname(fragment.id.new[fragment_id]))
+a$fragment_id
+
+
+a <- read_CFM_annotate_result()
+
+cfm.data <- read_CFM_annotate_result()
+frag.def <- cfm.data$fragment_define
+frag.trans <- cfm.data$fragment_transition
+frag.sdf <- get_smile_sdf(cfm.data$fragment_define$smile,
+                          smile.id = frag.def$fragment_id)
+
+i <- 13
+frag.parent <- frag.sdf[[frag.trans$from[i]]]
+frag.product <- frag.sdf[[frag.trans$to[i]]]
+frag.fmc
+
+
+sdf.igraph1 <- get_sdf_igraph(frag.parent)
+sdf.igraph2 <- get_sdf_igraph(frag.product)
+
+
+frag.fmc <- fmcs(frag.parent,frag.product,au = 0,bu = 5)
+frag.fmc
+i_fmc <- 1
+vis_sdf_igraph_compare(sdf.igraph1 ,sdf.igraph2 ,
+                       frag.fmc@mcs1$mcs1[[i_fmc]],
+                       frag.fmc@mcs2$mcs2[[i_fmc]])
+
+
+vis_sdf_igraph(sdf.igraph1)
+
+sdf.igraph.highlight <- add_sdf_igraph_highlight(sdf.igraph1)
+V(sdf.igraph.highlight)$shape = "icon"
+V(sdf.igraph.highlight)$icon.face = 'Ionicons'
+V(sdf.igraph.highlight)$icon.code  = "f1005"
+sdf.igraph.highlight%>%
+  visIgraph(idToLabel = T)%>%
+  visNodes(font = list(size = 40,
+                       strokeWidth = 10),
+           size = 60,
+           borderWidth  = 5,
+           color = list(background = "transparent",
+                        border = "#2B7CE9"))%>%
+  visEdges(arrows = list(to = F),
+           length = 0.8)%>%
+  addIonicons()
+
+
+
+
+CFM_annotate(smiles_or_inchi = smile,
+             spectrum_file = paste0(project.dir,"/Result/Spectra.",id,".for.cfm.txt"),
+             id = id,
+             param_adduct = "[M-H]-",
+             output_file =NULL) ->a
+
+
+
+glu.cfm.pred <- CFM_predict(prob_thresh = 0.001,param_adduct = "[M-H]-")
+glu.cfm.fraggen <- CFM_fraggen(max_depth = 2,param_adduct = "[M-H]-")
+glu.cfm.exp <- read_CFM_annotate_result()
+
+
+peak.pred <- glu.cfm.pred$peak_assignment
+peak.exp <- glu.cfm.exp$peak_assignment
+frag.def.pred <- glu.cfm.pred$fragment_define
+frag.def.exp<- glu.cfm.exp$fragment_define
+frag.def.gen <- glu.cfm.fraggen$fragment_define
+
+frag.def.exp$smile %in% frag.def.gen$smile
+
+# Sat Dec 16 16:39:48 2023 ------------------------------
+frag.def.exp <- frag.def.exp%>%
+  dplyr::mutate(formula = get_smile_formula(smile),
+                mz = chemform_mz(formula,-1),
+                inS = smile %in% frag.def.pred$smile)
+
+frag.def.pred <- frag.def.pred%>%
+  dplyr::mutate(formula = get_smile_formula(smile),
+                mz = chemform_mz(formula,-1),
+                inS = smile %in% frag.def.exp$smile)
+
+peak.pred <- peak.pred%>%
+  dplyr::mutate(mz = frag.def.pred$mz[match(fragment_id,frag.def.pred$fragment_id)],
+                smile = frag.def.pred$smile[match(fragment_id,frag.def.pred$fragment_id)])%>%
+  dplyr::group_by(energy)%>%
+  dplyr::mutate(esum = sum(fragment_score,na.rm =T))%>%
+  dplyr::group_by(energy,mz)%>%
+  dplyr::mutate(msum = sum(fragment_score))%>%
+  dplyr::group_by(energy)%>%
+  dplyr::mutate(nmsum = msum/max(msum,na.rm = T)*100,
+                peak_ratio = 100*intensity/(sum(unique(intensity))))
+
+peak.exp <- peak.exp%>%
+  dplyr::mutate(mz = frag.def.exp$mz[match(fragment_id,frag.def.exp$fragment_id)],
+                smile = frag.def.exp$smile[match(fragment_id,frag.def.exp$fragment_id)])%>%
+  dplyr::group_by(energy)%>%
+  dplyr::mutate(esum = sum(fragment_score,na.rm =T))%>%
+  dplyr::group_by(energy,mz)%>%
+  dplyr::mutate(msum = sum(fragment_score))%>%
+  dplyr::group_by(energy)%>%
+  dplyr::mutate(nmsum = msum/max(msum,na.rm = T)*100,
+                peak_ratio = 100*intensity/(sum(unique(intensity))))
+
+
+
+
+MSdev.tca <- MSdev("d:/2023.11.MSIP/20231213_TCA/Result/")
+MSdev.tca <- MSdev_msConvert(MSdev.tca)
+MSdev.tca <- MSdev_checkSampleInfo(MSdev.tca)
+MSdev.tca <- MSdev_xcmsProcessing(MSdev.tca)
+saveMSdev(MSdev.tca)
+
+
+xcms.xcms <- MSdev.tca@xcmsData$NegativeMS1
+xcms.sp.TCA <- get_xcms_Spectra(xcms.xcms)
+xcms.ms2.TCA <- filterMsLevel(xcms.sp.TCA,2)
+xcms.ms2.data.TCA <- spectraData(xcms.ms2.TCA)%>%
+  as.data.frame( )%>%
+  dplyr::mutate(dp = precursorIntensity * injectionTime/1000)
+
+
+ggplot(xcms.ms2.data)+
+  geom_point(aes(x = log10(dp),
+                 y = log10(totIonCurrent),
+               #  y= injectionTime,
+                 col = collisionEnergy))+
+  geom_abline(slope = 1)+
+  scale_color_gsea()
+
+
+# Sat Dec 16 20:08:28 2023 ------------------------------
+msdev <- load_as_var("d:/2023.11.MSIP/231108_Glc_Tracing_rawdata/MSdev_2023_11_09.Rdata")
+xcms.xcms <- msdev@xcmsData$PositiveMS1
+xcms.sp <- get_xcms_Spectra(xcms.xcms)
+xcms.ms2 <- filterMsLevel(xcms.sp,2)
+xcms.ms2.data <- spectraData(xcms.ms2)%>%
+  as.data.frame()%>%
+  dplyr::mutate(dp = precursorIntensity * injectionTime/1000)
+
+xcms.ms2.data <-xcms.ms2.data[sample(1:nrow(xcms.ms2.data),
+                                     3000),]
+
+ggplot(xcms.ms2.data)+
+  geom_point(aes(
+                  #x = injectionTime,
+                 x = log10(dp),
+                 y = log10(basePeakIntensity),
+                 #  y= injectionTime,
+                 col = injectionTime))+
+  geom_abline(slope = 1)+
+  scale_color_gsea()
+
+
 
 
