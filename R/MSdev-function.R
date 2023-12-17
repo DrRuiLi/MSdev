@@ -237,7 +237,7 @@ xcmsProcessingMSdev.DDA <- function(object){
       cbind(Biobase::pData(xcms.xcms),
             sample.info.polarity)
 
-    xcms.xcms <- get_xcms_feature_stat(xcms.xcms )
+    xcms.xcms <- xcms_get_feature_stat(xcms.xcms )
     xcms.xcms -> object@xcmsData[[polarity.tag]]
 
 

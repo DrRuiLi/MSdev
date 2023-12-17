@@ -482,7 +482,7 @@ xcms_get_feature_def_stat <- function(xcms.xcms){
 
 
 
-get_xcms_feature_val_stat <- function(xcms.xcms) {
+xcms_get_feature_val_stat <- function(xcms.xcms) {
 
   xcms.pdata <- Biobase::pData(xcms.xcms)
   featureval <- featureValues(xcms.xcms)
@@ -512,10 +512,10 @@ get_xcms_feature_val_stat <- function(xcms.xcms) {
 }
 
 
-get_xcms_feature_stat <- function(xcms.xcms){
+xcms_get_feature_stat <- function(xcms.xcms){
   xcms.xcms <- xcms.xcms %>%
-    get_xcms_feature_def_stat()%>%
-    get_xcms_feature_val_stat()
+    xcms_get_feature_def_stat()%>%
+    xcms_get_feature_val_stat()
   return(xcms.xcms)
 }
 
