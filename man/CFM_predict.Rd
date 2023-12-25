@@ -5,12 +5,12 @@
 \title{CFM predict}
 \usage{
 CFM_predict(
-  smiles_or_inchi_or_file = "CCCNNNC(O)O",
+  smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
   prob_thresh = 0.001,
   param_adduct = "[M+H]+",
   annotate_fragments = 1,
-  output_file_or_dir = tempfile(),
-  apply_postproc = 1,
+  output_file_or_dir = NULL,
+  apply_postproc = 0,
   suppress_exceptions = 1
 )
 }
