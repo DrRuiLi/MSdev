@@ -467,4 +467,297 @@ ggplot(xcms.ms2.data)+
 
 
 
+# Sun Dec 17 22:14:58 2023 ------------------------------
+msdev <- load_as_var("d:/2023.11.MSIP/231108_Glc_Tracing_rawdata/MSdev_2023_11_09.Rdata")
+xcms.pos <- msdev@xcmsData$PositiveMS1
+xcms.neg <- msdev@xcmsData$NegativeMS1
+xcms.pos <- filterFile(xcms.pos,which(!grepl("Blank",sampleNames(xcms.pos))))
+xcms.neg <- filterFile(xcms.neg,which(!grepl("Blank",sampleNames(xcms.neg))))
 
+xcms.tune.pos <- get_xcms_Autotuner(xcms.pos)
+xcms.tune.neg <- get_xcms_Autotuner(xcms.neg)
+
+
+
+msdev.tca <- MSdev("d:/2023.11.MSIP/231108_Glc_Tracing_rawdata/rawData/")
+msdev.tca <- MSdev_msConvert(msdev.tca)
+msdev.tca <- MSdev_checkSampleInfo(msdev.tca)
+msdev.tca@experimentInfo <- MS_Experiment[10]
+get_MSdev_param(msdev.tca)
+msdev.tca <- MSdev_xcmsProcessing(msdev.tca)
+
+
+# Mon Dec 18 14:39:49 2023 ------------------------------
+msdev.tca <- load_as_var("d:/2023.11.MSIP/20231126Tune/MSdev_2023_11_27.Rdata")
+get_MSdev_param(msdev.tca)
+xcms.xcms<- msdev.tca@xcmsData$NegativeMS1
+xcms.peaks <- get_xcms_peaks_stat(xcms.xcms)
+table(sampleNames(xcms.xcms)[xcms.peaks$sample])
+
+
+
+# Tue Dec 19 09:24:18 2023 ------------------------------
+i <- 7
+expSpec <- sp.exp[[i]]
+refSpec <- sp.ref[[i]]
+scorem <- compareSpectra(expSpec,refSpec)
+scorem[is.infinite(scorem)|is.na(scorem )] <- 0
+dim(scorem) <- c(length(expSpec),length(refSpec))
+
+apply(scorem,2,max,na.rm=T)
+
+
+Spectra_database[13997]%>%
+  filterSpectra_below_PrecursorMz()
+
+
+xcms.xcms <- load_demo("xcms")
+a <- chromPeaks(xcms.xcms)
+
+groupf
+
+groupFeatures()
+
+xmse <- groupFeatures(xcms.xcms, EicSimilarityParam(threshold = 0.7, n = 2))
+xmse <- xcms.xcms
+plot(featureDefinitions(xmse)$rtmed, featureDefinitions(xmse)$mzmed,
+     xlab = "retention time", ylab = "m/z", main = "features",
+     col = "#00000080", pch = 21, bg = "#00000040")
+grid()
+xmse <- groupFeatures(xmse, param = SimilarRtimeParam(5))
+#plotFeatureGroups(xmse)
+table(featureGroups(xmse))
+xmse <- groupFeatures(
+  xmse, AbundanceSimilarityParam(threshold = 0.7, transform = log2),
+  filled = TRUE)
+table(featureGroups(xmse))
+
+
+cor_plot <- function(x, y) {
+  C <- cor(x, y, use = "pairwise.complete.obs")
+  col <- ifelse(C >= 0.7, yes = "#0000ff80", no = "#ff000080")
+  points(x, y, pch = 16, col = col)
+  grid()
+}
+fts <- grep("FG.0409.001", featureGroups(xmse))
+pairs(t(fvals[fts, ]), gap = 0.1, main = "FG.040", panel = cor_plot)
+register(SerialParam())
+xmse <- groupFeatures(xmse, EicSimilarityParam(threshold = 0.7, n = 5))
+table(featureGroups(xmse))
+
+fidx <- grep("FG.013.001.", featureGroups(xmse))
+eics <- featureChromatograms(
+  xmse, features = rownames(featureDefinitions(xmse))[fidx],
+  filled = TRUE, n = 1)
+
+xcms.grouped <- xcms_get_feature_group(xcms.xcms)
+
+
+
+
+load("d:/temp/xcms.feature.group.temp")
+
+
+msdev <- load_as_var("d:/2023.11.MSIP/20231126Tune/MSdev_2023_11_27.Rdata")
+xcms.xcms <- msdev@xcmsData$PositiveMS1
+xcms.grouped <- xcms_get_feature_group(xcms.xcms)
+
+
+
+a <- featureDefinitions(xcms.grouped)%>%
+  as.data.frame()
+
+
+get_xcms_feature_group_split <- function(feature_group ){
+
+  a <- str_split(pattern  = "\\.",string =  feature_group)
+  b <- do.call("rbind",a)%>%
+    as.data.frame()
+  table(b$V4)
+
+
+}
+
+
+msdev.demo <- MSdev("d:/2023_12_19-Xinchenhao/Data/")
+msdev.demo <- MSdev_checkSampleInfo(msdev.demo)
+msdev.demo <- MSdev_msConvert(msdev.demo)
+msdev.demo <- MSdev_xcmsProcessing(msdev.demo)
+msdev.demo <- MSdev_extract_Spectra(msdev.demo)
+msdev.demo <- MSdev_match_Spectra_to_feature(msdev.demo)
+msdev.demo <- MSdev_annotation(msdev.demo,
+                               db.path = "d:/MSdb.2023.05.30/LipidBlast.rda")
+msdev.demo <- MSdev_get_Stat(msdev.demo)
+saveMSdev(msdev.demo)
+MSdev_export(msdev.demo)
+
+
+
+xcms.metabolite <- msdev.demo@statData$metabolite.se%>%
+  rowData()%>%
+  as.data.frame()
+
+
+
+# Sat Dec 23 14:21:58 2023 ------------------------------
+get_MSdev_param(msdev.demo)
+
+
+
+# Mon Dec 25 16:56:17 2023 ------------------------------
+ppm.record <- data.frame(ppm = 1:10000,c13.count = 0)
+for (i in 1:10000) {
+
+  message(i)
+  fdf.edge <- fdf.edge%>%
+    rowwise()%>%
+    dplyr::mutate(closest.c13.count = which.min(abs(c13.mz-mz.diff)))%>%
+    dplyr::ungroup()%>%
+    dplyr::mutate(closest.c13.mz = c13.mz[closest.c13.count],
+                  mz.error = abs(mz.diff-closest.c13.mz),
+                  is.c13 = mz.error/from.mz < i*1e-6)
+  ppm.record$c13.count[i] <- sum(fdf.edge$is.c13)
+}
+
+plot_ly(ppm.record,x = ~ppm, y = ~c13.count)
+
+
+CentWavePredIsoParam()
+MassifquantParam()
+
+
+
+
+
+
+
+xcms.mf <- filterFile(xcms.xcms,1)
+xcms.mf <- findChromPeaks(xcms.mf,param = MassifquantParam())
+xcms.peaks <- chromPeaks(xcms.mf)
+
+a <- get_xcms_peaks_stat(xcms.xcms )
+b <- a%>%
+  dplyr::mutate(into_maxo = into/maxo,
+                i_m_t = into_maxo/peakWidth)%>%
+  dplyr::slice(sample(1:n(),3000))
+
+plot(b$into_maxo,b$peakWidth)
+plot(b$i_m_t)
+
+
+
+# Wed Dec 27 08:55:53 2023 ------------------------------
+msdev.dcx <- MSdev("d:/2023.12.26.DCX.Metabolomic/Data/")
+msdev.dcx <- MSdev_msConvert(msdev.dcx)
+msdev.dcx <- MSdev_checkSampleInfo(msdev.dcx)
+msdev.dcx <- MSdev_xcmsProcessing(msdev.dcx)
+msdev.dcx <- MSdev_extract_Spectra(msdev.dcx)
+msdev.dcx <- MSdev_match_Spectra_to_feature(msdev.dcx)
+msdev.dcx <- MSdev_annotation(msdev.dcx,
+                              expand_adduct= T,
+                              db.path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/SpectraDB/HMDB_KEGG_export_human_pathway.rda")
+msdev.dcx <- MSdev_get_Stat(msdev.dcx)
+saveMSdev(msdev.dcx)
+MSdev_export(msdev.dcx)
+
+
+
+groupSimilarityMatrix(x, threshold = 0.9)
+
+# Wed Dec 27 19:10:39 2023 ------------------------------
+msdev.dcx <- load_as_var("d:/2023.12.26.DCX.Metabolomic/MSdev_2023_12_27.Rdata")
+msdev.dcx <- MSdev_checkSampleInfo(msdev.dcx)
+c("[M-H]-",
+  "[M-H2O-H]-",
+  "[2M-H]-" ,
+  "[M+FA-H]-" ,
+  "[M+H]+" ,
+  "[M-H2O+H]+",
+  "[M+NH4]+"
+)
+
+# Wed Dec 27 19:23:18 2023 ------------------------------
+data.se <- get_MSdev_DEP_se(msdev.dcx,"metabolite")
+data.se <- data.se[,!data.se$group%in% c("QC","Blank")]
+rowData(data.se)$name <- rowData(data.se)$ID
+data_filt <- DEP::filter_missval(data.se,
+                                 thr = max(table(data.se$group))*0)
+data_norm <- DEP::normalize_vsn(data_filt)
+plot_normalization(data_filt,data_norm)
+data_imp <- DEP::impute(data_norm, fun = "MinProb")
+#plot_missval(data_norm)
+#p.pca <- DEP_plot_PCA(data.se)
+data.diff <- DEP_test_diff(data_imp)
+data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+DEP_plot_volcano(data.diff,
+                 contrast = DEP_list_contrast(data.diff)[4],
+                 show.label = T)
+p <- DEP_plot_volcano(data.diff,contrast = "all")
+
+
+
+# Thu Dec 28 12:13:08 2023 ------------------------------
+x <- rbind(
+  c(12, 34, 231, 234, 9, 5, 7),
+  c(900, 900, 800, 10, 12, 9, 4),
+  c(25, 70, 400, 409, 15, 8, 4),
+  c(12, 13, 14, 15, 16, 17, 18),
+  c(14, 36, 240, 239, 12, 7, 8),
+  c(100, 103, 80, 2, 3, 1, 1)
+)
+x.cor <- cor(t(x))
+res <- groupFeatures(x, AbundanceSimilarityParam())
+res
+
+
+
+# Thu Dec 28 12:21:15 2023 ------------------------------
+x <- c(2, 3, 4, 5, 10, 11, 12, 14, 15)
+
+## Group the values using a `group` function. This will create larger
+## groups.
+groupFeatures(x, param = SimilarRtimeParam(2, MsCoreUtils::group))
+
+## Group values using the default `groupClosest` function. This creates
+## smaller groups in which all elements have a difference smaller than the
+## defined `diffRt` with each other.
+groupFeatures(x, param = SimilarRtimeParam(5))
+
+## Grouping on a SummarizedExperiment
+##
+## load the test SummarizedExperiment object
+library(SummarizedExperiment)
+data(se)
+
+## No feature groups defined yet
+featureGroups(se)
+
+## Determine the column that contains retention times
+rowData(se)
+
+## Column "rtmed" contains the (median) retention time for each feature
+## Group features that are eluting within 10 seconds
+res <- groupFeatures(se, SimilarRtimeParam(10), rtime = "rtmed")
+
+featureGroups(res)
+
+## Evaluating differences between retention times within each feature group
+rts <- split(rowData(res)$rtmed, featureGroups(res))
+lapply(rts, function(z) abs(diff(z)) <= 10)
+
+## One feature group ("FG.053") has elements with a difference larger 10:
+rts[["FG.053"]]
+abs(diff(rts[["FG.053"]]))
+
+## But the difference between the **sorted** retention times is < 10:
+abs(diff(sort(rts[["FG.053"]])))
+
+## Feature grouping with pre-defined feature groups: groupFeatures will
+## sub-group the pre-defined feature groups, features with the feature group
+## being `NA` are skipped. Below we perform the feature grouping only on
+## features 40 to 70
+fgs <- rep(NA, nrow(rowData(se)))
+fgs[40:70] <- "FG"
+featureGroups(se) <- fgs
+res <- groupFeatures(se, SimilarRtimeParam(10), rtime = "rtmed")
+featureGroups(res)

@@ -1,6 +1,3 @@
-
-
-
 #' get xcms param by Autotuner
 #'
 #' @param xcms.xcms
@@ -38,9 +35,12 @@ get_xcms_Autotuner <- function(xcms.xcms ){
                             returnPpmPlots = FALSE,
                             useGap = TRUE)
   ###3
-  returnParams(eicParamEsts, Autotuner)
+  returnParams(eicParamEsts, autotuner)
 
 }
+
+
+
 
 
 

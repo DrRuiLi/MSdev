@@ -244,11 +244,11 @@ DEP_plot_volcano <- function(data.se,
     row.data <- SummarizedExperiment::rowData(data.se)%>%
       as.data.frame()
     volcano.data <- volcano.data%>%
-      dplyr::mutate(Compound_name = row.data$Compound_name[match(protein , row.data$feature_id)])
+      dplyr::mutate(label = row.data$label[match(protein , row.data$feature_id)])
 
     p <- p+
       ggrepel::geom_text_repel(data = filter(volcano.data, significant),
-                               aes(label = Compound_name), size = 1,
+                               aes(label = label), size = 1,
                                box.padding = unit(0.1, "lines"),
                                point.padding = unit(0.1, "lines"),
                                segment.size = 0.1)
@@ -337,11 +337,11 @@ DEP.plot.volcano.lipidomic <- function(data.se,
     row.data <- SummarizedExperiment::rowData(data.se)%>%
       as.data.frame()
     volcano.data <- volcano.data%>%
-      dplyr::mutate(Compound_name = row.data$Compound_name[match(protein , row.data$feature_id)])
+      dplyr::mutate(name = row.data$name[match(protein , row.data$feature_id)])
 
     p <- p+
       ggrepel::geom_text_repel(data = filter(volcano.data, significant),
-                               aes(label = Compound_name), size = 1,
+                               aes(label = name), size = 1,
                                box.padding = unit(0.1, "lines"),
                                point.padding = unit(0.1, "lines"),
                                segment.size = 0.5)
@@ -475,7 +475,7 @@ DEP.plot.heatmap <- function(data.se,
                     as.data.frame()
     )%>%
     dplyr::mutate(row.group = "",
-                  row.label = Compound_name)%>%
+                  row.label = name)%>%
     dplyr::filter(significant)
 
   heatmap.matrix <-SummarizedExperiment::assay(data.se[row.info$ID,col.info$ID])%>%
@@ -568,4 +568,11 @@ DEP_pathway_enrich <- function(data.se,
 
 }
 
+DEP_normalization <- function(data.se){
 
+  data_filt <- DEP::filter_missval(data.se,
+                                   thr = min(table(data.se$group))*0.3)
+  data_norm <- DEP::normalize_vsn(data_filt)
+  data_imp <- DEP::impute(data_norm, fun = "MinProb")
+  data_imp
+}
