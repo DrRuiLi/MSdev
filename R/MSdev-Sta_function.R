@@ -635,20 +635,39 @@ analyzeMSdevDEP <- function(object){
 }
 
 
-exportMSdev <- function(object){
+MSdev_export <- function(object){
 
-  dir.create(paste0(object@projectInfo$projectDir,"/Statistic"),recursive = T)
+  dir.create(paste0(object@projectInfo$projectDir,"/Statistic"),recursive = T,showWarnings = F)
   DEP_export_data(object@statData$metabolite.se,
                   file = paste0(object@projectInfo$projectDir,"/Statistic/Metabolites.xlsx")
                   )
   DEP_export_data(object@statData$feature.se,
                   file = paste0(object@projectInfo$projectDir,"/Statistic/Features.xlsx")
   )
-
+  DEP_export_data(object@statData$candidate.se,
+                  file = paste0(object@projectInfo$projectDir,"/Statistic/Candidates.xlsx")
+  )
 }
 
 
 
+getInfoFromMSDB <- function (MSDB_id,
+                             msdb_path,
+                             keys = c("name","kegg_id",
+                                       "formula", "inchikey"))
+{
+  Spectra_database <- MSdev::load_as_var(msdb_path)
+  MSDB_id[!MSDB_id %in% Spectra_database$MSDB_id] <- NA
+  match.idx <- match(MSDB_id, Spectra_database$MSDB_id)
+  keys.match <- intersect(keys,spectraVariables(Spectra_database))
+  keys.nonmatch <- setdiff(keys,spectraVariables(Spectra_database))
+  MSDBInfo <- Spectra::spectraData(Spectra_database)[match.idx,
+                                                     keys.match]
+  rownames(MSDBInfo)<-NULL
+  MSDBInfo <- as.data.frame(MSDBInfo)
+  MSDBInfo[,keys.nonmatch] <- NA
+  return(MSDBInfo)
+}
 
 
 

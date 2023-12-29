@@ -13,7 +13,7 @@ setClass("MSdev",
 
 
 MSdev <- function(rawDataDir =
-                    "C:/Users/91879/OneDrive/Documents/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data",
+                    "C:/Users/91879/OneDrive/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data",
                   projectDir = dirname(rawDataDir),
                   experimentInfo = MS_Exp()){
   .Object <- new("MSdev")

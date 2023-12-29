@@ -188,12 +188,12 @@ get_MSdev_newSamples <- function(object,
 }
 
 
-MSdev_xcmsProcessing <- function(object){
+MSdev_xcmsProcessing <- function(object,...){
 
   MS.mode <- object@projectInfo$msAcquisition
 
   if ("FS" %in% MS.mode|"DDA" %in% MS.mode) {
-    object <- xcmsProcessingMSdev.DDA(object)
+    object <- xcmsProcessingMSdev.DDA(object,...)
     return(object)
   }
 
@@ -208,7 +208,7 @@ MSdev_xcmsProcessing <- function(object){
 
 }
 
-xcmsProcessingMSdev.DDA <- function(object){
+xcmsProcessingMSdev.DDA <- function(object,...){
 
   xcms.param <- get_MSdev_param(object )
   sampleInfo <-dplyr::filter(object@sampleInfo,
@@ -216,7 +216,8 @@ xcmsProcessingMSdev.DDA <- function(object){
   )%>%
     dplyr::filter(!is.na(msData.files))
 
-  polarity.index <- c("0" = "Negative","1"="Positive")
+  polarity.index <- c("0" = "Negative",
+                      "1"="Positive")
   for (i in c(0,1)) {
     sample.info.polarity <- sampleInfo%>%
       #dplyr::filter(polarity %in% c(i,-1,"0;1"))%>%
@@ -230,7 +231,8 @@ xcmsProcessingMSdev.DDA <- function(object){
       xcmsProcessingMS1(msDataFiles = sample.info.polarity$msData.files,
                         ion_mode = i,
                         peaksGroup =sample.info.polarity$sample.type,
-                        centWaveParam = xcms.param$findpeak.param
+                        findChromPeaks_param  = xcms.param$findChromPeaks,
+                        ...
     )
 
     Biobase::pData(xcms.xcms ) <-
@@ -281,21 +283,48 @@ extractFeature <- function(object){
 
 get_MSdev_param <- function(object){
 
+
+  if (object@experimentInfo@General$Name == "Metabolomics_YLF") {
+
+    fpp <- MassifquantParam(ppm = 5,
+                            peakwidth = c(10,100),
+                            snthresh = 10,
+                            prefilter = c(5,1000),
+                            verboseColumns=T,
+                            withWave = T)
+
+    msdev.param <- list(findChromPeaks = fpp)
+    return(msdev.param)
+  }
+
+  msdev.param <- get_MSdev_xcms_param_by_exp(object)
+  return(msdev.param)
+
+
+
+
+}
+
+
+get_MSdev_xcms_param_by_exp <- function(object){
+
+
+
   MS.mode <- object@projectInfo$msAcquisition
   MS.instru <-object@projectInfo$msModel
   MS.LC.rate <- object@experimentInfo@Chroma_gradient[[1]]$Flow_rate%>%mean
   MS.LC.time <- object@experimentInfo@Chroma_gradient[[1]]$time%>%max
-  cwp <- CentWaveParam(fitgauss = T,verboseColumns = T)
+  cwp <- CentWaveParam(fitgauss = F,verboseColumns = T)
 
   ### ppm
   cwp@ppm <- switch(MS.instru,
-                    "Q Exactive Plus" = 10,
+                    "Q Exactive Plus" = 5,
                     "TripleTOF 6600" = 25,
-                   20)
+                    20)
 
   cwp@peakwidth <-switch(as.character(MS.LC.rate),
                          "0.5" = c(5,20),
-                         "0.3" = c(10,50),
+                         "0.3" = c(15,200),
                          c(5,20))
 
   cwp@snthresh <- switch(MS.instru,
@@ -304,19 +333,17 @@ get_MSdev_param <- function(object){
                          "Thermo Quantis" = 0,
                          100)
   cwp@prefilter <- switch(MS.instru,
-                         "Q Exactive Plus" = c(3,1000),
-                         "SCIEX TripleTOF 6600" = c(3,100),
-                         "Thermo Quantis" = c(3,100),
-                         c(3,100))
+                          "Q Exactive Plus" = c(5,5000),
+                          "SCIEX TripleTOF 6600" = c(3,100),
+                          "Thermo Quantis" = c(3,100),
+                          c(3,100))
 
 
 
-  msdev.param <- list(findpeak.param = cwp)
+  msdev.param <- list(findChromPeaks = cwp)
 
 
   return(msdev.param)
-
-
 
 
 }

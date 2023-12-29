@@ -106,6 +106,38 @@ MSdev_1.3_workflow <- function(){
   msdev.demo <- MSdev_match_Spectra_to_feature(msdev.demo)
   msdev.demo <- MSdev_annotation(msdev.demo)
   msdev.demo <- MSdev_get_Stat(msdev.demo)
+  MSdev_export(msdev.demo)
+
+
+}
+
+
+
+DEP_Stat_workflow <- function(){
+
+  proj.dir <- msdev.demo@projectInfo$projectDir
+  data.se <- get_MSdev_DEP_se(msdev.demo,from = "metabolite")
+  p.pca <- DEP_plot_PCA(data.se)
+  export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                   width = 5,height = 5)
+
+  data.se <- DEP_normalization(data.se)
+  data.se <- data.se[,data.se$sample.type=="Sample"]
+  data.diff <- DEP_test_diff(data.se)
+  data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+  p.diff.list <- DEP_plot_volcano(data.diff,"all")
+  p.diff <- ggplot_sum_patchwork(p.diff.list)
+  export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                   width = 10,height = 7,append = T)
+
+  table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+  xlsx.write.list(table.diff,
+                  paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+                  )
+
+  diff.path <- DEP_pathway_enrich(data.diff,
+                                  contrast = "all")
 
 
 
