@@ -143,3 +143,30 @@ plot_multi_formate <- function(p){
 }
 
 
+
+ggplot_from_img <- function(img_path,...){
+
+#
+  #p.jpg <- readJPEG(img_path,native = T)
+  #p.frame <- ggplot()+
+  #  xlim(c(0,10))+
+  #  ylim(c(0,10))+
+  #  theme_void()
+  #p <- p.frame + inset_element(p = p.jpg,
+  #                             position[1],
+  #                             position[2],
+  #                             position[3],
+  #                             position[4]
+  #                             )
+  #return(p)
+
+
+  p <- ggplot() +
+    #xlim(c(0,10))+
+    #ylim(c(0,10))+
+    geom_image(aes(x=5,y=5,image = img_path),size = 1.5,...)+
+    theme_void()
+  return(p)
+
+}
+
