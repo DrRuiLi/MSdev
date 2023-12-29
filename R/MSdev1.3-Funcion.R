@@ -1,4 +1,3 @@
-
 #' check SampleInfo in excel
 #' @description manually check sampleInfo using excel
 #' @param object a `MSdev` object
@@ -51,7 +50,8 @@ MSdev_msConvert<- function(object){
   if (nrow(sample.info)) {
     MSconvertR::msConvert2mzML(raw.files  = object@sampleInfo$raw.files,
                                mzML.files = object@sampleInfo$msData.files,
-                               BPPARAM = SnowParam(workers =parallel::detectCores()-1 ))
+                               BPPARAM = SnowParam(workers =parallel::detectCores()-1,
+                                                   progressbar = T))
 
 
   }
@@ -141,20 +141,29 @@ MSdev_match_Spectra_to_feature <- function(object){
 }
 
 MSdev_annotation <- function(object,
-                             db.path = "d:/MSdb/msdb.HMDB.Rdata"){
+                             db.path = "d:/MSdb/msdb.HMDB.Rdata",
+                             ...){
 
 
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    message(Sys.time()," Find MS1 candidate...")
     xcms.xcms <- get_xcms_feature_ms1_candidate(xcms.xcms,
-                                   "d:/MSdb/msdb.HMDB.Rdata")
+                                                db.path,
+                                   mz.ppm = 5,
+                                   ...)
+    message(Sys.time()," calculate MS2 score...")
     xcms.xcms <- get_xcms_feature_ms2_score(xcms.xcms ,
-                                            db.path = "d:/MSdb/msdb.HMDB.Rdata",
-                                            object@spectra$MS2_Spectra)
+                                            db.path = db.path,
+                                            object@spectra$MS2_Spectra,
+                                            ...)
+    xcms.xcms <- get_xcms_feature_annotation(xcms.xcms,
+                                             ...)
     xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
 
   }
+
   object@projectInfo$MSdbPath <- db.path
   return(object)
 
@@ -192,11 +201,47 @@ MSdev_get_Stat <- function(object){
   }
   feature.se <- do.call("rbind",se)
 
+  ### sort colname
+  rda <- rowData(feature.se)%>%
+    as.data.frame()%>%
+    dplyr::select(feature_id,mzmed,rtmed,MSDB_id, adduct,mz_ref,rt_ref,score,qc_rsd,sample_rsd,peakMaxo,
+                  candidate,candidate.adduct,candidate.mz,candidate.score)
+
+  ### all candidate
+  {
+    candi.rda <- rda%>%
+      dplyr::mutate(candidate.n = sapply(candidate,length))
+    candi.rda.split <- candi.rda[rep(candi.rda$feature_id,candi.rda$candidate.n),]%>%
+      dplyr::group_by(feature_id)%>%
+      dplyr::mutate(temp_id = 1:n())%>%
+      dplyr::rowwise()%>%
+      dplyr::mutate(MSDB_id = candidate[[temp_id]],
+                    adduct = candidate.adduct[[temp_id]],
+                    mz_ref = candidate.mz[[temp_id]],
+                    score = candidate.score[[temp_id]])%>%
+      dplyr::ungroup()
+    db.info <- getInfoFromMSDB(candi.rda.split$MSDB_id,
+                               keys = c("name","formula",
+                                        "kegg_id",
+                                        "inchikey","Lipid_subclass"),
+                               object@projectInfo$MSdbPath)
+    candi.rda.split <- candi.rda.split%>%
+      dplyr::mutate(db.info,.after = rtmed)
+    candi.se <- feature.se[candi.rda.split$feature_id,]
+    rowData(candi.se) <- candi.rda.split
+
+   }
+
+
   ### retrieve data
-  db.info <- MSdb::getInfoFromMSDB(rowData(feature.se)$MSDB_id,
-                                   keys = c("name","adduct","formula","inchikey","Lipid_subclass"),
+  db.info <- getInfoFromMSDB(rda$MSDB_id,
+                                   keys = c("name","formula",
+                                            "kegg_id",
+                                            "inchikey","Lipid_subclass"),
                                    object@projectInfo$MSdbPath)
-  rowData(feature.se) <- cbind(rowData(feature.se),db.info)
+  rda <- rda%>%
+    dplyr::mutate(db.info,.after = rtmed)
+  rowData(feature.se) <- rda
 
 
   ### filter
@@ -204,21 +249,58 @@ MSdev_get_Stat <- function(object){
     score <- ifelse(score >0.3 , 10,1)
     unique.score <- score*log10(intensity)
     unique.score
-
   }
-  rda <- rowData(feature.se)%>%
+  rda <- rda%>%
     as.data.frame()%>%
-    dplyr::filter(qc_rsd < 0.3)%>%
-    dplyr::group_by(inchikey)%>%
+    dplyr::filter(qc_rsd < 0.3,!is.na(MSDB_id))%>%
+    dplyr::group_by(kegg_id)%>%
     dplyr::slice_max(.uniqueFeatures(score,peakMaxo))%>%
     ungroup()
   metabolite.se <- feature.se[rda$feature_id,]
 
 
   object@statData$feature.se <- feature.se
+  object@statData$candidate.se <- candi.se
   object@statData$metabolite.se <- metabolite.se
   object
 
+}
+
+
+
+
+get_MSdev_DEP_se <- function(object,
+                             from = c("feature.se","metabolite.se")){
+
+  from <- match.arg(from)
+  data.se <- object@statData[[from]]
+
+  sampleinfo <- object@sampleInfo
+  ### col
+  cda <- colData(data.se)%>%
+    as.data.frame()%>%
+    dplyr::mutate(group = sampleinfo$group[match(sample.name,sampleinfo$sample.name)],
+                  condition = group,
+                  sample.labels = sampleinfo$sample.labels[match(sample.name,sampleinfo$sample.name)],
+                  label =sample.labels)%>%
+    dplyr::group_by(condition)%>%
+    dplyr::mutate(replicate = 1:n(),
+                  ID = paste0(condition,num2str(1:n())))
+  rownames(cda) <- cda$ID
+  colData(data.se) <- cda%>%DataFrame()
+
+  ### row
+  rda <- rowData(data.se)%>%
+    as.data.frame()%>%
+    dplyr::mutate( label = name,
+                   name = feature_id,
+                   ID= feature_id)
+  rowData(data.se) <- rda%>%DataFrame()
+
+  assay(data.se) <- log2(assay(data.se))
+
+
+  return(data.se)
 }
 
 

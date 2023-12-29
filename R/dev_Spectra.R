@@ -116,7 +116,7 @@ filterSpectra_below_PrecursorMz <- function(sp){
 
   if (!length(sp)) return(sp)
   nf <-  function(z,  precursorMz ,...) {
-
+    precursorMz <- ifelse(is.na(precursorMz),Inf,precursorMz)
     idx <- z[, "mz"] < precursorMz-0.5
     z[idx,,drop = F]
   }
@@ -721,3 +721,54 @@ get_Spectra_CFM <- function(sp){
 
 
 }
+
+
+get_Spectra_adduct_expand <- function(sp,
+                                      selected_adduct = MSCC::adduct.table$Adduct){
+
+
+  #sp <- Spectra_database
+  adduct.table <- MSCC::adduct.table%>%
+    dplyr::filter(Adduct%in% adduct)
+  adduct.count <- dplyr::count(adduct.table,Ion_mode)
+  adduct.pos <- dplyr::pull(filter(adduct.table,Ion_mode=="positive"),Adduct)
+  adduct.neg <- dplyr::pull(filter(adduct.table,Ion_mode=="negative"),Adduct)
+  sp.data <- spectraData(sp)%>%
+    as.data.frame()
+
+  chem_unique <- sp.data%>%
+    dplyr::distinct(formula,polarity)%>%
+    dplyr::mutate(temp_idx = 1:n(),
+                  adduct.count = case_when(polarity == 0~adduct.count$n[1],
+                                           polarity == 1~adduct.count$n[2]) )%>%
+    dplyr::slice(rep(temp_idx,adduct.count))%>%
+    dplyr::group_by(temp_idx)%>%
+    dplyr::mutate(adduct = 1:n(),
+                  adduct = case_when(polarity == 0~adduct.neg[adduct],
+                                     polarity == 1~adduct.pos[adduct]))%>%
+    dplyr::ungroup()%>%
+    dplyr::mutate(MSCC::chemform_adduct(formula,adduct),
+                  match.id = paste0(formula,adduct))
+
+  sp.data <- sp.data%>%
+    dplyr::mutate(sp_temp_idx = 1:n(),
+                  adduct.count = case_when(polarity == 0~adduct.count$n[1],
+                                           polarity == 1~adduct.count$n[2]) )%>%
+    dplyr::slice(rep(sp_temp_idx,adduct.count))%>%
+    dplyr::group_by(sp_temp_idx)%>%
+    dplyr::mutate(adduct = 1:n(),
+                  adduct = case_when(polarity == 0~adduct.neg[adduct],
+                                     polarity == 1~adduct.pos[adduct]))%>%
+    dplyr::ungroup()%>%
+    dplyr::mutate(match.id = paste0(formula,adduct),
+                  chem_unique[match(match.id , chem_unique$match.id),  ]  )
+
+  sp.expand <- sp[sp.data$sp_temp_idx]
+  sp.expand$adduct <- sp.data$adduct
+  sp.expand$precursorMz <- sp.data$chemform.adduct.mz
+
+  return(sp.expand)
+
+
+}
+

@@ -43,7 +43,7 @@ get_xcms_feature_se <- function(xcms.xcms,...){
 
   pol <- c("0" = "neg","1" = "pos")
 
-  xcms.xcms <- get_xcms_feature_stat(xcms.xcms)
+  xcms.xcms <- xcms_get_feature_stat(xcms.xcms)
   sample.info <- pData(xcms.xcms)
   rownames(sample.info) <- sample.info$sample.name
 
@@ -185,6 +185,86 @@ get_xcms_peaks_chrom <- function(xcms.xcms,
   return(x.chrom)
 }
 
+
+
+xcms_get_peak_fill <- function(xcms.xcms){
+
+  xcms.peaks <- chromPeaks(xcms.xcms)
+  rt.na <- apply(xcms.peaks,1,function(x){is.na(x["rt"])})
+  into.na <- apply(xcms.peaks,1,function(x){is.na(x["into"])})
+
+  ### fill rt with mean
+  xcms.peaks[rt.na,"rt"] <- apply(xcms.peaks[rt.na,c("rtmax","rtmin"),drop =F],
+                                  1,mean)
+  ### fill into with coef maxo peak with
+  xcms.peaks.stat <- get_xcms_peaks_stat(xcms.xcms)%>%
+    dplyr::mutate(coef = into/maxo/peakWidth)
+  into.coef <- median(xcms.peaks.stat$coef,na.rm = T)
+  xcms.peaks[into.na,"into"] <- apply(xcms.peaks[into.na,,drop =F],
+                                  1,function(x){x["maxo"]*(x["rtmax"]-x["rtmin"])*into.coef})
+
+
+  ###return
+  chromPeaks(xcms.xcms) <- xcms.peaks
+  return(xcms.xcms)
+}
+
+
+#' xcms feature group
+#'
+#' @param xcms.xcms
+#'
+#' @return
+#' @export
+#' @import MsFeatures
+#'
+#' @examples
+xcms_get_feature_group <- function(xcms.xcms,
+                                   diffRt = 5,
+                                   intCor = 0.5,
+                                   eicCor = 0.5){
+
+
+  register(SnowParam(progressbar = T))
+  message(Sys.time()," pre-group")
+  xcms.xcms <- xcms_get_feature_Rt_pregroup(xcms.xcms,
+                                                diffRt = 5)
+
+  if (!is.null(diffRt)) {
+    message(Sys.time()," group by SimilarRtimeParam")
+    xcms.xcms <- groupFeatures(xcms.xcms,
+                                   param = SimilarRtimeParam(diffRt))
+  }
+  if (!is.null(intCor)) {
+    message(Sys.time()," group by AbundanceSimilarityParam")
+    xcms.xcms <- groupFeatures(xcms.xcms,
+                                    param = AbundanceSimilarityParam(threshold = intCor,
+                                                                     transform = log2 ),
+                                    filled = TRUE)
+  }
+  if (!is.null(eicCor)) {
+    register(SerialParam())
+    message(Sys.time()," group by EicSimilarityParam")
+    xcms.xcms <- groupFeatures(xcms.xcms,
+                                    param = EicSimilarityParam(threshold = eicCor,
+                                                               n=2))
+  }
+
+  return(xcms.xcms)
+}
+
+
+xcms_get_feature_Rt_pregroup <- function(xcms.xcms,diffRt = 5){
+
+  xcms.fdf <- featureDefinitions(xcms.xcms)
+  rt <- xcms.fdf$rtmed
+  d <- dist(rt)
+  hc <- hclust(d)
+  fg <- cutree(hc,h = diffRt)
+  featureGroups(xcms.xcms) <- paste0("FG.",num2str(fg))
+  return(xcms.xcms)
+
+}
 
 
 #' extract_chrom
@@ -458,6 +538,10 @@ xcms_get_feature_def_stat <- function(xcms.xcms){
   peaks.data <- chromPeaks(xcms.xcms)
 
   .xcmsPeakDataMed <- function(x,peaks.data,key = "rtmax",fun = "median"){
+    if (!key%in% colnames(peaks.data)) {
+      return(NA)
+
+    }
     x.peaks.data <- peaks.data[x,,drop=F]
     x.peaks.data <- x.peaks.data[!grepl(pattern = "CPM",x = rownames(x.peaks.data)),,drop=F]
     peak.key.value <- x.peaks.data[,key]
@@ -520,6 +604,93 @@ xcms_get_feature_stat <- function(xcms.xcms){
 }
 
 
+xcms_get_feature_isotope_label <- function(xcms.xcms,
+                                           isotope = "[13]C",
+                                           ppm = 10){
+
+  ### calc isotope
+  {
+
+    xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+      as.data.frame()%>%
+      dplyr::arrange(feature_group)%>%
+      dplyr::mutate(temp.id = 1:n())%>%
+      dplyr::group_by(feature_group)%>%
+      dplyr::mutate(group.feature.count = n(),
+                    temp2.id = 1:n())
+
+    from.id = rep(xcms.fdf$temp.id,times = xcms.fdf$group.feature.count)
+    to.id = xcms.fdf%>%
+      dplyr::slice(rep(temp2.id,unique(group.feature.count)))
+
+    fdf.connect <- data.frame(from = from.id,
+                              to = to.id$temp.id,
+                              feature.group = to.id$feature_group)%>%
+      dplyr::filter(from != to)%>%
+      dplyr::mutate(from.fid = xcms.fdf$feature_id[from],
+                    from.rt = xcms.fdf$rtmed[from],
+                    from.mz = xcms.fdf$mzmed[from],
+                    to.fid = xcms.fdf$feature_id[to],
+                    to.rt = xcms.fdf$rtmed[to],
+                    to.mz = xcms.fdf$mzmed[to],
+                    mz.diff = to.mz - from.mz)
+
+    #isotope <- "[13]C"
+    iso.chemform <- paste0(isotope,1,str_extract(string = isotope,pattern = "[[:alpha:]]+"),-1)
+    iso.count <- -100:100
+    iso.mz <- chemform_mz(iso.chemform,0)*iso.count
+
+    fdf.connect <- fdf.connect%>%
+      rowwise()%>%
+      dplyr::mutate(closest.iso.count = iso.count[which.min(abs(iso.mz-mz.diff))])%>%
+      dplyr::mutate(closest.iso.mz = iso.mz[match(closest.iso.count,iso.count)],
+                    mz.error = abs(mz.diff-closest.iso.mz),
+                    is.iso = mz.error/mean(from.mz,to.mz) < ppm*1e-6)%>%
+      dplyr::ungroup()
+
+    fdf.iso.connect <- fdf.connect%>%
+      dplyr::filter(is.iso)
+  }
+
+
+  ### save to featuredef
+  {
+    xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+      as.data.frame()
+    all.group <- unique(xcms.fdf$feature_group)
+    iso.colname <- paste0(str_extract(string = isotope,pattern = "[[:alpha:]]+"),
+                          str_extract(string = isotope,pattern = "[[:digit:]]+"))
+    xcms.fdf[,paste0(iso.colname,"_seed")] <- NA
+    xcms.fdf[,paste0(iso.colname,"_count")] <- NA
+    for (i in 1:length(all.group)) {
+
+      this.group <- all.group[i]
+      this.iso <- fdf.iso.connect %>%
+        dplyr::filter(feature.group == this.group,
+                      mz.diff >0)
+      if (nrow(this.iso)==0) {
+        next
+      }
+
+      seed.fid <- this.iso$from.fid[which.min(this.iso$from.mz)]
+      this.iso <- fdf.iso.connect%>%
+        dplyr::filter(from.fid == seed.fid)
+      xcms.fdf[c(seed.fid,this.iso$to.fid),
+               paste0(iso.colname,"_seed")] <- seed.fid
+      xcms.fdf[c(seed.fid,this.iso$to.fid),
+               paste0(iso.colname,"_count")] <- c(0,this.iso$closest.iso.count)
+
+    }
+
+    featureDefinitions(xcms.xcms) <- DataFrame(xcms.fdf)
+
+  }
+
+  return(xcms.xcms)
+
+}
+
+
 #' match feature to database based on mz and rt
 #' MSDB_id in db with mz error < mz.ppm will b
 #'
@@ -535,13 +706,19 @@ xcms_get_feature_stat <- function(xcms.xcms){
 get_xcms_feature_ms1_candidate <- function(xcms.xcms ,
                                            db.path,
                                            mz.ppm= 25,
-                                           rt.tol = Inf){
+                                           rt.tol = Inf,
+                                           expand_adduct = F,
+                                           ...){
 
 
   ### load spectra database
   Spectra_database <- load_as_var(db.path)
   Spectra_database <- filterPolarity(Spectra_database,
                   unique(polarity(xcms.xcms)))
+  if (expand_adduct) {
+    Spectra_database <- get_Spectra_adduct_expand(Spectra_database,...)
+
+  }
   Spectra_database.df <- Spectra::spectraData(Spectra_database)%>%
     as.data.frame()
 
@@ -558,6 +735,14 @@ get_xcms_feature_ms1_candidate <- function(xcms.xcms ,
     idx <- matched.df$ion2[matched.df$ion1 == i]
     Spectra_database.df$MSDB_id[as.numeric(idx)]
   })
+  xcms.featuredef$candidate.adduct <- sapply(1:nrow(xcms.featuredef),function(i){
+    idx <- matched.df$ion2[matched.df$ion1 == i]
+    Spectra_database.df$adduct[as.numeric(idx)]
+  })
+  xcms.featuredef$candidate.mz <- sapply(1:nrow(xcms.featuredef),function(i){
+    idx <- matched.df$ion2[matched.df$ion1 == i]
+    Spectra_database.df$precursorMz[as.numeric(idx)]
+  })
 
   featureDefinitions(xcms.xcms) <- DataFrame(xcms.featuredef)
 
@@ -568,7 +753,8 @@ get_xcms_feature_ms1_candidate <- function(xcms.xcms ,
 
 get_xcms_feature_ms2_score <- function(xcms.xcms ,
                                        db.path,
-                                       sp.ms2){
+                                       sp.ms2,
+                                       ...){
 
 
   ### load spectra database
@@ -576,8 +762,25 @@ get_xcms_feature_ms2_score <- function(xcms.xcms ,
   Spectra_database <- filterPolarity(Spectra_database,
                                      unique(polarity(xcms.xcms)))
   spectraNames(Spectra_database) <- Spectra_database$MSDB_id
-
   xcms.fdf <- featureDefinitions(xcms.xcms)
+
+  ### sp process
+  Spectra_database <- Spectra_database%>%
+    filterSpectra_below_PrecursorMz()%>%
+    normalizeSpectra(norm_to = "max")%>%
+    filterSpectraIntensity(ratio = 0.05)%>%
+      applyProcessing()
+
+  if(length(sp.ms2)!=0){
+    sp.ms2 <- sp.ms2%>%
+      filterSpectra_below_PrecursorMz()%>%
+      normalizeSpectra(norm_to = "max")%>%
+      filterSpectraIntensity(ratio = 0.05)%>%
+      applyProcessing()
+
+  }
+
+
 
   sp.exp <- sapply(1:nrow(xcms.fdf),function(i){
 
@@ -590,27 +793,55 @@ get_xcms_feature_ms2_score <- function(xcms.xcms ,
     return(sp)
   })
 
-  sp.ref <- sapply(xcms.fdf$candidate, function(x){
-    list(Spectra_database[x])
+  sp.ref <- sapply(1:nrow(xcms.fdf), function(i){
+
+    sp.temp <- Spectra_database[xcms.fdf$candidate[[i]]]
+    if (length(sp.temp)==0) {
+      return(sp.temp)
+    }
+    sp.temp$adduct <- xcms.fdf$candidate.adduct[[i]]
+    sp.temp$precursorMz <- xcms.fdf$candidate.mz[[i]]
+    return(sp.temp)
   })
 
-  xcms.annotation <- BiocParallel::bplapply(1:length(sp.exp),function(i){
-    annotateSpectraMSdb(sp.exp[[i]],sp.ref[[i]])
-  },BPPARAM = BiocParallel::SerialParam(
-    progressbar = T))
 
-  xcms.annotation <-lapply(xcms.annotation, function(x){
-    x[c( "ref.mz" ,
-         "ref.rt" ,
-         "score" ,
-         "MSDB_id" )]
-  })%>%data.table::rbindlist()
-  xcms.fdf<-xcms.fdf%>%
-    as.data.frame()%>%
-    dplyr::mutate(MSDB_id = xcms.annotation$MSDB_id,
-                  score = xcms.annotation$score,
-                  mz_ref = xcms.annotation$ref.mz,
-                  rt_ref = xcms.annotation$ref.rt)
+  ### select max score
+  if (FALSE) {
+
+    xcms.annotation <- BiocParallel::bplapply(1:length(sp.exp),function(i){
+      annotateSpectraMSdb(sp.exp[[i]],sp.ref[[i]])
+    },BPPARAM = BiocParallel::SerialParam(
+      progressbar = T))
+
+    xcms.annotation <-lapply(xcms.annotation, function(x){
+      x[c( "ref.mz" ,
+           "ref.rt" ,
+           "score" ,
+           "MSDB_id" )]
+    })%>%data.table::rbindlist()
+    xcms.fdf<-xcms.fdf%>%
+      as.data.frame()%>%
+      dplyr::mutate(MSDB_id = xcms.annotation$MSDB_id,
+                    score = xcms.annotation$score,
+                    mz_ref = xcms.annotation$ref.mz,
+                    rt_ref = xcms.annotation$ref.rt)
+  }
+
+  ### out put all candidate score
+  {
+    .f <- function(expSpec,refSpec,...){
+      scorem <- compareSpectra(expSpec,refSpec,...)
+      dim(scorem) <- c(length(expSpec),length(refSpec))
+      scorem[is.infinite(scorem)|is.na(scorem )] <- 0
+      apply(scorem,2,max,na.rm=T)
+    }
+    xcms.fdf$candidate.score <- BiocParallel::bplapply(1:length(sp.exp),function(i){
+      .f(sp.exp[[i]],sp.ref[[i]])
+    },BPPARAM = BiocParallel::SerialParam(
+      progressbar = T))
+
+
+  }
 
 
   featureDefinitions(xcms.xcms) <- DataFrame(xcms.fdf)
@@ -619,8 +850,62 @@ get_xcms_feature_ms2_score <- function(xcms.xcms ,
 
 }
 
+get_xcms_feature_annotation <- function(xcms.xcms,
+                                        ...){
 
 
+  xcms.fdf <- featureDefinitions(xcms.xcms)
+  xcms.fdf$MSDB_id <- NA
+  xcms.fdf$adduct <- NA
+  xcms.fdf$score <- NA
+  xcms.fdf$mz_ref <- NA
+  xcms.fdf$rt_ref <- NA
+  for (i in 1:nrow(xcms.fdf)) {
+
+    this.mz <- xcms.fdf$mzmed[i]
+    candi.msdbid <- xcms.fdf$candidate[[i]]
+    candi.mz <- xcms.fdf$candidate.mz[[i]]
+    candi.adduct <- xcms.fdf$candidate.adduct[[i]]
+    candi.score <- xcms.fdf$candidate.score[[i]]
+
+    if (length(candi.msdbid)==0) next
+
+    ### score
+    score.mz <- abs(candi.mz-this.mz)
+    score.mz <- 1-score.mz/max(score.mz)
+    score.ms2 <- candi.score
+    score <- score.mz * 0.2 + score.ms2*0.8
+    selected <- which.max(score)
+
+    ### info
+    xcms.fdf$MSDB_id[i] <- candi.msdbid[selected]
+    xcms.fdf$adduct[i] <- candi.adduct[selected]
+    xcms.fdf$score[i] <- candi.score[selected]
+    xcms.fdf$mz_ref[i] <- candi.mz[selected]
+    #xcms.fdf$rt_ref[i] <- candi.msdbid[selected]
+
+  }
+
+
+
+  featureDefinitions(xcms.xcms) <- DataFrame(xcms.fdf)
+
+  return(xcms.xcms)
+
+
+
+}
+
+
+get_xcms_feature_definitions <- function(xcms.xcms){
+  xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+    as.data.frame()%>%
+    dplyr::select(
+      !c(mzmin,mzmax,rtmin,rtmax,npeaks,Sample,peakidx)
+    )
+  return(xcms.fdf)
+
+}
 #' @title plot_xcms_peaks_distribution
 #' @description export peaks data by xcms::chromPeaks and plot by ggplot2
 #'
@@ -1128,12 +1413,17 @@ chromPeaks_Sta <- function(xcms.xcms){
 #' @import xcms
 #' @examples
 xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
-                              centWaveParam = xcms::CentWaveParam(ppm = 20,
+                              groupfeature = F,
+                              findChromPeaks_param = xcms::CentWaveParam(ppm = 20,
                                                                   peakwidth = c(5,20),
                                                                   snthresh = 10,
                                                                   fitgauss = T,
                                                                   verboseColumns = T,
-                                                                  prefilter = c(3,100))){
+                                                                  prefilter = c(3,100)),
+                              ...){
+
+
+  ### filter file
   if (!length(msDataFiles)) {
     return(NA)
   }
@@ -1149,13 +1439,19 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
 
   }
   xcms.xcms <- ProtGenerics::filterPolarity(xcms.xcms , ion_mode)
+
+
+  ### Find peaks
   message(Sys.time()," Find peaks...")
   xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
-                            param = centWaveParam,
+                            param = findChromPeaks_param,
                             BPPARAM  = BiocParallel::SnowParam(progressbar = T))
+  xcms.xcms <- xcms_get_peak_fill(xcms.xcms)
   #mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
   #xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
   #                                    BPPARAM  = BiocParallel::SerialParam(progressbar = T))
+
+  ### adujust RT
   message(Sys.time()," Adjust RT...")
   peak.density.param <- xcms::PeakDensityParam(sampleGroups = peaksGroup,
                                          minFraction = 0.4,bw = 30,
@@ -1179,13 +1475,24 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
     }
   }
 
-  message(Sys.time()," Group peaks...")
 
+  ### group peaks
+  message(Sys.time()," Group peaks...")
   peak.density.param <- PeakDensityParam(sampleGroups =peaksGroup,
-                                         minFraction = 0.4,bw = 30,
+                                         minFraction = 0.3,bw = 30,
                                          binSize = 0.015)
   xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
+  message(Sys.time()," ",nrow(featureDefinitions(xcms.xcms))," feature found")
   xcms.xcms <- fillChromPeaks(xcms.xcms,param = FillChromPeaksParam())
+
+
+  ### group features
+  {
+    if (groupfeature ) {
+      xcms.xcms <- xcms_get_feature_group(xcms.xcms,...)
+    }
+
+  }
   return(xcms.xcms)
 
 
@@ -1526,7 +1833,9 @@ get_xcms_Spectra <- function(xcms.xcms){
 }
 
 
-setMethod(f = "filepaths",signature = "XCMSnExp",definition = function(object){
+setMethod(f = "filepaths",
+          signature = "XCMSnExp",
+          definition = function(object){
   paste0(dirname(object),"/",sampleNames(object))
 })
 
