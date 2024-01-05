@@ -729,7 +729,7 @@ get_Spectra_adduct_expand <- function(sp,
 
   #sp <- Spectra_database
   adduct.table <- MSCC::adduct.table%>%
-    dplyr::filter(Adduct%in% adduct)
+    dplyr::filter(Adduct%in% selected_adduct)
   adduct.count <- dplyr::count(adduct.table,Ion_mode)
   adduct.pos <- dplyr::pull(filter(adduct.table,Ion_mode=="positive"),Adduct)
   adduct.neg <- dplyr::pull(filter(adduct.table,Ion_mode=="negative"),Adduct)

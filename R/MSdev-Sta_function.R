@@ -651,7 +651,7 @@ MSdev_export <- function(object){
 
 
 
-getInfoFromMSDB <- function (MSDB_id,
+get_MSDB_info <- function (MSDB_id,
                              msdb_path,
                              keys = c("name","kegg_id",
                                        "formula", "inchikey"))

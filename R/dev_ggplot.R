@@ -144,7 +144,7 @@ plot_multi_formate <- function(p){
 
 
 
-ggplot_from_img <- function(img_path,...){
+ggplot_from_img <- function(img_path,coord = F,...){
 
 #
   #p.jpg <- readJPEG(img_path,native = T)
@@ -164,9 +164,49 @@ ggplot_from_img <- function(img_path,...){
   p <- ggplot() +
     #xlim(c(0,10))+
     #ylim(c(0,10))+
-    geom_image(aes(x=5,y=5,image = img_path),size = 1.5,...)+
+    ggimage::geom_image(aes(x=5,y=5,image = img_path),...)+
     theme_void()
+  if (coord) {
+    p <- p+theme_classic()
+  }
+
   return(p)
+
+}
+
+
+
+ggplot_km <- function(km.km,legend_tile = "group",
+                      legend_label = names(km.km$strata) ){
+
+  #km.km <- surv_fit(Surv(time, status) ~ 1, data = colon)
+  km.sum <- summary(km.km)
+  km.pval <- survminer::surv_pvalue(km.km)
+  plot.data <- data.frame(
+    time = km.sum$time,
+    strata= km.sum$strata,
+    surv=km.sum$surv,
+    lower=km.sum$lower,
+    upper=km.sum$upper
+  )
+
+  ggplot(plot.data)+
+    geom_line(aes(x = time , y = surv,
+                  col = strata))+
+    geom_ribbon(aes(x = time ,ymin = lower,
+                    ymax = upper,fill = strata),alpha = 0.3)+
+    annotate(geom="text",x = quantile(range(plot.data$time),0.2),
+             y = 0.2,
+             label =paste0("p = ", format(km.pval[2],scientific = T,digits =2)))+
+    scale_color_manual(values = ggsci::pal_npg()(8),
+                       labels = legend_label)+
+    scale_fill_manual(values = ggsci::pal_npg()(8),
+                      labels = legend_label)+
+    ylim(c(0,1))+
+    labs(x = "Time",y = "Survival Probability",
+         col = legend_tile,
+         fill = legend_tile)+
+    theme_bw()
 
 }
 

@@ -8,8 +8,10 @@ xcmsProcessingMS1(
   msDataFiles,
   ion_mode = NA,
   peaksGroup = NA,
-  centWaveParam = xcms::CentWaveParam(ppm = 20, peakwidth = c(5, 20), snthresh = 10,
-    fitgauss = T, verboseColumns = T, prefilter = c(3, 100))
+  groupfeature = F,
+  findChromPeaks_param = xcms::CentWaveParam(ppm = 20, peakwidth = c(5, 20), snthresh =
+    10, fitgauss = T, verboseColumns = T, prefilter = c(3, 100)),
+  ...
 )
 }
 \arguments{

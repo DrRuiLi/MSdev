@@ -303,10 +303,10 @@ get_xcms_feature_chrom <- function(xcms.xcms,
   if(is.numeric(feature.id)) { feature.id <-rownames(features.data)[feature.id]}
   features.data <- features.data[feature.id,,drop=F]
   features.val <- features.val[feature.id,,drop =F]
-  if (sample == "maxo")  {
+  if ("maxo"%in% sample  )  {
     xcms.sub <- MSnbase::filterFile(xcms.xcms,
                                     which.max(features.val))
-  }else if (sample == "all")  {
+  }else if ("all"%in% sample  )  {
     xcms.sub <- xcms.xcms
   }else {
     xcms.sub <- MSnbase::filterFile(xcms.xcms, sample )
@@ -471,31 +471,40 @@ XChromatograms_fill_2point <- function(xchroms){
 #' @export
 #'
 #' @examples
-plot_XChromatograms <- function(xchroms , norm = T,move = T,column.group = 1:ncol(xchroms)){
+plot_XChromatograms <- function(xchroms ,
+                                norm = T,
+                                move = T,
+                                color_by = c("column","row"),
+                                color_f = NULL,
+                                label_df = NULL){
 
+  color_by = match.arg(color_by)
 
   if (norm) {
     xchroms <- normalise(xchroms)
     chrom.data <- get_chroms_data(xchroms)%>%
-      dplyr::mutate(peaks.origin = paste0("peak_",num2str(row),"_",column.group[col]),
-                    peaks.origin = factor(peaks.origin,level = unique(peaks.origin)))%>%
-      dplyr::group_by(peaks.origin)%>%
-      dplyr::mutate(peaks.idx =cur_group_id(),
-                    intensity = intensity*100
-      )%>%
-      dplyr::ungroup()
+      dplyr::mutate(intensity = intensity*100)
   }else{
-    chrom.data <- get_chroms_data(xchroms)%>%
-      dplyr::mutate(peaks.origin = paste0("peak_",num2str(row),"_",column.group[col]),
-                    peaks.origin = factor(peaks.origin,level = unique(peaks.origin)))%>%
-      dplyr::group_by(peaks.origin)%>%
-      dplyr::mutate(peaks.idx =cur_group_id(),
-                    #intensity = case_when(is.na(intensity)~ 0 ,
-                    #                      T~intensity)
-      )%>%
-      dplyr::ungroup()
-
+    chrom.data <- get_chroms_data(xchroms)
   }
+
+
+  chrom.data <- chrom.data%>%
+    dplyr::mutate(group_idx = case_when(color_by == "column"~col,
+                                      color_by == "row"~row,
+                                      T~col))
+  if (is.null(color_f)) {
+    color_f <-paste0("Peaks_",num2str( unique(chrom.data$group_idx)))
+  }
+  chrom.data <- chrom.data%>%
+    dplyr::mutate(peaks.origin = paste0("peak_",num2str(row),"_",num2str(col)),
+                  peaks.origin = factor(peaks.origin,level = unique(peaks.origin)))%>%
+    dplyr::group_by(peaks.origin)%>%
+    dplyr::mutate(peaks.idx =cur_group_id(),
+                  color = color_f[group_idx]
+    )%>%
+    dplyr::ungroup()
+
 
 
     if (move) {
@@ -505,17 +514,23 @@ plot_XChromatograms <- function(xchroms , norm = T,move = T,column.group = 1:nco
     }
 
 
-
-
-
-
-
   ggplot(chrom.data)+
-    geom_line(aes(x = rt , y = intensity , col = peaks.origin),
+    geom_line(aes(x = rt , y = intensity ,
+                  group = peaks.idx,
+                  col = color),
               linewidth = 0.5,alpha = 0.8)+
     scale_color_manual(values = randomcoloR::distinctColorPalette(length(unique(chrom.data$peaks.idx))))+
-    labs(x = "Retention time", y = "Intensity")+
-    theme_bw()
+    labs(x = "Retention time", y = "Intensity",col = "peaks")+
+    theme_bw()->p
+
+  if (!is.null(label_df)) {
+    p <- p+ggrepel::geom_text_repel(data = label_df,
+                                    aes(x= x,y=y,label = label),
+                                    hjust = 0)
+
+  }
+
+  return(p)
 
 
 
@@ -1414,12 +1429,7 @@ chromPeaks_Sta <- function(xcms.xcms){
 #' @examples
 xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
                               groupfeature = F,
-                              findChromPeaks_param = xcms::CentWaveParam(ppm = 20,
-                                                                  peakwidth = c(5,20),
-                                                                  snthresh = 10,
-                                                                  fitgauss = T,
-                                                                  verboseColumns = T,
-                                                                  prefilter = c(3,100)),
+                              xcms_param = NULL,
                               ...){
 
 
@@ -1478,9 +1488,8 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
 
   ### group peaks
   message(Sys.time()," Group peaks...")
-  peak.density.param <- PeakDensityParam(sampleGroups =peaksGroup,
-                                         minFraction = 0.3,bw = 30,
-                                         binSize = 0.015)
+  peak.density.param <- xcms_param$groupChromPeaks
+  peak.density.param@sampleGroups <- pData(xcms.xcms)$sample.type
   xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
   message(Sys.time()," ",nrow(featureDefinitions(xcms.xcms))," feature found")
   xcms.xcms <- fillChromPeaks(xcms.xcms,param = FillChromPeaksParam())
