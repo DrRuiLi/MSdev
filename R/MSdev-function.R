@@ -288,12 +288,15 @@ get_MSdev_param <- function(object){
 
     fpp <- MassifquantParam(ppm = 5,
                             peakwidth = c(10,100),
-                            snthresh = 10,
+                            mzCenterFun  = "wMeanApex3",                            snthresh = 10,
                             prefilter = c(5,1000),
                             verboseColumns=T,
                             withWave = T)
+    gpp <- PeakDensityParam("A",bw = 100,
+                            minFraction = 0.3,binSize = 0.002)
 
-    msdev.param <- list(findChromPeaks = fpp)
+    msdev.param <- list(findChromPeaks = fpp,
+                        groupChromPeaks = gpp)
     return(msdev.param)
   }
 
@@ -338,9 +341,18 @@ get_MSdev_xcms_param_by_exp <- function(object){
                           "Thermo Quantis" = c(3,100),
                           c(3,100))
 
+  ### group peaks param
+  {
+    gpp <- PeakDensityParam(sampleGroups = "A",
+                            bw = 100,
+                            minFraction = 0.7,
+                            binSize = 0.015)
 
 
-  msdev.param <- list(findChromPeaks = cwp)
+  }
+
+  msdev.param <- list(findChromPeaks = cwp,
+                      groupChromPeaks = gpp)
 
 
   return(msdev.param)

@@ -4,7 +4,7 @@
 \alias{xcms_get_feature_group}
 \title{xcms feature group}
 \usage{
-xcms_get_feature_group(xcms.xcms)
+xcms_get_feature_group(xcms.xcms, diffRt = 5, intCor = 0.5, eicCor = 0.5)
 }
 \arguments{
 \item{xcms.xcms}{}

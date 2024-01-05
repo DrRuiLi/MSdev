@@ -761,3 +761,53 @@ fgs[40:70] <- "FG"
 featureGroups(se) <- fgs
 res <- groupFeatures(se, SimilarRtimeParam(10), rtime = "rtmed")
 featureGroups(res)
+
+
+
+
+p+ggrepel::geom_text_repel(data = label_df,
+            aes(x= x,y=y,label = label),
+            hjust = 0)->x
+
+
+# Fri Dec 29 18:49:42 2023 ------------------------------
+MSdev_annotation()
+MSdev_get_Stat()
+
+
+dn <- density(1:100,bw= 5  )
+plot(dn)
+
+
+plotChromPeakDensity(xcms.xcms,simulate=T,
+                     param = PeakDensityParam(pData(xcms.xcms)$group,
+                                              bw = 200,
+                                              minFraction = 0.5,
+                                              binSize = 0.001))
+
+
+# Sat Dec 30 23:36:58 2023 ------------------------------
+msdev.ylf <- load_as_var("D:/2023.11.MSIP/20231221_FS/MSdev_2023_12_23.Rdata")
+xcms.xcms <- msdev.ylf@xcmsData$PositiveMS1
+
+xcms.xcms <- groupChromPeaks(xcms.xcms,param =
+                               PeakDensityParam(pData(xcms.xcms)$group,
+                                                bw = 200,
+                                                minFraction = 0.7,
+                                                binSize = 0.002))
+xcms.xcms <- xcms_get_feature_stat(xcms.xcms)
+fdf <- featureDefinitions(xcms.xcms)%>%
+  as.data.frame()
+ggplot(fdf)+
+  geom_density(aes(x = (mzmax-mzmin)/mzmed*1e6))+
+  #geom_density(aes(x = Glu))+
+  xlim(c(0,5))
+
+
+
+# Sun Dec 31 00:06:16 2023 ------------------------------
+cox.data%>%
+  dplyr::group_by(phase)%>%
+  summarise(mean(flare.time))
+
+

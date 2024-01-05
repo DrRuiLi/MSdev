@@ -5,7 +5,14 @@
 \title{match feature to database based on mz and rt
 MSDB_id in db with mz error < mz.ppm will b}
 \usage{
-get_xcms_feature_ms1_candidate(xcms.xcms, db.path, mz.ppm = 25, rt.tol = Inf)
+get_xcms_feature_ms1_candidate(
+  xcms.xcms,
+  db.path,
+  mz.ppm = 25,
+  rt.tol = Inf,
+  expand_adduct = F,
+  ...
+)
 }
 \arguments{
 \item{rt.tol}{}
