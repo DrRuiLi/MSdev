@@ -621,6 +621,7 @@ xcms_get_feature_stat <- function(xcms.xcms){
 
 xcms_get_feature_isotope_label <- function(xcms.xcms,
                                            isotope = "[13]C",
+                                           max_label = 10,
                                            ppm = 10){
 
   ### calc isotope
@@ -652,7 +653,7 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
 
     #isotope <- "[13]C"
     iso.chemform <- paste0(isotope,1,str_extract(string = isotope,pattern = "[[:alpha:]]+"),-1)
-    iso.count <- -100:100
+    iso.count <- -max_label:max_label
     iso.mz <- chemform_mz(iso.chemform,0)*iso.count
 
     fdf.connect <- fdf.connect%>%
@@ -916,7 +917,7 @@ get_xcms_feature_definitions <- function(xcms.xcms){
   xcms.fdf <- featureDefinitions(xcms.xcms)%>%
     as.data.frame()%>%
     dplyr::select(
-      !c(mzmin,mzmax,rtmin,rtmax,npeaks,Sample,peakidx)
+      !c(mzmin,mzmax,rtmin,rtmax,npeaks,peakidx)
     )
   return(xcms.fdf)
 
@@ -1454,7 +1455,7 @@ xcmsProcessingMS1 <- function(msDataFiles,ion_mode = NA,peaksGroup =NA,
   ### Find peaks
   message(Sys.time()," Find peaks...")
   xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
-                            param = findChromPeaks_param,
+                            param = xcms_param$findChromPeaks,
                             BPPARAM  = BiocParallel::SnowParam(progressbar = T))
   xcms.xcms <- xcms_get_peak_fill(xcms.xcms)
   #mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
