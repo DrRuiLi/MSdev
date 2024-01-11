@@ -256,7 +256,8 @@ match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
 
     return(NULL)
   })%>% data.table::rbindlist()
-
+  matched.df <- matched.df%>%
+    dplyr::filter(rt.error < rt.tol)
   return(matched.df)
 
 }
