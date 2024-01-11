@@ -231,7 +231,7 @@ xcmsProcessingMSdev.DDA <- function(object,...){
       xcmsProcessingMS1(msDataFiles = sample.info.polarity$msData.files,
                         ion_mode = i,
                         peaksGroup =sample.info.polarity$sample.type,
-                        findChromPeaks_param  = xcms.param$findChromPeaks,
+                        xcms_param  = xcms.param,
                         ...
     )
 

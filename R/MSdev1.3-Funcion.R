@@ -220,7 +220,7 @@ MSdev_get_Stat <- function(object){
                     mz_ref = candidate.mz[[temp_id]],
                     score = candidate.score[[temp_id]])%>%
       dplyr::ungroup()
-    db.info <- getInfoFromMSDB(candi.rda.split$MSDB_id,
+    db.info <- get_MSDB_info(candi.rda.split$MSDB_id,
                                keys = c("name","formula",
                                         "kegg_id",
                                         "inchikey","Lipid_subclass"),
@@ -234,7 +234,7 @@ MSdev_get_Stat <- function(object){
 
 
   ### retrieve data
-  db.info <- getInfoFromMSDB(rda$MSDB_id,
+  db.info <- get_MSDB_info(rda$MSDB_id,
                                    keys = c("name","formula",
                                             "kegg_id",
                                             "inchikey","Lipid_subclass"),

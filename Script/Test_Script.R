@@ -811,3 +811,25 @@ cox.data%>%
   summarise(mean(flare.time))
 
 
+# Mon Jan  8 14:07:29 2024 ------------------------------
+library(MSdb)
+
+cpdb <- get_CompoundDB()
+a <- Spectra(cpdb)
+b <- get_CompoundDB_table()
+
+
+a <- data.frame(
+  mz = c(361.2743826,
+         362.2778818,
+         363.2901382,
+         364.2843714  ),
+  tmz =chemform_mz("[13]CC-1") *(0:3)+361.2743826
+)%>%
+  dplyr::mutate(ppm = abs(tmz-mz)/mz*1e6)
+
+
+# Thu Jan 11 13:36:43 2024 ------------------------------
+
+
+
