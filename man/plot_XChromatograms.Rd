@@ -8,7 +8,9 @@ plot_XChromatograms(
   xchroms,
   norm = T,
   move = T,
-  column.group = 1:ncol(xchroms)
+  color_by = c("column", "row"),
+  color_f = NULL,
+  label_df = NULL
 )
 }
 \arguments{
