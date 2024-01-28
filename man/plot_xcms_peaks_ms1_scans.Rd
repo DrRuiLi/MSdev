@@ -7,7 +7,7 @@
 plot_xcms_peaks_ms1_scans(xcms.xcms, plot.title = "Peaks Sans of MS1")
 }
 \arguments{
-\item{xcms.xcms}{should be a \code{XCMSnExp} object after \code{findChromPeaks}}
+\item{xcms.xcms}{XCMSnExp object should be a \code{XCMSnExp} object after \code{findChromPeaks}}
 
 \item{plot.title}{}
 }

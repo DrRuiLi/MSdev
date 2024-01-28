@@ -7,7 +7,7 @@
 xcms_get_feature_def_stat(xcms.xcms)
 }
 \arguments{
-\item{xcms.xcms}{}
+\item{xcms.xcms}{XCMSnExp object}
 }
 \description{
 extract features' median rt, sn and maxo,

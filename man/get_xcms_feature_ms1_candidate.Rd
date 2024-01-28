@@ -8,13 +8,15 @@ MSDB_id in db with mz error < mz.ppm will b}
 get_xcms_feature_ms1_candidate(
   xcms.xcms,
   db.path,
-  mz.ppm = 25,
+  mz.ppm = 10,
   rt.tol = Inf,
   expand_adduct = F,
   ...
 )
 }
 \arguments{
+\item{xcms.xcms}{XCMSnExp object}
+
 \item{rt.tol}{}
 }
 \description{

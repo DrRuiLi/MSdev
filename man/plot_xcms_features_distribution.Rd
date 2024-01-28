@@ -10,6 +10,8 @@ plot_xcms_features_distribution(
 )
 }
 \arguments{
+\item{xcms.xcms}{XCMSnExp object}
+
 \item{plot.title}{}
 }
 \description{

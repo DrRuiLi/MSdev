@@ -7,6 +7,8 @@
 plot_xcms_feature_intensity(xcms.xcms, feature_id_to_show)
 }
 \arguments{
+\item{xcms.xcms}{XCMSnExp object}
+
 \item{feature_id_to_show}{}
 }
 \description{

@@ -7,6 +7,8 @@
 plot_xcms_peaks_ms2_scans(xcms.xcms, plot.title = "Peaks Sans of MS2")
 }
 \arguments{
+\item{xcms.xcms}{XCMSnExp object}
+
 \item{plot.title}{}
 }
 \description{
