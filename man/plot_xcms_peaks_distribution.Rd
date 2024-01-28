@@ -11,6 +11,8 @@ plot_xcms_peaks_distribution(
 )
 }
 \arguments{
+\item{xcms.xcms}{XCMSnExp object}
+
 \item{type}{\code{"o"}, for geom_point, \code{"l"}, for geom_segment}
 }
 \description{

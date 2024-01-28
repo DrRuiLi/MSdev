@@ -7,7 +7,7 @@
 get_features_from_xcms(xcms.xcms, missing = NA)
 }
 \arguments{
-\item{xcms.xcms}{}
+\item{xcms.xcms}{XCMSnExp object}
 }
 \value{
 a SummarizedExperiment subject

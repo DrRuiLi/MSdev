@@ -7,6 +7,8 @@
 plot_xcms_feature_chromatogram(xcms.xcms, feature.id, sampleNames = NULL)
 }
 \arguments{
+\item{xcms.xcms}{XCMSnExp object}
+
 \item{sampleNames}{}
 }
 \description{

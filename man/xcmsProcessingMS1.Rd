@@ -4,19 +4,12 @@
 \alias{xcmsProcessingMS1}
 \title{xcmsProcessingMS1}
 \usage{
-xcmsProcessingMS1(
-  msDataFiles,
-  ion_mode = NA,
-  peaksGroup = NA,
-  groupfeature = F,
-  xcms_param = NULL,
-  ...
-)
+xcmsProcessingMS1(xcms.xcms, ion_mode = NA, xcms_param = NULL, ...)
 }
 \arguments{
-\item{msDataFiles}{\code{char} ms file (full) paths}
-
 \item{ion_mode}{to filter ion_mode, 1: positive, 0: negative, import when scans with both pos and neg}
+
+\item{msDataFiles}{\code{char} ms file (full) paths}
 
 \item{peaksGroup}{\code{vector} to PeakGroupsParam(sampleGroups), should contain "QC"}
 

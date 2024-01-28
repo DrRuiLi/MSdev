@@ -7,6 +7,8 @@
 extract_chrom(xcms.xcms, rtr, mzr, sample)
 }
 \arguments{
+\item{xcms.xcms}{XCMSnExp object}
+
 \item{sample}{}
 }
 \description{
