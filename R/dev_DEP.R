@@ -28,7 +28,7 @@ DEP_list_contrast <- function(data.se){
 #' @examples
 DEP_add_rejections <- function(data.se , p.adjust = T,lfc = 0.5){
 
-  if (any(grepl(pattern = "significant",names(data.diff@elementMetadata@listData)))) {
+  if (any(grepl(pattern = "significant",names(data.se@elementMetadata@listData)))) {
     message("significant existed, skip")
     data.diff <- data.se
   }else{
@@ -541,6 +541,17 @@ DEP_pathway_enrich <- function(data.se,
                                contrast ,
                                method = c("HyperTest","GlobalTest")){
 
+
+  if (contrast == "all") {
+    enrich.list <- list()
+    for (i in 1:length( DEP_list_contrast(data.se ))) {
+      i_contrast <-  DEP_list_contrast(data.se )[i]
+      enrich.list[[i_contrast]] <- DEP_pathway_enrich(data.se ,
+                                                   contrast = i_contrast,
+                                                   method = method)
+    }
+    return(enrich.list)
+  }
   method <- match.arg(method)
   if (method == "HyperTest") {
     pathway.table <- DEP_get_diff_table(data.se,

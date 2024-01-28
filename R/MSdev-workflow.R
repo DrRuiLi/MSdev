@@ -56,7 +56,7 @@ MSdev_Stat_workflow <- function(MS_dev_obj){
   plotMSdevDiffHeatmap(MS_dev_obj)
   plotMSdevDiffVolcano(MS_dev_obj,p.adjusted = F)
 
-  saveMSdev(MS_dev_obj)
+  MSdev_save(MS_dev_obj)
 
 }
 
@@ -122,7 +122,7 @@ DEP_Stat_workflow <- function(){
                    width = 5,height = 5)
 
   data.se <- DEP_normalization(data.se)
-  data.se <- data.se[,data.se$sample.type=="Sample"]
+  data.se <- data.se[,!data.se$sample.type %in% c("Blank","QC")]
   data.diff <- DEP_test_diff(data.se)
   data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
 

@@ -50,7 +50,7 @@ get_MSinfo_mzR<- function(msDataFiles){
                        )
   for (i in 1:length(msDataFiles)) {
     #cat(i,"\n")
-    if (is.na(msDataFiles[i])) {
+    if (is.na(msDataFiles[i])|!file.exists(msDataFiles[i])) {
       next
 
     }

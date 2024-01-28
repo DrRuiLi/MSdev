@@ -82,6 +82,20 @@ CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([
   }
 }
 
+#' Title
+#'
+#' @param smiles_or_inchi
+#' @param spectrum_file
+#' @param id
+#' @param ppm_mass_tol
+#' @param abs_mass_tol
+#' @param param_adduct
+#' @param output_file
+#'
+#' @return
+#' @export
+#'
+#' @examples
 CFM_annotate<- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
                           spectrum_file = NULL,
                           id = "AN_ID",
@@ -94,6 +108,9 @@ CFM_annotate<- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
                      tempfile(),
                      normalizePath(output_file,mustWork = F))
   win.dir<- dirname(out.file)
+  if ("Spectra" %in% class(spectrum_file) ) {
+    spectrum_file <- export_Spectra_peak_list_for_cfm(spectrum_file,tempfile())
+  }
   file.copy(spectrum_file,
             paste0(win.dir,"/",basename(spectrum_file)))
   model_param = CFM_get_param_config(param_adduct,param = T,config = T)
@@ -157,7 +174,7 @@ CFM_fraggen <- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
 
 read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code/Docker/cfm/data/cfm_annotate_result.txt"){
 
-  cfm.data <- read_lines(result_path)
+  cfm.data <- readr::read_lines(result_path)
   cfm.df <- data.frame(line.no = 1:length(cfm.data),
                        line.data = cfm.data)%>%
     dplyr::mutate(session.sep = line.data == "",
@@ -165,7 +182,7 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
                   )%>%
     dplyr::mutate(session.energy.sep = grepl(pattern = "energy",x = line.data ),
                   session.energy = cumsum(session.energy.sep),
-                  session.energy = case_when(session.type!=0~NA,
+                  session.energy = dplyr::case_when(session.type!=0~NA,
                                               T~session.energy)
                   )
 
@@ -181,7 +198,7 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
         dplyr::filter(session.energy==energy[i],!session.energy.sep)%>%
         dplyr::mutate(
           assigned = grepl(pattern = "\\(",x = line.data),
-          d1 =case_when(
+          d1 =dplyr::case_when(
             assigned~str_extract(line.data,".*(?= \\()"),
             T~line.data
           ),
@@ -224,10 +241,10 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
       dplyr::mutate(fragment_id  = str_extract(line.data,"^[^\\s]*(?=\\s)"),
                     fragment_mz = str_extract(line.data,"(?<=\\s)[^\\s]*(?=\\s)"),
                     fragment_mz = as.numeric(fragment_mz),
-                    smile =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
+                    smiles =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
                     )%>%
       dplyr::filter(!is.na(fragment_id))%>%
-      dplyr::select(fragment_id,fragment_mz,smile)
+      dplyr::select(fragment_id,fragment_mz,smiles)
   }
 
   ### session 3
@@ -238,10 +255,10 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
       dplyr::mutate(fragment_id  = str_extract(line.data,"^[^\\s]*(?=\\s)"),
                     fragment_mz = str_extract(line.data,"(?<=\\s)[^\\s]*(?=\\s)"),
                     fragment_mz = as.numeric(fragment_mz),
-                    smile =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
+                    smiles =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
       )%>%
       dplyr::filter(!is.na(fragment_id))%>%
-      dplyr::select(fragment_id,fragment_mz,smile)
+      dplyr::select(fragment_id,fragment_mz,smiles)
 
   }
 
@@ -253,10 +270,10 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
       dplyr::filter(session.type==3,!session.sep)%>%
       dplyr::mutate(from  = str_extract(line.data,"^[^\\s]*(?=\\s)"),
                     to = str_extract(line.data,"(?<=\\s)[^\\s]*(?=\\s)"),
-                    smile =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
+                    smiles =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
       )%>%
       dplyr::filter(!is.na(from))%>%
-      dplyr::select(from,to,smile)
+      dplyr::select(from,to,smiles)
 
   }
 
@@ -285,20 +302,32 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
     return(invisible(cfm.data))
 }
 
+#' Title
+#'
+#' @param result_path
+#'
+#' @return
+#' @export
+#'
+#' @examples
 read_CFM_predict_result <- function(result_path){
 
-  cfm.data <- read_lines(result_path)
+  cfm.data <- readr::read_lines(result_path)
+  save(cfm.data,file= "d:/temp/cfm_temp.rda")
   cfm.df <- data.frame(line.no = 1:length(cfm.data),
                        line.data = cfm.data)%>%
     dplyr::mutate(session.sep = line.data == "",
-                  session.type = cumsum(session.sep),
-                  session.type = case_when(grepl(pattern = "^#",
-                                                 x = line.data)~-1,
-                                           T~session.type)
-    )%>%
+                  session.type = cumsum(session.sep))
+  cfm.df <- cfm.df[!grepl(pattern = "^#",  x = cfm.df$line.data),]
+    #dplyr::mutate(
+    #  session.type = dplyr::case_when(grepl(pattern = "^#",
+    #                                             x = line.data)~-1,
+    #                                       T~session.type)
+    #)%>%
+  cfm.df <- cfm.df%>%
     dplyr::mutate(session.energy.sep = grepl(pattern = "energy",x = line.data ),
                   session.energy = cumsum(session.energy.sep),
-                  session.energy = case_when(session.type!=0~NA,
+                  session.energy = dplyr::case_when(session.type!=0~NA,
                                              T~session.energy)
     )
   ### header
@@ -319,7 +348,7 @@ read_CFM_predict_result <- function(result_path){
         dplyr::filter(session.energy==energy[i],!session.energy.sep)%>%
         dplyr::mutate(
           assigned = grepl(pattern = "\\(",x = line.data),
-          d1 =case_when(
+          d1 =dplyr::case_when(
             assigned~str_extract(line.data,".*(?= \\()"),
             T~line.data
           ),
@@ -363,10 +392,10 @@ read_CFM_predict_result <- function(result_path){
       dplyr::mutate(fragment_id  = str_extract(line.data,"^[^\\s]*(?=\\s)"),
                     fragment_mz = str_extract(line.data,"(?<=\\s)[^\\s]*(?=\\s)"),
                     fragment_mz = as.numeric(fragment_mz),
-                    smile =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
+                    smiles =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
       )%>%
       dplyr::filter(!is.na(fragment_id))%>%
-      dplyr::select(fragment_id,fragment_mz,smile)
+      dplyr::select(fragment_id,fragment_mz,smiles)
 
   }
 
@@ -394,12 +423,12 @@ read_CFM_predict_result <- function(result_path){
 
 read_CFM_fraggen_result <- function(result_path){
 
-  cfm.data <- read_lines(result_path)
+  cfm.data <- readr::read_lines(result_path)
   cfm.df <- data.frame(line.no = 1:length(cfm.data),
                        line.data = cfm.data)%>%
     dplyr::mutate(session.sep = line.data == "",
                   session.type = cumsum(session.sep),
-                  session.type = case_when(grepl(pattern = "^#",
+                  session.type = dplyr::case_when(grepl(pattern = "^#",
                                                  x = line.data)~-1,
                                            T~session.type)
     )
@@ -414,10 +443,10 @@ read_CFM_fraggen_result <- function(result_path){
       dplyr::mutate(fragment_id  = str_extract(line.data,"^[^\\s]*(?=\\s)"),
                     fragment_mz = str_extract(line.data,"(?<=\\s)[^\\s]*(?=\\s)"),
                     fragment_mz = as.numeric(fragment_mz),
-                    smile =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
+                    smiles =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
       )%>%
       dplyr::filter(!is.na(fragment_id))%>%
-      dplyr::select(fragment_id,fragment_mz,smile,intermediate)
+      dplyr::select(fragment_id,fragment_mz,smiles,intermediate)
 
     }
 
@@ -430,10 +459,10 @@ read_CFM_fraggen_result <- function(result_path){
       dplyr::mutate(from  = str_extract(line.data,"^[^\\s]*(?=\\s)"),
                     to = str_extract(line.data,"(?<=\\s)[^\\s]*(?=\\s)"),
                     neutral_loss = str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s]*(?=\\s)"),
-                    smile =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
+                    smiles =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
       )%>%
       dplyr::filter(!is.na(from))%>%
-      dplyr::select(from,to,neutral_loss,smile)
+      dplyr::select(from,to,neutral_loss,smiles)
 
   }
 
@@ -464,9 +493,9 @@ read_CFM_fraggen_result <- function(result_path){
 
 plot_CFM_annotated_Spectra <- function(cfm_annoate_result){
 
-  peak.assign <- cfm_annoate_result$peak.assignment
-  fragment.define <- cfm_annoate_result$fragment_define2
-  fragment.sdf <- smiles2sdf(fragment.define$smile)
+  peak.assign <- cfm_annoate_result$peak_assignment
+  fragment.define <- cfm_annoate_result$fragment_define
+  fragment.sdf <- smiles2sdf(fragment.define$smiles )
 
 
   peak.assign.unique <- peak.assign%>%
@@ -506,11 +535,11 @@ plot_CFM_annotated_Spectra <- function(cfm_annoate_result){
   x.width = 10
   y.height = 10
   for (i in 1:nrow(peak.assign.unique)) {
-    smile <- peak.assign.unique$smile[i]
-    if (is.na(smile)) {
+    smiles <- peak.assign.unique$smiles[i]
+    if (is.na(smiles)) {
       next
     }
-    sdf <- smiles2sdf(smile)[[1]]
+    sdf <- smiles2sdf(smiles)[[1]]
     if (is.null(sdf)) {
       next
     }
@@ -537,7 +566,7 @@ get_cfm_data_igraph <- function(cfm.data ){
 
   ### fragment
   fragment.data <- cfm.data$fragment_define2
-  fragment.sdf <- suppressWarnings(smiles2sdf(fragment.data$smile))
+  fragment.sdf <- suppressWarnings(smiles2sdf(fragment.data$smiles))
   fragment.data$formula <- MF(fragment.sdf,addH = T)
   fragment.data$atom.count <- atomcountMA(fragment.sdf)%>%
     apply(1,sum)

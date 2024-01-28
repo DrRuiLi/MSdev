@@ -208,6 +208,15 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
   return(spec.df)
 }
 
+#' Title
+#'
+#' @param sp
+#' @param minProp
+#'
+#' @return
+#' @export
+#'
+#' @examples
 combineSpectra_groupby_ce <- function(sp,minProp = 0.5){
 
   sp.ce <- Spectra::combineSpectra(sp,peaks = "intersect",
@@ -678,6 +687,7 @@ export_Spectra_peak_list_for_cfm <- function(sp,
   }
 
 
+  return(invisible(file))
 
 
 }

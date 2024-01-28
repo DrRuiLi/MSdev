@@ -94,3 +94,30 @@ str_formate <- function(str){
        replacement = "_",perl = T)
 
 }
+
+
+
+
+str_search_files <- function(str,file_path = paste0(getwd(),"/R")){
+
+  if (any(file.info(file_path)$isdir) ) {
+    file_path <- dir(file_path,full.names = T,recursive = T)
+  }
+
+  for (i in seq_along(file_path)) {
+
+    txt <- read_lines(file_path[i])
+    txt.exist <-  grepl(str,txt)
+    if (any(txt.exist)) {
+
+      #message(i)
+      message(crayon::red(file_path[i]))
+      message(crayon::red("Line ", which(txt.exist), ":",
+                          yellow(txt[txt.exist]),
+                          collapse = "\n") )
+
+    }
+  }
+
+
+}

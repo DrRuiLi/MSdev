@@ -13,6 +13,8 @@ MSdev_checkSampleInfo <- function(object){
   ### save
   {
     object@sampleInfo <- sampleInfo
+    if(!is_empty(object@xcmsData)){
+      object <- MSdev_update_xcms_pdata(object )}
     object <- .updateProjectInfoFromSampleInfo(object )
 
   }
@@ -46,13 +48,21 @@ MSdev_msConvert<- function(object){
   }
 
   ### convert
-
   if (nrow(sample.info)) {
-    MSconvertR::msConvert2mzML(raw.files  = object@sampleInfo$raw.files,
-                               mzML.files = object@sampleInfo$msData.files,
+    MSconvertR::msConvert2mzML(raw.files  = sample.info$raw.files,
+                               mzML.files = sample.info$msData.files,
                                BPPARAM = SnowParam(workers =parallel::detectCores()-1,
                                                    progressbar = T))
 
+
+  }
+
+  ### filter non converted
+  {
+    sample.info <- object@sampleInfo%>%
+      dplyr::mutate(raw.exist = file.exists(raw.files),
+                    ms.exist = file.exists(msData.files))
+    object@sampleInfo <- object@sampleInfo[sample.info$ms.exist,]
 
   }
 
@@ -68,7 +78,7 @@ MSdev_msConvert<- function(object){
       msDataFormat =".mzML"
 
     )
-    saveMSdev(object )
+    MSdev_save(object )
     return(object)
 
   }
@@ -151,14 +161,13 @@ MSdev_annotation <- function(object,
     message(Sys.time()," Find MS1 candidate...")
     xcms.xcms <- get_xcms_feature_ms1_candidate(xcms.xcms,
                                                 db.path,
-                                   mz.ppm = 5,
                                    ...)
     message(Sys.time()," calculate MS2 score...")
-    xcms.xcms <- get_xcms_feature_ms2_score(xcms.xcms ,
+    xcms.xcms <- xcms_get_feature_ms2_score(xcms.xcms ,
                                             db.path = db.path,
                                             object@spectra$MS2_Spectra,
                                             ...)
-    xcms.xcms <- get_xcms_feature_annotation(xcms.xcms,
+    xcms.xcms <- xcms_get_feature_annotation(xcms.xcms,
                                              ...)
     xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
 
@@ -171,9 +180,37 @@ MSdev_annotation <- function(object,
 }
 
 
+MSdev_annotation_CompoundDB <- function(object,
+                             cpdb = MSdb:::get_CompoundDB(),
+                             ...){
 
 
-MSdev_get_Stat <- function(object){
+  for (i in 0:1) {
+
+    pol <- ifelse(i==0,"Negative","Positive")
+    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    message(Sys.time()," Find MS1 candidate...")
+    xcms.xcms <- get_xcms_feature_ms1_candidate(xcms.xcms,
+                                                db.path,
+                                                ...)
+    message(Sys.time()," calculate MS2 score...")
+    xcms.xcms <- xcms_get_feature_ms2_score(xcms.xcms ,
+                                            db.path = db.path,
+                                            object@spectra$MS2_Spectra,
+                                            ...)
+    xcms.xcms <- xcms_get_feature_annotation(xcms.xcms,
+                                             ...)
+    xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+
+  }
+
+  object@projectInfo$MSdbPath <- db.path
+  return(object)
+
+
+}
+
+MSdev_get_Stat <- function(object,QC_RSD = 0.3){
 
   sample.info <- object@sampleInfo%>%
     dplyr::filter(polarity_paired)
@@ -188,7 +225,8 @@ MSdev_get_Stat <- function(object){
       se[[pol]] <- SummarizedExperiment()
       next
     }
-    se[[pol]] <- get_xcms_feature_se(xcms.xcms)[,col.order]
+    pol.se <- get_xcms_feature_se(xcms.xcms)
+    se[[pol]] <- pol.se[,intersect(col.order,colnames(pol.se))]
     se[[pol]]$sampleNames<- NULL
     se[[pol]]$no<- NULL
     se[[pol]]$raw.files<- NULL
@@ -252,8 +290,8 @@ MSdev_get_Stat <- function(object){
   }
   rda <- rda%>%
     as.data.frame()%>%
-    dplyr::filter(qc_rsd < 0.3,!is.na(MSDB_id))%>%
-    dplyr::group_by(kegg_id)%>%
+    dplyr::filter(qc_rsd < QC_RSD,!is.na(MSDB_id))%>%
+    dplyr::group_by(inchikey)%>%
     dplyr::slice_max(.uniqueFeatures(score,peakMaxo))%>%
     ungroup()
   metabolite.se <- feature.se[rda$feature_id,]
@@ -304,9 +342,44 @@ get_MSdev_DEP_se <- function(object,
 }
 
 
+MSdev_update_xcms_pdata <- function(object){
 
 
+  sample_info <- object@sampleInfo
+  for (i in 0:1) {
+    pol <- ifelse(i==0,"Negative","Positive")
+    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.pdata <- pData(xcms.xcms)%>%
+      dplyr::mutate(sample_info[match(msData.files,sample_info$msData.files),  ])
+    xcms.pdata -> pData(xcms.xcms)
+    xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+  }
 
+  return(object)
+
+
+}
+
+MSdev_find_isotope_label <- function(object,
+                                     isotope = "[13]C",
+                                     ...){
+
+  for (i in 0:1) {
+
+    pol <- ifelse(i==0,"Negative","Positive")
+    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.xcms <- xcms_get_feature_isotopologues(xcms.xcms,
+                                                isotope = isotope,
+                                                ...)
+    xcms.xcms <- xcms_get_feature_isotope_label(xcms.xcms,
+                                                isotope = isotope,
+                                                ...)
+    xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+  }
+
+  return(object)
+
+}
 
 
 
