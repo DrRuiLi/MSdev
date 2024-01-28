@@ -1,11 +1,21 @@
-t.test_dev <- function(x,y){
+#' Title
+#'
+#' @param ... see t.test
+#'
+#' @return
+#' @export
+#'
+#' @examples
+t.test_dev <- function(...){
 
-  try.catch <-try(p.value <- t.test(x,y)$p.value)
+  try.catch <-try(p.value <- t.test(...)$p.value,silent = T)
   if (grepl("Error " , try.catch)) {
     return(1)
   }
   return(p.value)
 }
+
+
 
 
 
@@ -241,6 +251,7 @@ match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
    rt <-rt1[i]
    mz.matched.id <- names(mz.match[[i]])
    rt.error <- abs(rt - rt2[mz.matched.id])
+   #rt.error[is.na(rt.error)] <- 999
    rt.error
   })
 
@@ -257,7 +268,7 @@ match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
     return(NULL)
   })%>% data.table::rbindlist()
   matched.df <- matched.df%>%
-    dplyr::filter(rt.error < rt.tol)
+    dplyr::filter(rt.error < rt.tol |is.na(rt.error))
   return(matched.df)
 
 }
@@ -293,4 +304,15 @@ match_mz <- function(mz1,mz2,mz.ppm = 10){
 
 
 
+groupHclust <- function (x, maxDiff = 5){
 
+  if (length(x)<2) {
+    return(1)
+  }
+
+  d <- dist(x)
+  hc <- hclust(d)
+  fg <- cutree(hc,h = maxDiff)
+  return(fg)
+
+}

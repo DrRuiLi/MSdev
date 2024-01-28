@@ -1,6 +1,6 @@
 
 
-saveMSdev <- function(object){
+MSdev_save <- function(object){
   MSdev <- object
   save.dir <- dirname(object@projectInfo$MSdevFile)
   if (!dir.exists(save.dir)) {
@@ -8,90 +8,6 @@ saveMSdev <- function(object){
   }
   save(MSdev, file =  object@projectInfo$MSdevFile)
   invisible(MSdev)
-}
-
-#' @title readInRawData
-#' @description read in ms raw data from `object@projectInfo$msDataDir`
-#' and generate a table `sampleInfo`
-#' note this function read in file according to their file names, those contaion both "pos" and "neg"
-#' will be regarded as two files
-#' @param object a `MSdev` object
-#' @details discriminate sample type and ion mode according char in file names
-#'
-#' grep "pos" and "neg" for ion mode
-#'
-#' grep "blank", "blk" and "QC" for sample type, other samples will regard as "Sample"
-#' @return a `MSdev` object
-#' @export
-#'
-#' @examples
-readInRawData <- function(object){
-
-  projectInfo <- object@projectInfo
-  msData.dir <- projectInfo$msDataDir
-  raw.files <- dir(path = projectInfo$rawDataDir,
-                   pattern = paste0(projectInfo$rawDataFormat,"$"),
-                   full.names = T)
-
-  ### generate sampleInfo
-  {
-    .select_char <- function(char_vector){
-      if (all(is.na(char_vector))) {
-        return(NA)
-      }
-      max(char_vector,na.rm = T)
-    }
-    sample.info <- data.frame(raw.files = raw.files)%>%
-      dplyr::filter(!grepl(pattern = "condition",x = raw.files))%>%
-      dplyr::mutate(raw.file.positive = case_when(grepl(pattern = "pos", x = raw.files,ignore.case = T)~raw.files),
-                    raw.file.negative = case_when(grepl(pattern = "neg", x = raw.files,ignore.case = T)~raw.files))%>%
-      dplyr::mutate(sample.abbreviation= gsub(pattern = paste0("pos|neg|",projectInfo$rawDataFormat,"$"),
-                                              x = basename(raw.files) ,
-                                              ignore.case = T,
-                                              replacement = ""),
-                    sample.abbreviation = tolower(sample.abbreviation))%>%
-      dplyr::group_by(sample.abbreviation)%>%
-      dplyr::mutate(raw.file.positive = .select_char (raw.file.positive),
-                    raw.file.negative = .select_char (raw.file.negative))%>%
-      dplyr::ungroup()%>%
-      dplyr::distinct(sample.abbreviation,.keep_all = T)%>%
-      dplyr::mutate(analysis.time.positive =as.character( file.info(raw.file.positive)$mtime),
-                    analysis.time.negative = as.character(file.info(raw.file.negative)$mtime))%>%
-      dplyr::mutate(sample.type = case_when(grepl(pattern = "QC",x = sample.abbreviation,ignore.case = T)~ "QC",
-                                            grepl(pattern = "blank|blk",x = sample.abbreviation,ignore.case = T)~ "Blank",
-                                            T~"Sample"),
-                    .before = sample.abbreviation)%>%
-      dplyr::mutate(sample.name = paste0(sample.type,str_pad(1:nrow(.), ceiling(log10(nrow(.))),pad = "0")),
-                    .before = sample.type)%>%
-      dplyr::mutate(msData.file.positive = case_when(is.na(raw.file.positive)~raw.file.positive,
-                                                     T~paste0(msData.dir,"/pos/",sample.name,".mzML")),
-                    msData.file.negative = case_when(is.na(raw.file.negative)~raw.file.negative,
-                                                     T~paste0(msData.dir,"/neg/",sample.name,".mzML")))%>%
-      dplyr::arrange(analysis.time.positive)%>%
-      dplyr::mutate(no = 1:nrow(.),
-                    label = sample.abbreviation,
-                    group = sample.type,
-                    weight = NA ,
-                    xcmsProcessing = "Both")%>%
-      dplyr::select(no,sample.name,sample.type,group ,label, weight,
-                    sample.abbreviation,
-                    raw.file.positive,raw.file.negative,
-                    analysis.time.positive,analysis.time.negative,
-                    msData.file.positive,msData.file.negative,
-                    xcmsProcessing)
-
-  }
-  ### save
-  {
-    object@sampleInfo <- sample.info
-    object <- .updateProjectInfoFromSampleInfo(object )
-    object@processingInfo$readInRawData$done <- T
-
-
-  }
-  object
-
-
 }
 
 .updateProjectInfoFromSampleInfo <- function(object){
@@ -143,7 +59,10 @@ get_MSdev_MSinfo <- function(object){
 
 
   ### update SampleInfo
-  if (!"manufacturer"%in%colnames(object@sampleInfo) ) {
+  if (
+    !"manufacturer"%in%colnames(object@sampleInfo)|
+    any(is.na(object@sampleInfo$manufacturer))
+  ) {
     sampleInfo <-object@sampleInfo%>%
       dplyr::mutate(get_MSinfo_mzR(msData.files),
                     msType = model.df$type[match(model,model.df$model)],
@@ -171,17 +90,20 @@ get_MSdev_MSinfo <- function(object){
 }
 
 
-get_MSdev_newSamples <- function(object,
-                                 raw.data.dir = object@projectInfo$rawDataDir){
+MSdev_add_sample <- function(object,
+                             raw.data.dir = object@projectInfo$rawDataDir){
   sample.info <- object@sampleInfo
   sample.info.new <- get_MS_sampleinfo(raw.data.dir,
-                                       rawDataFormat = object@projectInfo$rawDataFormat,F)%>%
+                                       rawDataFormat = object@projectInfo$rawDataFormat,
+                                       verbose = T)%>%
     dplyr::filter(!raw.files%in% sample.info$raw.files)
   message("Get ",nrow(sample.info.new)," samples")
 
   object@sampleInfo <- sample.info%>%
     bind_rows(sample.info.new)
-  object <- msConvert_MSdev(object)
+  message("MSconvert ",nrow(sample.info.new)," samples...")
+  object <- MSdev_msConvert(object)
+  object <- .updateProjectInfoFromSampleInfo(object )
   show(object)
   object
 
@@ -193,6 +115,7 @@ MSdev_xcmsProcessing <- function(object,...){
   MS.mode <- object@projectInfo$msAcquisition
 
   if ("FS" %in% MS.mode|"DDA" %in% MS.mode) {
+    object <- MSdev_get_xcms(object)
     object <- xcmsProcessingMSdev.DDA(object,...)
     return(object)
   }
@@ -204,6 +127,33 @@ MSdev_xcmsProcessing <- function(object,...){
 
 
 
+
+
+}
+
+
+MSdev_get_xcms <- function(object){
+
+  polarity.index <- c("0" = "Negative",
+                      "1"="Positive")
+  for (i in c(0,1)) {
+    sample.info.polarity <- object@sampleInfo%>%
+      dplyr::filter(grepl(i,polarity))
+    if (!nrow(sample.info.polarity)) {
+      xcms.xcms <-NA
+      next
+    }else{
+      xcms.xcms <- readMSData(sample.info.polarity$msData.files,
+                              mode = "onDisk")
+    }
+    Biobase::pData(xcms.xcms ) <-
+      cbind(Biobase::pData(xcms.xcms),
+            sample.info.polarity)
+    polarity.tag <- paste0(polarity.index[as.character(i)],"MS1")
+    xcms.xcms -> object@xcmsData[[polarity.tag]]
+
+  }
+  return(object)
 
 
 }
@@ -227,17 +177,16 @@ xcmsProcessingMSdev.DDA <- function(object,...){
       xcms.xcms <-NA
       next
     }
+    xcms.xcms <- filterFile(object@xcmsData[[polarity.tag]],
+      which(pData(object@xcmsData[[polarity.tag]])$sample.name%in% sample.info.polarity$sample.name)
+    )
+
     xcms.xcms <-
-      xcmsProcessingMS1(msDataFiles = sample.info.polarity$msData.files,
+      xcmsProcessingMS1(xcms.xcms = xcms.xcms,
                         ion_mode = i,
-                        peaksGroup =sample.info.polarity$sample.type,
                         xcms_param  = xcms.param,
                         ...
     )
-
-    Biobase::pData(xcms.xcms ) <-
-      cbind(Biobase::pData(xcms.xcms),
-            sample.info.polarity)
 
     xcms.xcms <- xcms_get_feature_stat(xcms.xcms )
     xcms.xcms -> object@xcmsData[[polarity.tag]]
@@ -292,7 +241,7 @@ get_MSdev_param <- function(object){
                             prefilter = c(5,1000),
                             verboseColumns=T,
                             withWave = T)
-    gpp <- PeakDensityParam("A",bw = 100,
+    gpp <- PeakDensityParam("A",bw = 10,
                             minFraction = 0.3,binSize = 0.002)
 
     msdev.param <- list(findChromPeaks = fpp,
@@ -344,7 +293,7 @@ get_MSdev_xcms_param_by_exp <- function(object){
   ### group peaks param
   {
     gpp <- PeakDensityParam(sampleGroups = "A",
-                            bw = 100,
+                            bw = 10,
                             minFraction = 0.7,
                             binSize = 0.015)
 
@@ -1086,6 +1035,20 @@ export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
 
 
 
+#' @title get_MS_sampleinfo
+#' @description read in ms raw data from `object@projectInfo$msDataDir`
+#' and generate a table `sampleInfo`
+#' note this function read in file according to their file names, those contaion both "pos" and "neg"
+#' will be regarded as two files
+#' @param object a `MSdev` object
+#'
+#' grep "pos" and "neg" for ion mode
+#'
+#' grep "blank", "blk" and "QC" for sample type, other samples will regard as "Sample"
+#' @return a `MSdev` object
+#' @export
+#'
+#' @examples
 get_MS_sampleinfo <- function(raw.data.dir,
                               rawDataFormat=".raw",
                               verbose=T){
@@ -1094,6 +1057,9 @@ get_MS_sampleinfo <- function(raw.data.dir,
   raw.files <- dir(path = raw.data.dir,
                    pattern = paste0(rawDataFormat,"$"),
                    full.names = T)
+  if (length(raw.files)==0) {
+    stop("No ",rawDataFormat," files exist")
+  }
 
   ### generate sampleInfo
   {
@@ -1343,3 +1309,31 @@ get_MSdev_MS2acquisitionStat <- function(object){
 
 }
 
+
+
+MSdev_xcms_group_features <- function(object,
+                                      diffRt = 5,
+                                      intCor = 0.5,
+                                      eicCor = 0.3,
+                                      ...
+                                      ){
+
+  for (i in 0:1) {
+
+    pol <- ifelse(i==0,"Negative","Positive")
+    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.xcms <- xcms_get_feature_group(xcms.xcms,
+                                        diffRt = diffRt,
+                                        intCor = intCor,
+                                        eicCor = eicCor,
+                                        ...)
+    xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+
+
+  }
+
+  return(object)
+
+
+
+}

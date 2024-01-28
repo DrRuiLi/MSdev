@@ -164,7 +164,7 @@ ggplot_from_img <- function(img_path,coord = F,...){
   p <- ggplot() +
     #xlim(c(0,10))+
     #ylim(c(0,10))+
-    ggimage::geom_image(aes(x=5,y=5,image = img_path),...)+
+    ggimage::geom_image(aes(x=0,y=0,image = img_path),...)+
     theme_void()
   if (coord) {
     p <- p+theme_classic()

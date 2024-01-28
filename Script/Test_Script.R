@@ -832,4 +832,83 @@ a <- data.frame(
 # Thu Jan 11 13:36:43 2024 ------------------------------
 
 
+b <- a%>%
+  dplyr::mutate(diff = log2(labeled.mean / unlabeled.mean),
+                lp = -log10(p.t.test))
+
+
+ggplot(b)+
+  geom_point(aes(x = diff,y =lp ))+
+  xlim(c(-20,20))
+
+
+xcms_get_feature_Rt_pregroup(xcms.xcms ,diffRt = 3)%>%
+  featureDefinitions()->a
+max(a$feature_group)
+b <- a$rtmed
+groupFeatures(b,
+              param = SimilarRtimeParam(3,
+                                        groupConsecutive))
+
+# Sun Jan 14 18:28:12 2024 ------------------------------
+xcms.xcms <- load_demo("xcms")
+featureGroups(xcms.xcms) <-"FG"
+xcms.xcms <- groupFeatures(xcms.xcms,
+                           param = SimilarRtimeParam(diffRt = 5,
+                                                     groupFun = groupHclust))
+xcms.fdf <- get_xcms_feature_definitions(xcms.xcms)
+table(xcms.fdf$feature_group)
+groupConsecutive(xcms.fdf$rtmed,10)%>%table()
+groupHclust(xcms.fdf$rtmed,10)%>%table()
+
+
+# Mon Jan 15 14:36:28 2024 ------------------------------
+## Load the test file
+data(faahko_sub)
+## Update the path to the files for the local system
+dirname(faahko_sub) <- system.file("cdf/KO", package = "faahKO")
+
+## Disable parallel processing for this example
+register(SerialParam())
+
+## Extract the matrix with the identified peaks from the xcmsSet:
+xcms.xcms <- load_demo("xcms")
+pks <- chromPeaks(xcms.xcms)
+
+## Perform the peak grouping with default settings:
+res <- do_groupChromPeaks_density(pks,
+                                  sampleGroups = pData(xcms.xcms)$sample.type,
+                                  binSize = 2,
+                                  sleep = 1,
+                                  bw = 10)
+
+## The feature definitions:
+head(res)
+
+
+
+bw <- 30
+densN <- 512
+minFraction <- 0.3
+.group_peaks_density(peaks[startIdx:endIdx,
+                           , drop = FALSE], bw = bw, densFrom = densFrom, densTo = densTo,
+                     densN = densN, sampleGroups = sampleGroups, sampleGroupTable = sampleGroupTable,
+                     minFraction = minFraction, minSamples = minSamples,
+                     maxFeatures = maxFeatures, sleep = sleep)
+# Mon Jan 15 20:23:04 2024 ------------------------------
+edge.df <- data.frame(
+  from = sample(1:100000,1000),
+  to = sample(1:100000,1000),
+  wieght = sample(1:100000,1000)
+)
+
+
+
+gt <- this.igraph%>%
+  delete.vertices("21")
+
+
+# Sun Jan 28 23:22:19 2024 ------------------------------
+MSdev_annotation()
+
 

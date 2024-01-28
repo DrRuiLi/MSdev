@@ -17,6 +17,11 @@ setRStudioDir <- function(path = rstudioapi::getSourceEditorContext()$path){
   rstudioapi::filesPaneNavigate(path)
 
 }
+getRStudioDir <- function(){
+
+  path = rstudioapi::getSourceEditorContext()$path
+  return(path)
+}
 
 
 getActivedFilePath <- function(){

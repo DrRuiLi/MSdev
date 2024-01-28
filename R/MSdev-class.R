@@ -65,7 +65,7 @@ MSdev <- function(rawDataDir =
                                             verbose = F)
     .Object <- .updateProjectInfoFromSampleInfo(.Object )
     .Object@processingInfo$readInRawData$done <- T
-    saveMSdev(.Object)
+    MSdev_save(.Object)
     .Object
 
   }
