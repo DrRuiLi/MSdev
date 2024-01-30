@@ -16,6 +16,9 @@ plot_XChromatograms(
 \arguments{
 \item{move}{}
 }
+\value{
+xcms
+}
 \description{
 plot_XChromatograms
 }

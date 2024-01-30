@@ -9,7 +9,12 @@ extract_chrom(xcms.xcms, rtr, mzr, sample)
 \arguments{
 \item{xcms.xcms}{XCMSnExp object}
 
+\item{mzr}{MZ range}
+
 \item{sample}{}
+}
+\value{
+xcms
 }
 \description{
 extract_chrom

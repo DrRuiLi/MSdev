@@ -10,7 +10,7 @@ get_features_from_xcms(xcms.xcms, missing = NA)
 \item{xcms.xcms}{XCMSnExp object}
 }
 \value{
-a SummarizedExperiment subject
+xcms a SummarizedExperiment subject
 }
 \description{
 extract feature data from xcms::XCMSnExp,

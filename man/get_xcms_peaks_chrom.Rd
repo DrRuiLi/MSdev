@@ -12,7 +12,7 @@ get_xcms_peaks_chrom(xcms.xcms, peaks.id, all.sample = F, rt.range = "expand")
 \item{rt}{one of c("all","identity","expand")}
 }
 \value{
-XChromatograms
+xcms XChromatograms
 }
 \description{
 extract chromatograph from XCMSnExp,

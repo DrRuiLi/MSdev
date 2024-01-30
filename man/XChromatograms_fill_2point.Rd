@@ -9,6 +9,9 @@ XChromatograms_fill_2point(xchroms)
 \arguments{
 \item{xchroms}{}
 }
+\value{
+xcms
+}
 \description{
 when xcms::findChromPeaks(), if any Chromatogram contain less than 2 point, this will lead to error
 }

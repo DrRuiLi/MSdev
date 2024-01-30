@@ -11,6 +11,9 @@ XChromatograms_rt_unit(xchroms, unit_to = "s")
 
 \item{unit_to}{"s" or "m", "s": rtime*60; "m": rtime/60}
 }
+\value{
+xcms
+}
 \description{
 change rtime units, in some situation (such as SRM data from Thermo), rtime are recorded with unit "m",
 this will lead to error when findChrompeaks

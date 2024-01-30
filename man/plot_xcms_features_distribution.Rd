@@ -12,7 +12,10 @@ plot_xcms_features_distribution(
 \arguments{
 \item{xcms.xcms}{XCMSnExp object}
 
-\item{plot.title}{}
+\item{plot.title}{title}
+}
+\value{
+xcms
 }
 \description{
 plot_xcms_peaks_distribution

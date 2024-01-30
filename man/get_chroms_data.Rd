@@ -9,6 +9,9 @@ get_chroms_data(xchrom)
 \arguments{
 \item{xchrom}{}
 }
+\value{
+xcms
+}
 \description{
 extract chomatogram data to a data.frame
 }

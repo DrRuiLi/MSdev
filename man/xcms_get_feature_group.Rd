@@ -9,6 +9,9 @@ xcms_get_feature_group(xcms.xcms, diffRt = 5, intCor = 0.5, eicCor = 0.5)
 \arguments{
 \item{xcms.xcms}{XCMSnExp object}
 }
+\value{
+xcms
+}
 \description{
 xcms feature group
 }

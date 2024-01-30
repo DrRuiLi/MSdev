@@ -7,7 +7,7 @@ MSDB_id in db with mz error < mz.ppm will b}
 \usage{
 get_xcms_feature_ms1_candidate(
   xcms.xcms,
-  db.path,
+  cpdb,
   mz.ppm = 10,
   rt.tol = Inf,
   expand_adduct = F,
@@ -17,7 +17,12 @@ get_xcms_feature_ms1_candidate(
 \arguments{
 \item{xcms.xcms}{XCMSnExp object}
 
+\item{mz.ppm}{num}
+
 \item{rt.tol}{}
+}
+\value{
+xcms
 }
 \description{
 match feature to database based on mz and rt

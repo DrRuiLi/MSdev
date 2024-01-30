@@ -9,7 +9,10 @@ plot_xcms_peaks_ms1_scans(xcms.xcms, plot.title = "Peaks Sans of MS1")
 \arguments{
 \item{xcms.xcms}{XCMSnExp object should be a \code{XCMSnExp} object after \code{findChromPeaks}}
 
-\item{plot.title}{}
+\item{plot.title}{title}
+}
+\value{
+xcms
 }
 \description{
 plot scans number of MS1 levels in each peak, note that to many peaks will lead to stuck,

@@ -9,7 +9,12 @@ plot_xcms_peaks_Chromatogram(xcms.xcms, peak_id, rt = "expand")
 \arguments{
 \item{xcms.xcms}{XCMSnExp object}
 
+\item{peak_ids}{peaks id}
+
 \item{rt_expand}{foldchange to expand rt range}
+}
+\value{
+xcms
 }
 \description{
 extract EIC according to peaks' mzrange and rtrange,

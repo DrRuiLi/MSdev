@@ -15,6 +15,9 @@ xcmsProcessingMS1(xcms.xcms, ion_mode = NA, xcms_param = NULL, ...)
 
 \item{centWaveParam}{xcms::CentWaveParam()}
 }
+\value{
+xcms
+}
 \description{
 Import \code{msDataFiles}, filter \code{ion_mode}, find peaks using \code{centWaveParam}, correct RT, group peaks using \code{peaksGroup}, fill peaks by xcms at MS1 Level
 }

@@ -13,7 +13,12 @@ plot_xcms_peaks_distribution(
 \arguments{
 \item{xcms.xcms}{XCMSnExp object}
 
+\item{plot.title}{title}
+
 \item{type}{\code{"o"}, for geom_point, \code{"l"}, for geom_segment}
+}
+\value{
+xcms
 }
 \description{
 export peaks data by xcms::chromPeaks and plot by ggplot2

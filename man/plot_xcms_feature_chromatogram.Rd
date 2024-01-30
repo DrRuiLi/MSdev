@@ -9,7 +9,12 @@ plot_xcms_feature_chromatogram(xcms.xcms, feature.id, sampleNames = NULL)
 \arguments{
 \item{xcms.xcms}{XCMSnExp object}
 
+\item{feature.id}{feature id}
+
 \item{sampleNames}{}
+}
+\value{
+xcms
 }
 \description{
 extract Chromatogram from xcms according to feature's mz range and plot
