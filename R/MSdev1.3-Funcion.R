@@ -150,6 +150,16 @@ MSdev_match_Spectra_to_feature <- function(object){
 
 }
 
+#' MSdev annotation
+#'
+#' @param object MSdev
+#' @param db.path CompoundDB
+#' @param ...
+#'
+#' @return
+#' @export
+#'
+#' @examples
 MSdev_annotation <- function(object,
                              db.path = "d:/MSdb/msdb.HMDB.Rdata",
                              ...){
@@ -179,36 +189,6 @@ MSdev_annotation <- function(object,
 
 }
 
-
-MSdev_annotation_CompoundDB <- function(object,
-                             cpdb = MSdb:::get_CompoundDB(),
-                             ...){
-
-
-  for (i in 0:1) {
-
-    pol <- ifelse(i==0,"Negative","Positive")
-    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
-    message(Sys.time()," Find MS1 candidate...")
-    xcms.xcms <- get_xcms_feature_ms1_candidate(xcms.xcms,
-                                                db.path,
-                                                ...)
-    message(Sys.time()," calculate MS2 score...")
-    xcms.xcms <- xcms_get_feature_ms2_score(xcms.xcms ,
-                                            db.path = db.path,
-                                            object@spectra$MS2_Spectra,
-                                            ...)
-    xcms.xcms <- xcms_get_feature_annotation(xcms.xcms,
-                                             ...)
-    xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
-
-  }
-
-  object@projectInfo$MSdbPath <- db.path
-  return(object)
-
-
-}
 
 MSdev_get_Stat <- function(object,QC_RSD = 0.3){
 

@@ -4,10 +4,10 @@
 #'  ( note this rely on character "QC" and "Sample" in `sampleNames(xcms.xcms)` )
 #' @param xcms.xcms XCMSnExp object
 #'
-#' @return a SummarizedExperiment subject
+#' @return xcms a SummarizedExperiment subject
 #' @export
 #'
-#' @examples
+
 get_features_from_xcms <- function(xcms.xcms,missing = NA){
 
   xcms.sum <- quantify(xcms.xcms,missing = missing )
@@ -137,11 +137,11 @@ get_xchroms_peaks_count <- function(xchroms){
 #' @param all.sample
 #' @param rt one of c("all","identity","expand")
 #'
-#' @return XChromatograms
+#' @return xcms XChromatograms
 #' @import xcms
 #' @export
 #'
-#' @examples
+
 get_xcms_peaks_chrom <- function(xcms.xcms,
                                  peaks.id ,
                                  all.sample =F,
@@ -214,11 +214,11 @@ xcms_get_peak_fill <- function(xcms.xcms){
 #'
 #' @param xcms.xcms XCMSnExp object
 #'
-#' @return
+#' @return xcms
 #' @export
 #' @import MsFeatures
 #'
-#' @examples
+
 xcms_get_feature_group <- function(xcms.xcms,
                                    diffRt = 5,
                                    intCor = 0.5,
@@ -260,13 +260,13 @@ xcms_get_feature_group <- function(xcms.xcms,
 #'
 #' @param xcms.xcms XCMSnExp object
 #' @param rtr
-#' @param mzr
+#' @param mzr MZ range
 #' @param sample
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 extract_chrom <- function(xcms.xcms,
                           rtr,
                           mzr,
@@ -336,10 +336,10 @@ get_chrom_peaks_gaussian_fit <- function(xchrom){
 #' @description extract chomatogram data to a data.frame
 #' @param xchrom
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 get_chroms_data <- function(xchrom){
 
   .extract.chrom <- function(i,j){
@@ -372,10 +372,10 @@ get_chroms_data <- function(xchrom){
 #' @param xchroms `XChromatograms` or `MChromatograms` object
 #' @param unit_to "s" or "m", "s": rtime*60; "m": rtime/60
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 #'
 XChromatograms_rt_unit <- function(xchroms,unit_to = "s"){
 
@@ -419,10 +419,10 @@ XChromatograms_rt_unit <- function(xchroms,unit_to = "s"){
 #'
 #' @param xchroms
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 XChromatograms_fill_2point <- function(xchroms){
 
   rt.point <- sapply(1:length(xchroms), function(x){
@@ -456,10 +456,10 @@ XChromatograms_fill_2point <- function(xchroms){
 #' @param norm
 #' @param move
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 plot_XChromatograms <- function(xchroms ,
                                 norm = T,
                                 move = T,
@@ -533,7 +533,7 @@ plot_XChromatograms <- function(xchroms ,
 #'
 #' @param xcms.xcms XCMSnExp object
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
 xcms_get_feature_def_stat <- function(xcms.xcms){
@@ -801,15 +801,15 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
 #'
 #' @param xcms.xcms XCMSnExp object
 #' @param db.path
-#' @param mz.ppm
+#' @param mz.ppm num
 #' @param rt.tol
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 get_xcms_feature_ms1_candidate <- function(xcms.xcms ,
-                                           db.path,
+                                           cpdb,
                                            mz.ppm= 10,
                                            rt.tol = Inf,
                                            expand_adduct = F,
@@ -817,9 +817,8 @@ get_xcms_feature_ms1_candidate <- function(xcms.xcms ,
 
 
   ### load spectra database
-  Spectra_database <- load_as_var(db.path)
-  Spectra_database <- filterPolarity(Spectra_database,
-                  unique(polarity(xcms.xcms)))
+  cpdbt <- compounds(cpdb, columns = compoundVariables(cpdb,includeId =T))
+
   if (expand_adduct) {
     Spectra_database <- get_Spectra_adduct_expand(Spectra_database,...)
 
@@ -1038,13 +1037,13 @@ get_xcms_feature_definitions <- function(xcms.xcms){
 #' @description export peaks data by xcms::chromPeaks and plot by ggplot2
 #'
 #' @param xcms.xcms XCMSnExp object
-#' @param plot.title
+#' @param plot.title title
 #' @param type `"o"`, for geom_point, `"l"`, for geom_segment
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 plot_xcms_peaks_distribution <- function(xcms.xcms,plot.title = "Peaks distribution",type = "o"){
 
   xcms.peaks <- chromPeaks(xcms.xcms)%>%
@@ -1117,12 +1116,12 @@ plot_xcms_peaks_distribution <- function(xcms.xcms,plot.title = "Peaks distribut
 #' @title plot_xcms_peaks_distribution
 #' @description plot_xcms_peaks_distribution
 #' @param xcms.xcms XCMSnExp object
-#' @param plot.title
+#' @param plot.title title
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 plot_xcms_features_distribution <-
   function(xcms.xcms, plot.title = "Features distribution") {
     xcms.features <- featureDefinitions(xcms.xcms) %>%
@@ -1189,13 +1188,13 @@ plot_xcms_features_distribution <-
 #' @title plot_xcms_feature_chromatogram
 #' @description extract Chromatogram from xcms according to feature's mz range and plot
 #' @param xcms.xcms XCMSnExp object
-#' @param feature.id
+#' @param feature.id feature id
 #' @param sampleNames
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =NULL ){
 
   ### select samples
@@ -1283,12 +1282,12 @@ plot_xcms_peaks_mzerror_density <- function(xcms.xcms,
 #' @description plot scans number of MS1 levels in each peak, note that to many peaks will lead to stuck,
 #' apply `filterFile` to decrease peaks count
 #' @param xcms.xcms XCMSnExp object should be a `XCMSnExp` object after `findChromPeaks`
-#' @param plot.title
+#' @param plot.title title
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"){
 
   xcms.process.type <- processHistory(xcms.xcms) %>% sapply( processType )
@@ -1335,13 +1334,13 @@ plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"
 #' Title
 #'
 #' @param xcms.xcms XCMSnExp object
-#' @param plot.title
+#' @param plot.title title
 #'
-#' @return
+#' @return xcms
 #' @export
 #' @import xcms
 #'
-#' @examples
+
 plot_xcms_peaks_ms2_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS2"){
 
   xcms.process.type <- processHistory(xcms.xcms) %>% sapply( processType )
@@ -1471,13 +1470,13 @@ plot_xcms_peaks_SN_distribution <- function(xcms.xcms,plot.title = "Peaks SNR(Si
 #' note that if multiple sample in xcms object, only first sample will be extracted
 #'
 #' @param xcms.xcms XCMSnExp object
-#' @param peak_ids
+#' @param peak_ids peaks id
 #' @param rt_expand foldchange to expand rt range
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt = "expand"){
 
   peaks.data <- chromPeaks(xcms.xcms)[peak_id,,drop = F]
@@ -1536,10 +1535,10 @@ chromPeaks_Sta <- function(xcms.xcms){
 #' @param peaksGroup `vector` to PeakGroupsParam(sampleGroups), should contain "QC"
 #' @param centWaveParam xcms::CentWaveParam()
 #'
-#' @return
+#' @return xcms
 #' @export
 #' @import xcms
-#' @examples
+
 xcmsProcessingMS1 <- function(xcms.xcms,
                               ion_mode = NA,
                               xcms_param = NULL,
@@ -1658,10 +1657,10 @@ matchSpectra_Features <- function(xcmsFeatureDef, spec){
 #' @param xcms.xcms XCMSnExp object
 #' @param feature_id_to_show
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 plot_xcms_feature_intensity <- function(xcms.xcms , feature_id_to_show ){
 
   ion_mode <- unique(fData(xcms.xcms)$polarity)

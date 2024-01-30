@@ -912,3 +912,73 @@ gt <- this.igraph%>%
 MSdev_annotation()
 
 
+
+# Mon Jan 29 15:56:23 2024 ------------------------------
+diff.table <- readxl::read_excel("d:/temp/WT AKO n=5.xlsx")%>%
+  dplyr::mutate(log2foldchange = -log2(foldchange),
+                log10p = -log10(p.value),
+                diff = case_when(abs(log10p) > 1.30103 & log2foldchange >0.4150375 ~ "up",
+                                 abs(log10p) > 1.30103 & log2foldchange < -0.4150375 ~ "down",
+                                 T~ "no"),
+                diff = factor(diff,levels = c("up","no","down")))
+
+logfc.max <- max(abs(diff.table$log2foldchange))
+logfc.max <- 5
+log10p.max <-max(abs(diff.table$log10p))
+log10p.max <- 6
+ggplot(diff.table)+
+  geom_point(aes(x = log2foldchange  , y = log10p,
+                 col = diff,size = diff),alpha = 0.9,pch = 16)+
+  scale_color_manual(values = c(up = "#DC0000" , no = "#BEBEBE",down = "#3C5488"),
+                     labels = c(up ="Up", no ="No change",down ="Down"))+
+  scale_size_manual(values = c(up = 1 , no = 0.5,down =1)
+                    )+
+  geom_abline(slope = 0,intercept = -log10(0.05),lty = "dashed" , col = "#E9B574",size = 0.5)+
+  geom_vline(xintercept = -0.4150375,lty = "dashed" , col = "#E9B574",size = 0.5)+
+  geom_vline(xintercept = 0.4150375,lty = "dashed" , col = "#E9B574",size = 0.5)+
+  annotate("text",x = logfc.max*0.8, y = log10p.max*0.8,label = sum(diff.table$diff == "up"),size= 2.8)+
+  annotate("text",x = -logfc.max*0.8, y = log10p.max*0.8,label = sum(diff.table$diff == "down"),size= 2.8)+
+  labs(col = "Difference" , x = "Log2(Foldchange)",y = paste0("-Log10( P value )"))+
+  xlim(c(-logfc.max,logfc.max))+
+  ylim(c(0,log10p.max))+
+  theme_bw()+
+  guides(size = "none")+
+  theme(legend.key.size = unit(0.1,"inch"),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 8),
+        legend.position = "right",
+        axis.text = element_text(size = 8),
+        axis.title = element_text(size = 8),
+        panel.border = element_rect(fill= NA,size = 0.5),
+        text = element_text(size=8)) ->vp
+
+
+  label.df <-diff.table%>%
+    dplyr::filter(feature_id == "FT3678_neg")
+  vp <- vp+
+    ggrepel::geom_text_repel(data = label.df,
+                             aes(x = log2foldchange  , y = log10p,
+                                 label = Compound_name),
+                             size = 2.5,
+                             segment.size = 2,
+                             max.overlaps = 30)
+MSdev::open_ggplot_win(vp,4,3)
+export_graph2pdf(vp,"d:/temp/volcano.pdf",
+                 width = 4,height = 3)
+
+
+n <- 100000
+system.time(b <-
+              bplapply(cpdbt$formula[1:n],
+                     chemform_adduct,
+                     MSCC::adduct.table$Adduct,
+                     BPPARAM = SnowParam(progressbar = T))
+)
+
+
+
+
+
+
+
+
