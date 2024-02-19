@@ -161,9 +161,10 @@ MSdev_match_Spectra_to_feature <- function(object){
 #'
 #' @examples
 MSdev_annotation <- function(object,
-                             cpdb = cpdb,
+                             cpdb_path,
                              ...){
 
+  cpdb <- CompoundDb::CompDb(cpdb_path)
 
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
@@ -183,7 +184,7 @@ MSdev_annotation <- function(object,
 
   }
 
-  object@projectInfo$CompoundDB <- cpdb
+  object@projectInfo$CompoundDB_path <- cpdb_path
   return(object)
 
 
