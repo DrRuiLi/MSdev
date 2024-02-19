@@ -823,7 +823,7 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
                                            cpdb,
                                            mz.ppm= 10,
                                            rt.tol = Inf,
-                                           selected_adduct,
+                                           selected_adduct = MSCC::adduct.table$Adduct,
                                            ...){
 
 
@@ -831,9 +831,7 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
   cpdbt <- compounds(cpdb, columns = CompoundDb::compoundVariables(cpdb,includeId =T))
   cpdbt <- cpdbt[cpdbt$has_sp>0,]
   cpdbt$formula <- MSCC::chemform_formate(cpdbt$formula)
-  if (missing(selected_adduct)) {
-    selected_adduct <- MSCC::adduct.table$Adduct
-  }
+
   adducts <- chemform_adduct_check(selected_adduct)%>%
     dplyr::mutate(polarity = case_when(Ion_mode == "negative"~0,T~1))%>%
     dplyr::filter(polarity %in% polarity(xcms.xcms))
