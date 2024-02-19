@@ -823,7 +823,7 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
                                            cpdb,
                                            mz.ppm= 10,
                                            rt.tol = Inf,
-                                           selected_adduct = MSCC::adduct.table$Adduct,
+                                           selected_adduct = c("[M+H]+","[M-H]-"),
                                            ...){
 
 
