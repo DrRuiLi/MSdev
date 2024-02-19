@@ -7,7 +7,10 @@
 DEP_list_contrast(data.se)
 }
 \arguments{
-\item{data.se}{}
+\item{data.se}{SE}
+}
+\value{
+contrast
 }
 \description{
 return contrasts in data.se from DEP::test_diff

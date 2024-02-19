@@ -7,7 +7,10 @@
 load_as_var(file_to_load)
 }
 \arguments{
-\item{file_to_load}{}
+\item{file_to_load}{file path}
+}
+\value{
+data
 }
 \description{
 load Rdata file and return, only one variable in \code{file_to_load}

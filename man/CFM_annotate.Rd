@@ -2,7 +2,7 @@
 % Please edit documentation in R/dev_CFM.R
 \name{CFM_annotate}
 \alias{CFM_annotate}
-\title{Title}
+\title{CFM_annotate}
 \usage{
 CFM_annotate(
   smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
@@ -15,8 +15,23 @@ CFM_annotate(
 )
 }
 \arguments{
-\item{output_file}{}
+\item{smiles_or_inchi}{smiles}
+
+\item{spectrum_file}{spectra}
+
+\item{id}{id}
+
+\item{ppm_mass_tol}{ppm}
+
+\item{abs_mass_tol}{mz tol}
+
+\item{param_adduct}{adduct}
+
+\item{output_file}{file path}
+}
+\value{
+cfm data
 }
 \description{
-Title
+CFM_annotate
 }

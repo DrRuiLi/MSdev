@@ -187,7 +187,7 @@ normalizeSpectra_by_precursorIntensity <- function(sp){
 #' @return a dataframe with mz and intensity and vars
 #' @export
 #'
-#' @examples
+
 get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
 
 
@@ -215,15 +215,15 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
   return(spec.df)
 }
 
-#' Title
+#' combineSpectra_groupby_ce
 #'
-#' @param sp
-#' @param minProp
+#' @param sp Spectra
+#' @param minProp NUM
 #'
-#' @return
+#' @return Spectra
 #' @export
 #'
-#' @examples
+
 combineSpectra_groupby_ce <- function(sp,
                                       minProp = 0.5,
                                       ppm = 5,

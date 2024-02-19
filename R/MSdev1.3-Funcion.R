@@ -2,10 +2,10 @@
 #' @description manually check sampleInfo using excel
 #' @param object a `MSdev` object
 #'
-#' @return a `MSdev` object
+#' @return MSdev a `MSdev` object
 #' @export
 #'
-#' @examples
+
 MSdev_checkSampleInfo <- function(object){
 
   sampleInfo <- object@sampleInfo
@@ -29,10 +29,10 @@ MSdev_checkSampleInfo <- function(object){
 #'
 #' @param object
 #'
-#' @return
+#' @return MSdev
 #' @export
 #' @importFrom BiocParallel  bplapply
-#' @examples
+
 #'
 
 MSdev_msConvert<- function(object){
@@ -156,10 +156,10 @@ MSdev_match_Spectra_to_feature <- function(object){
 #' @param db.path CompoundDB
 #' @param ...
 #'
-#' @return
+#' @return MSdev
 #' @export
 #'
-#' @examples
+
 MSdev_annotation <- function(object,
                              cpdb_path,
                              ...){

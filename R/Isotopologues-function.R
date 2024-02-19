@@ -3,12 +3,12 @@
 #'
 #' @param chem_formula a chemical formula, such as "C4H4Cl1N3O1".
 #' some template see "MSCC::chem_formula_template"
-#' @param ion_mode
+#' @param ion_mode 1 OR 0
 #'
-#' @return
+#' @return df
 #' @export
 #'
-#' @examples
+
 expand_isoadduct_from_formula <- function(chem_formula,
                                           adduct.table = adduct.table,
                                           ion_mode = "positive") {
@@ -77,14 +77,14 @@ expand_isoadduct_from_formula <- function(chem_formula,
 
 #' @title match_isotopes_to_xcms_feature
 #'
-#' @param MS.network
-#' @param xcms.features
-#' @param ppm.thresh
+#' @param MS.network MS.network
+#' @param xcms.features xcms.features
+#' @param ppm.thresh ppm.thresh
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 match_isotopes_to_xcms_feature <-
   function(isotopes.network , xcms.xcms, ppm.thresh = 20,rt.tol = 10,value="ratio_sub_nature")
   {

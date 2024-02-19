@@ -7,7 +7,7 @@
 XChromatograms_fill_2point(xchroms)
 }
 \arguments{
-\item{xchroms}{}
+\item{xchroms}{XChromatograms}
 }
 \value{
 xcms

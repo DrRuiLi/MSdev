@@ -9,6 +9,9 @@ get_node_info(all_nodes)
 \arguments{
 \item{all_nodes}{kegg id, currently support cpd(compound) and hsa(gene)}
 }
+\value{
+df
+}
 \description{
 get_node_info
 }

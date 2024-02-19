@@ -1,10 +1,10 @@
 #' @title DEP_list_contrast
 #' @description return contrasts in data.se from DEP::test_diff
-#' @param data.se
+#' @param data.se SE
 #'
-#' @return
+#' @return contrast
 #'
-#' @examples
+
 DEP_list_contrast <- function(data.se){
 
   contrast <- grep(names(data.se@elementMetadata@listData),
@@ -19,13 +19,13 @@ DEP_list_contrast <- function(data.se){
 #' @title add_rejections_no_p.adj
 #' @description reference to DEP::add_rejections(),which not support significant with out p adjust,
 #' this function as supplymentary
-#' @param data.se
-#' @param alpha
-#' @param lfc
+#' @param data.se SE
+#' @param alpha p threshold
+#' @param lfc fc threshold
 #'
-#' @return
+#' @return se
 #'
-#' @examples
+
 DEP_add_rejections <- function(data.se , p.adjust = T,lfc = 0.5){
 
   if (any(grepl(pattern = "significant",names(data.se@elementMetadata@listData)))) {
@@ -94,13 +94,12 @@ DEP_check_sig <- function(data.se){
 
 #' @title DEP.test.diff
 #' @description warpper of DEP::test_diff
-#' @param data.se
-#' @param p.adj
+#' @param data.se SE
 #'
-#' @return
+#' @return SE
 #' @export
 #'
-#' @examples
+
 DEP_test_diff <- function(data.se,type = "all",...){
 
   groups <- data.se$condition%>%
@@ -494,13 +493,13 @@ DEP.plot.heatmap <- function(data.se,
 #' DEP_export_data
 #' wirte coldata and rowdata to excel
 #'
-#' @param data.se
-#' @param file_path
+#' @param data.se SE
+#' @param file_path path
 #' @import SummarizedExperiment
-#' @return
+#' @return null
 #' @export
 #'
-#' @examples
+
 DEP_export_data <- function(data.se,file_path){
 
   col.data <- colData(data.se)%>%as.data.frame()

@@ -9,6 +9,9 @@ MSdev_msConvert(object)
 \arguments{
 \item{object}{}
 }
+\value{
+MSdev
+}
 \description{
 msConvert_MSdev
 }

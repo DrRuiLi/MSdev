@@ -1,12 +1,12 @@
 #' msconvert_raw2mzML
 #'
-#' @param raw.files
-#' @param mzML.files
-#' @param BPPARAM
+#' @param raw.files file path
+#' @param mzML.files file path
+#' @param BPPARAM biocparall
 #'
-#' @return
+#' @return null
 #' @importFrom BiocParallel bplapply SnowParam
-#' @examples
+
 msconvert_raw2mzML <- function(raw.files ,
                                 mzML.files,
                                 BPPARAM = SnowParam(workers = parallel::detectCores()-1)){

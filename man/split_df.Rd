@@ -8,7 +8,12 @@ random split data.frame}
 split_df(df, n = 2)
 }
 \arguments{
-\item{n}{}
+\item{df}{data.frame}
+
+\item{n}{number}
+}
+\value{
+list
 }
 \description{
 split_df

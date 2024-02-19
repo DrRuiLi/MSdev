@@ -7,7 +7,12 @@
 findISMSdev(object, to.adjust = "featureRaw", corr.thred = 0.6)
 }
 \arguments{
-\item{corr.thred}{}
+\item{object}{MSdev}
+
+\item{corr.thred}{cor}
+}
+\value{
+MSdev
 }
 \description{
 find features of internals standard listed in \code{object@experimentInfo@Internal_Standard}

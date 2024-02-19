@@ -11,7 +11,12 @@ getStaDataMSdev(
 )
 }
 \arguments{
-\item{MSDB.keys}{}
+\item{object}{MSdev}
+
+\item{MSDB.keys}{keys}
+}
+\value{
+data
 }
 \description{
 getStaDataMSdev

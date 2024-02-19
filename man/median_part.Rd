@@ -11,6 +11,9 @@ median_part(x, n = 10)
 
 \item{n}{number of element}
 }
+\value{
+vector
+}
 \description{
 similar to head() and tail(), return the median of a vector
 }

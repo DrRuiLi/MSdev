@@ -1,7 +1,7 @@
 #' @title setwdActivedFilePath
 #' @description Set Working Directory as currently opened file in RStudio editor,
 #' see `rstudioapi::getSourceEditorContext()`
-#' @return
+#' @return null
 #' @export
 #'
 setwdActivedFilePath <- function(){

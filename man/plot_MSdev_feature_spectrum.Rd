@@ -7,7 +7,12 @@
 plot_MSdev_feature_spectrum(MSdev.obj, feature.id)
 }
 \arguments{
-\item{feature_id}{}
+\item{MSdev.obj}{MSdev}
+
+\item{feature_id}{feature_id}
+}
+\value{
+ggplot
 }
 \description{
 Title

@@ -7,7 +7,7 @@
 getmsExpTime(msDataFiles)
 }
 \arguments{
-\item{msdataFiles}{}
+\item{msdataFiles}{file path}
 }
 \value{
 a data.frame with two column: msDataFiles, ExpTime

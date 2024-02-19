@@ -10,7 +10,7 @@ MSdev_checkSampleInfo(object)
 \item{object}{a \code{MSdev} object}
 }
 \value{
-a \code{MSdev} object
+MSdev a \code{MSdev} object
 }
 \description{
 manually check sampleInfo using excel

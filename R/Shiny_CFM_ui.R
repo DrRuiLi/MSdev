@@ -1,9 +1,9 @@
 #' Generate UI for shiny
 #'
-#' @return
+#' @return null
 #' @export
 #' @import visNetwork MSCC DT
-#' @examples
+
 get_cfm_shiny_ui <- function(){
 
   ui <- fluidPage(

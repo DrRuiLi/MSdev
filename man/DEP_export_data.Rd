@@ -7,6 +7,14 @@ wirte coldata and rowdata to excel}
 \usage{
 DEP_export_data(data.se, file_path)
 }
+\arguments{
+\item{data.se}{SE}
+
+\item{file_path}{path}
+}
+\value{
+null
+}
 \description{
 DEP_export_data
 wirte coldata and rowdata to excel

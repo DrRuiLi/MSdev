@@ -9,6 +9,9 @@ MetaboSignalNetworkTable2df(network_table)
 \arguments{
 \item{network_table}{matrix with 3 column: source, target, interaction_type}
 }
+\value{
+data.frame
+}
 \description{
 MetaboSignalNetworkTable2df
 }

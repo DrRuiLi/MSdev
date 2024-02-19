@@ -7,7 +7,11 @@
 export_MSdev_feature_MSMS(MSdev.obj, feature_id, out.dir)
 }
 \arguments{
-\item{out.dir}{}
+\item{MSdev.obj}{MSdev}
+
+\item{feature_id}{feature_id}
+
+\item{out.dir}{path}
 }
 \description{
 Title

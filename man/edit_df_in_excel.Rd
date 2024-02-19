@@ -7,7 +7,10 @@
 edit_df_in_excel(df)
 }
 \arguments{
-\item{df}{}
+\item{df}{data.frame}
+}
+\value{
+data.frame
 }
 \description{
 edit_df_in_excel

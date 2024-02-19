@@ -7,7 +7,10 @@
 DEP_test_diff(data.se, type = "all", ...)
 }
 \arguments{
-\item{p.adj}{}
+\item{data.se}{SE}
+}
+\value{
+SE
 }
 \description{
 warpper of DEP::test_diff

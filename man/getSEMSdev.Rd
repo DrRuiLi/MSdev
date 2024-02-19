@@ -7,7 +7,10 @@
 getSEMSdev(MSdev.obj)
 }
 \arguments{
-\item{MSdev.obj}{}
+\item{MSdev.obj}{MSdev}
+}
+\value{
+MSdev
 }
 \description{
 extrat SummarizedExperiment::SummarizedExperiment, which combine coldata(sample info) and rowdata (metabolites/feature)

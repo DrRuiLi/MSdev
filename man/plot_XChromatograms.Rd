@@ -14,7 +14,11 @@ plot_XChromatograms(
 )
 }
 \arguments{
-\item{move}{}
+\item{norm}{norm to 0-1}
+
+\item{move}{move step}
+
+\item{xchrom}{XChromatograms}
 }
 \value{
 xcms

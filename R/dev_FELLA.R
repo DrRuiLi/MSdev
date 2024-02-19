@@ -10,15 +10,15 @@ fella_enrich <- function(cpd_kegg,
   return(fella.fella)
 }
 
-#' Title
+#' fella_igraph
 #'
 #' @param fella.fella
 #'
-#' @return
+#' @return igraph
 #' @export
 #' @import igraph
 #'
-#' @examples
+
 fella_igraph <- function(fella.fella,
                          p = 0.05,
                          node = 1000){

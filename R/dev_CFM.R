@@ -32,19 +32,19 @@ CFM_get_param_config <- function(adduct = c("[M+H]+","[M-H]-"),
 }
 
 #' CFM predict
+#' see CFM doc
+#' @param smiles_or_inchi_or_file smiles
+#' @param prob_thresh prob
+#' @param param_adduct adduct
+#' @param annotate_fragments logic
+#' @param output_file_or_dir path
+#' @param apply_postproc logic
+#' @param suppress_exceptions logic
 #'
-#' @param smiles_or_inchi_or_file
-#' @param prob_thresh
-#' @param param_adduct
-#' @param annotate_fragments
-#' @param output_file_or_dir
-#' @param apply_postproc
-#' @param suppress_exceptions
-#'
-#' @return
+#' @return list of cfm data
 #' @export
 #' @import crayon
-#' @examples
+
 CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
                           prob_thresh = 0.001,
                           param_adduct = "[M+H]+",
@@ -83,20 +83,20 @@ CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([
   }
 }
 
-#' Title
+#' CFM_annotate
 #'
-#' @param smiles_or_inchi
-#' @param spectrum_file
-#' @param id
-#' @param ppm_mass_tol
-#' @param abs_mass_tol
-#' @param param_adduct
-#' @param output_file
+#' @param smiles_or_inchi smiles
+#' @param spectrum_file spectra
+#' @param id id
+#' @param ppm_mass_tol ppm
+#' @param abs_mass_tol mz tol
+#' @param param_adduct adduct
+#' @param output_file file path
 #'
-#' @return
+#' @return cfm data
 #' @export
 #'
-#' @examples
+
 CFM_annotate<- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
                           spectrum_file = NULL,
                           id = "AN_ID",
@@ -305,13 +305,13 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
 
 #' read_CFM_predict_result
 #'
-#' @param result_path
+#' @param result_path path
 #'
-#' @return
+#' @return list of cfm data
 #' @import dplyr
 #' @export
 #'
-#' @examples
+
 read_CFM_predict_result <- function(result_path){
 
   cfm.data <- readr::read_lines(result_path)

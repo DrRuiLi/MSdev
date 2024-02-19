@@ -7,7 +7,12 @@
 xlsx.write.list(df.list, file)
 }
 \arguments{
-\item{file}{}
+\item{df.list}{list of data}
+
+\item{file}{file path}
+}
+\value{
+null
 }
 \description{
 Write a list of data.frame (or other object could be write into wroksheet), every term will be writen to a single sheet

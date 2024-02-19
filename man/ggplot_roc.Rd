@@ -7,7 +7,12 @@
 ggplot_roc(roc.train, roc.test)
 }
 \arguments{
-\item{roc.test}{}
+\item{roc.train}{roc}
+
+\item{roc.test}{roc}
+}
+\value{
+ggplot
 }
 \description{
 plot ROC of train and test

@@ -8,10 +8,9 @@
 #' @slot Chroma_gradient list.
 #' @slot Mass_Spectrum list.
 #'
-#' @return
 #' @export
 #'
-#' @examples
+
 setClass(
   "MS_Exp",
   slots = list(

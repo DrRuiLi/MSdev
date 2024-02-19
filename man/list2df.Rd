@@ -9,6 +9,9 @@ list2df(x)
 \arguments{
 \item{x}{}
 }
+\value{
+data.frame
+}
 \description{
 convert list to data.frame. In each list,
 sub-list will be replaced with "large list" and missing value will be fill by NA.

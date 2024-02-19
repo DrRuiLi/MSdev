@@ -7,7 +7,12 @@
 xcms_get_dda_ms2_assignment(xcms.xcms)
 }
 \arguments{
-\item{featuredef}{}
+\item{xcms.xcms}{xcms}
+
+\item{featuredef}{featuredef}
+}
+\value{
+xcms
 }
 \description{
 match xcms scan of msLevel 2 to feature Definitions

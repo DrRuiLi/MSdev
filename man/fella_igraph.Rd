@@ -2,13 +2,16 @@
 % Please edit documentation in R/dev_FELLA.R
 \name{fella_igraph}
 \alias{fella_igraph}
-\title{Title}
+\title{fella_igraph}
 \usage{
 fella_igraph(fella.fella, p = 0.05, node = 1000)
 }
 \arguments{
 \item{fella.fella}{}
 }
+\value{
+igraph
+}
 \description{
-Title
+fella_igraph
 }

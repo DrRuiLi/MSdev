@@ -7,7 +7,12 @@
 MetaboSignalNetworkTableStandardNodeName(network_table, add_hsa = T)
 }
 \arguments{
-\item{add_hsa}{}
+\item{network_table}{network_table}
+
+\item{add_hsa}{network_table}
+}
+\value{
+network_table
 }
 \description{
 add or remove "hsa:" from network_table

@@ -8,7 +8,14 @@ stimulate DDA cycle and assign ms2 to feature, now just support single file}
 xcms_get_dda_scan_stimulate(xcms.xcms, dynamic_time = 60)
 }
 \arguments{
-\item{dynamic_time}{}
+\item{dynamic_time}{dynamic_time}
+
+\item{xcms.scan}{xcms.scan}
+
+\item{feature_def}{feature_def}
+}
+\value{
+xcms.xcms
 }
 \description{
 xcms_get_dda_scan_stimulate

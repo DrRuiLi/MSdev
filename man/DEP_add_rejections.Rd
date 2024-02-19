@@ -7,7 +7,14 @@
 DEP_add_rejections(data.se, p.adjust = T, lfc = 0.5)
 }
 \arguments{
-\item{lfc}{}
+\item{data.se}{SE}
+
+\item{lfc}{fc threshold}
+
+\item{alpha}{p threshold}
+}
+\value{
+se
 }
 \description{
 reference to DEP::add_rejections(),which not support significant with out p adjust,

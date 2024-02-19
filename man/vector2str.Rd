@@ -7,7 +7,10 @@
 vector2str(v)
 }
 \arguments{
-\item{v}{}
+\item{v}{vector}
+}
+\value{
+str
 }
 \description{
 vector2str

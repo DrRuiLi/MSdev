@@ -7,7 +7,10 @@
 analyzePathwayHyperTest(kegg.id)
 }
 \arguments{
-\item{kegg.id}{}
+\item{kegg.id}{kegg.id}
+}
+\value{
+DF
 }
 \description{
 analyzePathwayHypertest

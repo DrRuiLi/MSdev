@@ -6,6 +6,9 @@
 \usage{
 get_cfm_shiny_ui()
 }
+\value{
+null
+}
 \description{
 Generate UI for shiny
 }

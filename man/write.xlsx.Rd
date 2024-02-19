@@ -7,7 +7,12 @@
 write.xlsx(data, file.dir)
 }
 \arguments{
-\item{file.dir}{}
+\item{data}{data to write}
+
+\item{file.dir}{file path}
+}
+\value{
+null
 }
 \description{
 write xlsx, dir will be created if not existed

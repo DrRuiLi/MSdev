@@ -6,6 +6,9 @@
 \usage{
 date_suffix()
 }
+\value{
+str
+}
 \description{
 generate a character of current date
 }

@@ -8,7 +8,14 @@ return the closest match}
 match_mz(mz1, mz2, mz.ppm = 10)
 }
 \arguments{
-\item{mz.ppm}{}
+\item{mz1}{num}
+
+\item{mz2}{num}
+
+\item{mz.ppm}{num}
+}
+\value{
+num
 }
 \description{
 match 2 list of ion based on mz

@@ -2,13 +2,18 @@
 % Please edit documentation in R/dev_Spectra.R
 \name{combineSpectra_groupby_ce}
 \alias{combineSpectra_groupby_ce}
-\title{Title}
+\title{combineSpectra_groupby_ce}
 \usage{
 combineSpectra_groupby_ce(sp, minProp = 0.5, ppm = 5, ...)
 }
 \arguments{
-\item{minProp}{}
+\item{sp}{Spectra}
+
+\item{minProp}{NUM}
+}
+\value{
+Spectra
 }
 \description{
-Title
+combineSpectra_groupby_ce
 }

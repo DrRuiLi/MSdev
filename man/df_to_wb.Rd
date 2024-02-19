@@ -7,7 +7,12 @@
 df_to_wb(df, sheet_name = "data")
 }
 \arguments{
-\item{sheet_name}{}
+\item{df}{data.frame}
+
+\item{sheet_name}{str}
+}
+\value{
+wb
 }
 \description{
 df_to_wb

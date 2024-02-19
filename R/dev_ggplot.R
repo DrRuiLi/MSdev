@@ -1,19 +1,16 @@
-
-
-
 #' @title open_ggplot_win
 #' @description
 #' create a temp.png file and open in Windows
 #'
 #'
 #' @param p ggplot objective
-#' @param width
-#' @param height
+#' @param width num
+#' @param height num
 #'
-#' @return
+#' @return null
 #' @export
 #'
-#' @examples
+
 open_ggplot_win <- function(p,width = NA,height = NA){
 
   temp.file <- tempfile(fileext = ".png")
@@ -32,11 +29,11 @@ open_ggplot_win <- function(p,width = NA,height = NA){
 #'
 #' @param ggplot.list a list with all item as ggplot objective
 #'
-#' @return
+#' @return null
 #' @export
 #' @import patchwork
 #'
-#' @examples
+
 ggplot_sum_patchwork <- function(ggplot.list){
   x <- ggplot.list
   x.len <- length(x)
@@ -77,15 +74,15 @@ colored_text <- function(x , color = "#E64B35"){
 #' pdf() and export::graph2pdf() not support `append` arg
 #' using qpdf::pdf_combine() to realize that function
 #'
-#' @param p
-#' @param file_path
-#' @param append
+#' @param p ggplot
+#' @param file_path file path
+#' @param append logic
 #' @param ...
 #'
-#' @return
+#' @return null
 #' @export
 #'
-#' @examples
+
 export_graph2pdf <- function(p ,
                              file_path ,
                              append = F,

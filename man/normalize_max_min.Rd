@@ -7,7 +7,10 @@
 normalize_max_min(x)
 }
 \arguments{
-\item{x}{}
+\item{x}{num}
+}
+\value{
+num
 }
 \description{
 normalize_max_min

@@ -7,7 +7,10 @@
 read_CFM_predict_result(result_path)
 }
 \arguments{
-\item{result_path}{}
+\item{result_path}{path}
+}
+\value{
+list of cfm data
 }
 \description{
 read_CFM_predict_result

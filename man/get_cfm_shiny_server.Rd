@@ -6,6 +6,9 @@
 \usage{
 get_cfm_shiny_server()
 }
+\value{
+server
+}
 \description{
 Generate Server for shiny
 }

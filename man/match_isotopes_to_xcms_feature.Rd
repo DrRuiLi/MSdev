@@ -13,7 +13,14 @@ match_isotopes_to_xcms_feature(
 )
 }
 \arguments{
-\item{ppm.thresh}{}
+\item{ppm.thresh}{ppm.thresh}
+
+\item{MS.network}{MS.network}
+
+\item{xcms.features}{xcms.features}
+}
+\value{
+xcms
 }
 \description{
 match_isotopes_to_xcms_feature

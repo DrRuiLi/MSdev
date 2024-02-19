@@ -3,10 +3,10 @@
 #' @param network_table matrix with 3 column: source, target, interaction_type
 #'
 #'
-#' @return
+#' @return data.frame
 #' @export
 #'
-#' @examples
+
 MetaboSignalNetworkTable2df <- function (network_table)
 {
   network = unique(network_table)
@@ -42,13 +42,13 @@ MetaboSignalNetworkTable2df <- function (network_table)
 #' @title MetaboSignalNetworkTableStandardNodeName
 #' @description add or remove "hsa:" from network_table
 #'
-#' @param network_table
-#' @param add_hsa
+#' @param network_table network_table
+#' @param add_hsa network_table
 #'
-#' @return
+#' @return network_table
 #' @export
 #'
-#' @examples
+
 MetaboSignalNetworkTableStandardNodeName <- function(network_table,add_hsa = T){
 
   if (add_hsa) {
@@ -82,10 +82,10 @@ MetaboSignalNetworkTableStandardNodeName <- function(network_table,add_hsa = T){
 #'
 #' @param all_nodes kegg id, currently support cpd(compound) and hsa(gene)
 #'
-#' @return
+#' @return df
 #' @export
 #'
-#' @examples
+
 get_node_info <- function(all_nodes){
 
   if (!exists("KEGG.database")) {

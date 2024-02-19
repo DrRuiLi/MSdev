@@ -24,10 +24,10 @@ add_multi_column <- function(x, column_name){
 #'
 #' @param x
 #'
-#' @return
+#' @return data.frame
 #' @export
 #'
-#' @examples
+
 
 list2df <- function(x){
 

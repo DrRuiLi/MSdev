@@ -9,7 +9,16 @@ using qpdf::pdf_combine() to realize that function}
 export_graph2pdf(p, file_path, append = F, ...)
 }
 \arguments{
+\item{p}{ggplot}
+
+\item{file_path}{file path}
+
+\item{append}{logic}
+
 \item{...}{}
+}
+\value{
+null
 }
 \description{
 export plot to pdf file

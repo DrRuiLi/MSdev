@@ -1,10 +1,10 @@
 
 #' @title date_suffix
 #' @description generate a character of current date
-#' @return
+#' @return str
 #' @export
 #'
-#' @examples
+
 date_suffix <- function(){
 
   paste0("_",gsub(Sys.Date(),pattern = "-",replacement = "_"))
@@ -18,12 +18,12 @@ date_suffix <- function(){
 
 #' @title load_as_var
 #' @description load Rdata file and return, only one variable in `file_to_load`
-#' @param file_to_load
+#' @param file_to_load file path
 #'
-#' @return
+#' @return data
 #' @export
 #'
-#' @examples
+
 load_as_var <- function(file_to_load){
 
   var <- load(file_to_load)
@@ -39,10 +39,10 @@ load_as_var <- function(file_to_load){
 #' @description mix color by RGB and weighted by alpha
 #' @param ... colors
 #'
-#' @return
+#' @return color
 #' @export
 #'
-#' @examples
+
 colorMix <- function(...){
   col.list <- list(...)
   col.df <- lapply(col.list,function(x){
@@ -73,10 +73,10 @@ colorMix <- function(...){
 #'
 #' @param dir a path of dir or file
 #'
-#' @return
+#' @return null
 #' @export
 #'
-#' @examples
+
 open_dir <- function(dir = getwd()){
 
   if (!file.info(dir)$isdir) {
@@ -117,13 +117,13 @@ open_script <- function(){
 #' split_df
 #' random split data.frame
 #'
-#' @param df
-#' @param n
+#' @param df data.frame
+#' @param n number
 #'
-#' @return
+#' @return list
 #' @export
 #'
-#' @examples
+
 split_df <- function(df,n = 2){
 
 

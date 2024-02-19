@@ -9,6 +9,9 @@ colorMix(...)
 \arguments{
 \item{...}{colors}
 }
+\value{
+color
+}
 \description{
 mix color by RGB and weighted by alpha
 }

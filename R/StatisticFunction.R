@@ -61,7 +61,7 @@ analyzeANOVA <- function(anova.matrix , anova.group){
 #' @return global.test.result
 #' @export
 #'
-#' @examples
+
 analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group ){
 
   kegg.pathway <- load_as_var("C:/Users/91879/OneDrive/Code/R/data/database.for.compounds.identification/kegg.pathway.database.2022.04.10.Rda")
@@ -109,12 +109,12 @@ analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group ){
 
 #' @title analyzePathwayHypertest
 #'
-#' @param kegg.id
+#' @param kegg.id kegg.id
 #'
-#' @return
+#' @return DF
 #' @export
 #'
-#' @examples
+
 analyzePathwayHyperTest <- function(kegg.id){
 
   kegg.pathway <- MSdb::get_KEGG_pathway()
@@ -153,14 +153,14 @@ analyzePathwayHyperTest <- function(kegg.id){
 
 #' plotPCA
 #'
-#' @param pca.matrix
-#' @param pca.group
-#' @param showlabel
+#' @param pca.matrix pca.matrix
+#' @param pca.group pca.group
+#' @param showlabel showlabel
 #'
-#' @return
+#' @return ggplot
 #' @export
 #'
-#' @examples
+
 plotPCA <- function(pca.matrix,pca.group,showlabel = F){
 
   pca.pca <- ropls::opls(x = pca.matrix,

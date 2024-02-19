@@ -7,7 +7,14 @@
 plotPCA(pca.matrix, pca.group, showlabel = F)
 }
 \arguments{
-\item{showlabel}{}
+\item{pca.matrix}{pca.matrix}
+
+\item{pca.group}{pca.group}
+
+\item{showlabel}{showlabel}
+}
+\value{
+ggplot
 }
 \description{
 plotPCA

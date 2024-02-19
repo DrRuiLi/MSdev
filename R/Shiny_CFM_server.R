@@ -1,9 +1,9 @@
 #' Generate Server for shiny
 #'
-#' @return
+#' @return server
 #' @export
 #' @import visNetwork MSCC DT
-#' @examples
+
 get_cfm_shiny_server <- function(){
 
   server <- function(input, output) {

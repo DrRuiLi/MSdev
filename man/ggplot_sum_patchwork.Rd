@@ -9,6 +9,9 @@ ggplot_sum_patchwork(ggplot.list)
 \arguments{
 \item{ggplot.list}{a list with all item as ggplot objective}
 }
+\value{
+null
+}
 \description{
 add all ggplot by patchwork
 }

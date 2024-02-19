@@ -1,13 +1,13 @@
 #' xcms_get_dda_scan_stimulate
 #' stimulate DDA cycle and assign ms2 to feature, now just support single file
-#' @param xcms.scan
-#' @param feature_def
-#' @param dynamic_time
+#' @param xcms.scan xcms.scan
+#' @param feature_def feature_def
+#' @param dynamic_time dynamic_time
 #'
-#' @return
+#' @return  xcms.xcms
 #' @export
 #'
-#' @examples
+
 xcms_get_dda_scan_stimulate <- function(xcms.xcms ,
                               dynamic_time = 60){
 
@@ -107,13 +107,13 @@ xcms_get_dda_scan_stimulate <- function(xcms.xcms ,
 #'  based on precursorMZ, retentionTime in `xcms.scan`;
 #'  peakRtMin, peakRtMax, feature_id in `featuredef`
 #'
-#' @param xcms.xcms
-#' @param featuredef
+#' @param xcms.xcms xcms
+#' @param featuredef featuredef
 #'
-#' @return
+#' @return xcms
 #' @export
 #'
-#' @examples
+
 xcms_get_dda_ms2_assignment <- function(xcms.xcms){
 
   xcms.scan <- get_xcms_scan_Stat(xcms.xcms)

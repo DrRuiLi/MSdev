@@ -1,11 +1,11 @@
 #' @title getmsExpTime
 #' @description get MS experiment time by mzR::runInfo()$startTimeStamp
-#' @param msdataFiles
+#' @param msdataFiles file path
 #'
 #' @return a data.frame with two column: msDataFiles, ExpTime
 #' @export
 #'
-#' @examples
+
 getmsExpTime<- function(msDataFiles){
   msdata <- data.frame(files = msDataFiles,
                        ExpTime = NA)
@@ -33,12 +33,12 @@ getmsExpTime<- function(msDataFiles){
 #' get_MSinfo_mzR
 #' get MS experiment time by mzR
 #'
-#' @param msDataFiles
+#' @param msDataFiles file path
 #'
-#' @return
+#' @return mzR info
 #' @export
 #'
-#' @examples
+
 get_MSinfo_mzR<- function(msDataFiles){
 
   msdata <- data.frame(files = msDataFiles,

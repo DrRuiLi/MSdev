@@ -1,12 +1,12 @@
 #' get xcms param by Autotuner
 #'
-#' @param xcms.xcms
+#' @param xcms.xcms xcms
 #'
-#' @return
+#' @return Autotuner
 #' @export
 #' @import Autotuner
 #'
-#' @examples
+
 get_xcms_Autotuner <- function(xcms.xcms ){
 
   xcms.xcms <- filterFile(xcms.xcms,

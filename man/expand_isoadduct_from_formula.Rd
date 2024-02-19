@@ -14,7 +14,10 @@ expand_isoadduct_from_formula(
 \item{chem_formula}{a chemical formula, such as "C4H4Cl1N3O1".
 some template see "MSCC::chem_formula_template"}
 
-\item{ion_mode}{}
+\item{ion_mode}{1 OR 0}
+}
+\value{
+df
 }
 \description{
 Using formula, exact.mass and ion_mode, expand adduct by enviPat::adduct

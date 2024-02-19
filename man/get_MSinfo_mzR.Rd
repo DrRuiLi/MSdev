@@ -8,7 +8,10 @@ get MS experiment time by mzR}
 get_MSinfo_mzR(msDataFiles)
 }
 \arguments{
-\item{msDataFiles}{}
+\item{msDataFiles}{file path}
+}
+\value{
+mzR info
 }
 \description{
 get_MSinfo_mzR

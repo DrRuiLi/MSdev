@@ -325,7 +325,7 @@ get_MSdev_xcms_param_by_exp <- function(object){
 #' @return  a `MSdev` object
 #' @export
 #'
-#' @examples
+
 extractSpectra_fullscan_DDA <- function(object){
 
   sampleInfo <- object@sampleInfo%>%
@@ -362,7 +362,7 @@ extractSpectra_fullscan_DDA <- function(object){
 #'
 #' @export
 #'
-#' @examples
+
 featureSpectra_fullscan_DDA <- function(object){
 
   .matchSP <- function(x,spectras,
@@ -404,7 +404,7 @@ featureSpectra_fullscan_DDA <- function(object){
 #' @return a `MSdev` object
 #' @export
 #'
-#' @examples
+
 featureCandidate<- function(object,mz.ppm = 20,
                             spectraDatabase =
                               "C:\\Users\\91879\\OneDrive\\Documents\\Code\\R\\Projecct\\2022.1.17_Compounds.database\\Spectra.integrated.database.integration.2022_02_12.Rdata")
@@ -523,13 +523,13 @@ dropSpectra <- function(object){
 
 #' @title getStaDataMSdev
 #'
-#' @param object
-#' @param MSDB.keys
+#' @param object MSdev
+#' @param MSDB.keys keys
 #'
-#' @return
+#' @return data
 #' @export
 #'
-#' @examples
+
 getStaDataMSdev <- function(object,missing = NA,
                             MSDB.keys =c("name","adduct","formula","inchikey" ,"database_origin")
 ){
@@ -757,13 +757,13 @@ findFeature <- function(object,
 #' only [M+H] and [M-H] are considered. Correlation and intensity will be plot based on `object@statData[["featureRaw"]]`, please check.
 #' A column "internal_standard" will be added in `object@statData[["featureRaw"]]`
 #'
-#' @param object
-#' @param corr.thred
+#' @param object MSdev
+#' @param corr.thred cor
 #'
-#' @return
+#' @return MSdev
 #' @export
 #'
-#' @examples
+
 findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 
   internal.standard <- object@experimentInfo@Internal_Standard%>%as.data.frame()
@@ -868,12 +868,12 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 #' @description extrat SummarizedExperiment::SummarizedExperiment, which combine coldata(sample info) and rowdata (metabolites/feature)
 #' and perform data filter, normalization and imputation, refer to package DEP
 #'
-#' @param MSdev.obj
+#' @param MSdev.obj MSdev
 #'
-#' @return
+#' @return MSdev
 #' @export
 #'
-#' @examples
+
 getSEMSdev <- function(MSdev.obj){
 
   col.info <- MSdev.obj@sampleInfo%>%
@@ -903,13 +903,13 @@ getSEMSdev <- function(MSdev.obj){
 
 #' Title
 #'
-#' @param MSdev.obj
-#' @param feature_id
+#' @param MSdev.obj MSdev
+#' @param feature_id feature_id
 #'
-#' @return
+#' @return ggplot
 #' @export
 #'
-#' @examples
+
 plot_MSdev_feature_spectrum <- function(MSdev.obj,feature.id  ){
 
   feature.data <- MSdev.obj@statData$featureRaw%>%
@@ -1007,14 +1007,14 @@ plot_MSdev_feature_spectrum <- function(MSdev.obj,feature.id  ){
 
 #' Title
 #'
-#' @param MSdev.obj
-#' @param feature_id
-#' @param out.dir
+#' @param MSdev.obj MSdev
+#' @param feature_id feature_id
+#' @param out.dir path
 #'
-#' @return
+#' @return NULL
 #' @export
 #'
-#' @examples
+
 export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
 
 
@@ -1055,7 +1055,7 @@ export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
 #' @return a `MSdev` object
 #' @export
 #'
-#' @examples
+
 get_MS_sampleinfo <- function(raw.data.dir,
                               rawDataFormat=".raw",
                               verbose=T){

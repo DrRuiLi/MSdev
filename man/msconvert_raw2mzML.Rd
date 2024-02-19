@@ -11,7 +11,14 @@ msconvert_raw2mzML(
 )
 }
 \arguments{
-\item{BPPARAM}{}
+\item{raw.files}{file path}
+
+\item{mzML.files}{file path}
+
+\item{BPPARAM}{biocparall}
+}
+\value{
+null
 }
 \description{
 msconvert_raw2mzML

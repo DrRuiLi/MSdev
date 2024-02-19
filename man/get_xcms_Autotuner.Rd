@@ -7,7 +7,10 @@
 get_xcms_Autotuner(xcms.xcms)
 }
 \arguments{
-\item{xcms.xcms}{}
+\item{xcms.xcms}{xcms}
+}
+\value{
+Autotuner
 }
 \description{
 get xcms param by Autotuner

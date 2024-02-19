@@ -10,6 +10,9 @@ open_dir(dir = getwd())
 \arguments{
 \item{dir}{a path of dir or file}
 }
+\value{
+null
+}
 \description{
 open_dir
 open dir by Windows

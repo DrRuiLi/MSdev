@@ -2,7 +2,8 @@
 % Please edit documentation in R/dev_CFM.R
 \name{CFM_predict}
 \alias{CFM_predict}
-\title{CFM predict}
+\title{CFM predict
+see CFM doc}
 \usage{
 CFM_predict(
   smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
@@ -15,8 +16,24 @@ CFM_predict(
 )
 }
 \arguments{
-\item{suppress_exceptions}{}
+\item{smiles_or_inchi_or_file}{smiles}
+
+\item{prob_thresh}{prob}
+
+\item{param_adduct}{adduct}
+
+\item{annotate_fragments}{logic}
+
+\item{output_file_or_dir}{path}
+
+\item{apply_postproc}{logic}
+
+\item{suppress_exceptions}{logic}
+}
+\value{
+list of cfm data
 }
 \description{
 CFM predict
+see CFM doc
 }

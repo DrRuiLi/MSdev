@@ -7,7 +7,10 @@
 groupStringFactor(x)
 }
 \arguments{
-\item{x}{}
+\item{x}{str}
+}
+\value{
+str with factor
 }
 \description{
 convert a vector to a factor,

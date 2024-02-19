@@ -7,7 +7,12 @@
 str_short(x, n = 10)
 }
 \arguments{
-\item{n}{}
+\item{x}{str}
+
+\item{n}{char number}
+}
+\value{
+str
 }
 \description{
 cut string with length >n and replace char > n with "..."
