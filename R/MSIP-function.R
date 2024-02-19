@@ -1,7 +1,15 @@
+#' get_MSdev_isotopologues
+#'
+#' @param object MSdev
+#'
+#' @return a list of isotopologues
+#' @export
+#'
 get_MSdev_isotopologues <- function(object){
 
   iso.list <- list()
   sp.ms2 <- object@spectra$MS2_Spectra
+  cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
   ### Requirement in xcms features
   ### C13_seed
   for (i in 0:1) {

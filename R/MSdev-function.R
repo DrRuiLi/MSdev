@@ -1,5 +1,12 @@
 
 
+#' MSdev_save
+#'
+#' @param object MSdev
+#'
+#' @return MSdev
+#' @export
+#'
 MSdev_save <- function(object){
   MSdev <- object
   save.dir <- dirname(object@projectInfo$MSdevFile)
