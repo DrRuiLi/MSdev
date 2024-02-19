@@ -4,7 +4,7 @@
 \alias{DEP_test_diff}
 \title{DEP.test.diff}
 \usage{
-DEP_test_diff(data.se)
+DEP_test_diff(data.se, type = "all", ...)
 }
 \arguments{
 \item{p.adj}{}

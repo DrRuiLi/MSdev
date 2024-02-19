@@ -2,7 +2,7 @@
 % Please edit documentation in R/dev_CFM.R
 \name{read_CFM_predict_result}
 \alias{read_CFM_predict_result}
-\title{Title}
+\title{read_CFM_predict_result}
 \usage{
 read_CFM_predict_result(result_path)
 }
@@ -10,5 +10,5 @@ read_CFM_predict_result(result_path)
 \item{result_path}{}
 }
 \description{
-Title
+read_CFM_predict_result
 }

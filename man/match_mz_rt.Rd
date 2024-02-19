@@ -15,7 +15,17 @@ match_mz_rt(
 )
 }
 \arguments{
-\item{rt.tol}{}
+\item{mz1}{num}
+
+\item{rt1}{num}
+
+\item{mz2}{num}
+
+\item{rt2}{num}
+
+\item{mz.ppm}{num}
+
+\item{rt.tol}{num}
 }
 \description{
 match 2 list of ion based on mz and rt

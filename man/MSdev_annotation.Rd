@@ -4,14 +4,14 @@
 \alias{MSdev_annotation}
 \title{MSdev annotation}
 \usage{
-MSdev_annotation(object, db.path = "d:/MSdb/msdb.HMDB.Rdata", ...)
+MSdev_annotation(object, cpdb = cpdb, ...)
 }
 \arguments{
 \item{object}{MSdev}
 
-\item{db.path}{CompoundDB}
-
 \item{...}{}
+
+\item{db.path}{CompoundDB}
 }
 \description{
 MSdev annotation
