@@ -9,7 +9,7 @@ CFM_annotate(
   spectrum_file = NULL,
   id = "AN_ID",
   ppm_mass_tol = 5,
-  abs_mass_tol = 0.01,
+  abs_mass_tol = 0,
   param_adduct = "[M+H]+",
   output_file = NULL
 )

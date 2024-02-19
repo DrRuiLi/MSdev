@@ -4,7 +4,7 @@
 \alias{combineSpectra_groupby_ce}
 \title{Title}
 \usage{
-combineSpectra_groupby_ce(sp, minProp = 0.5)
+combineSpectra_groupby_ce(sp, minProp = 0.5, ppm = 5, ...)
 }
 \arguments{
 \item{minProp}{}
