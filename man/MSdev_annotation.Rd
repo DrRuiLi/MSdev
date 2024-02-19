@@ -13,6 +13,9 @@ MSdev_annotation(object, cpdb_path, ...)
 
 \item{db.path}{CompoundDB}
 }
+\value{
+MSdev
+}
 \description{
 MSdev annotation
 }

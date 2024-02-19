@@ -1,12 +1,12 @@
 #' @title str_short
 #' @description cut string with length >n and replace char > n with "..."
-#' @param x
-#' @param n
+#' @param x str
+#' @param n char number
 #'
-#' @return
+#' @return str
 #' @export
 #'
-#' @examples
+
 str_short <- function(x , n = 10){
 
   x.length <- nchar(x)
@@ -23,12 +23,12 @@ str_short <- function(x , n = 10){
 #' levels will be ordered by 1: string, "con" or "wt" will be placed in first;
 #' 2: others will be ordered according to0 number
 #'
-#' @param x
+#' @param x str
 #'
-#' @return
+#' @return str with factor
 #' @export
 #'
-#' @examples
+
 groupStringFactor <- function(x){
 
   x.con <- x[grepl(pattern = "con|wt",x,ignore.case = T)]%>%
@@ -47,13 +47,12 @@ groupStringFactor <- function(x){
 
 
 #' @title vector2str
-#' @description
-#' @param v
+#' @param v vector
 #'
-#' @return
+#' @return str
 #' @export
 #'
-#' @examples
+
 vector2str <- function(v){
 
   paste0("c(\"",paste0(na.omit(v),collapse = "\",\""),"\")")%>%

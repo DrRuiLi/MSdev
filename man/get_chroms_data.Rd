@@ -7,7 +7,7 @@
 get_chroms_data(xchrom)
 }
 \arguments{
-\item{xchrom}{}
+\item{xchrom}{XChromatograms}
 }
 \value{
 xcms

@@ -9,6 +9,10 @@ get_xcms_peaks_chrom(xcms.xcms, peaks.id, all.sample = F, rt.range = "expand")
 \arguments{
 \item{xcms.xcms}{XCMSnExp object}
 
+\item{peaks.id}{char of num}
+
+\item{all.sample}{should all samples included}
+
 \item{rt}{one of c("all","identity","expand")}
 }
 \value{

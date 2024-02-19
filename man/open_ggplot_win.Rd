@@ -9,7 +9,12 @@ open_ggplot_win(p, width = NA, height = NA)
 \arguments{
 \item{p}{ggplot objective}
 
-\item{height}{}
+\item{width}{num}
+
+\item{height}{num}
+}
+\value{
+null
 }
 \description{
 create a temp.png file and open in Windows

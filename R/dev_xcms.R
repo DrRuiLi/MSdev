@@ -133,8 +133,8 @@ get_xchroms_peaks_count <- function(xchroms){
 #' else extract from all samples
 #'
 #' @param xcms.xcms XCMSnExp object
-#' @param peaks.id
-#' @param all.sample
+#' @param peaks.id char of num
+#' @param all.sample should all samples included
 #' @param rt one of c("all","identity","expand")
 #'
 #' @return xcms XChromatograms
@@ -259,7 +259,7 @@ xcms_get_feature_group <- function(xcms.xcms,
 #' extract_chrom
 #'
 #' @param xcms.xcms XCMSnExp object
-#' @param rtr
+#' @param rtr rt range
 #' @param mzr MZ range
 #' @param sample
 #'
@@ -334,7 +334,7 @@ get_chrom_peaks_gaussian_fit <- function(xchrom){
 
 #' @title get_chroms_data
 #' @description extract chomatogram data to a data.frame
-#' @param xchrom
+#' @param xchrom XChromatograms
 #'
 #' @return xcms
 #' @export
@@ -417,7 +417,7 @@ XChromatograms_rt_unit <- function(xchroms,unit_to = "s"){
 #'
 #' when xcms::findChromPeaks(), if any Chromatogram contain less than 2 point, this will lead to error
 #'
-#' @param xchroms
+#' @param xchroms XChromatograms
 #'
 #' @return xcms
 #' @export
@@ -452,9 +452,9 @@ XChromatograms_fill_2point <- function(xchroms){
 
 #' plot_XChromatograms
 #'
-#' @param xchrom
-#' @param norm
-#' @param move
+#' @param xchrom XChromatograms
+#' @param norm norm to 0-1
+#' @param move move step
 #'
 #' @return xcms
 #' @export

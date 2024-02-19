@@ -1,11 +1,11 @@
-#' Title
+#' t.test_dev
 #'
 #' @param ... see t.test
 #'
-#' @return
+#' @return  see t.test
 #' @export
 #'
-#' @examples
+
 t.test_dev <- function(...){
 
   try.catch <-try(p.value <- t.test(...)$p.value,silent = T)
@@ -156,10 +156,9 @@ cor.mtest <- function(x){
 #' @param x vector
 #' @param n number of element
 #'
-#' @return
+#' @return vector
 #' @export
 #'
-#' @examples
 median_part <- function(x, n = 10){
 
   x.indice <- seq_along(x)
@@ -174,14 +173,17 @@ median_part <- function(x, n = 10){
 mean_f <- function(x,f,...){
   sapply(split(x,f),mean,...)
 }
+
+
+
 #' @title normalize_max_min
 #'
-#' @param x
+#' @param x num
 #'
-#' @return
+#' @return num
 #' @export
 #'
-#' @examples
+
 normalize_max_min<- function(x){
 
   f <- function(z){
@@ -231,7 +233,7 @@ gaussian_functioin <- function(x , a =1,b = 0,c = 0.5){
 #' @param mz.ppm num
 #' @param rt.tol num
 #'
-#' @return
+#' @return num
 #' @export
 #'
 match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
@@ -271,14 +273,14 @@ match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
 #' return the closest match
 #'
 #'
-#' @param mz1
-#' @param mz2
-#' @param mz.ppm
+#' @param mz1 num
+#' @param mz2 num
+#' @param mz.ppm num
 #'
-#' @return
+#' @return num
 #' @export
 #'
-#' @examples
+
 match_mz <- function(mz1,mz2,mz.ppm = 10){
 
   match.df <- match_mz_rt(mz1= mz1,

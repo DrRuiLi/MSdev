@@ -1,12 +1,12 @@
 #' @title df_to_wb
 #'
-#' @param df
-#' @param sheet_name
+#' @param df data.frame
+#' @param sheet_name str
 #'
-#' @return
+#' @return wb
 #' @export
 #'
-#' @examples
+
 df_to_wb <- function(df, sheet_name = "data"){
 
   wb <- openxlsx::createWorkbook()
@@ -21,12 +21,12 @@ wb_to_df <- function(wb,sheet_name = 1){
 
 #' @title edit_df_in_excel
 #'
-#' @param df
+#' @param df data.frame
 #'
-#' @return
+#' @return data.frame
 #' @export
 #'
-#' @examples
+
 edit_df_in_excel <- function(df){
   wb <- df_to_wb(df)
   temp.xlsx <- paste0(tempdir(), "/temp_",paste0(sample(letters,5),collapse = ""),".xlsx")
@@ -40,13 +40,13 @@ df
 
 #' write.xlsx
 #' @description write xlsx, dir will be created if not existed
-#' @param data
-#' @param file.dir
+#' @param data data to write
+#' @param file.dir file path
 #'
-#' @return
+#' @return null
 #' @export
 #'
-#' @examples
+
 write.xlsx <- function(data,file.dir ){
 
   dir.create(dirname(file.dir),recursive = T,showWarnings = F)
@@ -60,13 +60,13 @@ write.xlsx <- function(data,file.dir ){
 #'
 #' Write a list of data.frame (or other object could be write into wroksheet), every term will be writen to a single sheet
 #'
-#' @param df.list
-#' @param file
+#' @param df.list list of data
+#' @param file file path
 #'
-#' @return
+#' @return null
 #' @export
 #'
-#' @examples
+
 xlsx.write.list <- function(df.list ,file){
 
   wb <- openxlsx::createWorkbook()

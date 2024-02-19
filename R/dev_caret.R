@@ -4,13 +4,13 @@
 #' plot ROC of train and test
 #'
 #'
-#' @param roc.train
-#' @param roc.test
+#' @param roc.train roc
+#' @param roc.test roc
 #'
-#' @return
+#' @return ggplot
 #' @export
 #'
-#' @examples
+
 ggplot_roc <- function(roc.train,roc.test){
 
 

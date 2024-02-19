@@ -27,6 +27,9 @@ match_mz_rt(
 
 \item{rt.tol}{num}
 }
+\value{
+num
+}
 \description{
 match 2 list of ion based on mz and rt
 return all matched, include multiple match
