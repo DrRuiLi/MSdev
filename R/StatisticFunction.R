@@ -539,5 +539,45 @@ odd.rate.test <- function(x,y,cov.matrix = NULL){
 }
 
 
+plot_cor_density <- function(x,y,xlab = "x",ylab = "y"){
+
+  plot.data <- data.frame(
+    x,y
+  )%>%
+    dplyr::mutate(x = as.numeric(x),
+                  y = as.numeric(y),
+                  var = "a")%>%
+    dplyr::filter(!is.na(x),!is.na(y))
+
+  ggplot(plot.data,aes(x = x,y = y))+
+    geom_point()+
+    stat_smooth(method = "lm")+
+    ggpubr::stat_cor(label.y.npc = 1)+
+    scale_x_continuous(expand = c(0.1,0))+
+    scale_y_continuous(expand = c(0.1,0))+
+    labs(x = xlab,
+         y = ylab)+
+    theme_bw()+
+    theme(plot.margin = unit(c(0,0,0,0),"inch"))->p.cor
+  p.cor
+  ggplot(plot.data)+
+    geom_density(aes(x = x),fill = "grey")+
+    scale_x_continuous(expand = c(0,0))+
+    scale_y_continuous(expand = c(0,0))+
+    theme_void()->p.x
+  ggplot(plot.data)+
+    geom_density(aes(y=y),fill = "grey")+
+    scale_x_continuous(expand = c(0,0))+
+    scale_y_continuous(expand = c(0,0))+
+    theme_void()->p.y
+
+  p.cor %>%
+    insert_xaxis_grob(p.x)%>%
+    insert_yaxis_grob(p.y)%>%
+    ggdraw() ->p
+
+  p
+
+}
 
 

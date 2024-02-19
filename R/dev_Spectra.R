@@ -95,17 +95,24 @@ annotateSpectraMSdb <- function(expSpec,refSpec){
 
 
 
-makeSpectra <- function(precursorMz ,
-                        rtime ,...){
+makeSpectra <- function(precursorMz = 0,
+                        rtime = 0 ,...){
 
   Spectra::Spectra(S4Vectors::DataFrame(precursorMz = precursorMz,
                              rtime = rtime,
-                             ...))
+                             ...),backend = MsBackendMemory())
+
+}
+
+makeEmptySpectra <- function(...){
+  Spectra::Spectra(S4Vectors::DataFrame(precursorMz = 0,
+                                        rtime = 0,
+                                        ...),backend = MsBackendMemory())
 
 }
 
 
-filterSpectraIntensity <- function(sp,ratio){
+filterSpectraIntensity <- function(sp,ratio = 0.05){
 
   Spectra::filterIntensity( sp, intensity = function(z) z/max(z) > ratio )
 
@@ -217,13 +224,19 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
 #' @export
 #'
 #' @examples
-combineSpectra_groupby_ce <- function(sp,minProp = 0.5){
+combineSpectra_groupby_ce <- function(sp,
+                                      minProp = 0.5,
+                                      ppm = 5,
+                                      ...){
 
-  sp.ce <- Spectra::combineSpectra(sp,peaks = "intersect",
+  sp.ce <- Spectra::combineSpectra(sp,
+                                   peaks = "intersect",
                                    intensityFun = median,
                  f = sp$collisionEnergy,
+                 weighted =T,
                  minProp=minProp,
-                 ppm = 5)
+                 ppm = ppm,
+                 ...)
 
 
 }
@@ -252,7 +265,7 @@ get_Spectra_ms2_feature_id <- function(sp,
 
 
 
-  sp.data$ms2_matched_feature <- sapply(
+  sp.data$feature_id<- sapply(
     1:nrow(sp.data),
     function(i){
       fid <- match.df$feature_id[match.df$ion2==i]
@@ -651,6 +664,11 @@ setMethod("plotSpec",
             plot_Spectra(object)
           })
 
+setMethod("plot",
+          signature = "Spectra",
+          definition = function(x){
+            plot_Spectra(x)
+          })
 
 export_Spectra <- function(sp,
                            format = "msp",
@@ -733,6 +751,36 @@ get_Spectra_CFM <- function(sp){
 }
 
 
+#' get_Spectra_from_CFM
+#'
+#' @param cfm.data from read_CFM_xxx
+#'
+#' @return Spcetra
+#' @export
+#'
+get_Spectra_from_CFM <- function(cfm.data ){
+
+  cfm.df <- cfm.data$peak_assignment
+  sp.list<- list()
+  for (i in 0:2) {
+    this.sp.data <- cfm.df%>%
+      dplyr::filter(energy == paste0("energy",i))%>%
+      dplyr::distinct(mz,intensity)
+    this.sp.df <- DataFrame(collisionEnergy = switch(as.character(i),
+                                                     "0" = 10,
+                                                     "1" = 20,
+                                                     "2" = 40))
+    this.sp.df$mz <- list(this.sp.data$mz)
+    this.sp.df$intensity  <-list( this.sp.data$intensity)
+    this.sp <- Spectra(this.sp.df)
+    sp.list[[ paste0("energy",i)]] <- this.sp
+  }
+  sp <- do.call(c,unname(sp.list))
+  return(sp)
+
+
+}
+
 get_Spectra_adduct_expand <- function(sp,
                                       selected_adduct = MSCC::adduct.table$Adduct){
 
@@ -782,3 +830,14 @@ get_Spectra_adduct_expand <- function(sp,
 
 }
 
+get_Spectra_MEM_backend <- function(sp){
+
+  if(class(sp@backend)=="MsBackendCompDb"){
+    sp$centroided <-T
+    sp$smoothed <-T
+  }
+
+  sp <- setBackend(sp,
+                  backend = MsBackendMemory())
+  sp
+}

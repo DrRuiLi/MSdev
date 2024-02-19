@@ -979,6 +979,43 @@ system.time(b <-
 
 
 
+# Tue Jan 30 15:47:57 2024 ------------------------------
+#MSdev_annotation()
+library(devtools)
+load_all()
+library(CompoundDb)
+xcms.xcms <- load_demo("xcms")
+cpdb <- MSdb::get_CompoundDB()
+cpdbt <- MSdb::get_CompoundDB_Compound()
+selected_adduct = MSCC::adduct.table$Adduct
+
+get_xcms_feature_ms1_candidate()
+MSdev_annotation()
+
+
+msdev <- load_demo()
+MSdev_annotation(msdev,cpdb = get_CompoundDB(),mz.ppm = 5)
 
 
 
+all(lengths(xcms.fdf$candidate.score ) ==lengths(xcms.fdf$candidate ))
+a <- DataFrame(
+          collisionEnergy = 10)
+a$mz <- list(this.sp.data$mz)
+
+
+# Fri Feb  2 16:08:18 2024 ------------------------------
+{
+  x <- msip.data[[50]]
+
+
+}
+
+
+
+plotSpectraMirror(normalizeSpectra(seed.sp[1]),
+                  normalizeSpectra(iso.sp[1]))
+
+
+a <- get_Spectra_data(seed.sp.c)
+b <- cfm.data$peak_assignment

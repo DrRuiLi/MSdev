@@ -55,7 +55,7 @@ groupMz <- function(x,ppm.thresh = 10){
                   mz.diff = abs(mz.center - mz),
                   mz.ppm = mz.diff/mz*1e6,
                   mz.width = max(mz)-min(mz),
-                  mz.width.ppm = mz.width/mz)%>%
+                  mz.width.ppm = mz.width/mz*1e6)%>%
     dplyr::ungroup()%>%
     dplyr::arrange(raw.order)%>%
     dplyr::select(-raw.order)
@@ -171,7 +171,9 @@ median_part <- function(x, n = 10){
 }
 
 
-
+mean_f <- function(x,f,...){
+  sapply(split(x,f),mean,...)
+}
 #' @title normalize_max_min
 #'
 #' @param x
@@ -222,54 +224,45 @@ gaussian_functioin <- function(x , a =1,b = 0,c = 0.5){
 #' match 2 list of ion based on mz and rt
 #' return all matched, include multiple match
 #'
-#' @param mz1
-#' @param rt1
-#' @param mz2
-#' @param rt2
-#' @param mz.ppm
-#' @param rt.tol
+#' @param mz1 num
+#' @param rt1 num
+#' @param mz2 num
+#' @param rt2 num
+#' @param mz.ppm num
+#' @param rt.tol num
 #'
 #' @return
 #' @export
 #'
-#' @examples
 match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
                         mz2,rt2 =rep( NA,length(mz2)),
                         mz.ppm = 10,
                         rt.tol = Inf){
 
-  names(mz2) <- names(rt2) <- 1:length(mz2)
 
-  mz.match <- lapply(mz1, function(x){
 
-   mz.error <- abs(x - mz2)/x
-   mz.error[ which(mz.error < mz.ppm*1e-6)]
-  })
+  .f <- function(mz,rt,mz2,rt2,mz.ppm){
 
-  rt.match <- lapply(1:length(mz1) ,  function(i){
+    mz.error <- abs(mz - mz2)/mz
+    mz.matched <- which(mz.error < mz.ppm*1e-6)
+    mz.error <- mz.error[mz.matched]
+    rt.error <- abs(rt2[mz.matched]-rt)
+    return(data.frame(ion2 =mz.matched,
+                      mz.error = mz.error,
+                      rt.error = rt.error))
 
-   rt <-rt1[i]
-   mz.matched.id <- names(mz.match[[i]])
-   rt.error <- abs(rt - rt2[mz.matched.id])
-   #rt.error[is.na(rt.error)] <- 999
-   rt.error
-  })
+  }
 
-  matched.df <- lapply(1:length(mz1),function(i){
+  match.list<- bpmapply(mz1,rt1,
+                        FUN = .f,MoreArgs = list(mz2,rt2,mz.ppm),
+                        BPPARAM = SerialParam(#workers = 31,
+                                            progressbar = T),
+                        SIMPLIFY=F)
+  match.df <- data.table::rbindlist(match.list,idcol = "ion1")
 
-   if (length(mz.match[[i]])!=0) {
-     df <-data.frame(ion1 = i,
-                ion2 = as.numeric(names(mz.match[[i]])),
-                mz.error = mz.match[[i]],
-                rt.error = rt.match[[i]])
-      return(df)
-   }
-
-    return(NULL)
-  })%>% data.table::rbindlist()
-  matched.df <- matched.df%>%
+  match.df <- match.df%>%
     dplyr::filter(rt.error < rt.tol |is.na(rt.error))
-  return(matched.df)
+  return(match.df)
 
 }
 

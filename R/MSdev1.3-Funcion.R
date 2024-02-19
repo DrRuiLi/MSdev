@@ -110,7 +110,7 @@ MSdev_extract_Spectra <- function(object){
 MSdev_match_Spectra_to_feature <- function(object){
 
 
-  object@spectra$MS2_Spectra$ms2_matched_feature <-NA
+  object@spectra$MS2_Spectra$feature_id<-NA
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
     sp.ms2 <- object@spectra$MS2_Spectra%>%
@@ -125,16 +125,16 @@ MSdev_match_Spectra_to_feature <- function(object){
     sp.ms2.total <-object@spectra$MS2_Spectra %>%
       Spectra::spectraData()%>%
       as.data.frame()%>%
-      dplyr::mutate(ms2_matched_feature = case_when(
-        polarity==i ~ sp.ms2.data[sp_id,]$ms2_matched_feature,
-        T~ms2_matched_feature
+      dplyr::mutate(feature_id= case_when(
+        polarity==i ~ sp.ms2.data[sp_id,]$feature_id,
+        T~feature_id
       ))
     Spectra::spectraData(object@spectra$MS2_Spectra ) <- DataFrame(sp.ms2.total)
 
     ### update xcms featuredef
     xcms.fdf$ms2_id <- sapply(xcms.fdf$feature_id,
                               function(i){
-                                sp_id <- sp.ms2.data$sp_id[which(sp.ms2.data$ms2_matched_feature==i)]
+                                sp_id <- sp.ms2.data$sp_id[which(sp.ms2.data$feature_id==i)]
                                 return(sp_id)
                               }
     )
@@ -161,7 +161,7 @@ MSdev_match_Spectra_to_feature <- function(object){
 #'
 #' @examples
 MSdev_annotation <- function(object,
-                             db.path = "d:/MSdb/msdb.HMDB.Rdata",
+                             cpdb = cpdb,
                              ...){
 
 
@@ -169,12 +169,12 @@ MSdev_annotation <- function(object,
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     message(Sys.time()," Find MS1 candidate...")
-    xcms.xcms <- get_xcms_feature_ms1_candidate(xcms.xcms,
-                                                db.path,
+    xcms.xcms <- xcms_get_feature_ms1_candidate(xcms.xcms,
+                                                cpdb,
                                    ...)
     message(Sys.time()," calculate MS2 score...")
     xcms.xcms <- xcms_get_feature_ms2_score(xcms.xcms ,
-                                            db.path = db.path,
+                                            cpdb = cpdb,
                                             object@spectra$MS2_Spectra,
                                             ...)
     xcms.xcms <- xcms_get_feature_annotation(xcms.xcms,
@@ -183,7 +183,7 @@ MSdev_annotation <- function(object,
 
   }
 
-  object@projectInfo$MSdbPath <- db.path
+  object@projectInfo$CompoundDB <- cpdb
   return(object)
 
 
@@ -360,6 +360,7 @@ MSdev_find_isotope_label <- function(object,
   return(object)
 
 }
+
 
 
 

@@ -75,7 +75,8 @@ CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([
   message(crayon::red(cmd)%>%crayon::reset() )
   shell(cmd)
   if (is.null(output_file_or_dir)) {
-    return(invisible(read_CFM_predict_result(out.file)))
+    cfm.result <- read_CFM_predict_result(out.file)
+    return(invisible(cfm.result))
   }else{
     message("Result export to: \n",crayon::red(output_file_or_dir))
     return(invisible(out.file))
@@ -100,7 +101,7 @@ CFM_annotate<- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
                           spectrum_file = NULL,
                           id = "AN_ID",
                           ppm_mass_tol = 5.0,
-                          abs_mass_tol = 0.01,
+                          abs_mass_tol = 0,
                           param_adduct = "[M+H]+",
                           output_file = NULL){
 
@@ -302,11 +303,12 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
     return(invisible(cfm.data))
 }
 
-#' Title
+#' read_CFM_predict_result
 #'
 #' @param result_path
 #'
 #' @return
+#' @import dplyr
 #' @export
 #'
 #' @examples
@@ -347,8 +349,9 @@ read_CFM_predict_result <- function(result_path){
       energy.data <- cfm.df%>%
         dplyr::filter(session.energy==energy[i],!session.energy.sep)%>%
         dplyr::mutate(
-          assigned = grepl(pattern = "\\(",x = line.data),
-          d1 =dplyr::case_when(
+          assigned = grepl(pattern = "\\(",x = line.data))%>%
+        dplyr::mutate(
+          d1 = case_when(
             assigned~str_extract(line.data,".*(?= \\()"),
             T~line.data
           ),
@@ -655,6 +658,11 @@ get_cfm_data_igraph <- function(cfm.data ){
   return(cfm.data)
 }
 
+
+get_cfm_anntation_stat <- function(){
+
+
+}
 
 
 

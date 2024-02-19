@@ -611,7 +611,8 @@ xcms_get_feature_stat <- function(xcms.xcms){
 xcms_get_feature_isotopologues <- function(xcms.xcms,
                                            isotope = "[13]C",
                                            max_label = 10,
-                                           ppm = 5){
+                                           ppm = 5,
+                                           net.degree.ratio= 0.5){
 
   ### calc mz diff within group
   {
@@ -654,13 +655,17 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
       dplyr::ungroup()
 
     fdf.iso.connect <- fdf.connect%>%
-      dplyr::filter(is.iso,closest.iso.count>0)%>%
+      dplyr::filter(is.iso,closest.iso.count != 0)%>%
       dplyr::group_by(from,closest.iso.count)%>%
       dplyr::slice_min(mz.error)%>%
       dplyr::ungroup()%>%
       dplyr::group_by(to,closest.iso.count)%>%
       dplyr::slice_min(mz.error)%>%
-      dplyr::ungroup()
+      dplyr::ungroup()%>%
+      dplyr::group_by(from,closest.iso.count)%>%
+      dplyr::slice_min(mz.error)%>%
+      dplyr::ungroup()%>%
+      dplyr::mutate(from = from.fid,to = to.fid)
 
   }
 
@@ -675,7 +680,8 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
     xcms.fdf[,paste0(iso.colname,"_count")] <- NA
     fdf.iso.igraph <- igraph::graph_from_data_frame(fdf.iso.connect)
     node.group <- igraph::components(fdf.iso.igraph)$membership
-
+    xcms.fdf <- as.data.frame(xcms.fdf)
+    rownames(xcms.fdf) <-xcms.fdf$feature_id
     for (i in seq_along(unique(node.group))) {
 
 
@@ -684,17 +690,22 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
         dplyr::filter(from%in%this.nodes | to %in% this.nodes)
 
       this.igraph <- igraph::graph_from_data_frame(this.iso)
-      this.dis <- igraph::distances(this.igraph,mode = "out",
-                                    weights = edge.attributes(this.igraph)$closest.iso.count )
-      this.dis[is.infinite(this.dis)] <- 0
+      #visNetwork::visIgraph(this.igraph)
+      to.delete <- degree(this.igraph)<(length(this.nodes)-1)*2*net.degree.ratio
+      #message(i," ",sum(to.delete)," of ",length(this.nodes)," nodes remove")
+      this.igraph.sub <- delete.vertices(this.igraph,to.delete )
+      #visNetwork::visIgraph(this.igraph.sub)
+      this.dis <- igraph::distances(this.igraph.sub,mode = "out",
+                                    weights = edge.attributes(this.igraph.sub)$closest.iso.count )
+      this.dis[this.dis<0] <- 0
       dis.sum <- apply(this.dis,1,sum)
-      seed.fid <- xcms.fdf$feature_id[as.numeric(names(which.max(dis.sum)))]
+      seed.fid <- names(which.max(dis.sum))
       dis.to.seed <- this.dis[names(which.max(dis.sum)),]
-
-      xcms.fdf[as.numeric(names(dis.to.seed)),
+      xcms.fdf[names(dis.to.seed),
                paste0(iso.colname,"_seed")] <- seed.fid
-      xcms.fdf[as.numeric(names(dis.to.seed)),
+      xcms.fdf[names(dis.to.seed),
                paste0(iso.colname,"_count")] <- unname(dis.to.seed)
+      #message(sum(is.na(xcms.fdf$feature_id)))
 
     }
 
@@ -800,53 +811,54 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
 #' MSDB_id in db with mz error < mz.ppm will b
 #'
 #' @param xcms.xcms XCMSnExp object
-#' @param db.path
+#' @param cpdb compoundDb
 #' @param mz.ppm num
-#' @param rt.tol
+#' @param rt.tol num
 #'
 #' @return xcms
 #' @export
 #'
 
-get_xcms_feature_ms1_candidate <- function(xcms.xcms ,
+xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
                                            cpdb,
                                            mz.ppm= 10,
                                            rt.tol = Inf,
-                                           expand_adduct = F,
+                                           selected_adduct = MSCC::adduct.table$Adduct,
                                            ...){
 
 
-  ### load spectra database
+  ### calc adduct and filter range
   cpdbt <- compounds(cpdb, columns = compoundVariables(cpdb,includeId =T))
-
-  if (expand_adduct) {
-    Spectra_database <- get_Spectra_adduct_expand(Spectra_database,...)
-
-  }
-  Spectra_database.df <- Spectra::spectraData(Spectra_database)%>%
-    as.data.frame()
+  cpdbt <- cpdbt[cpdbt$has_sp>0,]
+  cpdbt$formula <- MSCC::chemform_formate(cpdbt$formula)
+  adducts <- chemform_adduct_check(selected_adduct)%>%
+    dplyr::mutate(polarity = case_when(Ion_mode == "negative"~0,T~1))%>%
+    dplyr::filter(polarity %in% polarity(xcms.xcms))
+  cp.adduct <- MSCC::chemform_adduct(cpdbt$formula,
+                                     adducts$adduct.formated )
+  cp.adduct <- cp.adduct%>%
+    dplyr::mutate(compound_id=cpdbt$compound_id[id]  )%>%
+    dplyr::filter( findInterval(chemform.adduct.mz,
+                                mzrange(xcms.xcms))==1)
 
   ### match database
   xcms.featuredef <- featureDefinitions(xcms.xcms)%>%
     as.data.frame()
 
-  matched.df <- match_mz_rt(xcms.featuredef$mzmed,
-                            xcms.featuredef$rtmed,
-                            precursorMz(Spectra_database),
-                            rtime(Spectra_database),
-                            mz.ppm = mz.ppm,
-                            rt.tol = rt.tol)
+  matched.df <- match_mz_rt(mz1 = xcms.featuredef$mzmed,
+                            mz2 = cp.adduct$chemform.adduct.mz,
+                            mz.ppm = mz.ppm)
   xcms.featuredef$candidate <- sapply(1:nrow(xcms.featuredef),function(i){
     idx <- matched.df$ion2[matched.df$ion1 == i]
-    Spectra_database.df$MSDB_id[as.numeric(idx)]
+    cp.adduct$compound_id[as.numeric(idx)]
   })
   xcms.featuredef$candidate.adduct <- sapply(1:nrow(xcms.featuredef),function(i){
     idx <- matched.df$ion2[matched.df$ion1 == i]
-    Spectra_database.df$adduct[as.numeric(idx)]
+    cp.adduct$adduct[as.numeric(idx)]
   })
   xcms.featuredef$candidate.mz <- sapply(1:nrow(xcms.featuredef),function(i){
     idx <- matched.df$ion2[matched.df$ion1 == i]
-    Spectra_database.df$precursorMz[as.numeric(idx)]
+    cp.adduct$chemform.adduct.mz[as.numeric(idx)]
   })
 
   featureDefinitions(xcms.xcms) <- DataFrame(xcms.featuredef)
@@ -857,16 +869,17 @@ get_xcms_feature_ms1_candidate <- function(xcms.xcms ,
 
 
 xcms_get_feature_ms2_score <- function(xcms.xcms ,
-                                       db.path,
+                                       cpdb,
                                        sp.ms2,
                                        ...){
 
 
   ### load spectra database
-  Spectra_database <- load_as_var(db.path)
+  Spectra_database <- Spectra(cpdb)
+  Spectra_database <- get_Spectra_MEM_backend(Spectra_database)
   Spectra_database <- filterPolarity(Spectra_database,
                                      unique(polarity(xcms.xcms)))
-  spectraNames(Spectra_database) <- Spectra_database$MSDB_id
+  #spectraNames(Spectra_database) <- Spectra_database$compound_id
   xcms.fdf <- featureDefinitions(xcms.xcms)
 
   ### sp process
@@ -881,6 +894,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
       filterSpectra_below_PrecursorMz()%>%
       normalizeSpectra(norm_to = "max")%>%
       filterSpectraIntensity(ratio = 0.05)%>%
+      get_Spectra_MEM_backend()%>%
       applyProcessing()
 
   }
@@ -897,51 +911,41 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
     sp <- list(sp.ms2[x])
     return(sp)
   })
+  sp.empty <- makeEmptySpectra(compound_id= setdiff(unlist(xcms.fdf$candidate),
+                                        Spectra_database$compound_id))
+  Spectra_database <- c(Spectra_database,sp.empty)
+  sp.ref.list <- split(Spectra_database,
+                       Spectra_database$compound_id)
+  sp.ref <- bplapply(1:nrow(xcms.fdf), function(i){
 
-  sp.ref <- sapply(1:nrow(xcms.fdf), function(i){
-
-    sp.temp <- Spectra_database[xcms.fdf$candidate[[i]]]
-    if (length(sp.temp)==0) {
-      return(sp.temp)
+    cp_id <- xcms.fdf$candidate[[i]]
+    sp.temp <- sp.ref.list[cp_id]
+    if (length(sp.temp)==0) return(NULL)
+    for (j in 1:length(cp_id)) {
+      sp.temp[[j]]$adduct <- xcms.fdf$candidate.adduct[[i]][j]
+      sp.temp[[j]]$precursorMz <- xcms.fdf$candidate.mz[[i]][j]
     }
-    sp.temp$adduct <- xcms.fdf$candidate.adduct[[i]]
-    sp.temp$precursorMz <- xcms.fdf$candidate.mz[[i]]
+    sp.temp <- do.call(what = "c",args = unname(sp.temp))
     return(sp.temp)
-  })
+  },BPPARAM = SerialParam(progressbar = T))
 
 
-  ### select max score
-  if (FALSE) {
-
-    xcms.annotation <- BiocParallel::bplapply(1:length(sp.exp),function(i){
-      annotateSpectraMSdb(sp.exp[[i]],sp.ref[[i]])
-    },BPPARAM = BiocParallel::SerialParam(
-      progressbar = T))
-
-    xcms.annotation <-lapply(xcms.annotation, function(x){
-      x[c( "ref.mz" ,
-           "ref.rt" ,
-           "score" ,
-           "MSDB_id" )]
-    })%>%data.table::rbindlist()
-    xcms.fdf<-xcms.fdf%>%
-      as.data.frame()%>%
-      dplyr::mutate(MSDB_id = xcms.annotation$MSDB_id,
-                    score = xcms.annotation$score,
-                    mz_ref = xcms.annotation$ref.mz,
-                    rt_ref = xcms.annotation$ref.rt)
-  }
 
   ### out put all candidate score
   {
     .f <- function(expSpec,refSpec,...){
+      if (is.null(refSpec)) {
+        return(NULL)
+      }
       scorem <- compareSpectra(expSpec,refSpec,...)
       dim(scorem) <- c(length(expSpec),length(refSpec))
       scorem[is.infinite(scorem)|is.na(scorem )] <- 0
-      apply(scorem,2,max,na.rm=T)
+      scores <- apply(scorem,2,max,na.rm=T)
+      unname(mean_f(scores,paste0(refSpec$compound_id,"_",refSpec$adduct)))
     }
-    xcms.fdf$candidate.score <- BiocParallel::bplapply(1:length(sp.exp),function(i){
-      .f(sp.exp[[i]],sp.ref[[i]])
+    xcms.fdf$candidate.score <- BiocParallel::bplapply(1:length(sp.exp),
+                                                       function(i){
+      .f(expSpec = sp.exp[[i]], refSpec = sp.ref[[i]])
     },BPPARAM = BiocParallel::SerialParam(
       progressbar = T))
 
@@ -982,7 +986,7 @@ xcms_get_feature_annotation <- function(xcms.xcms,
 
 
   xcms.fdf <- featureDefinitions(xcms.xcms)
-  xcms.fdf$MSDB_id <- NA
+  xcms.fdf$compound_id <- NA
   xcms.fdf$adduct <- NA
   xcms.fdf$score <- NA
   xcms.fdf$mz_ref <- NA
@@ -990,12 +994,12 @@ xcms_get_feature_annotation <- function(xcms.xcms,
   for (i in 1:nrow(xcms.fdf)) {
 
     this.mz <- xcms.fdf$mzmed[i]
-    candi.msdbid <- xcms.fdf$candidate[[i]]
+    candi.compound_id <- xcms.fdf$candidate[[i]]
     candi.mz <- xcms.fdf$candidate.mz[[i]]
     candi.adduct <- xcms.fdf$candidate.adduct[[i]]
     candi.score <- xcms.fdf$candidate.score[[i]]
 
-    if (length(candi.msdbid)==0) next
+    if (length(candi.compound_id)==0) next
 
     ### score
     score.mz <- abs(candi.mz-this.mz)
@@ -1005,7 +1009,7 @@ xcms_get_feature_annotation <- function(xcms.xcms,
     selected <- which.max(score)
 
     ### info
-    xcms.fdf$MSDB_id[i] <- candi.msdbid[selected]
+    xcms.fdf$compound_id[i] <- candi.compound_id[selected]
     xcms.fdf$adduct[i] <- candi.adduct[selected]
     xcms.fdf$score[i] <- candi.score[selected]
     xcms.fdf$mz_ref[i] <- candi.mz[selected]
@@ -1947,6 +1951,14 @@ setMethod(f = "filepaths",
           definition = function(object){
   paste0(dirname(object),"/",sampleNames(object))
 })
+setMethod(f = "mzrange",
+          signature = "XCMSnExp",
+          definition = function(object){
+            xcms.fdata <- fData(object)
+            return(c(min(xcms.fdata$scanWindowLowerLimit,na.rm = T),
+                     max(xcms.fdata$scanWindowUpperLimit,na.rm = T)))
+          })
+
 
 
 get_xcms_precursor_intensity <- function(xcms.xcms,...){

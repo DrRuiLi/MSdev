@@ -101,12 +101,13 @@ DEP_check_sig <- function(data.se){
 #' @export
 #'
 #' @examples
-DEP_test_diff <- function(data.se){
+DEP_test_diff <- function(data.se,type = "all",...){
 
   groups <- data.se$condition%>%
     groupStringFactor()
-  data.diff<- DEP::test_diff(data.se,type = "all",
-                             control = levels(groups)[1])
+  data.diff<- DEP::test_diff(data.se,
+                             #control = levels(groups)[1],
+                             ...)
   #data.diff<- add_rejections(data.diff,alpha = 0.05,lfc =1)
 #
   #if (!p.adj) {
