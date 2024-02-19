@@ -49,6 +49,13 @@ get_MSdev_isotopologues <- function(object){
 }
 
 
+#' get_isotopologues_CFM_annotation
+#'
+#' @param iso.list list of cfm data
+#'
+#' @return  list of cfm data
+#' @export
+#'
 get_isotopologues_CFM_annotation<- function(iso.list){
 
   ff <- function(x){
@@ -59,7 +66,7 @@ get_isotopologues_CFM_annotation<- function(iso.list){
       dplyr::pull(feature_id)
     this.smiles <- this.iso.df%>%
       dplyr::filter(feature_id==iso_seed)%>%
-      dplyr::pull(smile)
+      dplyr::pull(smiles)
     this.pol <- unique(this.iso.df$polarity)
     this.sp <- x$sp%>%
       split(.,x$sp$ms2_matched_feature)
