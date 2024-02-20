@@ -107,6 +107,13 @@ MSdev_extract_Spectra <- function(object){
 
 
 
+#' MSdev_match_Spectra_to_feature
+#'
+#' @param object MSdev
+#'
+#' @return MSdev
+#' @export
+#'
 MSdev_match_Spectra_to_feature <- function(object){
 
 

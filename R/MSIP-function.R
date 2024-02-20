@@ -113,7 +113,7 @@ get_isotopologues_CFM_annotation<- function(iso.list){
   }
 
   iso.cfm <- bplapply(iso.list,ff,
-                        BPPARAM = SnowParam(progressbar = T))
+                        BPPARAM = SerialParam(progressbar = T))
 
   return(iso.cfm)
 
