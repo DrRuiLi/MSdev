@@ -72,13 +72,13 @@ get_isotopologues_CFM_annotation<- function(iso.list,BPPARAM = SerialParam(progr
       split(.,x$sp$ms2_matched_feature)
 
     if (is.na(this.smiles)) return(x)
-    if (length(this.sp)==0) return(x)
 
 
 
     ### combine sp of seed and cfm-annotate
     {
       seed.sp <- this.sp[[this.seed.fid]]
+      if (length(seed.sp)==0) return(x)
       if (!all(c(10,20,40) %in% collisionEnergy(seed.sp)))  return(x)
       seed.sp.c <- combineSpectra_groupby_ce(seed.sp)
       try.return <- try(
@@ -90,6 +90,7 @@ get_isotopologues_CFM_annotation<- function(iso.list,BPPARAM = SerialParam(progr
                                                            "0"="[M-H]-",
                                                            "1"="[M+H]+") )
       )
+      if (is.null(x$CFM_result )) return(x)
     }
 
 
