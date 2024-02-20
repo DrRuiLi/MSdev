@@ -4,7 +4,10 @@
 \alias{get_isotopologues_CFM_annotation}
 \title{get_isotopologues_CFM_annotation}
 \usage{
-get_isotopologues_CFM_annotation(iso.list)
+get_isotopologues_CFM_annotation(
+  iso.list,
+  BPPARAM = SerialParam(progressbar = T)
+)
 }
 \arguments{
 \item{iso.list}{list of cfm data}

@@ -56,7 +56,7 @@ get_MSdev_isotopologues <- function(object){
 #' @return  list of cfm data
 #' @export
 #'
-get_isotopologues_CFM_annotation<- function(iso.list){
+get_isotopologues_CFM_annotation<- function(iso.list,BPPARAM = SerialParam(progressbar = T)){
 
   ff <- function(x){
 
@@ -72,6 +72,7 @@ get_isotopologues_CFM_annotation<- function(iso.list){
       split(.,x$sp$ms2_matched_feature)
 
     if (is.na(this.smiles)) return(x)
+    if (length(this.sp)==0) return(x)
 
 
 
@@ -113,7 +114,8 @@ get_isotopologues_CFM_annotation<- function(iso.list){
   }
 
   iso.cfm <- bplapply(iso.list,ff,
-                        BPPARAM = SerialParam(progressbar = T))
+                      BPPARAM = BPPARAM
+                        )
 
   return(iso.cfm)
 

@@ -687,20 +687,20 @@ export_Spectra <- function(sp,
 
 export_Spectra_peak_list_for_cfm <- function(sp,
                                    file ){
-  write_lines(NULL,file = file)
+  readr::write_lines(NULL,file = file)
   for (ce in collisionEnergy(sp)) {
     sp.this <- sp[collisionEnergy(sp)==ce]
     energy.type <- switch(as.character(ce),
            "10" = "energy0",
            "20" = "energy1",
            "40" = "energy2")
-    write_lines(energy.type,file = file,append = T)
+    readr::write_lines(energy.type,file = file,append = T)
     data.to.write <- get_Spectra_data(sp.this)%>%
       dplyr::arrange(mz)%>%
       dplyr::mutate(to.write = paste0(mz," ",intensity))%>%
       dplyr::select(to.write)%>%
       as.matrix()
-    write_lines(data.to.write,file = file,append = T)
+    readr::write_lines(data.to.write,file = file,append = T)
 
   }
 

@@ -43,7 +43,7 @@ CFM_get_param_config <- function(adduct = c("[M+H]+","[M-H]-"),
 #'
 #' @return list of cfm data
 #' @export
-#' @import crayon
+#' @import crayon stringr
 
 CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
                           prob_thresh = 0.001,
@@ -94,6 +94,7 @@ CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([
 #' @param output_file file path
 #'
 #' @return cfm data
+#' @import crayon stringr
 #' @export
 #'
 
@@ -308,7 +309,7 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
 #' @param result_path path
 #'
 #' @return list of cfm data
-#' @import dplyr
+#' @import dplyr stringr
 #' @export
 #'
 
