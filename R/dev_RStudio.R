@@ -12,6 +12,13 @@ setwdActivedFilePath <- function(){
 }
 
 
+#' setRStudioDir
+#'
+#' @param path path
+#'
+#' @return null
+#' @export
+#'
 setRStudioDir <- function(path = rstudioapi::getSourceEditorContext()$path){
 
   rstudioapi::filesPaneNavigate(path)
