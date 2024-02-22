@@ -6,7 +6,7 @@
 \usage{
 get_isotopologues_CFM_annotation(
   iso.list,
-  BPPARAM = SerialParam(progressbar = T)
+  BPPARAM = SnowParam(workers = 12, progressbar = T)
 )
 }
 \arguments{

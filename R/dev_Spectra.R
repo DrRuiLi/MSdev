@@ -841,3 +841,160 @@ get_Spectra_MEM_backend <- function(sp){
                   backend = MsBackendMemory())
   sp
 }
+
+
+
+
+#' plotly_Spectra
+#'
+#' @param sp Spectra
+#' @param label.top highlight
+#'
+#' @return plotly
+#' @export
+#'
+plotly_Spectra <- function(sp,label.top = 10){
+
+  sp.data <-get_Spectra_data(sp)%>%
+    dplyr::mutate(x = mz,
+                  xend = mz,
+                  y = 0,
+                  yend = intensity,
+                  int.rank = rank(-intensity) ,
+                  highlight = intensity > quantile(intensity,(n()-label.top)/n()),
+                  size = ifelse(highlight,1,0))
+
+
+  plot_ly(sp.data)%>%
+    add_segments(x = ~x, xend = ~ xend,
+                 y = ~y,yend = ~ yend, color = I("grey"),
+                 showlegend = F)%>%
+    add_markers(x = ~xend ,y = ~yend,
+                size = I(5),
+                showlegend = F,
+                hovertemplate = "mz:%{x}\nintensity:%{y}<extra></extra>")%>%
+    layout(xaxis =list(title =  "mz"),
+           yaxis =list(title =  "intensity",linewidth = 1))
+
+
+
+
+}
+
+
+#' plotly_Spectra_mirror
+#'
+#' @param sp1 sp1
+#' @param sp2 sp2
+#'
+#' @return plotly
+#' @export
+#'
+plotly_Spectra_mirror <- function(sp1,sp2){
+
+
+  sp.data <-rbind(get_Spectra_data(sp1)%>%
+                    dplyr::mutate(sp.id=1),
+                  get_Spectra_data(sp2)%>%
+                    dplyr::mutate(sp.id=2))%>%
+    dplyr::mutate(groupMz(mz))%>%
+    dplyr::mutate(x = mz,
+                  xend = mz,
+                  y = 0,
+                  yend = case_when(sp.id==1~intensity,
+                                   T~-intensity))%>%
+    dplyr::group_by(mz.group)%>%
+    dplyr::mutate(matched = n()==2)
+
+
+  plot_ly(sp.data)%>%
+    add_segments(x = ~x, xend = ~ xend,
+                 y = ~y,yend = ~ yend, color = I("grey"),
+                 showlegend = F)%>%
+    dplyr::filter(matched)%>%
+    add_markers(x = ~xend ,y = ~yend,
+                size = I(5),
+                showlegend = F,
+                hovertemplate = "mz:%{x}\nintensity:%{y}<extra></extra>")%>%
+    layout(xaxis =list(title =  "mz"),
+           yaxis =list(title =  "intensity",linewidth = 1))
+
+
+}
+
+
+#' plotly_Spectra_iso_mirror
+#'
+#' @param sp sp
+#' @param sp.iso iso sp
+#' @param ppm ppm
+#' @param iso_mass_diff iso mass diff to nature
+#' @param iso_count iso count
+#'
+#' @return plotly
+#' @export
+#'
+plotly_Spectra_iso_mirror <- function(sp,sp.iso ,
+                                      ppm = 10,
+                                      iso_mass_diff = 1.003355,
+                                      iso_count = 1){
+
+
+  sp.data <- get_Spectra_data(sp)%>%
+    dplyr::mutate(sp.id=1,hl = F)
+  sp.iso.data <- get_Spectra_data(sp.iso)%>%
+    dplyr::mutate(sp.id=2,hl = F)
+  matched.id <- match_mz(sp.data$mz+iso_mass_diff*iso_count,
+                         sp.iso.data$mz,mz.ppm = ppm)
+  sp.data$hl[!is.na(matched.id)] <-T
+  sp.iso.data$hl[(matched.id)] <-T
+
+
+  sp.data <-rbind(sp.data,sp.iso.data)%>%
+    dplyr::mutate(x = mz,
+                  xend = mz,
+                  y = 0,
+                  yend = case_when(sp.id==1~intensity,
+                                   T~-intensity))
+
+
+  plot_ly(sp.data)%>%
+    add_segments(x = ~x, xend = ~ xend,
+                 y = ~y,yend = ~ yend, color = I("grey"),
+                 showlegend = F)%>%
+    dplyr::filter(hl)%>%
+    add_markers(x = ~xend ,y = ~yend,
+                size = I(5),
+                showlegend = F,
+                hovertemplate = "mz:%{x}\nintensity:%{y}<extra></extra>")%>%
+    add_text(x = 1.1*max(precursorMz(sp)),y = 0.8*max(abs(sp.data$yend))*c(1,-1),
+             text = paste0("M",c(0,iso_count)),
+             showlegend = F,
+             size= I(20))%>%
+    add_text(x = 1.1*max(precursorMz(sp)),y = 0.5*max(abs(sp.data$yend))*c(1,-1),
+             text = paste0("Collision Energy\n",c(unique(collisionEnergy(sp)),
+                                                  unique(collisionEnergy(sp.iso)))),
+             showlegend = F,
+             size= I(10))%>%
+    layout(xaxis =list(title =  "mz",range = c(0,1.3*max(sp.data$x))),
+           yaxis =list(title =  "intensity",linewidth = 1))
+
+
+}
+#' combineSpectra_ce_max_precursor
+#'
+#'
+#' @param sp sp
+#'
+#' @return sp
+#' @export
+combineSpectra_ce_max_precursor  <- function(sp){
+
+  sp.data <- spectraData(sp)%>%
+    as.data.frame()%>%
+    rownames_to_column("sp.name")%>%
+    dplyr::group_by(collisionEnergy)%>%
+    dplyr::slice_max(precursorIntensity)
+
+  sp[sp.data$sp.name]
+}

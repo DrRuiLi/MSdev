@@ -56,30 +56,43 @@ get_MSdev_isotopologues <- function(object){
 #' @return  list of cfm data
 #' @export
 #'
-get_isotopologues_CFM_annotation<- function(iso.list,BPPARAM = SerialParam(progressbar = T)){
+get_isotopologues_CFM_annotation<- function(iso.list,
+                                            BPPARAM = SnowParam(
+                                              workers = 12,
+                                              progressbar = T)){
 
   ff <- function(x){
 
     this.iso.df <- x$iso.df
-    this.seed.fid <- this.iso.df%>%
-      dplyr::filter(feature_id==iso_seed)%>%
-      dplyr::pull(feature_id)
-    this.smiles <- this.iso.df%>%
-      dplyr::filter(feature_id==iso_seed)%>%
-      dplyr::pull(smiles)
+    this.seed.df <- this.iso.df%>%
+      dplyr::filter(feature_id==iso_seed)
+    this.seed.fid <- this.seed.df$feature_id
+    this.smiles <- this.seed.df$smiles
     this.pol <- unique(this.iso.df$polarity)
     this.sp <- x$sp%>%
       split(.,x$sp$ms2_matched_feature)
 
-    if (is.na(this.smiles)) return(x)
+    ### construct iso-cfm data
+    {
+      this.iso.cfm <- list()
+      this.iso.cfm$compound_info <- list(name = this.seed.df$name,
+                                         compound_id = this.seed.df$compound_id,
+                                         formula = this.seed.df$formula,
+                                         smiles = this.seed.df$smiles,
+                                         mz_ref = this.seed.df$mz_ref,
+                                         adduct = this.seed.df$adduct,
+                                         polarity = this.seed.df$polarity)
+      }
+
+    if (is.na(this.smiles)) return(this.iso.cfm)
 
 
 
-    ### combine sp of seed and cfm-annotate
+    ### combine sp of seed to cfm-annotate
     {
       seed.sp <- this.sp[[this.seed.fid]]
-      if (length(seed.sp)==0) return(x)
-      if (!all(c(10,20,40) %in% collisionEnergy(seed.sp)))  return(x)
+      if (length(seed.sp)==0) return(this.iso.cfm)
+      if (!all(c(10,20,40) %in% collisionEnergy(seed.sp)))  return(this.iso.cfm)
       seed.sp.c <- combineSpectra_groupby_ce(seed.sp)
       try.return <- try(
         x$CFM_result <- CFM_annotate(smiles_or_inchi = this.smiles,
@@ -90,33 +103,31 @@ get_isotopologues_CFM_annotation<- function(iso.list,BPPARAM = SerialParam(progr
                                                            "0"="[M-H]-",
                                                            "1"="[M+H]+") )
       )
-      if (is.null(x$CFM_result )) return(x)
+      if (is.null(x$CFM_result )) return(this.iso.cfm)
     }
 
 
     ### cfm result
     {
-      for (i in nrow(this.iso.df)) {
-        cfm.annotated <- x$CFM_result$peak_assignment%>%
-          dplyr::filter(energy %in% paste0("energy",i),
-                        !is.na(fragment_id))
-        cfm.frag.def <- x$CFM_result$fragment_define
-        if (!nrow(cfm.annotated)) next
+      for (i in 1:nrow(this.iso.df)) {
+
+        mlabel <- paste0("M",this.iso.df$iso_count[i])
+        this.iso.cfm[[mlabel]]$Spectra <- this.sp[[this.iso.df$feature_id[i]]]
 
       }
-
+      this.iso.cfm$M0$CFM_annotation <- x$CFM_result
 
 
 
     }
-    return(x)
+    return(this.iso.cfm)
 
 
   }
 
   iso.cfm <- bplapply(iso.list,ff,
                       BPPARAM = BPPARAM
-                        )
+  )
 
   return(iso.cfm)
 
