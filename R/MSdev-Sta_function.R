@@ -676,14 +676,14 @@ get_CompDb_info <- function(cpdb,
                                 keys = c("name","kegg_id",
                                          "formula", "inchikey")){
 
-  cpdb.var <- compoundVariables(cpdb)
+  cpdb.var <- CompoundDb::compoundVariables(cpdb)
   if (any(!keys%in% cpdb.var)) {
     message(setdiff(keys,cpdb.var)," not exist in CompDb")
     keys <- intersect(keys,cpdb.var)
   }
   keys <- c("compound_id",keys)
   compound_id[is.na(compound_id)] <- "NA_char"
-  cp_data <- compounds(cpdb,column = keys,
+  cp_data <- CompoundDb::compounds(cpdb,column = keys,
                  filter = ~ compound_id == compound_id)
   rownames(cp_data) <-cp_data$compound_id
   cp_data <- cp_data[compound_id,]
