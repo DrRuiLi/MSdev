@@ -258,7 +258,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3){
   ### sort colname
   rda <- rowData(feature.se)%>%
     as.data.frame()%>%
-    dplyr::select(feature_id,mzmed,rtmed,MSDB_id, adduct,mz_ref,rt_ref,score,qc_rsd,sample_rsd,peakMaxo,
+    dplyr::select(feature_id,mzmed,rtmed,compound_id, adduct,mz_ref,rt_ref,score,qc_rsd,sample_rsd,peakMaxo,
                   candidate,candidate.adduct,candidate.mz,candidate.score)
 
   ### all candidate
@@ -269,12 +269,12 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3){
       dplyr::group_by(feature_id)%>%
       dplyr::mutate(temp_id = 1:n())%>%
       dplyr::rowwise()%>%
-      dplyr::mutate(MSDB_id = candidate[[temp_id]],
+      dplyr::mutate(compound_id = candidate[[temp_id]],
                     adduct = candidate.adduct[[temp_id]],
                     mz_ref = candidate.mz[[temp_id]],
                     score = candidate.score[[temp_id]])%>%
       dplyr::ungroup()
-    db.info <- get_MSDB_info(candi.rda.split$MSDB_id,
+    db.info <- get_CompDb_info(candi.rda.split$compound_id,
                                keys = c("name","formula",
                                         "kegg_id",
                                         "inchikey","Lipid_subclass"),
@@ -288,7 +288,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3){
 
 
   ### retrieve data
-  db.info <- get_MSDB_info(rda$MSDB_id,
+  db.info <- get_CompDb_info(rda$compound_id,
                                    keys = c("name","formula",
                                             "kegg_id",
                                             "inchikey","Lipid_subclass"),
@@ -306,7 +306,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3){
   }
   rda <- rda%>%
     as.data.frame()%>%
-    dplyr::filter(qc_rsd < QC_RSD,!is.na(MSDB_id))%>%
+    dplyr::filter(qc_rsd < QC_RSD,!is.na(compound_id))%>%
     dplyr::group_by(inchikey)%>%
     dplyr::slice_max(.uniqueFeatures(score,peakMaxo))%>%
     ungroup()
