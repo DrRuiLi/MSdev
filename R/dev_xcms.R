@@ -912,9 +912,11 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
     sp <- list(sp.ms2[x])
     return(sp)
   })
-  sp.empty <- makeEmptySpectra(compound_id= setdiff(unlist(xcms.fdf$candidate),
-                                        Spectra_database$compound_id))
-  Spectra_database <- c(Spectra_database,sp.empty)
+  if (!all(unlist(xcms.fdf$candidate)%in% Spectra_database$compound_id)) {
+    sp.empty <- makeEmptySpectra(compound_id= setdiff(unlist(xcms.fdf$candidate),
+                                                      Spectra_database$compound_id))
+    Spectra_database <- c(Spectra_database,sp.empty)
+  }
   sp.ref.list <- split(Spectra_database,
                        Spectra_database$compound_id)
   sp.ref <- bplapply(1:nrow(xcms.fdf), function(i){
@@ -932,7 +934,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
 
 
 
-  ### out put all candidate score
+  ### output all candidate score
   {
     .f <- function(expSpec,refSpec,...){
       if (is.null(refSpec)) {

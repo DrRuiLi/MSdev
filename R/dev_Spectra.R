@@ -981,6 +981,8 @@ plotly_Spectra_iso_mirror <- function(sp,sp.iso ,
 
 
 }
+
+
 #' combineSpectra_ce_max_precursor
 #'
 #'
@@ -998,3 +1000,5 @@ combineSpectra_ce_max_precursor  <- function(sp){
 
   sp[sp.data$sp.name]
 }
+
+

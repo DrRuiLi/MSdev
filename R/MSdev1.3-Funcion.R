@@ -86,24 +86,52 @@ MSdev_msConvert<- function(object){
 
 
 
+#' MSdev_extract_Spectra
+#'
+#' @param object  MSdev
+#'
+#' @return MSdev
+#' @export
+#'
 MSdev_extract_Spectra <- function(object){
 
   sampleInfo <- object@sampleInfo%>%
-    dplyr::filter(xcmsProcessing %in% c("Both","MS2"))
+    dplyr::filter(xcmsProcessing %in% c("Both","MS2"))%>%
+    dplyr::mutate(msData.files = normalizePath(msData.files))
 
   if (nrow(sampleInfo)==0) {
     sp <- Spectra::Spectra()
   } else {
-    sp <- Spectra::Spectra(na.omit(sampleInfo$msData.files),backend = Spectra::MsBackendDataFrame())%>%
+    sp <- Spectra::Spectra(na.omit(sampleInfo$msData.files),
+                           backend = Spectra::MsBackendMemory())%>%
       filterMsLevel(2)
     sp$sp_id <- paste0("MS2_SP",num2str(1:length(sp)))
     Spectra::spectraNames(sp) <- sp$sp_id
+
+  }
+
+  ### iso-label
+  {
+    if ("isotope_label"%in% colnames(sampleInfo)) {
+      sp.data <- spectraData(sp)%>%
+        as.data.frame()%>%
+        rownames_to_column("sp.name" )%>%
+        dplyr::mutate(isotope_label = sampleInfo$isotope_label[match(
+          dataOrigin , sampleInfo$msData.files
+        )])
+      object@spectra <- split(sp,sp.data$isotope_label)
+      object@spectra$MS2_Spectra <- sp[is.na(sp.data$isotope_label)]
+      return(object)
+    }
+
+
+
   }
 
   object@spectra$MS2_Spectra <- sp
   return(object)
-}
 
+}
 
 
 
