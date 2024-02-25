@@ -1019,3 +1019,9 @@ plotSpectraMirror(normalizeSpectra(seed.sp[1]),
 
 a <- get_Spectra_data(seed.sp.c)
 b <- cfm.data$peak_assignment
+# Sun Feb 25 19:09:09 2024 ------------------------------
+msdev.fs <- MSdev_match_Spectra_to_feature(msdev.fs)
+msdev.fs <- MSdev_get_Stat(msdev.fs)
+
+
+

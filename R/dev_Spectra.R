@@ -766,7 +766,7 @@ get_Spectra_from_CFM <- function(cfm.data ){
     this.sp.data <- cfm.df%>%
       dplyr::filter(energy == paste0("energy",i))%>%
       dplyr::distinct(mz,intensity)
-    this.sp.df <- DataFrame(collisionEnergy = switch(as.character(i),
+    this.sp.df <- S4Vectors::DataFrame(collisionEnergy = switch(as.character(i),
                                                      "0" = 10,
                                                      "1" = 20,
                                                      "2" = 40))

@@ -44,7 +44,7 @@ get_xcms_feature_se <- function(xcms.xcms,...){
   pol <- c("0" = "neg","1" = "pos")
 
   xcms.xcms <- xcms_get_feature_stat(xcms.xcms)
-  sample.info <- pData(xcms.xcms)
+  sample.info <- Biobase::pData(xcms.xcms)
   rownames(sample.info) <- sample.info$sample.name
 
   featuredef <- featureDefinitions(xcms.xcms)%>%
@@ -54,7 +54,7 @@ get_xcms_feature_se <- function(xcms.xcms,...){
   rownames(featuredef) <- featuredef$feature_id
 
   featureval <- featureValues(xcms.xcms,...)
-  colnames(featureval) <- pData(xcms.xcms)$sample.name
+  colnames(featureval) <- Biobase::pData(xcms.xcms)$sample.name
   rownames(featureval) <- featuredef$feature_id
 
   feature.se <- SummarizedExperiment(assays = featureval,
@@ -563,7 +563,7 @@ xcms_get_feature_def_stat <- function(xcms.xcms){
   feature.def.df <- as.data.frame(feature.def)%>%
     dplyr::mutate(feature_id = rownames(.),
                   .before = mzmed)
-  featureDefinitions(xcms.xcms)<-feature.def.df%>%DataFrame()
+  featureDefinitions(xcms.xcms)<-feature.def.df%>%S4Vectors::DataFrame()
   return(xcms.xcms)
 
 }
@@ -862,7 +862,7 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
     cp.adduct$chemform.adduct.mz[as.numeric(idx)]
   })
 
-  featureDefinitions(xcms.xcms) <- DataFrame(xcms.featuredef)
+  featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.featuredef)
 
   return(xcms.xcms)
 
@@ -956,7 +956,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
   }
 
 
-  featureDefinitions(xcms.xcms) <- DataFrame(xcms.fdf)
+  featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
 
   return(xcms.xcms)
 
@@ -1022,7 +1022,7 @@ xcms_get_feature_annotation <- function(xcms.xcms,
 
 
 
-  featureDefinitions(xcms.xcms) <- DataFrame(xcms.fdf)
+  featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
 
   return(xcms.xcms)
 
@@ -1575,7 +1575,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
 
   ### adujust RT
   message(Sys.time()," Adjust RT...")
-  peaksGroup <- pData(xcms.xcms)$sample.type
+  peaksGroup <- Biobase::pData(xcms.xcms)$sample.type
   peak.density.param <- xcms::PeakDensityParam(sampleGroups = peaksGroup,
                                          minFraction = 0.4,bw = 30,
                                          binSize = 0.015)
@@ -1602,7 +1602,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   ### group peaks
   message(Sys.time()," Group peaks...")
   peak.density.param <- xcms_param$groupChromPeaks
-  peak.density.param@sampleGroups <- pData(xcms.xcms)$sample.type
+  peak.density.param@sampleGroups <- Biobase::pData(xcms.xcms)$sample.type
   xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
   message(Sys.time()," ",nrow(featureDefinitions(xcms.xcms))," feature found")
   xcms.xcms <- fillChromPeaks(xcms.xcms,param = FillChromPeaksParam())

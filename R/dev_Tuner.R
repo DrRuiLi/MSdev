@@ -10,11 +10,11 @@
 get_xcms_Autotuner <- function(xcms.xcms ){
 
   xcms.xcms <- filterFile(xcms.xcms,
-                          which(pData(xcms.xcms)$sample.type!="Blank"))
+                          which(Biobase::pData(xcms.xcms)$sample.type!="Blank"))
 
   autotuner <- createAutotuner(
     data_paths = filepaths(xcms.xcms),
-    runfile = pData(xcms.xcms),
+    runfile = Biobase::pData(xcms.xcms),
     file_col = "msData.files",
     factorCol = "sample.type")
 
