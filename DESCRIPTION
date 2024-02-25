@@ -24,19 +24,12 @@ Imports:
     shiny,
     SummarizedExperiment,
     webchem,
-    MSnbase
-Depends: 
-    R (>= 3.5.0),
     igraph,
-    xcms,
-    Spectra,
-    enviPat,
-    Spectra,
-    plotly,
     ChemmineR,
-    shiny,
-    SummarizedExperiment,
-    webchem,
+    xcms,
+    MSnbase,
     tidyverse
+Depends: 
+    R (>= 3.5.0)
 LazyData: true
 VignetteBuilder: knitr
