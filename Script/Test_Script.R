@@ -1024,4 +1024,54 @@ msdev.fs <- MSdev_match_Spectra_to_feature(msdev.fs)
 msdev.fs <- MSdev_get_Stat(msdev.fs)
 
 
+# Sun Feb 25 19:50:03 2024 ------------------------------
+msdev.fs <- load_as_var("d:/2023.11.MSIP/20231221_FS/MSdev_2023_12_23.Rdata")
+msdev.fs <- MSdev_find_isotope_label(msdev.fs,ppm = 20)
+
+xcms.xcms <- msdev.fs@xcmsData$PositiveMS1
+
+
+
+xcms.fdf <- get_xcms_feature_definitions(xcms.xcms)
+
+
+### Comp info
+cpdb <- CompDb(msdev.fs@projectInfo$CompoundDB_path)
+dbinfo <- get_CompDb_info(cpdb,xcms.fdf$compound_id)
+xcms.fdf <- cbind(xcms.fdf,dbinfo[,2:5])
+
+
+### calc intensity of iso and un-iso labeled sample
+xcms.pdata <- pData(xcms.xcms)%>%
+  dplyr::filter(!sample.type%in% c("Blank"))
+xcms.fv <- featureValues(xcms.xcms,value = "maxo",missing = 1)[,xcms.pdata$sampleNames]
+uniso.mean <- xcms.fv[,xcms.pdata$sampleNames[is.na(xcms.pdata$isotope_label)]]%>%
+  apply(1,mean)
+iso.mean <- xcms.fv[,xcms.pdata$sampleNames[!is.na(xcms.pdata$isotope_label)]]%>%
+  apply(1,mean)
+
+xcms.fdf$mean.iso <- log10(iso.mean)
+xcms.fdf$mean.uniso <- log10(uniso.mean)
+
+
+### iso stat
+xcms.fdf.stat <- xcms.fdf%>%
+  dplyr::mutate(compound_id = case_when(
+    feature_id == C13_seed~ compound_id,
+    T~ NA
+  ),name = case_when(
+    feature_id == C13_seed~ name,
+    T~ NA
+  ))%>%
+  dplyr::filter(!is.na(C13_seed))%>%
+  dplyr::filter(peakMaxo > 1e5)%>%
+  dplyr::group_by(C13_seed)%>%
+  dplyr::mutate(total.isotopologues = n(),
+                iso.maxo = max(log10(peakMaxo)))%>%
+  dplyr::arrange(-iso.maxo,C13_seed,C13_count)%>%
+  dplyr::filter(any(is_labeled),
+                any(!is.na(compound_id)))%>%
+  dplyr::ungroup()
+edit_df_in_excel(xcms.fdf.stat)
+
 
