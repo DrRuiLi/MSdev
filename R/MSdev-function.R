@@ -1549,7 +1549,7 @@ MSdev_match_Spectra_to_feature <- function(object){
 #' @param ...
 #'
 #' @return MSdev
-#' @import CompoundDb Biobase
+#' @import CompoundDb Biobase BiocParallel Spectra
 #' @export
 #'
 
@@ -1645,11 +1645,12 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3){
                     mz_ref = candidate.mz[[temp_id]],
                     score = candidate.score[[temp_id]])%>%
       dplyr::ungroup()
-    db.info <- get_CompDb_info(candi.rda.split$compound_id,
+    cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
+    db.info <- get_CompDb_info(compound_id = candi.rda.split$compound_id,
                                keys = c("name","formula",
                                         "kegg_id",
                                         "inchikey","Lipid_subclass"),
-                               object@projectInfo$MSdbPath)
+                               cpdb = cpdb)
     candi.rda.split <- candi.rda.split%>%
       dplyr::mutate(db.info,.after = rtmed)
     candi.se <- feature.se[candi.rda.split$feature_id,]
@@ -1659,11 +1660,12 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3){
 
 
   ### retrieve data
-  db.info <- get_CompDb_info(rda$compound_id,
+  cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
+  db.info <- get_CompDb_info(compound_id = rda$compound_id,
                              keys = c("name","formula",
                                       "kegg_id",
                                       "inchikey","Lipid_subclass"),
-                             object@projectInfo$MSdbPath)
+                             cpdb = cpdb)
   rda <- rda%>%
     dplyr::mutate(db.info,.after = rtmed)
   rowData(feature.se) <- rda

@@ -635,6 +635,13 @@ analyzeMSdevDEP <- function(object){
 }
 
 
+#' MSdev_export
+#'
+#' @param object MSdev
+#'
+#' @return
+#' @export
+#'
 MSdev_export <- function(object){
 
   dir.create(paste0(object@projectInfo$projectDir,"/Statistic"),recursive = T,showWarnings = F)
@@ -674,11 +681,11 @@ get_MSDB_info <- function (MSDB_id,
 get_CompDb_info <- function(cpdb,
                                 compound_id,
                                 keys = c("name","kegg_id",
-                                         "formula", "inchikey")){
+                                         "formula", "smiles")){
 
   cpdb.var <- CompoundDb::compoundVariables(cpdb)
   if (any(!keys%in% cpdb.var)) {
-    message(setdiff(keys,cpdb.var)," not exist in CompDb")
+    warning(setdiff(keys,cpdb.var)," not exist in CompDb")
     keys <- intersect(keys,cpdb.var)
   }
   keys <- c("compound_id",keys)

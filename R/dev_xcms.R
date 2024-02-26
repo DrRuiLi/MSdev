@@ -230,7 +230,7 @@ xcms_get_feature_group <- function(xcms.xcms,
     message(Sys.time()," group by SimilarRtimeParam")
     xcms.xcms <- groupFeatures(xcms.xcms,
                                    param = SimilarRtimeParam(diffRt,
-                                                             groupFun =groupHclust ))
+                                                             groupFun = groupHclust ))
     message(length(unique(featureGroups(xcms.xcms)))," feature group")
   }
   if (!is.null(intCor)) {
