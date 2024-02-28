@@ -11,6 +11,9 @@ MSdev_get_Stat(object, QC_RSD = 0.3)
 
 \item{QC_RSD}{QC RSD thresh}
 }
+\value{
+MSdev
+}
 \description{
 extract data from xcms
 retrieve compound info from CompDB
