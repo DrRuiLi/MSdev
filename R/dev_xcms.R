@@ -742,7 +742,7 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
   ### feature data
   {
     xcms.se <- get_xcms_feature_se(xcms.xcms,
-                                   missing = 0)
+                                   missing = 1)
     rownames(xcms.se) <- rowData(xcms.se)$xcms_feature_id
     iso.colname <- paste0(str_extract(string = isotope,pattern = "[[:alpha:]]+"),
                           str_extract(string = isotope,pattern = "[[:digit:]]+"))

@@ -1318,6 +1318,18 @@ get_MSdev_MS2acquisitionStat <- function(object){
 
 
 
+#' MSdev_xcms_group_features
+#'
+#' @param object MSdev
+#' @param diffRt 30
+#' @param intCor NULL
+#' @param eicCor NULL
+#' @param ... MSdev
+#'
+#' @return MSdev
+#' @export
+#'
+#'
 MSdev_xcms_group_features <- function(object,
                                       diffRt = 5,
                                       intCor = 0.5,
@@ -1594,7 +1606,7 @@ MSdev_annotation <- function(object,
 #' @param object MSdev
 #' @param QC_RSD QC RSD thresh
 #'
-#' @return
+#' @return MSdev
 #' @export
 #'
 MSdev_get_Stat <- function(object,QC_RSD = 0.3){
@@ -1746,27 +1758,6 @@ MSdev_update_xcms_pdata <- function(object){
 
   return(object)
 
-
-}
-
-MSdev_find_isotope_label <- function(object,
-                                     isotope = "[13]C",
-                                     ...){
-
-  for (i in 0:1) {
-
-    pol <- ifelse(i==0,"Negative","Positive")
-    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
-    xcms.xcms <- xcms_get_feature_isotopologues(xcms.xcms,
-                                                isotope = isotope,
-                                                ...)
-    xcms.xcms <- xcms_get_feature_isotope_label(xcms.xcms,
-                                                isotope = isotope,
-                                                ...)
-    xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
-  }
-
-  return(object)
 
 }
 

@@ -134,3 +134,106 @@ get_isotopologues_CFM_annotation<- function(iso.list,
 
 }
 
+
+
+#' MSdev_find_isotope_label
+#'
+#' @param object MSdev
+#' @param isotope "[13]C"
+#' @param max_label 10
+#' @param ppm 20
+#' @param net.degree.ratio 0.5
+#'
+#' @return MSdev
+#' @export
+#'
+MSdev_find_isotope_label <- function(object,
+                                     isotope = "[13]C",
+                                     ...){
+
+  for (i in 0:1) {
+
+    pol <- ifelse(i==0,"Negative","Positive")
+    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.xcms <- xcms_get_feature_isotopologues(xcms.xcms,
+                                                isotope = isotope,
+                                                ...)
+    xcms.xcms <- xcms_get_feature_isotope_label(xcms.xcms,
+                                                isotope = isotope,
+                                                ...)
+    xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+  }
+
+  return(object)
+
+}
+
+
+get_MSdev_iso_acq_list <- function(object){
+
+
+
+  acq.list <- list()
+  for (i in 0:1) {
+
+    pol <- ifelse(i==0,"Negative","Positive")
+    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.fdf <- get_xcms_feature_definitions(xcms.xcms)
+
+
+    ### Comp info
+    cpdb <- CompDb(msdev.fs@projectInfo$CompoundDB_path)
+    dbinfo <- get_CompDb_info(cpdb,
+                              xcms.fdf$compound_id,
+                              keys = c("name","formula","smiles"))
+    xcms.fdf <- cbind(xcms.fdf,dbinfo[,c("name","formula","smiles")])
+
+
+    ### calc intensity of iso and un-iso labeled sample
+    xcms.pdata <- pData(xcms.xcms)%>%
+      dplyr::filter(!sample.type%in% c("Blank"))
+    xcms.fv <- featureValues(xcms.xcms,value = "maxo",missing = 1)[,xcms.pdata$sampleNames]
+    uniso.mean <- xcms.fv[,xcms.pdata$sampleNames[is.na(xcms.pdata$isotope_label)]]%>%
+      apply(1,mean)
+    iso.mean <- xcms.fv[,xcms.pdata$sampleNames[!is.na(xcms.pdata$isotope_label)]]%>%
+      apply(1,mean)
+
+    xcms.fdf$mean.iso <- log10(iso.mean)
+    xcms.fdf$mean.uniso <- log10(uniso.mean)
+
+
+    ### iso stat
+    xcms.fdf.stat <- xcms.fdf%>%
+      dplyr::mutate(compound_id = case_when(
+        feature_id == C13_seed~ compound_id,
+        T~ NA
+      ),name = case_when(
+        feature_id == C13_seed~ name,
+        T ~ NA
+      ))%>%
+      dplyr::filter(!is.na(C13_seed))%>%
+      dplyr::filter(peakMaxo > 1e5)%>%
+      dplyr::group_by(C13_seed)%>%
+      dplyr::mutate(total.isotopologues = n(),
+                    iso.maxo = max(log10(peakMaxo)))%>%
+      dplyr::arrange(-iso.maxo,
+                     C13_seed,
+                     C13_count)%>%
+      dplyr::filter(any( is_labeled ),
+                    any( !is.na( compound_id ) ) )%>%
+      dplyr::ungroup( )
+
+
+    #edit_df_in_excel(xcms.fdf.stat)
+    acq.list[[pol]] <- xcms.fdf.stat
+
+
+  }
+  acq.list
+
+
+
+}
+
+
+

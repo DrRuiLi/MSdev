@@ -639,7 +639,7 @@ analyzeMSdevDEP <- function(object){
 #'
 #' @param object MSdev
 #'
-#' @return
+#' @return NULL
 #' @export
 #'
 MSdev_export <- function(object){
