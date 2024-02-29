@@ -1971,3 +1971,55 @@ get_xcms_precursor_intensity <- function(xcms.xcms,...){
 
 }
 
+
+
+
+plotly_feature_span <- function(xcms.fdf){
+
+  plot_ly(xcms.fdf)%>%
+    add_segments(x = ~rtmin,xend = ~rtmax,
+                 y = ~mzmed , yend = ~mzmed)
+
+}
+
+
+
+simulate_dda <- function(xcms.fdf,
+                         ms1.time = 0.6,
+                         ms2.time = 0.6,
+                         topn = 10){
+
+  t <- 0
+  scan.df <- data.frame(spIdx = 1,
+                        msLevel= 1,
+                        retentionTime= 0,
+                        precursorMZ= NA,
+                        ion_id = NA
+  )
+  while(t < max(xcms.fdf$rtmax)){
+
+    ion.to.ms2 <- which(t < xcms.fdf$rtmax&t>xcms.fdf$rtmin)
+    ion.to.ms2 <- na.omit(ion.to.ms2[order(xcms.fdf$peakMaxo[ion.to.ms2],decreasing = T)[1:topn]])
+    ms2.scan <- data.frame(spIdx = rep(NA,length(ion.to.ms2)),
+                           msLevel= rep(2,length(ion.to.ms2)),
+                           retentionTime= t + seq_along(ion.to.ms2)*ms2.time,
+                           precursorMZ = xcms.fdf$mzmed[ion.to.ms2],
+                           ion_id = ion.to.ms2
+    )
+    scan.df <- rbind(scan.df,ms2.scan)
+    t <- t + ms2.time*length(ion.to.ms2)
+
+    ms1.scan <- data.frame(spIdx = NA,
+                           msLevel= 1,
+                           retentionTime = t + ms1.time,
+                           precursorMZ= NA,
+                           ion_id = NA
+    )
+    scan.df <- rbind(scan.df,ms1.scan)
+    t <-  t + ms1.time
+  }
+
+
+  return(scan.df)
+
+}

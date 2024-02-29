@@ -29,7 +29,8 @@ Imports:
     xcms,
     MSnbase,
     tidyverse
-Depends: 
+Depends:
+    magrittr,
     R (>= 3.5.0)
 LazyData: true
 VignetteBuilder: knitr
