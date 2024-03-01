@@ -618,28 +618,18 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
   {
 
     xcms.fdf <- featureDefinitions(xcms.xcms)%>%
-      as.data.frame()%>%
-      dplyr::arrange(feature_group)%>%
-      dplyr::mutate(temp.id = 1:n())%>%
-      dplyr::group_by(feature_group)%>%
-      dplyr::mutate(group.feature.count = n(),
-                    temp2.id = 1:n())
-
-    from.id = rep(xcms.fdf$temp.id,times = xcms.fdf$group.feature.count)
-    to.id = xcms.fdf%>%
-      dplyr::slice(rep(temp2.id,unique(group.feature.count)))
-
-    fdf.connect <- data.frame(from = from.id,
-                              to = to.id$temp.id,
-                              feature.group = to.id$feature_group)%>%
-      dplyr::filter(from != to)%>%
+      as.data.frame()
+    net.df <- expand.grid(from = 1:nrow(xcms.fdf), to = 1:nrow(xcms.fdf))
+    fdf.connect <- net.df%>%
       dplyr::mutate(from.fid = xcms.fdf$feature_id[from],
                     from.rt = xcms.fdf$rtmed[from],
                     from.mz = xcms.fdf$mzmed[from],
                     to.fid = xcms.fdf$feature_id[to],
                     to.rt = xcms.fdf$rtmed[to],
                     to.mz = xcms.fdf$mzmed[to],
-                    mz.diff = to.mz - from.mz)
+                    mz.diff = to.mz - from.mz,### not abs, with direction
+                    rt.diff = abs(from.rt-to.rt))%>%
+      dplyr::filter(rt.diff < 5)
 
     #isotope <- "[13]C"
     iso.chemform <- paste0(isotope,1,str_extract(string = isotope,pattern = "[[:alpha:]]+"),-1)

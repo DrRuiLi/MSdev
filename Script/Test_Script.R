@@ -1028,7 +1028,7 @@ msdev.fs <- MSdev_get_Stat(msdev.fs)
 msdev.fs <- load_as_var("d:/2023.11.MSIP/20231221_FS/MSdev_2023_12_23.Rdata")
 msdev.fs <- MSdev_find_isotope_label(msdev.fs,ppm = 20)
 
-xcms.xcms <- msdev.fs@xcmsData$PositiveMS1
+xcms.xcms <- msdev.fs@xcmsData$NegativeMS1
 
 
 
@@ -1077,5 +1077,17 @@ edit_df_in_excel(xcms.fdf.stat)
 
 
 
-
+# Thu Feb 29 20:41:48 2024 ------------------------------
+net.df <- expand.grid(from = 1:nrow(xcms.fdf), to = 1:1:nrow(xcms.fdf))
+fdf.connect <- net.df%>%
+  dplyr::mutate(from.fid = xcms.fdf$feature_id[from],
+                from.rt = xcms.fdf$rtmed[from],
+                from.mz = xcms.fdf$mzmed[from],
+                to.fid = xcms.fdf$feature_id[to],
+                to.rt = xcms.fdf$rtmed[to],
+                to.mz = xcms.fdf$mzmed[to],
+                mz.diff = to.mz - from.mz,
+                rt.diff = abs(from.rt-to.rt))%>%
+  dplyr::filter(rt.diff < 5,
+                from > to)
 
