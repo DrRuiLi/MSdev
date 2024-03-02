@@ -358,6 +358,14 @@ plot_Spectra_Mirror<- function(sp1,sp2,show.label = "rtime"){
 
 
 
+#' plot_Spectra
+#'
+#' @param sp Spectra
+#' @param label.top peaks to label
+#'
+#' @return ggplot
+#' @export
+#' @import ggplot
 plot_Spectra<- function(sp,label.top = 10){
 
   sp.data <-get_Spectra_data(sp)%>%
@@ -852,6 +860,7 @@ get_Spectra_MEM_backend <- function(sp){
 #'
 #' @return plotly
 #' @export
+#' @import plotly
 #'
 plotly_Spectra <- function(sp,label.top = 10){
 
@@ -889,6 +898,7 @@ plotly_Spectra <- function(sp,label.top = 10){
 #'
 #' @return plotly
 #' @export
+#' @import plotly
 #'
 plotly_Spectra_mirror <- function(sp1,sp2){
 
@@ -933,6 +943,7 @@ plotly_Spectra_mirror <- function(sp1,sp2){
 #'
 #' @return plotly
 #' @export
+#' @import plotly
 #'
 plotly_Spectra_iso_mirror <- function(sp,sp.iso ,
                                       ppm = 10,
