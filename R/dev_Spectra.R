@@ -365,7 +365,7 @@ plot_Spectra_Mirror<- function(sp1,sp2,show.label = "rtime"){
 #'
 #' @return ggplot
 #' @export
-#' @import ggplot
+#' @import ggplot2
 plot_Spectra<- function(sp,label.top = 10){
 
   sp.data <-get_Spectra_data(sp)%>%
@@ -1011,5 +1011,121 @@ combineSpectra_ce_max_precursor  <- function(sp){
 
   sp[sp.data$sp.name]
 }
+
+
+
+
+
+#' Spectra_get_noise
+#'
+#' estimate noise with max density
+#'
+#' @param sp Spectra
+#'
+#' @return Spectra
+#' @export
+#'
+Spectra_get_noise <- function(sp){
+
+  .f <- function(x){
+    den <- density(log10(x[,2]))
+
+    ### density max
+    {
+      id <- which.max(den$y)
+
+    }
+
+    ### density mutation
+    {
+      #den.y.diff <- diff(den$y)
+      #den.y.diff2 <- diff(den.y.diff)
+      #den.y.diff[den.y.diff<0] <- -1
+      #den.y.diff[den.y.diff>0] <- 1
+      #id <- which(diff(den.y.diff)==2)[1]
+      #par(mfrow = c(2,1))
+      #plot(den$y)
+      #abline(v = id)
+      #plot(den.y.diff)
+      #abline(v = id)
+    }
+    return(10^den$x[id])
+  }
+
+  sp.ms2.noise <- bplapply(peaksData(sp),.f ,
+                           BPPARAM = SerialParam(progressbar = T))
+  sp$noise <- unlist(sp.ms2.noise)
+  sp$snr <- sp$basePeakIntensity/sp$noise
+  return(sp)
+}
+
+
+#' Spectra_get_purity
+#'
+#' estimate purity with MS1 scan
+#'
+#' @param sp Spectra
+#'
+#' @return Spectra
+#' @export
+#'
+Spectra_get_purity <- function(sp,sp.ms1= NULL){
+
+  sp.raw <- sp
+  sp$temp.id = 1:length(sp)
+
+  ###extract sp
+  {
+    if (is.null(sp.ms1)) {
+      message("Import MS1 Spectra")
+      ms.files <- unique(dataOrigin(sp))
+      sp.ms1 <- Spectra(ms.files,msLevel=1)%>%
+        filterMsLevel(1)
+    }
+    sp.ms2.list <- split(sp,sp$dataOrigin)[unique(sp$dataOrigin)]
+    sp.ms1.list <- split(sp.ms1,sp.ms1$dataOrigin)[unique(sp$dataOrigin)]
+  }
+
+  ### func
+  .f <- function(ms1,ms2){
+
+    ms2$ms1.intensity<-NA
+    ms2$ms2.purity<-NA
+    ms2$ms2.ppm <- NA
+    for (i in 1:length(ms2)) {
+      x.sp <- ms2[i]
+      precursor.ms1 <- max(which(rtime(ms1)<rtime(x.sp)))
+      x <- peaksData(ms1[precursor.ms1])[[1]]
+      x <- x[x[,1]>x.sp$isolationWindowLowerMz&
+               x[,1]< x.sp$isolationWindowUpperMz,,drop =F]
+      #id <- which(round(x[,1],8)==round(x.sp$isolationWindowTargetMz ,8))
+      id <- which.min(abs(x[,1]-x.sp$isolationWindowTargetMz ))
+      ms2$ms1.intensity[i] <- x[id,2]
+      ms2$ms2.purity[i] <- x[id,2]/sum(x[,2])
+      ms2$ms2.ppm[i] <- min(abs(x[,1]-x.sp$isolationWindowTargetMz ))/
+        x.sp$isolationWindowTargetMz*1e6
+
+    }
+    return(ms2)
+
+  }
+
+
+  ### process
+  {
+    sp.x <- bpmapply(.f,sp.ms1.list,
+                     sp.ms2.list,
+                     BPPARAM = SerialParam(progressbar = T))
+    sp.x <- do.call(c,unname(sp.x))
+
+
+    sp.raw$ms1.intensity <- sp.x$ms1.intensity[order(sp.x$temp.id)]
+    sp.raw$ms2.purity <- sp.x$ms2.purity[order(sp.x$temp.id)]
+    sp.raw$ms2.ppm <- sp.x$ms2.ppm[order(sp.x$temp.id)]
+  }
+
+  return(sp.raw)
+}
+
 
 

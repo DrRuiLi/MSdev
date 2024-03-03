@@ -1766,3 +1766,17 @@ MSdev_update_xcms_pdata <- function(object){
 
 
 
+#' get_MSdev_ms2_Spectra
+#'
+#' @param object MSdev
+#'
+#' @return Spectra
+#' @export
+#'
+get_MSdev_ms2_Spectra <- function(object){
+
+  sp.total <- do.call(`c`,unname(object@spectra))
+  return(sp.total)
+}
+
+

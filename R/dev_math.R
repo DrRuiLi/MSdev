@@ -311,3 +311,12 @@ groupHclust <- function (x, maxDiff = 5){
   return(fg)
 
 }
+
+
+
+
+
+plot_density <- function(x){
+  plot(density(x))
+}
+
