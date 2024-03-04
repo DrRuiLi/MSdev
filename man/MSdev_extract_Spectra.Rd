@@ -4,7 +4,7 @@
 \alias{MSdev_extract_Spectra}
 \title{MSdev_extract_Spectra}
 \usage{
-MSdev_extract_Spectra(object)
+MSdev_extract_Spectra(object, msLevel = 2)
 }
 \arguments{
 \item{object}{MSdev}

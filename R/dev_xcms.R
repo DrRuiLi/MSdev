@@ -887,6 +887,9 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
       filterSpectraIntensity(ratio = 0.05)%>%
       get_Spectra_MEM_backend()%>%
       applyProcessing()
+    if ("from_iso" %in% spectraVariables(sp.ms2)) {
+      sp.ms2 <- sp.ms2[!sp.ms2$from_iso]
+    }
 
   }
 

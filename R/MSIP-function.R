@@ -70,7 +70,7 @@ get_isotopologues_CFM_annotation<- function(iso.list,
     this.smiles <- this.seed.df$smiles
     this.pol <- unique(this.iso.df$polarity)
     this.sp <- x$sp%>%
-      split(.,x$sp$ms2_matched_feature)
+      split(.,x$sp$feature_id)
 
     ### construct iso-cfm data
     {

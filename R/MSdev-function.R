@@ -1459,48 +1459,56 @@ MSdev_msConvert<- function(object){
 #' @param object  MSdev
 #'
 #' @return MSdev
+#' @import Spectra dplyr
 #' @export
 #'
-MSdev_extract_Spectra <- function(object){
+MSdev_extract_Spectra <- function(object, msLevel = 2 ){
 
   sampleInfo <- object@sampleInfo%>%
     dplyr::filter(xcmsProcessing %in% c("Both","MS2"))%>%
     dplyr::mutate(msData.files = normalizePath(msData.files))
 
+  sp.list <- list()
   if (nrow(sampleInfo)==0) {
     sp <- Spectra::Spectra()
   } else {
     sp <- Spectra::Spectra(na.omit(sampleInfo$msData.files),
-                           backend = Spectra::MsBackendMemory())%>%
-      filterMsLevel(2)
-    sp$sp_id <- paste0("MS2_SP",num2str(1:length(sp)))
-    Spectra::spectraNames(sp) <- sp$sp_id
+                           backend = Spectra::MsBackendMemory())
+    sp.ms1 <- filterMsLevel(sp,1)
+    sp.ms1$sp_id <- paste0("MS1_SP",num2str(1:length(sp.ms1)))
+    Spectra::spectraNames(sp.ms1) <- sp.ms1$sp_id
+    sp.ms2 <- filterMsLevel(sp,2)
+    sp.ms2$sp_id <- paste0("MS2_SP",num2str(1:length(sp.ms2)))
+    sp.ms2$precursorMz <- sp.ms2$isolationWindowTargetMz
+    Spectra::spectraNames(sp.ms2) <- sp.ms2$sp_id
 
   }
 
-  ### iso-label
+  ### iso-labeled ms2
   {
     if ("isotope_label"%in% colnames(sampleInfo)) {
-      sp.data <- spectraData(sp)%>%
+      sp.data <- spectraData(sp.ms2)%>%
         as.data.frame()%>%
-        rownames_to_column("sp.name" )%>%
+        tibble::rownames_to_column("sp.name" )%>%
         dplyr::mutate(isotope_label = sampleInfo$isotope_label[match(
           dataOrigin , sampleInfo$msData.files
         )])
-      object@spectra <- split(sp,sp.data$isotope_label)
-      object@spectra$MS2_Spectra <- sp[is.na(sp.data$isotope_label)]
-      return(object)
+      sp.ms2$from_iso <- !is.na(sp.data$isotope_label)
+
     }
 
+  }
+  if (1 %in% msLevel) {
+    object@spectra$MS1_Spectra <- sp.ms1
+  }
+  if (2 %in% msLevel){
 
-
+    object@spectra$MS2_Spectra <- sp.ms2
   }
 
-  object@spectra$MS2_Spectra <- sp
   return(object)
 
 }
-
 
 
 #' MSdev_match_Spectra_to_feature
