@@ -874,7 +874,7 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 #' @export
 #'
 
-getSEMSdev <- function(MSdev.obj){
+MSdev_get_SE <- function(MSdev.obj){
 
   col.info <- MSdev.obj@sampleInfo%>%
     dplyr::filter(sample.type == "Sample")%>%
