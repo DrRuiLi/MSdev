@@ -13,5 +13,6 @@ get_MSdev_isotopologues(object)
 a list of isotopologues
 }
 \description{
-get_MSdev_isotopologues
+extract iso-labeled compound info and spectra,
+filter compound without 3 CE spectra of M0
 }
