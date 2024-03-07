@@ -4,7 +4,7 @@
 \alias{t.test_dev}
 \title{t.test_dev}
 \usage{
-\method{t}{test_dev}(...)
+t.test_dev(...)
 }
 \arguments{
 \item{...}{see t.test}

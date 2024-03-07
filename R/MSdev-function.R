@@ -97,13 +97,26 @@ get_MSdev_MSinfo <- function(object){
 }
 
 
+#' MSdev_add_sample
+#'
+#' @param object MSdev
+#' @param raw.data.dir file path
+#'
+#' @return MSdev
+#' @export
+#' @import dplyr xcms
 MSdev_add_sample <- function(object,
                              raw.data.dir = object@projectInfo$rawDataDir){
   sample.info <- object@sampleInfo
   sample.info.new <- get_MS_sampleinfo(raw.data.dir,
                                        rawDataFormat = object@projectInfo$rawDataFormat,
                                        verbose = T)%>%
-    dplyr::filter(!raw.files%in% sample.info$raw.files)
+    dplyr::filter(!raw.files%in% sample.info$raw.files)%>%
+    dplyr::mutate(sample.name = case_when(
+      sample.name %in% sample.info$sample.name ~
+        paste0(sample.name,"_",1:n()+nrow(sample.info)),
+      T~ sample.name
+    ))
   message("Get ",nrow(sample.info.new)," samples")
 
   object@sampleInfo <- sample.info%>%
@@ -124,7 +137,7 @@ MSdev_add_sample <- function(object,
 #'
 #' @return MSdev
 #' @export
-#' @import xcms
+#' @import xcms MSnbase
 MSdev_xcmsProcessing <- function(object,...){
 
   MS.mode <- object@projectInfo$msAcquisition
@@ -1397,7 +1410,7 @@ MSdev_checkSampleInfo <- function(object){
   ### save
   {
     object@sampleInfo <- sampleInfo
-    if(!is_empty(object@xcmsData)){
+    if(!rlang::is_empty(object@xcmsData)){
       object <- MSdev_update_xcms_pdata(object )}
     object <- .updateProjectInfoFromSampleInfo(object )
 

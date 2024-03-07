@@ -59,9 +59,9 @@ get_MSinfo_mzR<- function(msDataFiles){
     msinstru <- mzR::instrumentInfo(msmzR)
     msheader <- mzR::header(msmzR)
     msdata$ExpTime[i] <- msrunInfo$startTimeStamp
-    msdata$msLevels[i] <- case_when(is_empty(msrunInfo$msLevels)~NA,
+    msdata$msLevels[i] <- case_when(rlang::is_empty(msrunInfo$msLevels)~NA,
                                  T~max(msrunInfo$msLevels))
-    msdata$polarity[i] <- case_when(is_empty(unique(msheader$polarity))~NA,
+    msdata$polarity[i] <- case_when(rlang::is_empty(unique(msheader$polarity))~NA,
                                     T~paste0(unique(msheader$polarity),collapse = ";"))
     msdata$manufacturer[i] <- msinstru$manufacturer
     msdata$model[i] <- msinstru$model

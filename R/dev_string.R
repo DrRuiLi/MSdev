@@ -105,7 +105,7 @@ str_search_files <- function(str,file_path = paste0(getwd(),"/R")){
 
   for (i in seq_along(file_path)) {
 
-    txt <- read_lines(file_path[i])
+    txt <- readr::read_lines(file_path[i])
     txt.exist <-  grepl(str,txt)
     if (any(txt.exist)) {
 

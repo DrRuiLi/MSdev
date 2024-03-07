@@ -87,7 +87,7 @@ analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group ){
     kegg.pathway.hits <- colnames(pathway.matrix)[ colnames(pathway.matrix)%in%kegg.pathway.compounds]
     global.test.result$pathway.name[i] <- kegg.pathway.name
     global.test.result$pathway.id[i] <- kegg.pathway.id
-    if (!is_empty(kegg.pathway.class)) {
+    if (!rlang::is_empty(kegg.pathway.class)) {
       global.test.result$pathway.class[i] <- kegg.pathway.class
     }
     global.test.result$Hit[i] <- length(kegg.pathway.hits)
@@ -129,7 +129,7 @@ analyzePathwayHyperTest <- function(kegg.id){
 
     pathway.hyper.test$pathway.name[i] <- pathway$NAME%>%sub(pattern = " - Homo sapiens (human)",replacement = "",fixed = T)
     pathway.hyper.test$pathway.id[i] <- pathway$ENTRY
-    pathway.hyper.test$pathway.class[i] <- ifelse(is_empty(pathway$CLASS),NA,pathway$CLASS)
+    pathway.hyper.test$pathway.class[i] <- ifelse(rlang::is_empty(pathway$CLASS),NA,pathway$CLASS)
 
     M <- pathway$COMPOUND %>% length
     k <- sum(names(pathway$COMPOUND) %in%  kegg.id )
@@ -161,7 +161,7 @@ analyzePathwayHyperTest <- function(kegg.id){
 #' @export
 #'
 
-plotPCA <- function(pca.matrix,pca.group,showlabel = F){
+plot_PCA <- function(pca.matrix,pca.group,showlabel = F){
 
   pca.pca <- ropls::opls(x = pca.matrix,
                          predI = 5)
