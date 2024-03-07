@@ -117,6 +117,14 @@ MSdev_add_sample <- function(object,
 }
 
 
+#' MSdev_xcmsProcessing
+#'
+#' @param object  MSdev
+#' @param ...
+#'
+#' @return
+#' @export
+#' @import xcms
 MSdev_xcmsProcessing <- function(object,...){
 
   MS.mode <- object@projectInfo$msAcquisition
@@ -165,6 +173,14 @@ MSdev_get_xcms <- function(object){
 
 }
 
+#' xcmsProcessingMSdev.DDA
+#'
+#' @param object MSdev
+#' @param ...
+#'
+#' @return
+#' @export
+#' @import  xcms
 xcmsProcessingMSdev.DDA <- function(object,...){
 
   xcms.param <- get_MSdev_param(object )
