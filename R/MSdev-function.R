@@ -122,7 +122,7 @@ MSdev_add_sample <- function(object,
 #' @param object  MSdev
 #' @param ...
 #'
-#' @return
+#' @return MSdev
 #' @export
 #' @import xcms
 MSdev_xcmsProcessing <- function(object,...){
@@ -178,7 +178,7 @@ MSdev_get_xcms <- function(object){
 #' @param object MSdev
 #' @param ...
 #'
-#' @return
+#' @return MSdev
 #' @export
 #' @import  xcms
 xcmsProcessingMSdev.DDA <- function(object,...){
