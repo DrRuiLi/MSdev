@@ -1,5 +1,8 @@
 #' get_MSdev_isotopologues
 #'
+#' extract iso-labeled compound info and spectra,
+#' filter compound without 3 CE spectra of M0
+#'
 #' @param object MSdev
 #'
 #' @return a list of isotopologues
@@ -37,10 +40,40 @@ get_MSdev_isotopologues <- function(object){
 
       this.fdf <- xcms.fdf%>%
         dplyr::filter(iso_seed == seed.id[j])
-      this.ms2 <- this.fdf$ms2_id%>%unlist()
-      this.ms2 <-  sp.ms2[this.ms2]
-      iso.list[[paste0(seed.id[j],"_",pol)]] <- list(iso.df = this.fdf,
-                                                     sp = this.ms2)
+      this.seed.df <- this.fdf%>%
+        dplyr::filter(feature_id==iso_seed)
+      this.seed.fid <- this.seed.df$feature_id
+      this.sp <-  sp.ms2[this.fdf$ms2_id%>%unlist()]
+      this.list <- list()
+      ### compound_info
+      {
+        this.list$compound_info <- list(name = this.seed.df$name,
+                                        compound_id = this.seed.df$compound_id,
+                                        formula = this.seed.df$formula,
+                                        smiles = this.seed.df$smiles,
+                                        mz_ref = this.seed.df$mz_ref,
+                                        adduct = this.seed.df$adduct,
+                                        polarity = this.seed.df$polarity)
+      }
+      ### Spectra split
+      if (length(this.sp)>0) {
+        this.sp.list <- split(this.sp,this.sp$feature_id)
+        names(this.sp.list) <- paste0("M",
+                                      this.fdf$iso_count[ match(names(this.sp.list),this.fdf$feature_id)])
+
+        this.list <- append(this.list,this.sp.list)
+      }
+
+      ### filter
+      {
+        if (!"M0" %in% names(this.list)) next
+        if (!all(c(10,20,40) %in% collisionEnergy(this.list$M0))) next
+        if (is.na(this.list$compound_info$smiles)) next
+        if (length(this.list)<=2) next
+
+      }
+
+      iso.list[[paste0(seed.id[j],"_",pol)]] <- this.list
     }
   }
 
@@ -63,67 +96,26 @@ get_isotopologues_CFM_annotation<- function(iso.list,
 
   ff <- function(x){
 
-    this.iso.df <- x$iso.df
-    this.seed.df <- this.iso.df%>%
-      dplyr::filter(feature_id==iso_seed)
-    this.seed.fid <- this.seed.df$feature_id
-    this.smiles <- this.seed.df$smiles
-    this.pol <- unique(this.iso.df$polarity)
-    this.sp <- x$sp%>%
-      split(.,x$sp$feature_id)
-
-    ### construct iso-cfm data
-    {
-      this.iso.cfm <- list()
-      this.iso.cfm$compound_info <- list(name = this.seed.df$name,
-                                         compound_id = this.seed.df$compound_id,
-                                         formula = this.seed.df$formula,
-                                         smiles = this.seed.df$smiles,
-                                         mz_ref = this.seed.df$mz_ref,
-                                         adduct = this.seed.df$adduct,
-                                         polarity = this.seed.df$polarity)
-      }
-
-    if (is.na(this.smiles)) return(this.iso.cfm)
-
-
-
     ### combine sp of seed to cfm-annotate
     {
-      seed.sp <- this.sp[[this.seed.fid]]
-      if (length(seed.sp)==0) return(this.iso.cfm)
-      if (!all(c(10,20,40) %in% collisionEnergy(seed.sp)))  return(this.iso.cfm)
-      seed.sp.c <- combineSpectra_groupby_ce(seed.sp)
+      seed.sp.c <- combineSpectra_groupby_ce(x$M0)
       try.return <- try(
-        x$CFM_result <- CFM_annotate(smiles_or_inchi = this.smiles,
+        CFM_result <- CFM_annotate(smiles_or_inchi = x$compound_info$smiles,
                                      spectrum_file = seed.sp.c,
                                      ppm_mass_tol = 5,
                                      abs_mass_tol =0.002,
-                                     param_adduct = switch(this.pol,
+                                     param_adduct = switch(x$compound_info$polarity,
                                                            "0"="[M-H]-",
                                                            "1"="[M+H]+") )
       )
-      if (is.null(x$CFM_result )) return(this.iso.cfm)
+      if (is.null(CFM_result )) return(x)
     }
-
-
-    ### cfm result
-    {
-      for (i in 1:nrow(this.iso.df)) {
-
-        mlabel <- paste0("M",this.iso.df$iso_count[i])
-        this.iso.cfm[[mlabel]]$Spectra <- this.sp[[this.iso.df$feature_id[i]]]
-
-      }
-      this.iso.cfm$M0$CFM_annotation <- x$CFM_result
-
-
-
-    }
-    return(this.iso.cfm)
-
-
+    x$CFM_annotation <-CFM_result
+    return(x)
   }
+
+
+
 
   iso.cfm <- bplapply(iso.list,ff,
                       BPPARAM = BPPARAM

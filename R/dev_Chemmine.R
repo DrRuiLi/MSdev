@@ -111,26 +111,34 @@ get_sdf_formula <- function(sdf){
   return(sdf.formula)
 }
 
-get_smile_sdf <- function(smile,smile.id = NULL){
+#' get_smile_sdf
+#'
+#' @param smiles  smiles
+#' @param smiles.id NULL
+#'
+#' @return sdf
+#' @export
+#' @import ChemmineR
+get_smiles_sdf <- function(smiles,smiles.id = NULL){
 
-  data("smile_map")
-  if (is.null(names(smile))) {
-    if (is.null(smile.id)) {
-      names(smile) <- paste0("CMP",num2str(seq_along(smile)))
+  data("smiles_map")
+  if (is.null(names(smiles))) {
+    if (is.null(smiles.id)) {
+      names(smiles) <- paste0("CMP",num2str(seq_along(smiles)))
     }else{
-      names(smile) <- smile.id
+      names(smiles) <- smiles.id
     }
 
   }
-  smile.sdf <- suppressWarnings(
-    ChemmineR::smiles2sdf(smile)
+  smiles.sdf <- suppressWarnings(
+    ChemmineR::smiles2sdf(smiles)
   )
-  for (id in cid(smile_map)) {
-    which(smile==id)
-    suppressWarnings(smile.sdf[smile==id] <- smile_map[[id]])
+  for (id in ChemmineR::cid(smiles_map)) {
+    which(smiles==id)
+    suppressWarnings(smiles.sdf[smiles==id] <- smiles_map[[id]])
   }
 
-  return(smile.sdf)
+  return(smiles.sdf)
 
 }
 
@@ -145,6 +153,14 @@ get_smile_formula <- function(smile){
   return(smile.formula)
 }
 
+#' get_sdf_igraph
+#'
+#' @param sdf sdf
+#' @param addH T or F
+#'
+#' @return igraph
+#' @export
+#' @import dplyr tibble ChemmineR igraph
 get_sdf_igraph <- function(sdf,addH = F){
 
   atom.data <- atomblock(sdf)[,1:2]%>%
@@ -177,6 +193,14 @@ get_sdf_igraph <- function(sdf,addH = F){
 
 }
 
+#' add_sdf_igraph_highlight
+#'
+#' @param sdf.igraph igraph
+#' @param highlight vector
+#'
+#' @return igraph
+#' @export
+#' @import  igraph
 add_sdf_igraph_highlight <- function(sdf.igraph,
                                      highlight =NULL){
 
@@ -184,7 +208,7 @@ add_sdf_igraph_highlight <- function(sdf.igraph,
   if (!is.numeric(highlight)) {
     highlight <- match(highlight  ,V(sdf.igraph.highlight)$id)
   }
-  edge.data <- as_data_frame(sdf.igraph.highlight)%>%
+  edge.data <- igraph::as_data_frame(sdf.igraph.highlight)%>%
     dplyr::mutate(highlight = from %in% V(sdf.igraph.highlight)$name[highlight] &
                     to %in% V(sdf.igraph.highlight)$name[highlight])
 
@@ -199,6 +223,15 @@ add_sdf_igraph_highlight <- function(sdf.igraph,
   return(sdf.igraph.highlight)
 }
 
+#' vis_sdf_igraph
+#'
+#' @param sdf.igraph igraph
+#' @param show.label logic
+#' @param highlight vector
+#'
+#' @return vis html
+#' @export
+#' @import igraph visNetwork
 vis_sdf_igraph <- function(sdf.igraph ,
                            show.label = T,
                            highlight = NULL){
