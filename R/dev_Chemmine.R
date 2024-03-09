@@ -318,3 +318,36 @@ get_atom_id_from_parent <- function(parent.sdf.graph,
 
 }
 
+
+
+
+#' vis_smiles
+#'
+#' @param smiles smiles
+#' @param show.formula logic
+#' @param show.label logic
+#' @param highlight v
+#'
+#' @return vis
+#' @export
+#' @import ChemmineR igraph visNetwork
+vis_smiles <- function(smiles,
+                       show.formula = T,
+                       show.label =T,
+                       highlight =NULL){
+
+  smiles.sdf <- get_smiles_sdf(smiles)[[1]]
+  smiles.igraph <- get_sdf_igraph(smiles.sdf)
+  smiles.vis <- vis_sdf_igraph(smiles.igraph,
+                               show.label = show.label,
+                               highlight = highlight)
+
+  if (show.formula) {
+    smiles.vis$x$main<- list(text = unname(ChemmineR::MF(smiles.sdf,addH = T)),
+                             style = "text-align:center")
+  }
+  smiles.vis
+
+}
+
+

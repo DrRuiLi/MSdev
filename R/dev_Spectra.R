@@ -223,7 +223,6 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
 #' @return Spectra
 #' @export
 #'
-
 combineSpectra_groupby_ce <- function(sp,
                                       minProp = 0.5,
                                       ppm = 5,
@@ -252,7 +251,8 @@ get_Spectra_ms2_feature_id <- function(sp,
                   retentionTime = rtime)%>%
     dplyr::filter(msLevel == 2)
 
-  match.df <- match_mz_rt(featuredef$mzmed,featuredef$rtmed,
+  match.df <- match_mz_rt(featuredef$mzmed,
+                          featuredef$rtmed,
                           sp.data$precursorMZ,
                           sp.data$retentionTime)
   match.df <- match.df%>%
@@ -864,6 +864,10 @@ get_Spectra_MEM_backend <- function(sp){
 #'
 plotly_Spectra <- function(sp,label.top = 10){
 
+  if (length(sp)>1) {
+      warning("more than 1 spectra input, select the first")
+    sp <- sp[1]
+  }
   sp.data <-get_Spectra_data(sp)%>%
     dplyr::mutate(x = mz,
                   xend = mz,
@@ -873,6 +877,11 @@ plotly_Spectra <- function(sp,label.top = 10){
                   highlight = intensity > quantile(intensity,(n()-label.top)/n()),
                   size = ifelse(highlight,1,0))
 
+  label.to.show <- paste0(
+    "precursorMz = ", round(precursorMz(sp),digits = 4),"\n",
+    "precursorIntensity = ", format(precursorIntensity(sp),digits = 3,sci=T),"\n",
+    "collisionEnergy = ", (collisionEnergy(sp)),"\n"
+  )
 
   plot_ly(sp.data)%>%
     add_segments(x = ~x, xend = ~ xend,
@@ -883,6 +892,9 @@ plotly_Spectra <- function(sp,label.top = 10){
                 showlegend = F,
                 hovertemplate = "mz:%{x}\nintensity:%{y}<extra></extra>")%>%
     layout(xaxis =list(title =  "mz"),
+           title = list(text = label.to.show,
+                        x = 0.15,y = 0.9,
+                        xanchor = "left"),
            yaxis =list(title =  "intensity",linewidth = 1))
 
 

@@ -228,4 +228,31 @@ get_MSdev_iso_acq_list <- function(object){
 }
 
 
+#' get_isotopologues_Spectra_process
+#'
+#' @param iso.list iso.list
+#'
+#' @return iso.list
+#' @export
+#' @import  Spectra
+get_isotopologues_Spectra_process <- function(iso.list){
+
+  for (i in seq_along(iso.list)) {
+
+    this.iso <- iso.list[[i]]
+    this.count <- stringr::str_extract(names(this.iso),"[:digit:].")%>%
+      as.numeric()%>%na.omit()
+    for (j in this.count) {
+      this.sp <- this.iso[[paste0("M",j)]]
+      this.sp <- combineSpectra_groupby_ce(this.sp)
+      this.sp -> this.iso[[paste0("M",j)]]
+    }
+    this.iso -> iso.list[[i]]
+  }
+
+  return(iso.list)
+
+
+
+}
 

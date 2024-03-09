@@ -1091,3 +1091,11 @@ fdf.connect <- net.df%>%
   dplyr::filter(rt.diff < 5,
                 from > to)
 
+# Fri Mar  8 18:26:33 2024 ------------------------------
+sp <- iso.list[[39]]$M0
+sp <- Spectra_get_noise(sp)
+collisionEnergy(sp)
+sp$noise
+plotly_Spectra(sp[4])
+
+
