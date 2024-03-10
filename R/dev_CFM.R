@@ -667,7 +667,40 @@ get_cfm_anntation_stat <- function(){
 
 
 
+CFM_annotate_Spectra <- function(sp,
+                                 CFM_annotation,
+                                 isotope = "[13]C",
+                                 iso.count = 0 ){
 
+  cfm.peaks.data <- CFM_annotation$peak_assignment%>%
+    dplyr::mutate(collisionEnergy = case_when(energy == "energy0"~10,
+                                              energy == "energy1"~20,
+                                              energy == "energy2"~40,
+    ))
+  iso.mz.diff <- (0:iso.count)*chemform_mz("[13]CC-1")
+  mz.labeled.m <- matrixSub(cfm.peaks.data$mz,-iso.mz.diff)
+  sp.data <- get_Spectra_data(sp,var = "collisionEnergy")
+  mz.matched <- apply(mz.labeled.m,2,match_mz,mz2 =sp.data$mz )
+  for (i in 0:iso.count) {
+
+    id <- mz.matched[ , i+1 ]
+    sp.data[,paste0("M",i)] <- NA
+    sp.data[na.omit(id),paste0("M",i)] <- ifelse(
+      sp.data[na.omit(id),"collisionEnergy"]==cfm.peaks.data$collisionEnergy[which(!is.na(id))] ,
+      which(!is.na(id)),NA
+    )
+
+  }
+
+  sp.data.f <- sp.data%>%
+    tidyr::pivot_longer(paste0("M",(0:iso.count)),
+                        names_to = "iso",
+                        values_to = "cfm_peak_id")%>%
+    dplyr::filter(!is.na(cfm_peak_id))%>%
+    dplyr::mutate(fragment_id = cfm.peaks.data$fragment_id[cfm_peak_id])
+
+  return(sp.data.f)
+}
 
 
 

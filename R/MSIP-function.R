@@ -98,17 +98,26 @@ get_isotopologues_CFM_annotation<- function(iso.list,
 
     ### combine sp of seed to cfm-annotate
     {
-      seed.sp.c <- combineSpectra_groupby_ce(x$M0)
+      ### process M0 Spectra
+      {
+        seed.sp.c <- x$M0%>%
+          Spectra_filter_noise()%>%
+          normalizeSpectra("tic")%>%
+          combineSpectra_groupby_ce(ppm = 10,
+                                    minProp = 0.2,
+                                    plot = F)
+      }
+      CFM_result <- list()
       try.return <- try(
         CFM_result <- CFM_annotate(smiles_or_inchi = x$compound_info$smiles,
                                      spectrum_file = seed.sp.c,
                                      ppm_mass_tol = 5,
-                                     abs_mass_tol =0.002,
+                                     abs_mass_tol = 0.002,
                                      param_adduct = switch(x$compound_info$polarity,
                                                            "0"="[M-H]-",
                                                            "1"="[M+H]+") )
       )
-      if (is.null(CFM_result )) return(x)
+      if (!"peak_assignment" %in% names(CFM_result)) return(x)
     }
     x$CFM_annotation <-CFM_result
     return(x)
@@ -120,7 +129,8 @@ get_isotopologues_CFM_annotation<- function(iso.list,
   iso.cfm <- bplapply(iso.list,ff,
                       BPPARAM = BPPARAM
   )
-
+  annotated <- sapply(iso.cfm,function(x) "CFM_annotation" %in% names(x))
+  iso.cfm <- iso.cfm[annotated]
   return(iso.cfm)
 
 
@@ -244,7 +254,15 @@ get_isotopologues_Spectra_process <- function(iso.list){
       as.numeric()%>%na.omit()
     for (j in this.count) {
       this.sp <- this.iso[[paste0("M",j)]]
-      this.sp <- combineSpectra_groupby_ce(this.sp)
+
+      ### filter sp
+
+
+      ### combine sp
+      this.sp <- normalizeSpectra(this.sp,"max")
+      this.sp <- combineSpectra_groupby_ce(this.sp,
+                                           minProp = 0.49,
+                                           ppm = 10)
       this.sp -> this.iso[[paste0("M",j)]]
     }
     this.iso -> iso.list[[i]]
@@ -255,4 +273,25 @@ get_isotopologues_Spectra_process <- function(iso.list){
 
 
 }
+
+
+
+get_isotopologues_label_fraction <- function(iso.list){
+
+  .f <- function(x){
+
+    cfm.anno <- x$CFM_annotation$peak_assignment%>%
+      dplyr::mutate(groupMz(mz))%>%
+      dplyr::arrange(mz)
+
+
+
+
+
+  }
+
+
+
+}
+
 

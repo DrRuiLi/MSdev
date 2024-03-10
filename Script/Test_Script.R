@@ -1092,10 +1092,28 @@ fdf.connect <- net.df%>%
                 from > to)
 
 # Fri Mar  8 18:26:33 2024 ------------------------------
-sp <- iso.list[[39]]$M0
-sp <- Spectra_get_noise(sp)
+sp <- iso.list[[10]]$M0
 collisionEnergy(sp)
 sp$noise
-plotly_Spectra(sp[4])
+plotly_Spectra(sp[3])
 
 
+sp.test <- sp[collisionEnergy(sp) == 20]%>%
+  Spectra_filter_noise()%>%
+  normalizeSpectra("tic")
+#plotSpectra(sp.test)
+
+sp.test%>%
+  combineSpectra_groupby_ce(ppm = 10,
+                            minProp = 0.3)%>%
+  plotly_Spectra()
+
+
+
+### param
+iii <- 36
+CFM_annotation <- iso.cfm[[iii]]$CFM_annotation
+sp <- iso.cfm[[iii]]$M5
+iso.count = 7
+sp.df <- CFM_annotate_Spectra(sp,CFM_annotation ,
+                     iso.count =iso.count )

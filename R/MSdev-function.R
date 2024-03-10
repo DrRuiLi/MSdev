@@ -1509,6 +1509,8 @@ MSdev_extract_Spectra <- function(object, msLevel = 2 ){
     sp.ms2 <- filterMsLevel(sp,2)
     sp.ms2$sp_id <- paste0("MS2_SP",num2str(1:length(sp.ms2)))
     sp.ms2$precursorMz <- sp.ms2$isolationWindowTargetMz
+    sp.ms2 <- Spectra_get_noise(sp.ms2)
+    sp.ms2 <- Spectra_get_purity(sp.ms2,sp.ms1 = sp.ms1)
     Spectra::spectraNames(sp.ms2) <- sp.ms2$sp_id
 
   }
@@ -1559,7 +1561,8 @@ MSdev_match_Spectra_to_feature <- function(object){
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
       as.data.frame()
-    sp.ms2.data <- get_Spectra_ms2_feature_id(sp.ms2,xcms.fdf)
+    sp.ms2.data <- get_Spectra_ms2_feature_id(sp.ms2,
+                                              xcms.fdf)
 
 
     ### update MS2_Spectra

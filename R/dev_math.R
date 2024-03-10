@@ -258,7 +258,7 @@ match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
   match.list<- bpmapply(mz1,rt1,
                         FUN = .f,MoreArgs = list(mz2,rt2,mz.ppm),
                         BPPARAM = SerialParam(#workers = 31,
-                                            progressbar = T),
+                                            progressbar = F),
                         SIMPLIFY=F)
   match.df <- data.table::rbindlist(match.list,idcol = "ion1")
 

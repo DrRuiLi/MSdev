@@ -27,10 +27,10 @@ Imports:
     igraph,
     ChemmineR,
     xcms,
-    MSnbase,
-    tidyverse
+    MSnbase
 Depends:
     magrittr,
+    tidyverse,
     R (>= 3.5.0)
 LazyData: true
 VignetteBuilder: knitr

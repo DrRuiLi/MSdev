@@ -209,9 +209,10 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
 
   spec.df <- mz %>%
     dplyr::mutate(int,
-                  sp.id = group,
-                  sp.data[match(sp.id,sp.data$id)   ,var])%>%
+                  sp.id = group)%>%
     dplyr::select(sp.id ,!all_of(c("group","group_name")))
+  var.data <- sp.data[match(spec.df$sp.id,sp.data$id)   ,var,drop = F]
+  spec.df <- cbind(spec.df,var.data)
   return(spec.df)
 }
 
@@ -226,22 +227,39 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
 combineSpectra_groupby_ce <- function(sp,
                                       minProp = 0.5,
                                       ppm = 5,
+                                      plot = T,
                                       ...){
 
   sp.ce <- Spectra::combineSpectra(sp,
                                    peaks = "intersect",
-                                   intensityFun = median,
+                                   intensityFun = mean,
                  f = sp$collisionEnergy,
                  weighted =T,
                  minProp=minProp,
                  ppm = ppm,
                  ...)
+  if(plot){
+    for (ce  in unique(collisionEnergy(sp))) {
+      this.sp <- sp[collisionEnergy(sp)==ce]
+      this.sp.list <- split(this.sp,f = this.sp$sp_id)
+      this.p.list <- lapply(this.sp.list,plotSpec)
+      p <- ggplot_sum_patchwork(this.p.list)+
+        plot_layout(ncol = 2)+
+        plot_annotation(title = paste0("collisionEnergy = ",ce))
+      open_ggplot_win(p,10,ceiling(length(this.p.list)/2)*3)
+    }
 
+
+  }
+
+  return(sp.ce)
 
 }
 
 get_Spectra_ms2_feature_id <- function(sp,
-                                    featuredef ){
+                                    featuredef,
+                                    ppm = 5,
+                                    rt.tol = 5){
 
 
 
@@ -254,14 +272,16 @@ get_Spectra_ms2_feature_id <- function(sp,
   match.df <- match_mz_rt(featuredef$mzmed,
                           featuredef$rtmed,
                           sp.data$precursorMZ,
-                          sp.data$retentionTime)
+                          sp.data$retentionTime,
+                          mz.ppm = ppm,
+                          rt.tol = rt.tol)
   match.df <- match.df%>%
     dplyr::mutate(featuredef[ion1,],
                   sp_id = sp.data$sp_id[ion2],
                   sp_rt = sp.data$retentionTime[ion2])%>%
-    dplyr::filter(sp_rt < peakRtMax&sp_rt>peakRtMin )%>%
     dplyr::group_by(sp_id)%>%
-    dplyr::slice_min(mz.error)
+    dplyr::slice_min(mz.error)%>%
+    dplyr::ungroup()
 
 
 
@@ -1071,6 +1091,35 @@ Spectra_get_noise <- function(sp){
   return(sp)
 }
 
+
+#' Spectra_filter_noise
+#'
+#' @param sp Spectra
+#'
+#' @return Spectra
+#' @export
+#' @import Spectra
+Spectra_filter_noise <- function(sp){
+
+  if (!"noise" %in% spectraVariables(sp)) {
+    warning("No noise varibales, skip")
+    return(sp)
+  }
+  nf <-  function(z,  noise ,...) {
+
+    idx <- z[, 2] > noise
+    z[idx,,drop = F]
+  }
+  sp <- Spectra::addProcessing(sp,FUN = nf,
+                               spectraVariables = "noise")%>%
+    applyProcessing(BPPARAM = SerialParam())
+
+  return(sp)
+}
+
+
+setMethod(noise,"Spectra",
+          definition = function(object )object$noise)
 
 #' Spectra_get_purity
 #'
