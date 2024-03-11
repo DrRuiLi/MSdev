@@ -1,44 +1,16 @@
-MSdev_1.2_workflow <- function(
-    project.dir,
-    MS_instrument = "AB6600",
-    LC_condition = "Metabolomics"){
+MSdev_1.4_workflow <- function(){
 
-
-  MS_dev_obj <- MSdev(rawDataDir = paste0(project.dir,"/rawData"))
-  MS_dev_obj <- checkSampleInfo(MS_dev_obj)
-  MS_dev_obj <- msConvert_MSdev(MS_dev_obj)
-  MS_dev_obj
-  MS_dev_obj <- xcmsProcessingMSdev(MS_dev_obj,
-                                    xcms.findpeak.param = switch(MS_instrument,
-                                             "AB6600" = MSdev_param_set$xcms.param$findpeakparam$AB6600,
-                                             "QEplus" = MSdev_param_set$xcms.param$findpeakparam$QEplus)
-  )
-
-  MS_dev_obj <- extractSpectra_fullscan_DDA(MS_dev_obj)
-  MS_dev_obj <- featureSpectra_fullscan_DDA(MS_dev_obj)
-  MS_dev_obj <- featureCandidate(MS_dev_obj,
-                                 mz.ppm = 20,
-                                spectraDatabase = switch(LC_condition,
-                                   "Metabolomics" = "d:/MSdb/msdb.HMDB.Rdata",
-                                   "Lipidomics" = "d:/MSdb/MSdb_LipidBlast_from_MSDIAL.Rdata",
-                                  ))
-  MS_dev_obj <- annotateMSdev(MS_dev_obj)
-  MS_dev_obj <- getStaDataMSdev(MS_dev_obj,missing = "rowmin_half",
-                                MSDB.keys = switch(LC_condition,
-                                   "Metabolomics" = c("Compound_name","adduct","formula","inchikey" ,"database_origin"),
-                                  "Lipidomics" = c("Compound_name","adduct","formula","inchikey","Lipid_subclass" ,"database_origin")
-                                  )
-                                )
-  saveMSdev(MS_dev_obj)
-
-
-
-
-return(MS_dev_obj)
-
-
-
-
+  msdev.demo <- load_demo("MSdev")
+  msdev.demo <- MSdev_checkSampleInfo(msdev.demo)
+  msdev.demo <- MSdev_msConvert(msdev.demo)
+  get_MSdev_param(msdev.demo)
+  msdev.demo <- MSdev_xcmsProcessing(msdev.demo)
+  msdev.demo <- MSdev_extract_Spectra(msdev.demo)
+  msdev.demo <- MSdev_match_Spectra_to_feature(msdev.demo)
+  msdev.demo <- MSdev_annotation(msdev.demo)
+  msdev.demo <- MSdev_get_Stat(msdev.demo)
+  MSdev_export(msdev.demo)
+  MSdev_save(msdev.demo)
 
 
 }
@@ -95,21 +67,6 @@ MSdev_param <- function(){
 
 }
 
-
-MSdev_1.3_workflow <- function(){
-
-  msdev.demo <- load_demo("MSdev")
-  msdev.demo <- MSdev_checkSampleInfo(msdev.demo)
-  msdev.demo <- MSdev_msConvert(msdev.demo)
-  msdev.demo <- MSdev_xcmsProcessing(msdev.demo)
-  msdev.demo <- MSdev_extract_Spectra(msdev.demo)
-  msdev.demo <- MSdev_match_Spectra_to_feature(msdev.demo)
-  msdev.demo <- MSdev_annotation(msdev.demo)
-  msdev.demo <- MSdev_get_Stat(msdev.demo)
-  MSdev_export(msdev.demo)
-
-
-}
 
 
 

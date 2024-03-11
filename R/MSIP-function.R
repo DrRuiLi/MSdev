@@ -250,7 +250,7 @@ get_isotopologues_Spectra_process <- function(iso.list){
   for (i in seq_along(iso.list)) {
 
     this.iso <- iso.list[[i]]
-    this.count <- stringr::str_extract(names(this.iso),"[:digit:].")%>%
+    this.count <- stringr::str_extract(names(this.iso),"[:digit:]+")%>%
       as.numeric()%>%na.omit()
     for (j in this.count) {
       this.sp <- this.iso[[paste0("M",j)]]
@@ -283,6 +283,16 @@ get_isotopologues_label_fraction <- function(iso.list){
     cfm.anno <- x$CFM_annotation$peak_assignment%>%
       dplyr::mutate(groupMz(mz))%>%
       dplyr::arrange(mz)
+    iso.count <- stringr::str_extract(names(x),"[:digit:]+")%>%
+      as.numeric()%>%na.omit()
+    for (i in iso.count) {
+
+      this.sp <-x[[paste0("M",i)]]
+      da <- CFM_annotate_Spectra(this.sp,
+                                 CFM_annotation =  x$CFM_annotation,
+                                 iso.count = i)
+
+    }
 
 
 
