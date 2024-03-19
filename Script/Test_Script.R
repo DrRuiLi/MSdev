@@ -1117,3 +1117,15 @@ sp <- iso.cfm[[iii]]$M5
 iso.count = 7
 sp.df <- CFM_annotate_Spectra(sp,CFM_annotation ,
                      iso.count =iso.count )
+
+
+
+
+
+vis_sdf_igraph(ig.parent,show.label = T)
+m1 <- as_adj(ig.parent,
+             attr = "bond_type")[(this.mapv),(this.mapv)]
+m2 <- as_adj(ig.product,
+             attr = "bond_type")[names(this.mapv),names(this.mapv)]
+vis_sdf_igraph_compare(ig.parent,ig.product,this.map$mc1.idx,this.map$mc2.idx,show.label = T)
+

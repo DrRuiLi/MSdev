@@ -89,9 +89,9 @@ ggplot_sdf <- function(sdf,
 
 check_sdf <- function(sdf){
 
-  atom.matrix <- atomcountMA(sdf)
-  atom.matrix <- atom.matrix[,setdiff(colnames(atom.matrix),"0"),drop =F]
-  apply(atom.matrix,1,sum) >0
+  atom.map.matrix <- atomcountMA(sdf)
+  atom.map.matrix <- atom.map.matrix[,setdiff(colnames(atom.map.matrix),"0"),drop =F]
+  apply(atom.map.matrix,1,sum) >0
 
 }
 
@@ -163,33 +163,49 @@ get_smile_formula <- function(smile){
 #' @import dplyr tibble ChemmineR igraph
 get_sdf_igraph <- function(sdf,addH = F){
 
-  atom.data <- atomblock(sdf)[,1:2]%>%
-    `colnames<-`(c("x","y"))%>%
-    as.data.frame()%>%
-    rownames_to_column("Atom_id" )
-  atom.data <- cbind(atom.data,bonds(sdf))%>%
-    dplyr::group_by(atom)%>%
-    dplyr::mutate(id = Atom_id,
-                  label = paste0(atom,1:n()),
-                  shape = "text")
+  .f <- function(sdf,addH){
+    atom.data <- atomblock(sdf)[,1:2]%>%
+      `colnames<-`(c("x","y"))%>%
+      as.data.frame()%>%
+      rownames_to_column("Atom_id" )
+    atom.data <- cbind(atom.data,bonds(sdf))%>%
+      dplyr::group_by(atom)%>%
+      dplyr::mutate(id = Atom_id,
+                    label = paste0(atom),
+                    shape = "text")
 
-  bond.data <- bondblock(sdf)[,1:3,drop =F]%>%
-    `colnames<-`(c("from","to","bond_type"))%>%
-    as.data.frame()%>%
-    dplyr::mutate(from = atom.data$Atom_id[from],
-                  to = atom.data$Atom_id[to],
-                  width = 10*bond_type,
-                  color = c("#F8C959","#FF8F6B","#D35230")[bond_type])
+    bond.data <- bondblock(sdf)[,1:3,drop =F]%>%
+      `colnames<-`(c("from","to","bond_type"))%>%
+      as.data.frame()%>%
+      dplyr::mutate(from = atom.data$Atom_id[from],
+                    to = atom.data$Atom_id[to],
+                    width = 10*bond_type,
+                    color = c("#F8C959","#FF8F6B","#D35230")[bond_type])
 
-  sdf.igraph <- graph_from_data_frame(
-    bond.data,vertices =atom.data
-  )
-  if (!addH) {
-    sdf.igraph <- delete.vertices(sdf.igraph,
-                                  V(sdf.igraph)$atom=="H")
+    sdf.igraph <- graph_from_data_frame(
+      bond.data,vertices = atom.data
+    )
+    if (!addH) {
+      sdf.igraph <- delete.vertices(sdf.igraph,
+                                    V(sdf.igraph)$atom=="H")
+    }
+
+    return(sdf.igraph)
+  }
+
+  if (class(sdf)=="SDF")
+    sdf.igraph <-.f(sdf,addH)
+
+
+  if (class(sdf)=="SDFset") {
+    sdf.igraph <- list()
+    for (i in 1:length(sdf)) {
+      sdf.igraph[[i]] <- .f(sdf[[i]],addH  )
+    }
   }
 
   return(sdf.igraph)
+
 
 }
 
@@ -205,8 +221,9 @@ add_sdf_igraph_highlight <- function(sdf.igraph,
                                      highlight =NULL){
 
   sdf.igraph.highlight <- sdf.igraph
+  if (!length(highlight)) return(sdf.igraph.highlight)
   if (!is.numeric(highlight)) {
-    highlight <- match(highlight  ,V(sdf.igraph.highlight)$id)
+    highlight <- match(highlight  ,names(V(sdf.igraph.highlight)))
   }
   edge.data <- igraph::as_data_frame(sdf.igraph.highlight)%>%
     dplyr::mutate(highlight = from %in% V(sdf.igraph.highlight)$name[highlight] &
@@ -214,7 +231,9 @@ add_sdf_igraph_highlight <- function(sdf.igraph,
 
   E(sdf.igraph.highlight)$width[edge.data$highlight] <-
     E(sdf.igraph.highlight)$width[edge.data$highlight]*2
-  E(sdf.igraph.highlight)$color[edge.data$highlight] <- "#2B7CE9"
+  E(sdf.igraph.highlight)$color[edge.data$highlight] <-
+    E(sdf.igraph.highlight)$color[edge.data$highlight] %>%
+    adjustcolor(blue.f = 1.7,green.f = 0.8,red.f = 0.3)
   V(sdf.igraph.highlight)$shadow <- F
   V(sdf.igraph.highlight)$background <- F
   V(sdf.igraph.highlight)$shape[highlight] <- "circle"
@@ -254,10 +273,19 @@ vis_sdf_igraph <- function(sdf.igraph ,
 
 }
 
+vis_sdf <- function(sdf,...){
+
+  sdf.igraph <- get_sdf_igraph(sdf)
+  vis_sdf_igraph(sdf.igraph,...)
+
+
+}
+
 vis_sdf_igraph_compare <- function(sdf.igraph1,
                                    sdf.igraph2,
                                    atom_id1=NULL,
-                                   atom_id2=NULL){
+                                   atom_id2=NULL,
+                                   show.label= T){
 
   sdf.igraph1 <- add_sdf_igraph_highlight(sdf.igraph1,atom_id1)
   sdf.igraph2 <- add_sdf_igraph_highlight(sdf.igraph2,atom_id2)
@@ -273,19 +301,21 @@ vis_sdf_igraph_compare <- function(sdf.igraph1,
   V(sdf.igraph2)$id <- paste0(V(sdf.igraph2)$id,"_2")
 
   nodes <- rbind(
-    as_data_frame(sdf.igraph1,"V"),
-    as_data_frame(sdf.igraph2,"V")
+    vdata(sdf.igraph1),
+    vdata(sdf.igraph2)
   )
   edges <- rbind(
-    as_data_frame(sdf.igraph1,"E"),
-    as_data_frame(sdf.igraph2,"E")
+    edata(sdf.igraph1),
+    edata(sdf.igraph2)
   )
   new.igraph <- graph_from_data_frame(edges,
                                       vertices = nodes)
-  vis_sdf_igraph(new.igraph)
+  vis_sdf_igraph(new.igraph,show.label = show.label)
 
 }
 
+
+### to be removed
 get_atom_id_from_parent <- function(parent.sdf.graph,
                                     product.sdf.graph){
 
@@ -300,7 +330,7 @@ get_atom_id_from_parent <- function(parent.sdf.graph,
 
   ig <- ig - V(ig)[atom_1!=atom_2]
 
-  ig.vd <- as_data_frame(ig,"vertices")
+  ig.vd <- vdata(ig)
   rownames(ig.vd) <- (ig.vd$name_2)
 
   #vis_sdf_igraph(parent.sdf.graph,show.label = F)
@@ -319,6 +349,101 @@ get_atom_id_from_parent <- function(parent.sdf.graph,
 }
 
 
+#' get_atom_map
+#'
+#' map atom of two molecular
+#'
+#'
+#' @param sdf.parent sdf
+#' @param sdf.product sdf
+#' @param ig.parent ig
+#' @param ig.product ig
+#' @param return.type string
+#'
+#' @return if prob_matrix, return a matrix, col: atom of product, row: atom of parent
+#' if most_prob, return the vector of most likely map
+#' @export
+#'
+get_atom_map <- function(sdf.parent,
+                         sdf.product,
+                         ig.parent = get_sdf_igraph(sdf.parent),
+                         ig.product = get_sdf_igraph(sdf.product),
+                         return.type = c("prob_matrix","most_prob")){
+  return.type <- match.arg(return.type)
+  mcs <- fmcsR::fmcs(sdf.parent,sdf.product,bu = 10000)
+  mcs.map <- get_mcs_atom_map(mcs)
+  atom.map.matrix <- matrix(nrow = length(mcs.map),
+                        ncol = length(atom(sdf.product)),
+                        dimnames = list(seq_along(mcs.map),
+                                        atom(sdf.product)))
+  ring.diff <- length(rings(sdf.parent))- length(rings(sdf.product))
+  bond.score <- rep(0,length(mcs.map))
+  for (j in seq_along(mcs.map)) {
+    this.map <- mcs.map[[j]]
+    this.mapv <-this.map$mc1.atom
+    names(this.mapv) <- this.map$mc2.atom
+    this.mapv <- this.mapv[atom(sdf.product)]
+    names(this.mapv) <- atom(sdf.product)
+
+
+    ### ring re-assign
+    {
+      if (ring.diff) {
+        ring.atom <- unname(unlist(rings(sdf.parent)))
+        ring.atom.to.assign <- ring.atom[!ring.atom%in% this.mapv]
+        adj <- sapply(ring.atom.to.assign,function(x){
+          #x <- ring.atom.to.assign
+          x.adj <- names(V(ig.parent))[distances(ig.parent,x)==1]
+          x.adj <- x.adj[x.adj%in%this.mapv]
+          y.adj <- names(this.mapv)[match(x.adj,this.mapv)]
+          y.candi <-apply(distances(ig.product,y.adj),1,function(z){
+            zz <- names(z)[which(z==1)]
+             zz[!zz%in% names(na.omit(this.mapv))]
+            })%>%unlist()
+          unname(y.candi[1])
+          })
+        adj <- na.omit(adj)
+        this.mapv[adj] <- names(adj)
+
+      }
+
+    }
+
+    ### bond diff
+    {
+      temp.map <- na.omit(this.mapv)
+      m1 <- as_adj(ig.parent,
+                   attr = "bond_type")[(temp.map),(temp.map)]
+      m1 <- m1+t(m1)
+      m2 <- as_adj(ig.product,
+                   attr = "bond_type")[names(temp.map),names(temp.map)]
+      m2 <- m2 + t(m2)
+      bond.score[j] <- 1- sum((m1-m2)!=0)/sum(m1!=0)
+
+
+    }
+    #p<-vis_sdf_igraph_compare(ig.parent,ig.product,temp.map,names(temp.map),show.label = F)
+
+    atom.map.matrix[j,] <- this.mapv
+
+
+  }
+  atom.count <- apply(atom.map.matrix,1,function(x)sum(!is.na(x)))
+  selected <- which.max(atom.count+bond.score)
+  if (return.type == "most_prob")
+    return(atom.map.matrix[selected,])
+  if (return.type== "prob_matrix"){
+    apply(atom.map.matrix,2,function(s){
+      sp <- table(s)/length(s)
+      sp <- sp[atom(sdf.parent)]
+      names(sp) <- atom(sdf.parent)
+      sp[is.na(sp)] <- 0
+      return(sp)
+    })
+
+  }
+
+}
 
 
 #' vis_smiles
@@ -351,3 +476,9 @@ vis_smiles <- function(smiles,
 }
 
 
+atom <- function(sdf){
+
+  rownames(atomblock(sdf))
+
+
+}

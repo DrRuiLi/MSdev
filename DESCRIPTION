@@ -26,11 +26,11 @@ Imports:
     webchem,
     igraph,
     ChemmineR,
+    magrittr,
+    tidyverse,
     xcms,
     MSnbase
 Depends:
-    magrittr,
-    tidyverse,
     R (>= 3.5.0)
 LazyData: true
 VignetteBuilder: knitr

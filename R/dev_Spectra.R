@@ -772,12 +772,6 @@ plot_Spectra_Injection <- function(sp){
 
 
 
-get_Spectra_CFM <- function(sp){
-
-
-
-}
-
 
 #' get_Spectra_from_CFM
 #'
@@ -1060,6 +1054,8 @@ combineSpectra_ce_max_precursor  <- function(sp){
 Spectra_get_noise <- function(sp){
 
   .f <- function(x){
+
+    if (length(x[,2])<2) return(0)
     den <- density(log10(x[,2]))
 
     ### density max

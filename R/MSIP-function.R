@@ -107,7 +107,7 @@ get_isotopologues_CFM_annotation<- function(iso.list,
                                     minProp = 0.2,
                                     plot = F)
       }
-      CFM_result <- list()
+      CFM_result <- NA
       try.return <- try(
         CFM_result <- CFM_annotate(smiles_or_inchi = x$compound_info$smiles,
                                      spectrum_file = seed.sp.c,
@@ -117,7 +117,7 @@ get_isotopologues_CFM_annotation<- function(iso.list,
                                                            "0"="[M-H]-",
                                                            "1"="[M+H]+") )
       )
-      if (!"peak_assignment" %in% names(CFM_result)) return(x)
+      if (class(CFM_result) !="CFM_data") return(x)
     }
     x$CFM_annotation <-CFM_result
     return(x)

@@ -50,3 +50,29 @@ show_vis_icon <- function(icon_code = paste0("f",num2str(1:900)),
 
 }
 
+
+
+edata <- function(ig){
+
+  igraph::as_data_frame(ig,"e")
+
+}
+
+vdata <-  function(ig){
+
+  igraph::as_data_frame(ig,"v")
+
+}
+
+`edata<-` <- function(ig,value){
+
+  edge.attributes(ig) <- as.list(value)
+  ig
+}
+
+`vdata<-` <- function(ig,value){
+
+  vertex.attributes(ig) <- as.list(value)
+  ig
+}
+

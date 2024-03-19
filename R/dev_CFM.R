@@ -174,11 +174,12 @@ CFM_fraggen <- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
 
 }
 
-read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code/Docker/cfm/data/cfm_annotate_result.txt"){
+read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code/Docker/cfm/data/cfm_annotate_result.txt")
+  {
 
-  cfm.data <- readr::read_lines(result_path)
-  cfm.df <- data.frame(line.no = 1:length(cfm.data),
-                       line.data = cfm.data)%>%
+  cfm_data <- readr::read_lines(result_path)
+  cfm.df <- data.frame(line.no = 1:length(cfm_data),
+                       line.data = cfm_data)%>%
     dplyr::mutate(session.sep = line.data == "",
                   session.type = cumsum(session.sep)
                   )%>%
@@ -191,7 +192,7 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
   ### session 1
   {
     energy <- unique(cfm.df$session.energy)%>%na.omit()
-    peak.assignment <- data.frame()
+    peak_assignment <- data.frame()
     for (i in seq_along(energy)  ) {
       this.energy <-cfm.df%>%
         dplyr::filter(session.energy==energy[i],session.energy.sep)%>%
@@ -224,13 +225,13 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
                         fragment_id = energy.data$fragment_id[[j]],
                         fragment_score = energy.data$fragment_score[[j]])
 
-        peak.assignment <- bind_rows(peak.assignment,this.peak.assign)
+        peak_assignment <- bind_rows(peak_assignment,this.peak.assign)
 
       }
 
 
     }
-    peak.assignment <- peak.assignment%>%
+    peak_assignment <- peak_assignment%>%
       dplyr::mutate(mz = as.numeric(mz),
                     intensity = as.numeric(intensity),
                     fragment_score = as.numeric(fragment_score))
@@ -283,7 +284,7 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
   {
     fragment.id.new <- paste0("Fragment",num2str(1:nrow(session.data.3)))%>%
       `names<-`(session.data.3$fragment_id)
-    peak.assignment <-peak.assignment%>%
+    peak_assignment <-peak_assignment%>%
       dplyr::mutate(fragment_id = unname(fragment.id.new[fragment_id]))
     session.data.3 <- session.data.3%>%
       dplyr::mutate(fragment_id = unname(fragment.id.new[fragment_id] ))%>%
@@ -294,14 +295,23 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
 
   }
 
-  cfm.data <- list(
-    peak_assignment = peak.assignment,
+  cfm_data <- list(
+    peak_assignment = peak_assignment,
     #fragment_define1 = session.data.2,
     fragment_define = session.data.3,
     fragment_transition = session.data.4
   )
 
-    return(invisible(cfm.data))
+  ### create cfm_data
+  {
+    cfm_data <- new("CFM_data")
+    cfm_data@peak_assignment <- peak_assignment
+    cfm_data@fragment_define <- session.data.3
+    cfm_data@fragment_transition <- session.data.4
+
+  }
+
+  return(cfm_data)
 }
 
 #' read_CFM_predict_result
@@ -315,10 +325,10 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
 
 read_CFM_predict_result <- function(result_path){
 
-  cfm.data <- readr::read_lines(result_path)
-  save(cfm.data,file= "d:/temp/cfm_temp.rda")
-  cfm.df <- data.frame(line.no = 1:length(cfm.data),
-                       line.data = cfm.data)%>%
+  cfm_data <- readr::read_lines(result_path)
+  save(cfm_data,file= "d:/temp/cfm_temp.rda")
+  cfm.df <- data.frame(line.no = 1:length(cfm_data),
+                       line.data = cfm_data)%>%
     dplyr::mutate(session.sep = line.data == "",
                   session.type = cumsum(session.sep))
   cfm.df <- cfm.df[!grepl(pattern = "^#",  x = cfm.df$line.data),]
@@ -342,7 +352,7 @@ read_CFM_predict_result <- function(result_path){
   ### session 1
   {
     energy <- unique(cfm.df$session.energy)%>%na.omit()
-    peak.assignment <- data.frame()
+    peak_assignment <- data.frame()
     for (i in seq_along(energy)  ) {
       this.energy <-cfm.df%>%
         dplyr::filter(session.energy==energy[i],session.energy.sep)%>%
@@ -376,13 +386,13 @@ read_CFM_predict_result <- function(result_path){
                                        fragment_id = energy.data$fragment_id[[j]],
                                        fragment_score = energy.data$fragment_score[[j]])
 
-        peak.assignment <- bind_rows(peak.assignment,this.peak.assign)
+        peak_assignment <- bind_rows(peak_assignment,this.peak.assign)
 
       }
 
 
     }
-    peak.assignment <- peak.assignment%>%
+    peak_assignment <- peak_assignment%>%
       dplyr::mutate(mz = as.numeric(mz),
                     intensity = as.numeric(intensity),
                     fragment_score = as.numeric(fragment_score))
@@ -407,7 +417,7 @@ read_CFM_predict_result <- function(result_path){
   {
     fragment.id.new <- paste0("Fragment",num2str(1:nrow(session.data.2)))%>%
       `names<-`(session.data.2$fragment_id)
-    peak.assignment <-peak.assignment%>%
+    peak_assignment <-peak_assignment%>%
       dplyr::mutate(fragment_id = unname(fragment.id.new[fragment_id]))
     session.data.2 <- session.data.2%>%
       dplyr::mutate(fragment_id = unname(fragment.id.new[fragment_id] ))%>%
@@ -415,21 +425,21 @@ read_CFM_predict_result <- function(result_path){
 
   }
 
-  cfm.data <- list(
-    peak_assignment = peak.assignment,
+  cfm_data <- list(
+    peak_assignment = peak_assignment,
     #fragment_define1 = session.data.2,
     fragment_define = session.data.2
   )
 
-  return(invisible(cfm.data))
+  return(invisible(cfm_data))
 
 }
 
 read_CFM_fraggen_result <- function(result_path){
 
-  cfm.data <- readr::read_lines(result_path)
-  cfm.df <- data.frame(line.no = 1:length(cfm.data),
-                       line.data = cfm.data)%>%
+  cfm_data <- readr::read_lines(result_path)
+  cfm.df <- data.frame(line.no = 1:length(cfm_data),
+                       line.data = cfm_data)%>%
     dplyr::mutate(session.sep = line.data == "",
                   session.type = cumsum(session.sep),
                   session.type = dplyr::case_when(grepl(pattern = "^#",
@@ -483,13 +493,13 @@ read_CFM_fraggen_result <- function(result_path){
 
   }
 
-  cfm.data <- list(
+  cfm_data <- list(
     fragment_define = session.data.1,
     fragment_transition = session.data.2
   )
 
 
-  return(invisible(cfm.data))
+  return(invisible(cfm_data))
 
 }
 
@@ -562,60 +572,57 @@ plot_CFM_annotated_Spectra <- function(cfm_annoate_result){
 
 
 
+get_cfm_fragment_group <- function(cfm_data){
 
 
-get_cfm_data_igraph <- function(cfm.data ){
 
-  #cfm.data <- read_CFM_annotate_result()
+}
 
-  ### fragment
-  fragment.data <- cfm.data$fragment_define2
-  fragment.sdf <- suppressWarnings(smiles2sdf(fragment.data$smiles))
-  fragment.data$formula <- MF(fragment.sdf,addH = T)
-  fragment.data$atom.count <- atomcountMA(fragment.sdf)%>%
-    apply(1,sum)
-  fragment.igraph <- list()
-  for (i in 1:nrow(fragment.data)) {
-    fragment.igraph[[fragment.data$fragment_id[i]]] <-
-      get_sdf_igraph(fragment.sdf[[i]])
-  }
+
+
+### to be desperate
+get_cfm_data_igraph <- function(cfm_data ){
+
+  #cfm_data <- read_CFM_annotate_result()
+
+
 
   ### transition
-  frag.trans.df <- cfm.data$fragment_transition%>%
-    dplyr::mutate(from_formula = fragment.data[from,]$formula ,
-                  to_formula = fragment.data[to,]$formula,
-                  to_atom_count = fragment.data[to,]$atom.count)
-  frag.trans.graph <- graph_from_data_frame(cfm.data$fragment_transition,
-                                            vertices =fragment.data )
-  frag.assigned <- cfm.data$peak.assignment$fragment_id%>%
-    unique()%>%
-    na.omit()
+  #frag.trans.df <- cfm_data$fragment_transition%>%
+  #  dplyr::mutate(from_formula = fragment.data[from,]$formula ,
+  #                to_formula = fragment.data[to,]$formula,
+  #                to_atom_count = fragment.data[to,]$atom.count)
+  #frag.trans.graph <- graph_from_data_frame(cfm_data$fragment_transition,
+  #                                          vertices =fragment.data )
+  #frag.assigned <- cfm_data$peak_assignment$fragment_id%>%
+  #  unique()%>%
+  #  na.omit()
 
 
-  ### graph calc
-  frag.trans.df$intersection.atom <- 0
-  for (i in 1:nrow(frag.trans.df)) {
+ #### graph calc
+ #frag.trans.df$intersection.atom <- 0
+ #for (i in 1:nrow(frag.trans.df)) {
 
-    graph.to   <- fragment.igraph[[frag.trans.df$to[i]]]
-    graph.from <- fragment.igraph[[frag.trans.df$from[i]]]
-    graph.inter <- intersection(graph.to,graph.from,
-                                byname =F,
-                                keep.all.vertices = F)
-    graph.inter <- graph.inter - V(graph.inter)[atom_1!=atom_2]
-    frag.trans.df$intersection.atom[i] <- length(graph.inter)
-  }
-  frag.trans.df <- frag.trans.df%>%
-    dplyr::mutate(retrieve.ratio = intersection.atom/to_atom_count)
-  frag.trans.graph <- graph_from_data_frame(frag.trans.df,
-                                            vertices =fragment.data )
+ #  graph.to   <- fragment.igraph[[frag.trans.df$to[i]]]
+ #  graph.from <- fragment.igraph[[frag.trans.df$from[i]]]
+ #  graph.inter <- intersection(graph.to,graph.from,
+ #                              byname =F,
+ #                              keep.all.vertices = F)
+ #  graph.inter <- graph.inter - V(graph.inter)[atom_1!=atom_2]
+ #  frag.trans.df$intersection.atom[i] <- length(graph.inter)
+ #}
+ #frag.trans.df <- frag.trans.df%>%
+ #  dplyr::mutate(retrieve.ratio = intersection.atom/to_atom_count)
+  #frag.trans.graph <- graph_from_data_frame(frag.trans.df,
+  #                                          vertices =fragment.data )
 
   #visIgraph(frag.trans.graph)
 
 
   ### retrieve atom
-  root.frag.graph <-fragment.igraph[[1]]
-  fragment.data$dis.to.root <- 0
-  fragment.data$retrieve.ratio <- 1
+  #root.frag.graph <-fragment.igraph[[1]]
+  #fragment.data$dis.to.root <- 0
+  #fragment.data$retrieve.ratio <- 1
   for (i in 2:nrow(fragment.data)) {
 
 
@@ -652,22 +659,17 @@ get_cfm_data_igraph <- function(cfm.data ){
   fragment.data$root_atom_id  <- lapply(fragment.igraph,function(x){  V(x)$root_atom_id})
 
 
-  cfm.data$fragment_define2 <- fragment.data
-  cfm.data$fragment_transition <- frag.trans.df
-  cfm.data$fragment_igraph <- fragment.igraph
+  cfm_data$fragment_define2 <- fragment.data
+  cfm_data$fragment_transition <- frag.trans.df
+  cfm_data$fragment_igraph <- fragment.igraph
 
-  return(cfm.data)
-}
-
-
-get_cfm_anntation_stat <- function(){
-
-
+  return(cfm_data)
 }
 
 
 
-CFM_annotate_Spectra <- function(sp,
+
+CFM_annotate_isotopologues <- function(sp,
                                  CFM_annotation,
                                  isotope = "[13]C",
                                  iso.count = 0 ){
@@ -705,10 +707,100 @@ CFM_annotate_Spectra <- function(sp,
 
 
 
-get_CFM_data_MSIP <- function(CFM_data){
+
+setClass("CFM_data",
+         slots = list(
+           peak_assignment = "data.frame",
+           fragment_define = "data.frame",
+           fragment_transition = "data.frame",
+           fragment_igraph = "list",
+           fragment_sdf = "SDFset",
+           fragment_atom_map = "list"
+         ))
 
 
+setMethod("show",signature ="CFM_data",definition =
+            function(object){
+              message("CFM_data with ",nrow(object@fragment_define)," fragment")
+            } )
+
+
+CFM_data_get_igraph <- function(object){
+
+  ### fragment def
+  {
+    fragment.data <- object@fragment_define
+    fragment.sdf <- suppressWarnings(smiles2sdf(fragment.data$smiles))
+    cid(fragment.sdf) <- fragment.data$fragment_id
+    fragment.data$formula <- get_sdf_formula(fragment.sdf)
+
+  }
+
+  ### igraph
+  {
+    fragment.igraph <- get_sdf_igraph(fragment.sdf)
+    names(fragment.igraph) <- fragment.data$fragment_id
+  }
+
+
+  ### atom map
+  {
+    fragment.trans <- object@fragment_transition
+    ### map for trans
+    trans.atom.map <- list()
+    for (i in 1:nrow(fragment.trans)) {
+      ig.parent <- fragment.igraph[[fragment.trans$from[i]]]
+      ig.product <- fragment.igraph[[fragment.trans$to[i]]]
+      sdf.parent <- fragment.sdf[[fragment.trans$from[i]]]
+      sdf.product <- fragment.sdf[[fragment.trans$to[i]]]
+      atom.map <- get_atom_map(sdf.parent ,sdf.product ,ig.parent ,ig.product )
+      trans.atom.map[[i]] <- atom.map
+    }
+
+    ### map for frag
+    ig.trans <- get_CFM_data_trans_igraph(object)
+    fragment.atom.map <- list()
+    for (i in 1:nrow(fragment.data)) {
+      this.frag <- fragment.data$fragment_id[i]
+      this.path <- shortest_paths(ig.trans,
+                                    1,this.frag,
+                                  output = "epath")
+      ep <- this.path$epath[[1]]
+      if (!length(ep)==0) {
+        maps <- trans.atom.map[match(ep,E(ig.trans))]
+        while(length(maps)>1){
+          maps[[2]] <- maps[[1]]%*% maps[[2]]
+          maps[[1]] <-NULL
+        }
+        fragment.atom.map[[i]] <- maps[[1]]
+      }
+
+    }
+
+
+
+  }
+
+
+  ### save to object
+  {
+
+    fragment.data -> object@fragment_define
+    object@fragment_igraph <- fragment.igraph
+    object@fragment_sdf <- fragment.sdf
+    object@fragment_atom_map <- fragment.atom.map
+  }
+
+  return(object)
+}
+
+get_CFM_data_trans_igraph <- function(object){
+
+
+  frag.trans.graph <- graph_from_data_frame(object@fragment_transition,
+                                            vertices =object@fragment_define )
 
 }
+
 
 

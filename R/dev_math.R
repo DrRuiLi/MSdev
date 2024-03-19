@@ -19,46 +19,50 @@ t.test_dev <- function(...){
 
 
 
-groupMz <- function(x,ppm.thresh = 10){
+groupMz <- function(x,ppm = 10,return.type = c("vector","data.frame")){
 
-  x.table <- data.frame( mz = x)%>%
-    dplyr::mutate(raw.order = 1:length(x))%>%
-    dplyr::arrange(mz)%>%
-    dplyr::mutate(mz.diff = c(diff(mz),0),
-                  mz.ppm = mz.diff/mz*1e6,
-                  mz.group = "")
-  i <- 1
-  i.group <- 1
-  this.group.idx <- c()
-  while(i <= nrow(x.table)){
-    x.table$mz.ppm[i]
-    if (x.table$mz.ppm[i] <ppm.thresh) {
-      this.group.idx <- c(this.group.idx,i)
-      x.table$mz.group[this.group.idx] <- paste0("ion_group",sprintf("%06d",i.group))
-    }else{
-      this.group.idx <-  c(this.group.idx,i)
-      x.table$mz.group[this.group.idx] <- paste0("ion_group",sprintf("%06d",i.group))
-      i.group <- i.group+1
-      i <- i+1
-      this.group.idx <- c()
-      next
-    }
-
-    i <- i+1
-    next
-
-  }
-
-  x.table <-x.table %>%
+ # x.table <- data.frame( mz = x)%>%
+ #   dplyr::mutate(raw.order = 1:length(x))%>%
+ #   dplyr::arrange(mz)%>%
+ #   dplyr::mutate(mz.diff = c(diff(mz),0),
+ #                 mz.ppm = mz.diff/mz*1e6,
+ #                 mz.group = "")
+ # i <- 1
+ # i.group <- 1
+ # this.group.idx <- c()
+ # while(i <= nrow(x.table)){
+ #   x.table$mz.ppm[i]
+ #   if (x.table$mz.ppm[i] <ppm.thresh) {
+ #     this.group.idx <- c(this.group.idx,i)
+ #     x.table$mz.group[this.group.idx] <- paste0("ion_group",sprintf("%06d",i.group))
+ #   }else{
+ #     this.group.idx <-  c(this.group.idx,i)
+ #     x.table$mz.group[this.group.idx] <- paste0("ion_group",sprintf("%06d",i.group))
+ #     i.group <- i.group+1
+ #     i <- i+1
+ #     this.group.idx <- c()
+ #     next
+ #   }
+#
+ #   i <- i+1
+ #   next
+#
+ # }
+#
+  return.type <- match.arg(return.type)
+  x.group <- MsCoreUtils::group(x,ppm = ppm)
+  if (return.type == "vector")
+    return(x.group)
+  x.table <-data.frame(mz = x,
+                       mz.group = x.group) %>%
     dplyr::group_by(mz.group)%>%
     dplyr::mutate(mz.center = median(mz),
                   mz.diff = abs(mz.center - mz),
                   mz.ppm = mz.diff/mz*1e6,
                   mz.width = max(mz)-min(mz),
                   mz.width.ppm = mz.width/mz*1e6)%>%
-    dplyr::ungroup()%>%
-    dplyr::arrange(raw.order)%>%
-    dplyr::select(-raw.order)
+    dplyr::ungroup()
+
   return(x.table)
 
 
