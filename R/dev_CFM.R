@@ -572,109 +572,16 @@ plot_CFM_annotated_Spectra <- function(cfm_annoate_result){
 
 
 
-get_cfm_fragment_group <- function(cfm_data){
-
-
-
-}
-
-
-
-### to be desperate
-get_cfm_data_igraph <- function(cfm_data ){
-
-  #cfm_data <- read_CFM_annotate_result()
-
-
-
-  ### transition
-  #frag.trans.df <- cfm_data$fragment_transition%>%
-  #  dplyr::mutate(from_formula = fragment.data[from,]$formula ,
-  #                to_formula = fragment.data[to,]$formula,
-  #                to_atom_count = fragment.data[to,]$atom.count)
-  #frag.trans.graph <- graph_from_data_frame(cfm_data$fragment_transition,
-  #                                          vertices =fragment.data )
-  #frag.assigned <- cfm_data$peak_assignment$fragment_id%>%
-  #  unique()%>%
-  #  na.omit()
-
-
- #### graph calc
- #frag.trans.df$intersection.atom <- 0
- #for (i in 1:nrow(frag.trans.df)) {
-
- #  graph.to   <- fragment.igraph[[frag.trans.df$to[i]]]
- #  graph.from <- fragment.igraph[[frag.trans.df$from[i]]]
- #  graph.inter <- intersection(graph.to,graph.from,
- #                              byname =F,
- #                              keep.all.vertices = F)
- #  graph.inter <- graph.inter - V(graph.inter)[atom_1!=atom_2]
- #  frag.trans.df$intersection.atom[i] <- length(graph.inter)
- #}
- #frag.trans.df <- frag.trans.df%>%
- #  dplyr::mutate(retrieve.ratio = intersection.atom/to_atom_count)
-  #frag.trans.graph <- graph_from_data_frame(frag.trans.df,
-  #                                          vertices =fragment.data )
-
-  #visIgraph(frag.trans.graph)
-
-
-  ### retrieve atom
-  #root.frag.graph <-fragment.igraph[[1]]
-  #fragment.data$dis.to.root <- 0
-  #fragment.data$retrieve.ratio <- 1
-  for (i in 2:nrow(fragment.data)) {
-
-
-      this.frag.id <- fragment.data$fragment_id[i]
-      this.path <- all_simple_paths(frag.trans.graph,
-                                    1,this.frag.id)
-      if (!length(this.path)==0) {
-        retrieve.ratio <- sapply(this.path, function(x){
-          get_edges_from_path(frag.trans.graph,x)$retrieve.ratio%>%
-            prod()
-        })
-        this.path <- this.path[[which.max(retrieve.ratio)]]
-      }else{
-        retrieve.ratio <- 0
-      }
-
-      fragment.data$retrieve.ratio[i] <- mean(retrieve.ratio)
-      fragment.data$dis.to.root[i] <- length(this.path) -1
-
-    }
-
-  fragment.data.tmp <- fragment.data%>%
-    dplyr::arrange(dis.to.root)
-  V(fragment.igraph[[1]])$root_atom_id <- V(fragment.igraph[[1]])$id
-  for (i in 2:nrow(fragment.data.tmp)) {
-
-    this.frag.id <- fragment.data.tmp$fragment_id[[i]]
-    message("Tracing atom for ",this.frag.id)
-    fragment.igraph[[this.frag.id]] <- get_atom_id_from_parent(fragment.igraph[[1]],
-                                                               fragment.igraph[[this.frag.id]])
-  }
-
-
-  fragment.data$root_atom_id  <- lapply(fragment.igraph,function(x){  V(x)$root_atom_id})
-
-
-  cfm_data$fragment_define2 <- fragment.data
-  cfm_data$fragment_transition <- frag.trans.df
-  cfm_data$fragment_igraph <- fragment.igraph
-
-  return(cfm_data)
-}
-
-
-
-
 CFM_annotate_isotopologues <- function(sp,
-                                 CFM_annotation,
+                                 cfmd,
                                  isotope = "[13]C",
                                  iso.count = 0 ){
 
-  cfm.peaks.data <- CFM_annotation$peak_assignment%>%
+  if (!fragment_group%in% colnames(cfmd@peak_assignment)) {
+    cfmd <- cfm_data_get_fragment_group(cfmd)
+  }
+
+  cfm.peaks.data <- cfmd@peak_assignment%>%
     dplyr::mutate(collisionEnergy = case_when(energy == "energy0"~10,
                                               energy == "energy1"~20,
                                               energy == "energy2"~40,
@@ -699,7 +606,8 @@ CFM_annotate_isotopologues <- function(sp,
                         names_to = "iso",
                         values_to = "cfm_peak_id")%>%
     dplyr::filter(!is.na(cfm_peak_id))%>%
-    dplyr::mutate(fragment_id = cfm.peaks.data$fragment_id[cfm_peak_id])
+    dplyr::mutate(fragment_id = cfm.peaks.data$fragment_id[cfm_peak_id],
+                  fragment_group = cfm.peaks.data$fragment_group[cfm_peak_id])
 
   return(sp.data.f)
 }
@@ -800,6 +708,20 @@ get_CFM_data_trans_igraph <- function(object){
   frag.trans.graph <- graph_from_data_frame(object@fragment_transition,
                                             vertices =object@fragment_define )
 
+}
+
+
+
+cfm_data_get_fragment_group <- function(cfm_data,ppm = 10){
+
+  fg <- groupMz(cfm_data@fragment_define$fragment_mz,ppm)
+  cfm_data@fragment_define$fragment_group <- paste0("FG",num2str(fg))
+  cfm_data@peak_assignment$fragment_group <-
+    cfm_data@fragment_define$fragment_group[match(
+      cfm_data@peak_assignment$fragment_id,
+      cfm_data@fragment_define$fragment_id)]
+
+  return(cfm_data)
 }
 
 

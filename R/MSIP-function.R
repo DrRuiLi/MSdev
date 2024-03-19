@@ -119,6 +119,9 @@ get_isotopologues_CFM_annotation<- function(iso.list,
       )
       if (class(CFM_result) !="CFM_data") return(x)
     }
+
+    CFM_result <- cfm_data_get_fragment_group(CFM_result)
+    CFM_result <- CFM_data_get_igraph(CFM_result)
     x$CFM_annotation <-CFM_result
     return(x)
   }
