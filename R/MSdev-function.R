@@ -1491,7 +1491,9 @@ MSdev_msConvert<- function(object){
 #' @import Spectra dplyr
 #' @export
 #'
-MSdev_extract_Spectra <- function(object, msLevel = 2 ){
+MSdev_extract_Spectra <- function(object, msLevel = 2,
+                                  eval.noise = F,
+                                  eval.ms1 = F){
 
   sampleInfo <- object@sampleInfo%>%
     dplyr::filter(xcmsProcessing %in% c("Both","MS2"))%>%
@@ -1509,8 +1511,8 @@ MSdev_extract_Spectra <- function(object, msLevel = 2 ){
     sp.ms2 <- filterMsLevel(sp,2)
     sp.ms2$sp_id <- paste0("MS2_SP",num2str(1:length(sp.ms2)))
     sp.ms2$precursorMz <- sp.ms2$isolationWindowTargetMz
-    sp.ms2 <- Spectra_get_noise(sp.ms2)
-    sp.ms2 <- Spectra_get_purity(sp.ms2,sp.ms1 = sp.ms1)
+    if(eval.noise) sp.ms2 <- Spectra_get_noise(sp.ms2)
+    if(eval.ms1) sp.ms2 <- Spectra_get_purity(sp.ms2,sp.ms1 = sp.ms1)
     Spectra::spectraNames(sp.ms2) <- sp.ms2$sp_id
 
   }
@@ -1649,7 +1651,10 @@ MSdev_annotation <- function(object,
 #' @return MSdev
 #' @export
 #'
-MSdev_get_Stat <- function(object,QC_RSD = 0.3){
+MSdev_get_Stat <- function(object,QC_RSD = 0.3,
+                           keys = c("name","formula",
+                                    "kegg_id",
+                                    "inchikey","lipidclass")){
 
   sample.info <- object@sampleInfo%>%
     dplyr::filter(polarity_paired)
@@ -1699,9 +1704,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3){
       dplyr::ungroup()
     cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
     db.info <- get_CompDb_info(compound_id = candi.rda.split$compound_id,
-                               keys = c("name","formula",
-                                        "kegg_id",
-                                        "inchikey","Lipid_subclass"),
+                               keys = keys,
                                cpdb = cpdb)
     candi.rda.split <- candi.rda.split%>%
       dplyr::mutate(db.info,.after = rtmed)
@@ -1714,9 +1717,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3){
   ### retrieve data
   cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
   db.info <- get_CompDb_info(compound_id = rda$compound_id,
-                             keys = c("name","formula",
-                                      "kegg_id",
-                                      "inchikey","Lipid_subclass"),
+                             keys = keys,
                              cpdb = cpdb)
   rda <- rda%>%
     dplyr::mutate(db.info,.after = rtmed)

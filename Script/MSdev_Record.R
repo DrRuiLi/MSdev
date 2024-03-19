@@ -239,9 +239,120 @@
 
 
 
-### 2024.3. HGH
+### 2024.3.11 HGH lipidomic
 {
-  library(MSdev)
+  msdev.hgh  <- MSdev("D:/2024_03_07-HGH/Data/")
+  msdev.hgh <- load_as_var("d:/2024_03_07-HGH/MSdev_2024_03_11.Rdata")
+  msdev.hgh <- MSdev_msConvert(msdev.hgh)
+  msdev.hgh <- MSdev_checkSampleInfo(msdev.hgh)
+  msdev.hgh <- MSdev_xcmsProcessing(msdev.hgh)
+  msdev.hgh <- MSdev_extract_Spectra(msdev.hgh)
+  msdev.hgh <- MSdev_match_Spectra_to_feature(msdev.hgh)
+  msdev.hgh <- MSdev_annotation(msdev.hgh,cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast3.sqlite",
+                                selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
+  msdev.hgh <- MSdev_get_Stat(msdev.hgh)
+  MSdev_export(msdev.hgh)
+  MSdev_save(msdev.hgh)
+
+  {
+
+    proj.dir <- msdev.hgh@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(msdev.hgh,from = "metabolite")
+
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 5,height = 5)
+
+
+    ### sample_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank")]
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+
+
+
+
+  }
+
 
 
 }
+
+
+### 2024.3.11 fudan lipidomic
+{
+  msdev.fudan  <- MSdev("D:/2024_03_07-Fudan/Data/")
+  msdev.fudan <- load_as_var("D:/2024_03_07-Fudan/MSdev_2024_03_11.Rdata")
+  msdev.fudan <- MSdev_msConvert(msdev.fudan)
+  msdev.fudan <- MSdev_checkSampleInfo(msdev.fudan)
+  msdev.fudan <- MSdev_xcmsProcessing(msdev.fudan)
+  msdev.fudan <- MSdev_extract_Spectra(msdev.fudan)
+  msdev.fudan <- MSdev_match_Spectra_to_feature(msdev.fudan)
+  msdev.fudan <- MSdev_annotation(msdev.fudan,cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast3.sqlite",
+                                selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
+  msdev.fudan <- MSdev_get_Stat(msdev.fudan)
+  MSdev_export(msdev.fudan)
+  MSdev_save(msdev.fudan)
+
+  {
+
+    proj.dir <- msdev.fudan@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(msdev.fudan,from = "metabolite")
+
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 5,height = 5)
+
+
+    ### sample_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank")]
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+
+
+
+
+  }
+
+
+
+}
+

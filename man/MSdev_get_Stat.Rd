@@ -4,7 +4,11 @@
 \alias{MSdev_get_Stat}
 \title{MSdev_get_Stat}
 \usage{
-MSdev_get_Stat(object, QC_RSD = 0.3)
+MSdev_get_Stat(
+  object,
+  QC_RSD = 0.3,
+  keys = c("name", "formula", "kegg_id", "inchikey", "lipidclass")
+)
 }
 \arguments{
 \item{object}{MSdev}

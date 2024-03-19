@@ -527,7 +527,7 @@ DEP_plot_PCA <- function(data.se,
   if (is.null(col.group)) {
     col.group <- ggsci::pal_npg()(length(unique(se.coldata$condition)))
   }
- plotPCA(pca.matrix,
+ plot_PCA(pca.matrix,
                   pca.group = se.coldata$condition,
                   showlabel = showlabel)+
     scale_color_manual(values = col.group)+
