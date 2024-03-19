@@ -51,6 +51,7 @@ get_MSdev_isotopologues <- function(object){
                                         compound_id = this.seed.df$compound_id,
                                         formula = this.seed.df$formula,
                                         smiles = this.seed.df$smiles,
+                                        score = this.seed.df$score,
                                         mz_ref = this.seed.df$mz_ref,
                                         adduct = this.seed.df$adduct,
                                         polarity = this.seed.df$polarity)
@@ -87,6 +88,7 @@ get_MSdev_isotopologues <- function(object){
 #' @param iso.list list of cfm data
 #'
 #' @return  list of cfm data
+#' @import magrittr tidyverse
 #' @export
 #'
 get_isotopologues_CFM_annotation<- function(iso.list,
@@ -100,11 +102,10 @@ get_isotopologues_CFM_annotation<- function(iso.list,
     {
       ### process M0 Spectra
       {
-        seed.sp.c <- x$M0%>%
-          Spectra_filter_noise()%>%
-          normalizeSpectra("tic")%>%
-          combineSpectra_groupby_ce(ppm = 10,
-                                    minProp = 0.2,
+        seed.sp.c <- Spectra_filter_noise(x$M0)
+        seed.sp.c <- normalizeSpectra(sp = seed.sp.c,norm_to = "tic")
+        seed.sp.c<- combineSpectra_groupby_ce(seed.sp.c,ppm = 10,
+                                    minProp = 0.3,
                                     plot = F)
       }
       CFM_result <- NA
@@ -283,17 +284,46 @@ get_isotopologues_label_fraction <- function(iso.list){
 
   .f <- function(x){
 
-    cfm.anno <- x$CFM_annotation$peak_assignment%>%
-      dplyr::mutate(groupMz(mz))%>%
-      dplyr::arrange(mz)
+    cfmd <- x$CFM_annotation
     iso.count <- stringr::str_extract(names(x),"[:digit:]+")%>%
       as.numeric()%>%na.omit()
     for (i in iso.count) {
 
       this.sp <-x[[paste0("M",i)]]
-      da <- CFM_annotate_Spectra(this.sp,
-                                 CFM_annotation =  x$CFM_annotation,
-                                 iso.count = i)
+      this.sp <- Spectra_filter_noise(this.sp)
+      sp.frag <- CFM_annotate_isotopologues(this.sp,
+                                 cfmd  = cfmd,
+                                 iso.count = i)%>%
+        dplyr::filter(!is.na(iso))
+      idx <- split(1:nrow(sp.frag),sp.frag$fragment_group)
+      frag.ratio <- lapply(idx,
+             function(x){
+              x.df <- sp.frag[x,]
+              x.int <- x.df%>%
+                dplyr::select(-mz,-collisionEnergy)%>%
+                tidyr::pivot_wider(names_from ="iso",
+                                   id_cols = "sp.id",
+                                   values_from = "intensity")%>%
+                tibble::column_to_rownames("sp.id")%>%
+                dplyr::select(dplyr::starts_with("M"))%>%
+                as.matrix()
+              x.int[is.na(x.int)] <- 0
+              if (!"M0" %in%colnames(x.int))
+                x.int <- cbind(matrix(0,nrow(x.int),1,dimnames = list(NULL,"M0")),x.int)
+              x.int <- t(apply(x.int,1,function(z) z/sum(z)))
+              x.int <- x.int[,order(colnames(x.int)),drop =F]
+              return(x.int)
+             })
+
+      for (j in seq_along(frag.ratio)) {
+
+        this.frag.group <- names(frag.ratio)[j]
+        this.frag.ratio <-frag.ratio[[j]]%>%
+          colMeans()
+        this.frag.atom <- get_cfm_data_fg_atom_map(cfmd,this.frag.group)
+
+      }
+
 
     }
 

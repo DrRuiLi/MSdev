@@ -391,6 +391,7 @@ get_atom_map <- function(sdf.parent,
       if (ring.diff) {
         ring.atom <- unname(unlist(rings(sdf.parent)))
         ring.atom.to.assign <- ring.atom[!ring.atom%in% this.mapv]
+        ring.atom.to.assign <- unique(ring.atom.to.assign)
         adj <- sapply(ring.atom.to.assign,function(x){
           #x <- ring.atom.to.assign
           x.adj <- names(V(ig.parent))[distances(ig.parent,x)==1]
@@ -398,11 +399,13 @@ get_atom_map <- function(sdf.parent,
           y.adj <- names(this.mapv)[match(x.adj,this.mapv)]
           y.candi <-apply(distances(ig.product,y.adj),1,function(z){
             zz <- names(z)[which(z==1)]
-             zz[!zz%in% names(na.omit(this.mapv))]
+             zz[!zz%in% names(na.omit(this.mapv))&
+                  str_extract(zz,"[:alpha:]*")==str_extract(x,"[:alpha:]*")]
             })%>%unlist()
           unname(y.candi[1])
           })
-        adj <- na.omit(adj)
+
+        adj <- na.omit(unlist(adj))
         this.mapv[adj] <- names(adj)
 
       }

@@ -213,6 +213,9 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
     dplyr::select(sp.id ,!all_of(c("group","group_name")))
   var.data <- sp.data[match(spec.df$sp.id,sp.data$id)   ,var,drop = F]
   spec.df <- cbind(spec.df,var.data)
+  if (!is.null(spectraNames(sp)))
+    spec.df$sp.id <- spectraNames(sp)[spec.df$sp.id]
+
   return(spec.df)
 }
 

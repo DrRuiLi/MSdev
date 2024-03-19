@@ -94,7 +94,7 @@ CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([
 #' @param output_file file path
 #'
 #' @return cfm data
-#' @import crayon stringr
+#' @import crayon stringr magrittr
 #' @export
 #'
 
@@ -575,41 +575,38 @@ plot_CFM_annotated_Spectra <- function(cfm_annoate_result){
 CFM_annotate_isotopologues <- function(sp,
                                  cfmd,
                                  isotope = "[13]C",
-                                 iso.count = 0 ){
+                                 iso.count = 0 ,
+                                 ppm = 20){
 
-  if (!fragment_group%in% colnames(cfmd@peak_assignment)) {
+  if (!"fragment_group"%in% colnames(cfmd@peak_assignment)) {
     cfmd <- cfm_data_get_fragment_group(cfmd)
   }
 
   cfm.peaks.data <- cfmd@peak_assignment%>%
+    dplyr::filter(!is.na(fragment_id))%>%
     dplyr::mutate(collisionEnergy = case_when(energy == "energy0"~10,
                                               energy == "energy1"~20,
                                               energy == "energy2"~40,
     ))
   iso.mz.diff <- (0:iso.count)*chemform_mz("[13]CC-1")
-  mz.labeled.m <- matrixSub(cfm.peaks.data$mz,-iso.mz.diff)
-  sp.data <- get_Spectra_data(sp,var = "collisionEnergy")
-  mz.matched <- apply(mz.labeled.m,2,match_mz,mz2 =sp.data$mz )
-  for (i in 0:iso.count) {
+  mz.labeled.m <- matrixSub(cfm.peaks.data$mz,-iso.mz.diff)%>%
+    `colnames<-`(paste0("M",0:iso.count))%>%
+    as.data.frame()%>%
+    dplyr::mutate(fragment_group=cfm.peaks.data$fragment_group)%>%
+    dplyr::distinct(M0,.keep_all = T)%>%
+    tidyr::pivot_longer(paste0("M",0:iso.count),names_to = "iso",values_to = "mz")
 
-    id <- mz.matched[ , i+1 ]
-    sp.data[,paste0("M",i)] <- NA
-    sp.data[na.omit(id),paste0("M",i)] <- ifelse(
-      sp.data[na.omit(id),"collisionEnergy"]==cfm.peaks.data$collisionEnergy[which(!is.na(id))] ,
-      which(!is.na(id)),NA
-    )
 
-  }
 
-  sp.data.f <- sp.data%>%
-    tidyr::pivot_longer(paste0("M",(0:iso.count)),
-                        names_to = "iso",
-                        values_to = "cfm_peak_id")%>%
-    dplyr::filter(!is.na(cfm_peak_id))%>%
-    dplyr::mutate(fragment_id = cfm.peaks.data$fragment_id[cfm_peak_id],
-                  fragment_group = cfm.peaks.data$fragment_group[cfm_peak_id])
+  sp.data <- get_Spectra_data(sp,var = "collisionEnergy")%>%
+    dplyr::mutate(idx =match_mz(mz,mz.labeled.m$mz,mz.ppm = ppm),
+                  fragment_group = mz.labeled.m$fragment_group[idx],
+                   iso = mz.labeled.m$iso[idx])%>%
+    dplyr::select(-idx)
 
-  return(sp.data.f)
+
+
+  return(sp.data)
 }
 
 
@@ -633,6 +630,13 @@ setMethod("show",signature ="CFM_data",definition =
             } )
 
 
+#' Title
+#'
+#' @param object cfmd
+#'
+#' @return cfmd
+#' @export
+#' @import magrittr
 CFM_data_get_igraph <- function(object){
 
   ### fragment def
@@ -712,6 +716,12 @@ get_CFM_data_trans_igraph <- function(object){
 
 
 
+#' Title
+#'
+#' @param cfm_data cfmd
+#' @param ppm 10
+#' @import magrittr
+#' @return cfmd
 cfm_data_get_fragment_group <- function(cfm_data,ppm = 10){
 
   fg <- groupMz(cfm_data@fragment_define$fragment_mz,ppm)
@@ -725,4 +735,13 @@ cfm_data_get_fragment_group <- function(cfm_data,ppm = 10){
 }
 
 
+get_cfm_data_fg_atom_map <- function(cfm_data,frag.group){
 
+  frag.idx <- which(cfm_data@fragment_define$fragment_group == frag.group)
+  frag.def <- cfm_data@fragment_define%>%
+    dplyr::filter(fragment_group == frag.group)
+  frag.maps <- cfm_data@fragment_atom_map[frag.idx]
+  frag.atoms.prob <- sapply(frag.maps,rowSums)%>%
+    rowMeans()
+  return(frag.atoms.prob)
+}
