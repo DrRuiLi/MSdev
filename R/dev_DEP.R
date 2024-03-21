@@ -104,7 +104,7 @@ DEP_test_diff <- function(data.se,type = "all",...){
 
   groups <- data.se$condition%>%
     groupStringFactor()
-  data.diff<- DEP::test_diff(data.se,
+  data.diff<- DEP::test_diff(data.se,type = type,
                              control = levels(groups)[1],
                              ...)
   #data.diff<- add_rejections(data.diff,alpha = 0.05,lfc =1)
@@ -586,4 +586,21 @@ DEP_normalization <- function(data.se){
   data_norm <- DEP::normalize_vsn(data_filt)
   data_imp <- DEP::impute(data_norm, fun = "MinProb")
   data_imp
+}
+
+
+se_adjuset_by_weight <- function(data.se){
+
+  weight <- data.se$weight
+  if (is.null(weight)|all(is.na(weight))) {
+    message("no weight input")
+    return(data.se)
+  }
+  weight <- weight/mean(weight,na.rm =T)
+  data.matrix <- assay(data.se)
+  to.weight <- which(!is.na(weight))
+  data.matrix[,to.weight] <- t(t(data.matrix[,to.weight])/weight[to.weight])
+  data.matrix -> assay(data.se)
+
+  return(data.se)
 }

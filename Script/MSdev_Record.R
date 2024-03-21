@@ -317,7 +317,7 @@
 
     proj.dir <- msdev.fudan@projectInfo$projectDir
     data.se <- get_MSdev_DEP_se(msdev.fudan,from = "metabolite")
-
+    #data.se <- data.se[,!colnames(data.se)%in% c( "WT_C1",   "WT_C2" ,  "WT_C3") ]
     p.pca <- DEP_plot_PCA(data.se)
     export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
                      width = 5,height = 5)
@@ -326,7 +326,7 @@
     ### sample_p
     data.se <- data.se[,!data.se$condition%in%c("QC","Blank")]
     data.se.Sample_P <- DEP_normalization(data.se)
-    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
     data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
 
     p.diff.list <- DEP_plot_volcano(data.diff,"all")

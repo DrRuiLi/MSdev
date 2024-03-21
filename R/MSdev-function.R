@@ -638,24 +638,6 @@ getStaDataMSdev <- function(object,missing = NA,
   return(object)
 }
 
-
-adjustFeatureByweight <- function(object,to.adjust = "featureRaw"){
-
-  sampleInfoToAdjust <- object@sampleInfo%>%
-    dplyr::filter(!is.na(weight))
-  weight <- sampleInfoToAdjust$weight / mean(sampleInfoToAdjust$weight )
-  featureMatrix <- object@statData[[to.adjust]]%>%
-    column_to_rownames("feature_id")%>%
-    dplyr::select(sampleInfoToAdjust$sample.name)%>%
-    as.matrix()
-
-  featureMatrixAdjusted <-t( t(featureMatrix)/weight)
-  object@statData$feature <-object@statData[[to.adjust]]
-  featureMatrixAdjusted -> object@statData$feature[,sampleInfoToAdjust$sample.name]
-  object
-
-}
-
 adjustFeatureByIS <-function(object,to.adjust = "featureRaw"){
 
   object <- findISMSdev(object,corr.thred = 0.3)
@@ -1654,93 +1636,122 @@ MSdev_annotation <- function(object,
 MSdev_get_Stat <- function(object,QC_RSD = 0.3,
                            keys = c("name","formula",
                                     "kegg_id",
-                                    "inchikey","lipidclass")){
+                                    "inchikey","lipidclass"),
+                           candi = F){
 
-  sample.info <- object@sampleInfo%>%
-    dplyr::filter(polarity_paired)
-  col.order <- sample.info%>%
-    dplyr::distinct(sample.name)%>%
-    dplyr::pull(sample.name)
-  se <- list()
-  for (i in 0:1) {
-    pol <- ifelse(i==0,"Negative","Positive")
-    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
-    if (is.null(xcms.xcms)) {
-      se[[pol]] <- SummarizedExperiment()
-      next
-    }
-    pol.se <- get_xcms_feature_se(xcms.xcms)
-    se[[pol]] <- pol.se[,intersect(col.order,colnames(pol.se))]
-    se[[pol]]$sampleNames<- NULL
-    se[[pol]]$no<- NULL
-    se[[pol]]$raw.files<- NULL
-    se[[pol]]$polarity<- NULL
-    se[[pol]]$analysis.time<- NULL
-    se[[pol]]$msData.files<- NULL
-    se[[pol]]$ms.name<- NULL
-    se[[pol]]$files<- NULL
-    se[[pol]]$ExpTime<- NULL
-  }
-  feature.se <- do.call("rbind",se)
-
-  ### sort colname
-  rda <- rowData(feature.se)%>%
-    as.data.frame()%>%
-    dplyr::select(feature_id,mzmed,rtmed,compound_id, adduct,mz_ref,rt_ref,score,qc_rsd,sample_rsd,peakMaxo,
-                  candidate,candidate.adduct,candidate.mz,candidate.score)
-
-  ### all candidate
+  ### make se
   {
-    candi.rda <- rda%>%
-      dplyr::mutate(candidate.n = sapply(candidate,length))
-    candi.rda.split <- candi.rda[rep(candi.rda$feature_id,candi.rda$candidate.n),]%>%
-      dplyr::group_by(feature_id)%>%
-      dplyr::mutate(temp_id = 1:n())%>%
-      dplyr::rowwise()%>%
-      dplyr::mutate(compound_id = candidate[[temp_id]],
-                    adduct = candidate.adduct[[temp_id]],
-                    mz_ref = candidate.mz[[temp_id]],
-                    score = candidate.score[[temp_id]])%>%
-      dplyr::ungroup()
+
+    sample.info <- object@sampleInfo%>%
+      dplyr::filter(polarity_paired)
+    col.order <- sample.info%>%
+      dplyr::distinct(sample.name)%>%
+      dplyr::pull(sample.name)
+    se <- list()
+    for (i in 0:1) {
+      pol <- ifelse(i==0,"Negative","Positive")
+      xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+      if (is.null(xcms.xcms)) {
+        se[[pol]] <- SummarizedExperiment()
+        next
+      }
+      pol.se <- get_xcms_feature_se(xcms.xcms)
+      se[[pol]] <- pol.se[,intersect(col.order,colnames(pol.se))]
+      se[[pol]]$sampleNames<- NULL
+      se[[pol]]$no<- NULL
+      se[[pol]]$raw.files<- NULL
+      se[[pol]]$polarity<- NULL
+      se[[pol]]$analysis.time<- NULL
+      se[[pol]]$msData.files<- NULL
+      se[[pol]]$ms.name<- NULL
+      se[[pol]]$files<- NULL
+      se[[pol]]$ExpTime<- NULL
+    }
+    feature.se <- do.call("rbind",se)
+  }
+
+  ### formate
+  {
+
+    ### sort colname
+    rda <- rowData(feature.se)%>%
+      as.data.frame()%>%
+      dplyr::select(feature_id,mzmed,rtmed,compound_id, adduct,mz_ref,rt_ref,score,qc_rsd,sample_rsd,peakMaxo,
+                    candidate,candidate.adduct,candidate.mz,candidate.score)
+
+    ### retrieve data
     cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
-    db.info <- get_CompDb_info(compound_id = candi.rda.split$compound_id,
+    db.info <- get_CompDb_info(compound_id = rda$compound_id,
                                keys = keys,
                                cpdb = cpdb)
-    candi.rda.split <- candi.rda.split%>%
+    rda <- rda%>%
       dplyr::mutate(db.info,.after = rtmed)
-    candi.se <- feature.se[candi.rda.split$feature_id,]
-    rowData(candi.se) <- candi.rda.split
+
+    rowData(feature.se) <- rda
+
+
+    ### adjust
+    feature.se <- se_adjuset_by_weight(feature.se)
+
+
+
+
+
+  }
+
+
+  ### all candidate
+  if (candi) {
+    {
+      candi.rda <- rda%>%
+        dplyr::mutate(candidate.n = sapply(candidate,length))
+      candi.rda.split <- candi.rda[rep(candi.rda$feature_id,candi.rda$candidate.n),]%>%
+        dplyr::group_by(feature_id)%>%
+        dplyr::mutate(temp_id = 1:n())%>%
+        dplyr::rowwise()%>%
+        dplyr::mutate(compound_id = candidate[[temp_id]],
+                      adduct = candidate.adduct[[temp_id]],
+                      mz_ref = candidate.mz[[temp_id]],
+                      score = candidate.score[[temp_id]])%>%
+        dplyr::ungroup()
+      cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
+      db.info <- get_CompDb_info(compound_id = candi.rda.split$compound_id,
+                                 keys = keys,
+                                 cpdb = cpdb)
+      candi.rda.split <- candi.rda.split%>%
+        dplyr::mutate(db.info,.after = rtmed)
+      candi.se <- feature.se[candi.rda.split$feature_id,]
+      rowData(candi.se) <- candi.rda.split
 
     }
 
-
-  ### retrieve data
-  cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
-  db.info <- get_CompDb_info(compound_id = rda$compound_id,
-                             keys = keys,
-                             cpdb = cpdb)
-  rda <- rda%>%
-    dplyr::mutate(db.info,.after = rtmed)
-  rowData(feature.se) <- rda
-
-
-  ### filter
-  .uniqueFeatures <- function(score,intensity){
-    score <- ifelse(score >0.3 , 10,1)
-    unique.score <- score*log10(intensity)
-    unique.score
+    object@statData$candidate.se <- candi.se
   }
-  rda <- rda%>%
-    as.data.frame()%>%
-    dplyr::filter(qc_rsd < QC_RSD,!is.na(compound_id))%>%
-    dplyr::group_by(inchikey)%>%
-    dplyr::slice_max(.uniqueFeatures(score,peakMaxo))%>%
-    ungroup()
-  metabolite.se <- feature.se[rda$feature_id,]
+
+
+
+  ### filter metabolite
+  {
+    ### RSD
+    .uniqueFeatures <- function(score,intensity){
+      score <- ifelse(score >0.3 , 10,1)
+      unique.score <- score*log10(intensity)
+      unique.score
+    }
+    rda.filter <- rda%>%
+      as.data.frame()%>%
+      dplyr::filter(qc_rsd < QC_RSD,!is.na(compound_id))%>%
+      dplyr::group_by(inchikey)%>%
+      dplyr::slice_max(.uniqueFeatures(score,peakMaxo))%>%
+      ungroup()
+
+    metabolite.se <- feature.se[rownames(feature.se)%in%rda.filter$feature_id,]
+
+  }
+
 
 
   object@statData$feature.se <- feature.se
-  object@statData$candidate.se <- candi.se
   object@statData$metabolite.se <- metabolite.se
   object
 
