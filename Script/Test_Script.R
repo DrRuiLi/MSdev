@@ -1130,7 +1130,21 @@ m2 <- as_adj(ig.product,
 vis_sdf_igraph_compare(ig.parent,ig.product,this.map$mc1.idx,this.map$mc2.idx,show.label = T)
 
 
-# Wed Mar 20 08:50:57 2024 ------------------------------
+
+
+
+
+# Tue Mar 19 11:42:47 2024 ------------------------------
+sp <- load_demo("sp")
+sp <- sp[1]
+sp$collisionEnergy <- 10
+cfmd <- read_CFM_annotate_result()
+cfmd <- CFM_data_get_fragment_group(cfmd)
+cfmd <- CFM_data_get_igraph(cfmd)
+
+CFM_annotate_isotopologues()
+
+
 
 
 
