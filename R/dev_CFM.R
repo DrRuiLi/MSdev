@@ -745,3 +745,19 @@ get_cfm_data_fg_atom_map <- function(cfm_data,frag.group){
     rowMeans()
   return(frag.atoms.prob)
 }
+
+
+
+heatmap_atom_iso_prob <- function(x){
+
+  ComplexHeatmap::Heatmap(x,
+                          na_col  ="#999999",
+                          name = "isotope labeled\nprobability",
+                          col = circlize::colorRamp2(breaks = c(0,0.5,1),
+                                                     c("white","#F7844F","#B20C26")),
+                          cluster_columns = F,
+                          row_names_side  = "left",
+                          rect_gp =  grid::gpar(lwd=2,col = "white"),
+                          cluster_rows = F)
+
+}

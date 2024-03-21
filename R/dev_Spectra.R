@@ -450,7 +450,7 @@ plot_Spectra_CE<-function(sp){
                   y = y+ystep,
                   yend = yend + ystep,
                   collisionEnergy= factor(collisionEnergy))%>%
-    dplyr::mutate(groupMz(mz))%>%
+    dplyr::mutate(groupMz(mz,return.type = "data.frame"))%>%
     dplyr::group_by(mz.group)%>%
     dplyr::mutate( highlight = length(unique(collisionEnergy)) <
                                         length(levels(collisionEnergy))*0.5,
@@ -1011,7 +1011,8 @@ plotly_Spectra_iso_mirror <- function(sp,sp.iso ,
              text = paste0("M",c(0,iso_count)),
              showlegend = F,
              size= I(20))%>%
-    add_text(x = 1.1*max(precursorMz(sp)),y = 0.5*max(abs(sp.data$yend))*c(1,-1),
+    add_text(x = 1.1*max(precursorMz(sp)),
+             y = 0.5*max(abs(sp.data$yend))*c(1,-1),
              text = paste0("Collision Energy\n",c(unique(collisionEnergy(sp)),
                                                   unique(collisionEnergy(sp.iso)))),
              showlegend = F,

@@ -7,11 +7,11 @@
 #' @export
 #'
 
-df_to_wb <- function(df, sheet_name = "data"){
+df_to_wb <- function(df, sheet_name = "data",rowname=T){
 
   wb <- openxlsx::createWorkbook()
   openxlsx::addWorksheet(wb,sheetName = sheet_name)
-  openxlsx::writeData(wb ,sheet = 1, x = df)
+  openxlsx::writeData(wb ,sheet = 1, x = df,rowNames = rowname)
   wb
 }
 
@@ -27,8 +27,8 @@ wb_to_df <- function(wb,sheet_name = 1){
 #' @export
 #'
 
-edit_df_in_excel <- function(df){
-  wb <- df_to_wb(df)
+edit_df_in_excel <- function(df,rowname = T){
+  wb <- df_to_wb(df,rowname=rowname)
   temp.xlsx <- paste0(tempdir(), "/temp_",paste0(sample(letters,5),collapse = ""),".xlsx")
   openxlsx::saveWorkbook(wb , file = temp.xlsx)
   openxlsx::openXL(temp.xlsx)

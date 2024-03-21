@@ -16,7 +16,13 @@ get_edges_from_path <- function(ig,v){
 
 }
 
+igraph_filter_vertex <- function(ig,v){
 
+  if (is.numeric(v)|is.logical(v)|is.character(v))
+    v <- V(ig)[v]
+  delete.vertices(ig,setdiff(V(ig),v))
+
+}
 
 
 show_vis_icon <- function(icon_code = paste0("f",num2str(1:900)),

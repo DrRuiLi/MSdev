@@ -282,21 +282,24 @@ get_isotopologues_Spectra_process <- function(iso.list){
 
 get_isotopologues_label_fraction <- function(iso.list){
 
-  .f <- function(x){
+  .f <- function(x.iso.cfm){
 
-    cfmd <- x$CFM_annotation
-    iso.count <- stringr::str_extract(names(x),"[:digit:]+")%>%
+    cfmd <- x.iso.cfm$CFM_annotation
+    iso.count <- stringr::str_extract(names(x.iso.cfm),"[:digit:]+")%>%
       as.numeric()%>%na.omit()
+    atom_ele <-  vdata(cfmd@fragment_igraph$Fragment001)$atom
+    names(atom_ele) <- vdata(cfmd@fragment_igraph$Fragment001)$name
+    c_ele <- atom_ele[atom_ele=="C"]
     for (i in iso.count) {
 
-      this.sp <-x[[paste0("M",i)]]
+      this.sp <-x.iso.cfm[[paste0("M",i)]]
       this.sp <- Spectra_filter_noise(this.sp)
       sp.frag <- CFM_annotate_isotopologues(this.sp,
                                  cfmd  = cfmd,
                                  iso.count = i)%>%
         dplyr::filter(!is.na(iso))
       idx <- split(1:nrow(sp.frag),sp.frag$fragment_group)
-      frag.ratio <- lapply(idx,
+      frag.group <- lapply(idx,
              function(x){
               x.df <- sp.frag[x,]
               x.int <- x.df%>%
@@ -310,22 +313,35 @@ get_isotopologues_label_fraction <- function(iso.list){
               x.int[is.na(x.int)] <- 0
               if (!"M0" %in%colnames(x.int))
                 x.int <- cbind(matrix(0,nrow(x.int),1,dimnames = list(NULL,"M0")),x.int)
+              x.weight <- rowSums(x.int)
               x.int <- t(apply(x.int,1,function(z) z/sum(z)))
               x.int <- x.int[,order(colnames(x.int)),drop =F]
+              x.int <- apply(x.int,2,weighted.mean,m = x.weight)
               return(x.int)
              })
 
-      for (j in seq_along(frag.ratio)) {
+      frag.c <- matrix(ncol = length(c_ele),
+                       nrow = length(frag.group),
+                       dimnames = list(names(frag.group),
+                                       names(c_ele)))
+      for (j in seq_along(frag.group)) {
 
-        this.frag.group <- names(frag.ratio)[j]
-        this.frag.ratio <-frag.ratio[[j]]%>%
-          colMeans()
+        this.frag.group <- names(frag.group)[j]
+        this.frags <- cfmd@fragment_define[cfmd@fragment_define$fragment_group==this.frag.group,]
+        this.frag.ratio <-frag.group[[j]]
+        this.iso.expectation <- sum(str_extract_num(names(this.frag.ratio))*this.frag.ratio)
         this.frag.atom <- get_cfm_data_fg_atom_map(cfmd,this.frag.group)
-
+        this.frag.c <- this.frag.atom[names(c_ele)]
+        this.frag.c <- this.frag.c*this.iso.expectation/sum(this.frag.c)
+        this.frag.c <- this.frag.c[this.frag.c!=0]
+        frag.c[this.frag.group,names(this.frag.c)] <- this.frag.c
+        #vis_sdf_igraph(cfmd@fragment_igraph[[1]],show.label = F,highlight = names(this.frag.atom))
       }
 
+      heatmap_atom_iso_prob(t(frag.c))
 
     }
+
 
 
 

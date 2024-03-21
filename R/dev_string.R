@@ -69,6 +69,12 @@ num2str <- function(x,n.digit = NA){
 
 }
 
+str_extract_num <- function(x){
+
+  stringr::str_extract(x,"[:digit:]+")%>%
+    as.numeric()
+}
+
 
 
 str_add <- function(x , n = 1, add.type = "numeric"){

@@ -1129,3 +1129,9 @@ m2 <- as_adj(ig.product,
              attr = "bond_type")[names(this.mapv),names(this.mapv)]
 vis_sdf_igraph_compare(ig.parent,ig.product,this.map$mc1.idx,this.map$mc2.idx,show.label = T)
 
+
+# Wed Mar 20 08:50:57 2024 ------------------------------
+
+
+
+

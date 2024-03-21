@@ -229,11 +229,11 @@ add_sdf_igraph_highlight <- function(sdf.igraph,
     dplyr::mutate(highlight = from %in% V(sdf.igraph.highlight)$name[highlight] &
                     to %in% V(sdf.igraph.highlight)$name[highlight])
 
-  E(sdf.igraph.highlight)$width[edge.data$highlight] <-
-    E(sdf.igraph.highlight)$width[edge.data$highlight]*2
-  E(sdf.igraph.highlight)$color[edge.data$highlight] <-
-    E(sdf.igraph.highlight)$color[edge.data$highlight] %>%
-    adjustcolor(blue.f = 1.7,green.f = 0.8,red.f = 0.3)
+ # E(sdf.igraph.highlight)$width[edge.data$highlight] <-
+ #   E(sdf.igraph.highlight)$width[edge.data$highlight]*2
+ # E(sdf.igraph.highlight)$color[edge.data$highlight] <-
+ #   E(sdf.igraph.highlight)$color[edge.data$highlight] %>%
+ #   adjustcolor(blue.f = 1.7,green.f = 0.8,red.f = 0.3)
   V(sdf.igraph.highlight)$shadow <- F
   V(sdf.igraph.highlight)$background <- F
   V(sdf.igraph.highlight)$shape[highlight] <- "circle"
@@ -289,12 +289,16 @@ vis_sdf_igraph_compare <- function(sdf.igraph1,
 
   sdf.igraph1 <- add_sdf_igraph_highlight(sdf.igraph1,atom_id1)
   sdf.igraph2 <- add_sdf_igraph_highlight(sdf.igraph2,atom_id2)
-  hw1 <- diff(range(V(sdf.igraph1)$x))
-  hw2 <- diff(range(V(sdf.igraph2)$x))
-  V(sdf.igraph1)$x <- V(sdf.igraph1)$x-hw1/1.5
-  V(sdf.igraph2)$x <- V(sdf.igraph2)$x+hw2/1.5
-  V(sdf.igraph1)$y <- V(sdf.igraph1)$y/2
-  V(sdf.igraph2)$y <- V(sdf.igraph2)$y/2
+  #hw1 <- diff(range(V(sdf.igraph1)$x))
+  #hw2 <- diff(range(V(sdf.igraph2)$x))
+  #V(sdf.igraph1)$x <- V(sdf.igraph1)$x-hw1/1.5
+  #V(sdf.igraph2)$x <- V(sdf.igraph2)$x+hw2/1.5
+  hw1 <- max(range(V(sdf.igraph1)$x))
+  hw2 <- min(range(V(sdf.igraph2)$x))
+  V(sdf.igraph1)$x <- -1-hw1+V(sdf.igraph1)$x
+  V(sdf.igraph2)$x <- 1-hw2+V(sdf.igraph2)$x
+  V(sdf.igraph1)$y <- V(sdf.igraph1)$y
+  V(sdf.igraph2)$y <- V(sdf.igraph2)$y
   V(sdf.igraph1)$name <- paste0(V(sdf.igraph1)$name,"_1")
   V(sdf.igraph2)$name <- paste0(V(sdf.igraph2)$name,"_2")
   V(sdf.igraph1)$id <- paste0(V(sdf.igraph1)$id,"_1")
@@ -311,6 +315,25 @@ vis_sdf_igraph_compare <- function(sdf.igraph1,
   new.igraph <- graph_from_data_frame(edges,
                                       vertices = nodes)
   vis_sdf_igraph(new.igraph,show.label = show.label)
+
+}
+
+
+vis_cfm_data_atom_map <- function(cfmd,fragment_id,
+                                  show.label= T){
+
+  maps <- cfmd@fragment_atom_map[[fragment_id]]
+  maps <- maps[apply(maps, 1, function(x)any(x!=0)),
+               apply(maps, 2, function(x)any(x!=0))
+               ]
+  vis_sdf_igraph_compare(
+    cfmd@fragment_igraph[[1]],
+    cfmd@fragment_igraph[[fragment_id]],
+    atom_id1 = match( rownames(maps),names(V( cfmd@fragment_igraph[[1]]))),
+    atom_id2 = match( colnames(maps),names(V( cfmd@fragment_igraph[[fragment_id]]))),
+    show.label = T
+
+  )
 
 }
 
@@ -425,7 +448,7 @@ get_atom_map <- function(sdf.parent,
 
 
     }
-    #p<-vis_sdf_igraph_compare(ig.parent,ig.product,temp.map,names(temp.map),show.label = F)
+    #p<-vis_sdf_igraph_compare(ig.parent,ig.product,temp.map,names(temp.map),show.label = T)
 
     atom.map.matrix[j,] <- this.mapv
 
