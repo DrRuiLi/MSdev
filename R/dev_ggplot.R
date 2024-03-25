@@ -194,7 +194,7 @@ ggplot_km <- function(km.km,legend_tile = "group",
                     ymax = upper,fill = strata),alpha = 0.3)+
     annotate(geom="text",x = quantile(range(plot.data$time),0.2),
              y = 0.2,
-             label =paste0("p = ", format(km.pval[2],scientific = T,digits =2)))+
+             label =paste0("p = ", format(km.pval[2],scientific = F,digits =3)))+
     scale_color_manual(values = ggsci::pal_npg()(8),
                        labels = legend_label)+
     scale_fill_manual(values = ggsci::pal_npg()(8),
