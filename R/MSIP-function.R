@@ -163,6 +163,9 @@ MSdev_find_isotope_label <- function(object,
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     xcms.xcms <- xcms_get_feature_isotopologues(xcms.xcms,
                                                 isotope = isotope,
+                                                max_label = 20,
+                                                ppm = 10,
+                                                net.degree.ratio = 0.5,
                                                 ...)
     xcms.xcms <- xcms_get_feature_isotope_label(xcms.xcms,
                                                 isotope = isotope,
@@ -175,7 +178,7 @@ MSdev_find_isotope_label <- function(object,
 }
 
 
-get_MSdev_iso_acq_list <- function(object){
+get_MSdev_iso_acq_list <- function(object,hw = 10){
 
 
 
@@ -184,7 +187,8 @@ get_MSdev_iso_acq_list <- function(object){
 
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
-    xcms.fdf <- get_xcms_feature_definitions(xcms.xcms)
+    xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+      as.data.frame()
 
 
     ### Comp info
@@ -225,13 +229,23 @@ get_MSdev_iso_acq_list <- function(object){
       dplyr::arrange(-iso.maxo,
                      C13_seed,
                      C13_count)%>%
+      ### filter labeled and annotated
       dplyr::filter(any( is_labeled ),
                     any( !is.na( compound_id ) ) )%>%
-      dplyr::ungroup( )
+      ### fix rt to seed
+      dplyr::mutate(rtmed = rtmed[which(feature_id == C13_seed)],
+                    rtmin = rtmed - hw ,
+                    rtmax = rtmed + hw)%>%
+      dplyr::ungroup()%>%
+      dplyr::select("feature_id","mzmed","rtmed","rtmin","rtmax","peakMaxo","polarity","score","C13_seed","C13_count","is_labeled","compound_id","adduct","name","formula","smiles","mean.iso","mean.uniso","total.isotopologues","iso.maxo")
 
+
+
+    ### trans to QE
+    pol.list <- QE_list_2feature_def(xcms.fdf.stat,keep = T)
 
     #edit_df_in_excel(xcms.fdf.stat)
-    acq.list[[pol]] <- xcms.fdf.stat
+    acq.list[[pol]] <- pol.list
 
 
   }
@@ -440,4 +454,40 @@ get_isotopologues_label_fraction <- function(iso.list){
 }
 
 
+
+get_iso_net_assign <- function(iso.ig,net.degree.ratio = 0.6){
+
+  iso.fdf <- vdata(iso.ig)
+  dis.con <-  as_adjacency_matrix(iso.ig,sparse	 =F ,type = "upper")
+  dis.mw <-  distances(iso.ig,mode = "out",
+                       weights = edata(iso.ig)$closest.iso.count)
+  if (nrow(iso.fdf)<=2) {
+    cl <- rep(1,nrow(iso.fdf))
+  }else
+    cl <- fpc::pamk(dis.con,krange = 1:(nrow(iso.fdf)-1))$pamobject$clustering
+  iso.seed <- rep(NA,nrow(iso.fdf))
+  names(iso.seed)<-iso.fdf$name
+  iso.count<- iso.seed
+  for (i.cl in unique(cl)) {
+    this.igraph.sub <- igraph_filter_vertex(iso.ig,cl==i.cl)
+
+    igraph::distances(this.igraph.sub,mode = "out",
+                      weights = edge.attributes(this.igraph.sub)$closest.iso.count )
+    to.delete <- degree(this.igraph.sub)<(length(V(this.igraph.sub))-1)*2*net.degree.ratio
+    this.igraph.sub <-delete.vertices(this.igraph.sub,to.delete )
+    #visNetwork::visIgraph(this.igraph.sub)
+    this.dis <- igraph::distances(this.igraph.sub,mode = "out",
+                                  weights = edge.attributes(this.igraph.sub)$closest.iso.count )
+    this.dis[this.dis<0] <- 0
+    dis.sum <- apply(this.dis,1,sum)
+    seed.fid <- names(which.max(dis.sum))
+    dis.to.seed <- this.dis[names(which.max(dis.sum)),]
+    iso.seed[names(dis.to.seed)] <- seed.fid
+    iso.count[names(dis.to.seed)] <- dis.to.seed
+  }
+
+  x <- list(iso.seed=iso.seed,iso.count=iso.count)
+  return(x)
+
+}
 

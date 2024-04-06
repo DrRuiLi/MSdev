@@ -73,5 +73,15 @@ dplyr_copy_row <- function(df,nrow.idx,n.rnow){
 }
 
 
+dplyr_rename_to <- function(df,old,new){
 
+  ff <- function(x){
+    dplyr::case_when(x %in% old~ new[match(x,old)],
+                     T ~x)
+  }
+  df %>%
+    dplyr::rename_all(ff)%>%
+    dplyr::select(all_of(unname(new)),everything())
+
+}
 

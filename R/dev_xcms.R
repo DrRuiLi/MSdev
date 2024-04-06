@@ -674,29 +674,19 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
     rownames(xcms.fdf) <-xcms.fdf$feature_id
     for (i in seq_along(unique(node.group))) {
 
-
+      #message(i)
       this.nodes <- names(which(node.group==i))
       this.fdf <- xcms.fdf[this.nodes,]
       this.iso <- fdf.iso.connect %>%
         dplyr::filter(from%in%this.nodes | to %in% this.nodes)
 
-      this.igraph <- igraph::graph_from_data_frame(this.iso)
+      this.igraph <- igraph::graph_from_data_frame(this.iso,vertices =this.fdf[,1:7] )
       #visNetwork::visIgraph(this.igraph)
-      #to.delete <- degree(this.igraph)<(length(this.nodes)-1)*2*net.degree.ratio
-      to.delete <- degree(this.igraph)<max(degree(this.igraph))*net.degree.ratio
-      #message(i," ",sum(to.delete)," of ",length(this.nodes)," nodes remove")
-      this.igraph.sub <- delete.vertices(this.igraph,to.delete )
-      #visNetwork::visIgraph(this.igraph.sub)
-      this.dis <- igraph::distances(this.igraph.sub,mode = "out",
-                                    weights = edge.attributes(this.igraph.sub)$closest.iso.count )
-      this.dis[this.dis<0] <- 0
-      dis.sum <- apply(this.dis,1,sum)
-      seed.fid <- names(which.max(dis.sum))
-      dis.to.seed <- this.dis[names(which.max(dis.sum)),]
-      xcms.fdf[names(dis.to.seed),
-               paste0(iso.colname,"_seed")] <- seed.fid
-      xcms.fdf[names(dis.to.seed),
-               paste0(iso.colname,"_count")] <- unname(dis.to.seed)
+      this.iso.assign <- get_iso_net_assign(this.igraph,net.degree.ratio = net.degree.ratio)
+      xcms.fdf[names(this.iso.assign$iso.seed),
+               paste0(iso.colname,"_seed")] <- this.iso.assign$iso.seed
+      xcms.fdf[names(this.iso.assign$iso.count),
+               paste0(iso.colname,"_count")] <- this.iso.assign$iso.count
       this.fdf <- xcms.fdf[this.nodes,]
 
 

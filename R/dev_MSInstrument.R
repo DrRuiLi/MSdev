@@ -145,7 +145,7 @@ get_MRM_list <- function(feature_def_sta){
 
 
 
-QE_list_2feature_def <- function(table_to_trans ){
+QE_list_2feature_def <- function(table_to_trans,keep = T ){
 
   # featureDefinitions_PeakSta(MSdev@xcmsData$PositiveMS1)->table_to_trans
   # table_to_trans <- dda.acq.list
@@ -159,29 +159,28 @@ QE_list_2feature_def <- function(table_to_trans ){
     type <- "QE_list"
     rt_multi <- 60
 
-    var.map.matched <- var.map[var.map%in% colnames(table_to_trans)]
-    table_transed <- table_to_trans[,var.map.matched]
-    colnames(table_transed) <- names(var.map.matched)
+    var.map.matched <- names(var.map)[var.map%in% colnames(table_to_trans)]
+    names(var.map.matched) <- var.map[var.map%in% colnames(table_to_trans)]
+    table_transed <- table_to_trans
+    table_transed <- dplyr_rename_to(table_transed,names(var.map.matched),var.map.matched)
+
 
 
   }else if (any(colnames(table_to_trans) %in% names(var.map))) {
 
     type <- "feature_df"
     rt_multi <- 1/60
-
     var.map.matched <- var.map[names(var.map)%in% colnames(table_to_trans)]
-    table_transed <- table_to_trans[,names(var.map.matched)]
-
-
+    table_transed <- table_to_trans
   }else{
     stop("var not match")
   }
 
-  if ("rtmin" %in% names(var.map.matched))
+  if ("rtmin" %in% colnames(table_transed))
     table_transed$rtmin <- table_transed$rtmin *rt_multi
-  if ("rtmax" %in% names(var.map.matched))
+  if ("rtmax" %in% colnames(table_transed))
     table_transed$rtmax <- table_transed$rtmax *rt_multi
-  if ("polarity" %in% names(var.map.matched)){
+  if ("polarity" %in% colnames(table_transed)){
     if (type =="feature_df") {
       table_transed$polarity <- ifelse(table_transed$polarity == 0,"Negative","Positive")
     }
@@ -190,13 +189,10 @@ QE_list_2feature_def <- function(table_to_trans ){
     }
   }
 
-  if (type =="feature_df"){
-    colnames(table_transed) <- var.map.matched
-  }else{
-    colnames(table_transed) <- names(var.map.matched)
 
-  }
-
+  table_transed <- dplyr_rename_to(table_transed,old = names(var.map.matched),new = var.map.matched)
+  if (!keep)
+    table_transed <- table_transed[,var.map.matched]
   return(table_transed)
 
 
