@@ -7,7 +7,8 @@
 MSdev_get_Stat(
   object,
   QC_RSD = 0.3,
-  keys = c("name", "formula", "kegg_id", "inchikey", "lipidclass")
+  keys = c("name", "formula", "kegg_id", "inchikey", "lipidclass"),
+  candi = F
 )
 }
 \arguments{

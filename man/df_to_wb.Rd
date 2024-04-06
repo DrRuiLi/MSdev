@@ -4,7 +4,7 @@
 \alias{df_to_wb}
 \title{df_to_wb}
 \usage{
-df_to_wb(df, sheet_name = "data")
+df_to_wb(df, sheet_name = "data", rowname = T)
 }
 \arguments{
 \item{df}{data.frame}
