@@ -1,9 +1,9 @@
-#' @title open_ggplot_win
+#' @title open_plot_win
 #' @description
 #' create a temp.png file and open in Windows
 #'
 #'
-#' @param p ggplot objective
+#' @param p ggplot/Complexheatmap
 #' @param width num
 #' @param height num
 #'
@@ -11,11 +11,18 @@
 #' @export
 #'
 
-open_ggplot_win <- function(p,width = NA,height = NA){
+open_plot_win <- function(p,width = 5,height = 4){
 
   temp.file <- tempfile(fileext = ".png")
-  ggplot2::ggsave(filename = temp.file,plot = p,
-                  width = width,height= height,dpi = 600)
+  if (any(c("Heatmap","HeatmapList")%in%class(p))) {
+    export::graph2png(ComplexHeatmap::draw(p),
+                     file =temp.file,
+                     width = width,height= height
+                     )
+  }else{
+    ggplot2::ggsave(filename = temp.file,plot = p,
+                    width = width,height= height,dpi = 600)
+  }
   open_file(temp.file)
 
 }
@@ -205,5 +212,15 @@ ggplot_km <- function(km.km,legend_tile = "group",
          fill = legend_tile)+
     theme_bw()
 
+}
+
+
+colramp<- function(breaks = c(0,0.5,1),
+                   colors = c("white","#F7844F","#B20C26"),
+                   ...){
+
+  circlize::colorRamp2(breaks =breaks,
+                       colors = colors,
+                       ...)
 }
 
