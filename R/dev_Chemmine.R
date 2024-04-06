@@ -180,7 +180,7 @@ get_sdf_igraph <- function(sdf,addH = F){
       dplyr::mutate(from = atom.data$Atom_id[from],
                     to = atom.data$Atom_id[to],
                     width = 10*bond_type,
-                    color = c("#F8C959","#FF8F6B","#D35230")[bond_type])
+                    color = c("#888888","#444444","#000000")[bond_type])
 
     sdf.igraph <- graph_from_data_frame(
       bond.data,vertices = atom.data
@@ -242,6 +242,23 @@ add_sdf_igraph_highlight <- function(sdf.igraph,
   return(sdf.igraph.highlight)
 }
 
+
+add_sdf_igraph_color <- function(sdf.igraph,
+                                     colors = NULL){
+
+  sdf.igraph.color <- sdf.igraph
+  if (!length(colors)) return(sdf.igraph.color)
+
+
+  V(sdf.igraph.color)$shadow <- F
+  V(sdf.igraph.color)$background <- F
+  V(sdf.igraph.color)$shape[!is.na(colors)] <- "circle"
+  V(sdf.igraph.color)$shadow[!is.na(colors)] <- T
+  V(sdf.igraph.color)$color <- colors
+
+  return(sdf.igraph.color)
+}
+
 #' vis_sdf_igraph
 #'
 #' @param sdf.igraph igraph
@@ -263,13 +280,39 @@ vis_sdf_igraph <- function(sdf.igraph ,
   sdf.igraph.highlight%>%
     visIgraph(idToLabel = !show.label)%>%
     visNodes(font = list(size = 40,
-                         strokeWidth = 10),
-             size = 60,
-             borderWidth  = 5,
+                         align = "left",
+                         vadjust = 3,
+                         hadjust = 0.8,
+                         strokeWidth = 2),
+             size = 40,
+             borderWidth  = 3,
              color = list(background = "transparent",
                           border = "#2B7CE9"))%>%
     visEdges(arrows = list(to = F),
              length = 0.8)
+
+}
+
+vis_sdf_ig_prob <- function(sdf.igraph,
+                            colors){
+
+  sdf.igraph.colors <- add_sdf_igraph_color(sdf.igraph,
+                                                   colors )
+
+  sdf.igraph.colors%>%
+    visIgraph(idToLabel = !show.label)%>%
+    visNodes(font = list(size = 40,
+                         align = "left",
+                         vadjust = 3,
+                         hadjust = 0.8,
+                         strokeWidth = 2),
+             size = 40,
+             borderWidth  = 3,
+             color = list(background = "transparent",
+                          border = "#black"))%>%
+    visEdges(arrows = list(to = F),
+             length = 0.8)
+
 
 }
 

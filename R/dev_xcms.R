@@ -676,12 +676,14 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
 
 
       this.nodes <- names(which(node.group==i))
+      this.fdf <- xcms.fdf[this.nodes,]
       this.iso <- fdf.iso.connect %>%
         dplyr::filter(from%in%this.nodes | to %in% this.nodes)
 
       this.igraph <- igraph::graph_from_data_frame(this.iso)
       #visNetwork::visIgraph(this.igraph)
-      to.delete <- degree(this.igraph)<(length(this.nodes)-1)*2*net.degree.ratio
+      #to.delete <- degree(this.igraph)<(length(this.nodes)-1)*2*net.degree.ratio
+      to.delete <- degree(this.igraph)<max(degree(this.igraph))*net.degree.ratio
       #message(i," ",sum(to.delete)," of ",length(this.nodes)," nodes remove")
       this.igraph.sub <- delete.vertices(this.igraph,to.delete )
       #visNetwork::visIgraph(this.igraph.sub)
@@ -695,7 +697,8 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
                paste0(iso.colname,"_seed")] <- seed.fid
       xcms.fdf[names(dis.to.seed),
                paste0(iso.colname,"_count")] <- unname(dis.to.seed)
-      #message(sum(is.na(xcms.fdf$feature_id)))
+      this.fdf <- xcms.fdf[this.nodes,]
+
 
     }
 

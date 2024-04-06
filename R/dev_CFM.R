@@ -761,3 +761,47 @@ heatmap_atom_iso_prob <- function(x){
                           cluster_rows = F)
 
 }
+
+
+
+
+heatmap.frag.group.maps <- function(frag.c.matrix,frag.iso.matrix){
+
+  cf <- circlize::colorRamp2(breaks = c(0,0.5,1),
+                             c("white","#888888","#111111"))
+  h1 <- ComplexHeatmap::Heatmap(frag.c.matrix,
+                          na_col  ="#999999",
+                          width = ncol(frag.c.matrix),
+                          name = "Atom source\nprobability",
+                          col = cf,
+                          cluster_columns = F,
+                          rect_gp = grid::gpar(lwd=2,col = "black",type = "none"),
+                          cell_fun = function(j, i, x, y, width, height,color, fill){
+                            grid.rect(x = x, y = y, width = width, height = height,
+                                      gp = grid::gpar(col = "grey", fill = NA))
+                            grid.circle(x = x, y = y, r = 0.02,
+                                        gp = grid::gpar(fill = color, col = color))
+                          },
+                          row_names_side  = "left",
+                          column_names_rot = -45,
+                          column_names_centered = F,
+                          column_names_gp = grid::gpar(fontsize = 8),
+                          #rect_gp =  grid::gpar(lwd=2,col = "white"),
+                          cluster_rows = F)
+  h1
+  h2 <- ComplexHeatmap::Heatmap(frag.iso.matrix,
+                          na_col  ="#999999",
+                          width = ncol(frag.iso.matrix)*2,
+                          name = "Isotope labeled\nprobability",
+                          col = circlize::colorRamp2(breaks = c(0,0.5,1),
+                                                     c("white","#F7844F","#B20C26")),
+                          cluster_columns = F,
+                          row_names_side  = "left",
+                          column_names_side = "top",
+                          column_names_rot = 0.5,
+                          column_names_centered = T,
+                          rect_gp =  grid::gpar(lwd=2,col = "black"),
+                          cluster_rows = F)
+  h1+h2
+
+}

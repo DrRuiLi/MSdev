@@ -283,62 +283,148 @@ get_isotopologues_Spectra_process <- function(iso.list){
 get_isotopologues_label_fraction <- function(iso.list){
 
   .f <- function(x.iso.cfm){
-
+    x.iso.cfm <- iso.cfm$FT7478_Positive
     cfmd <- x.iso.cfm$CFM_annotation
     iso.count <- stringr::str_extract(names(x.iso.cfm),"[:digit:]+")%>%
       as.numeric()%>%na.omit()
     atom_ele <-  vdata(cfmd@fragment_igraph$Fragment001)$atom
     names(atom_ele) <- vdata(cfmd@fragment_igraph$Fragment001)$name
     c_ele <- atom_ele[atom_ele=="C"]
-    for (i in iso.count) {
+    for (i.iso in iso.count) {
 
-      this.sp <-x.iso.cfm[[paste0("M",i)]]
+      this.sp <-x.iso.cfm[[paste0("M",i.iso)]]
       this.sp <- Spectra_filter_noise(this.sp)
-      sp.frag <- CFM_annotate_isotopologues(this.sp,
-                                 cfmd  = cfmd,
-                                 iso.count = i)%>%
+      sp.frag.data <- CFM_annotate_isotopologues(this.sp,
+                                 cfmd  = cfmd,ppm = 10,
+                                 iso.count = i.iso)%>%
         dplyr::filter(!is.na(iso))
-      idx <- split(1:nrow(sp.frag),sp.frag$fragment_group)
-      frag.group <- lapply(idx,
-             function(x){
-              x.df <- sp.frag[x,]
-              x.int <- x.df%>%
-                dplyr::select(-mz,-collisionEnergy)%>%
-                tidyr::pivot_wider(names_from ="iso",
-                                   id_cols = "sp.id",
-                                   values_from = "intensity")%>%
-                tibble::column_to_rownames("sp.id")%>%
-                dplyr::select(dplyr::starts_with("M"))%>%
-                as.matrix()
-              x.int[is.na(x.int)] <- 0
-              if (!"M0" %in%colnames(x.int))
-                x.int <- cbind(matrix(0,nrow(x.int),1,dimnames = list(NULL,"M0")),x.int)
-              x.weight <- rowSums(x.int)
-              x.int <- t(apply(x.int,1,function(z) z/sum(z)))
-              x.int <- x.int[,order(colnames(x.int)),drop =F]
-              x.int <- apply(x.int,2,weighted.mean,m = x.weight)
-              return(x.int)
-             })
+      ### frag group to label fraction
+      {
+        fg.idx <- split(1:nrow(sp.frag.data),sp.frag.data$fragment_group)
+        frag.iso.matrix <- matrix(
+          nrow = length(fg.idx),ncol = i.iso+1,
+          dimnames = list(names(fg.idx),paste0("M",0:i.iso)))
+        frag.int.sum <- c()
+        for (i.fg in seq_along(fg.idx)) {
+          x.df <- sp.frag.data[fg.idx[[i.fg]],]
+          x.int <- x.df%>%
+            dplyr::select(-mz,-collisionEnergy)%>%
+            tidyr::pivot_wider(names_from ="iso",
+                               id_cols = "sp.id",
+                               values_from = "intensity",
+                               values_fn = sum)%>%
+            tibble::column_to_rownames("sp.id")%>%
+            dplyr::select(dplyr::starts_with("M"))%>%
+            as.matrix()
+          to.add <- setdiff(paste0("M",0:i.iso),colnames(x.int))
+          x.int <- cbind(matrix(0,nrow(x.int),length(to.add),
+                                dimnames = list(NULL,to.add)),x.int)
+          x.int <- x.int[,paste0("M",0:i.iso),drop =F]
+          x.int[is.na(x.int)] <- 0
+          x.weight <- rowSums(x.int)
+          x.int <- t(apply(x.int,1,function(z) z/sum(z)))
+          x.int.weighted <- apply(x.int,2,weighted.mean,m = x.weight)
+          frag.iso.matrix[i.fg,] <- x.int.weighted
+          frag.int.sum[i.fg] <- sum(x.weight)
+        }
+        }
 
-      frag.c <- matrix(ncol = length(c_ele),
-                       nrow = length(frag.group),
-                       dimnames = list(names(frag.group),
-                                       names(c_ele)))
-      for (j in seq_along(frag.group)) {
 
-        this.frag.group <- names(frag.group)[j]
-        this.frags <- cfmd@fragment_define[cfmd@fragment_define$fragment_group==this.frag.group,]
-        this.frag.ratio <-frag.group[[j]]
-        this.iso.expectation <- sum(str_extract_num(names(this.frag.ratio))*this.frag.ratio)
-        this.frag.atom <- get_cfm_data_fg_atom_map(cfmd,this.frag.group)
-        this.frag.c <- this.frag.atom[names(c_ele)]
-        this.frag.c <- this.frag.c*this.iso.expectation/sum(this.frag.c)
-        this.frag.c <- this.frag.c[this.frag.c!=0]
-        frag.c[this.frag.group,names(this.frag.c)] <- this.frag.c
-        #vis_sdf_igraph(cfmd@fragment_igraph[[1]],show.label = F,highlight = names(this.frag.atom))
+      ### frag group to C atom prob
+      {
+        frag.c.matrix <- matrix(ncol = length(c_ele),
+                         nrow = length(fg.idx),
+                         dimnames = list(names(fg.idx),
+                                         names(c_ele)))
+        for (i.fg in seq_along(fg.idx)) {
+
+          this.frag.group <- names(fg.idx)[i.fg]
+          this.frags <- cfmd@fragment_define[cfmd@fragment_define$fragment_group==this.frag.group,]
+          this.frag.ratio <-frag.iso.matrix[i.fg,]
+          this.frag.atom <- get_cfm_data_fg_atom_map(cfmd,this.frag.group)
+          this.frag.c <- this.frag.atom[names(c_ele)]
+          #this.iso.expectation <- sum(str_extract_num(names(this.frag.ratio))*this.frag.ratio)
+          #this.frag.c <- this.frag.c*this.iso.expectation/sum(this.frag.c)
+          #this.frag.c <- this.frag.c[this.frag.c!=0]
+          frag.c.matrix[this.frag.group,names(this.frag.c)] <- this.frag.c
+        }
+
       }
 
-      heatmap_atom_iso_prob(t(frag.c))
+      ### vis
+      {
+       # h1 <- heatmap_atom_iso_prob(frag.c.matrix)
+       # h2 <- heatmap_atom_iso_prob(frag.iso.matrix)
+       # h1+h2
+       hm <-  heatmap.frag.group.maps(frag.c.matrix ,frag.iso.matrix)
+        open_plot_win(hm,10,5)
+      }
+
+      ### merge duplicate and complementary
+      {
+        z <- frag.c.matrix
+        z[z>0] <- 1
+        ### duplicated
+        frag.c.matrix1 <- matrix(nrow = 0,ncol=ncol(frag.c.matrix))
+        frag.iso.matrix1 <- matrix(nrow = 0,ncol=ncol(frag.iso.matrix))
+        frag.int.sum1 <- c()
+        z.split <- split(1:nrow(z),apply(z,1,paste0,collapse = ";"))
+        for (i.z in seq_along(z.split)) {
+          idx <- z.split[[i.z]]
+          this.frag.c <- apply(frag.c.matrix[idx,,drop =F],2,
+                               mean,weight = frag.int.sum[idx])
+          this.frag.iso <- apply(frag.iso.matrix[idx,,drop =F],2,
+                               mean,weight = frag.int.sum[idx])
+          frag.c.matrix1 <- rbind(frag.c.matrix1,this.frag.c)
+          frag.iso.matrix1 <- rbind(frag.iso.matrix1,this.frag.iso)
+          frag.int.sum1 <- c(frag.int.sum1, max(frag.int.sum[idx]) )
+          rn <- rownames(frag.iso.matrix)[idx][which.max(frag.int.sum[idx])]
+          rownames(frag.c.matrix1)[i.z] <- rownames(frag.iso.matrix1)[i.z]  <- rn
+        }
+        frag.c.matrix <- frag.c.matrix1
+        frag.iso.matrix <- frag.iso.matrix1
+        frag.int.sum <- frag.int.sum1
+        ### complementary
+        z <- frag.c.matrix
+        z[z>0] <- 1
+        z.comple <- apply(z,1,function(x){
+          z1 <- t(t(z)+x)
+          apply(z1,1,function(xx){all(xx==1)})
+          })
+        z.comple <- which(z.comple,arr.ind = T)
+        z.split <- sapply(1:nrow(z),function(x){
+          x.c <- z.comple[z.comple[,1] == x,2]
+          sort( c(x,x.c))
+        })
+        z.split <- z.split[!duplicated(z.split)]
+        frag.c.matrix1 <- matrix(nrow = 0,ncol=ncol(frag.c.matrix))
+        frag.iso.matrix1 <- matrix(nrow = 0,ncol=ncol(frag.iso.matrix))
+        frag.int.sum1 <- c()
+        for (i.z in seq_along(z.split)) {
+          idx <- z.split[[i.z]]
+          this.frag.c <- apply(frag.c.matrix[idx,,drop =F],2,
+                               mean,weight = frag.int.sum[idx])
+          this.frag.iso <- apply(frag.iso.matrix[idx,,drop =F],2,
+                                 mean,weight = frag.int.sum[idx])
+          frag.c.matrix1 <- rbind(frag.c.matrix1,this.frag.c)
+          frag.iso.matrix1 <- rbind(frag.iso.matrix1,this.frag.iso)
+          frag.int.sum1 <- c(frag.int.sum1, max(frag.int.sum[idx]) )
+          rn <- rownames(frag.iso.matrix)[idx][which.max(frag.int.sum[idx])]
+          rownames(frag.c.matrix1)[i.z] <- rownames(frag.iso.matrix1)[i.z]  <- rn
+        }
+        frag.c.matrix <- frag.c.matrix1
+        frag.iso.matrix <- frag.iso.matrix1
+        frag.int.sum <- frag.int.sum1
+
+
+      }
+
+
+      ### probability distribution
+      {
+        save(frag.c.matrix,frag.iso.matrix,frag.int.sum,file = "temp.rda")
+
+      }
 
     }
 
@@ -352,5 +438,6 @@ get_isotopologues_label_fraction <- function(iso.list){
 
 
 }
+
 
 
