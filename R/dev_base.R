@@ -88,6 +88,10 @@ open_dir <- function(dir = getwd()){
 
 }
 
+open_dir_ActivedFilePath <- function(){
+  path <- dirname(rstudioapi::getSourceEditorContext()$path)
+  open_dir(path)
+}
 
 open_R_libPath <- function(){
 
