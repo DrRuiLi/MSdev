@@ -502,7 +502,8 @@ get_atom_map <- function(sdf.parent,
   if (return.type == "most_prob")
     return(atom.map.matrix[selected,])
   if (return.type== "prob_matrix"){
-    apply(atom.map.matrix,2,function(s){
+    apply(atom.map.matrix[atom.count==max(atom.count),,drop=F],2,function(s){
+      s <- na.omit(s)
       sp <- table(s)/length(s)
       sp <- sp[atom(sdf.parent)]
       names(sp) <- atom(sdf.parent)

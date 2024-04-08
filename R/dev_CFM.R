@@ -630,7 +630,8 @@ setMethod("show",signature ="CFM_data",definition =
             } )
 
 
-#' Title
+#' CFM_data_get_igraph
+#' get cfm igraph and atom map
 #'
 #' @param object cfmd
 #'
@@ -711,7 +712,7 @@ get_CFM_data_trans_igraph <- function(object){
 
   frag.trans.graph <- graph_from_data_frame(object@fragment_transition,
                                             vertices =object@fragment_define )
-
+  return(frag.trans.graph)
 }
 
 
