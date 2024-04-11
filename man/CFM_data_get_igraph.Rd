@@ -2,7 +2,8 @@
 % Please edit documentation in R/dev_CFM.R
 \name{CFM_data_get_igraph}
 \alias{CFM_data_get_igraph}
-\title{Title}
+\title{CFM_data_get_igraph
+get cfm igraph and atom map}
 \usage{
 CFM_data_get_igraph(object)
 }
@@ -13,5 +14,6 @@ CFM_data_get_igraph(object)
 cfmd
 }
 \description{
-Title
+CFM_data_get_igraph
+get cfm igraph and atom map
 }

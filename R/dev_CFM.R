@@ -766,14 +766,22 @@ heatmap_atom_iso_prob <- function(x){
 
 
 
-heatmap.frag.group.maps <- function(frag.c.matrix,frag.iso.matrix){
+#' heatmap.fg.map
+#'
+#' @param fg.map fg.map
+#'
+#' @import ComplexHeatmap grid
+#' @return heatmap
+heatmap.fg.map <- function(fg.map){
 
+  frag.c.matrix <- fg.map$frag.c.matrix
+  frag.iso.matrix <- fg.map$frag.iso.matrix
   cf <- circlize::colorRamp2(breaks = c(0,0.5,1),
                              c("white","#888888","#111111"))
   h1 <- ComplexHeatmap::Heatmap(frag.c.matrix,
                           na_col  ="#999999",
                           width = ncol(frag.c.matrix),
-                          name = "Atom source\nprobability",
+                          name = "Atom map\nprobability",
                           col = cf,
                           cluster_columns = F,
                           rect_gp = grid::gpar(lwd=2,col = "black",type = "none"),
@@ -793,9 +801,16 @@ heatmap.frag.group.maps <- function(frag.c.matrix,frag.iso.matrix){
   h2 <- ComplexHeatmap::Heatmap(frag.iso.matrix,
                           na_col  ="#999999",
                           width = ncol(frag.iso.matrix)*2,
-                          name = "Isotope labeled\nprobability",
+                          name = "Isotope labeled\nratio",
                           col = circlize::colorRamp2(breaks = c(0,0.5,1),
                                                      c("white","#F7844F","#B20C26")),
+                          right_annotation  = rowAnnotation(
+                            intensity = anno_numeric(round(log10(fg.map$frag.int),1),
+                                                     bg_gp = gpar(fill = "#AFAFAF", col = "black")),
+                            width  = unit(0.8,"inch"),
+                            annotation_label = list(intensity = "Log10\nIntensity"),
+                            annotation_name_rot  = 0,
+                            annotation_name_side  = "top"),
                           cluster_columns = F,
                           row_names_side  = "left",
                           column_names_side = "top",
@@ -804,5 +819,5 @@ heatmap.frag.group.maps <- function(frag.c.matrix,frag.iso.matrix){
                           rect_gp =  grid::gpar(lwd=2,col = "black"),
                           cluster_rows = F)
   h1+h2
-
+  #open_plot_win(h1+h2,10,5)
 }

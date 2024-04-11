@@ -1149,3 +1149,176 @@ CFM_annotate_isotopologues()
 
 
 
+
+# Mon Apr  8 20:50:47 2024 ------------------------------
+
+a <- matrix(1:10)
+a
+Heatmap(a,
+        cell_fun = function(j, i, x, y, width, height, fill) {
+          grid.text(sprintf("%d", a[i, j]), x, y,
+                    gp = gpar(fontsize = 10,fill = "grey"))
+})
+# Wed Apr 10 11:22:47 2024 ------------------------------
+id.paral <- expand.grid(fg.id=rownames(frag.c.matrix),
+                        if.id=1:length(iso.form))
+#id.paral <- id.paral[1:10000,]
+a <- bpmapply(fg.id = id.paral$fg.id,
+         if.id = id.paral$if.id,
+         FUN = function(fg.id,if.id){
+
+           fg.id <- 1
+           if.id <- 1
+
+           fc <- frag.c.matrix[fg.id,]
+           fc <- fc[ fc!=0 ]
+           ifc <- iso.form[[ if.id ]]
+
+         },BPPARAM = SerialParam( progressbar = T ) )
+
+lapply(seq_along(iso.form),
+      function(if.id){
+        lapply(rownames(frag.c.matrix),function(fg.id){
+
+          get_iso_prob(frag.c.matrix[fg.id,],
+                       ifc <- iso.form[[ if.id ]])
+        })->mp
+        names(mp) <- rownames(frag.c.matrix)
+        unlist(mp)
+      })->a
+b <- do.call(bind_rows,a)
+b <- t(b)
+b <- b[order(rownames(b)),]
+
+
+get_iso_prob <- function(fc, ifc){
+
+  ifc.prob <- fc[ifc]
+  #ifc.prob[2:4] <- c(0.2,0.4,0.6)
+  cv <- ifc.prob[which(ifc.prob>0&ifc.prob<1) ]
+  cs <- ifc.prob[which(ifc.prob==0|ifc.prob==1) ]
+  if (!length(cv)) {
+    iso.p <- 1
+    names(iso.p) <- paste0("M",sum(cv))
+    return(iso.p)
+  }
+
+  cvpm <- matrix(rep(cv,2^length(cv)),ncol = length(cv),byrow = T)
+  cvm <- expand.grid( rep(list(0:1),length(cv)))
+  cvpm <- 1-cvpm-cvm
+  cvpm[cvpm<0] <- -cvpm[cvpm<0]
+  cv.p <- apply(cvpm,1,prod)
+  cv.n <- apply(cvm,1,sum)
+  iso.p <- sapply(split(cv.p,cv.n),sum)
+  names(iso.p)<-paste0("M",as.numeric(names(iso.p))+sum(cs))
+  iso.p
+}
+
+# Wed Apr 10 17:49:08 2024 ------------------------------
+
+get_iso_prob <- function(fc, ifc){
+
+  ifc.prob <- fc[ifc]
+  #ifc.prob[2:4] <- c(0.2,0.4,0.6)
+  cv <- ifc.prob[which(ifc.prob>0&ifc.prob<1) ]
+  cs <- ifc.prob[which(ifc.prob==0|ifc.prob==1) ]
+  if (!length(cv)) {
+    iso.p <- 1
+    names(iso.p) <- paste0("M",sum(cs))
+    return(iso.p)
+  }
+
+  cvpm <- matrix(rep(cv,2^length(cv)),ncol = length(cv),byrow = T)
+  cvm <- expand.grid( rep(list(0:1),length(cv)))
+  cvpm <- 1-cvpm-cvm
+  cvpm[cvpm<0] <- -cvpm[cvpm<0]
+  cv.p <- apply(cvpm,1,prod)
+  cv.n <- apply(cvm,1,sum)
+  iso.p <- sapply(split(cv.p,cv.n),sum)
+  names(iso.p)<-paste0("M",as.numeric(names(iso.p))+sum(cs))
+  iso.p
+}
+
+
+for (fg.id in rownames(frag.c.matrix)) {
+
+  lapply(seq_along(iso.form),function(if.id){
+
+    get_iso_prob(frag.c.matrix[fg.id,],
+                  iso.form[[ if.id ]])
+  })->mp
+  a <- do.call(bind_rows,mp)
+  names(mp) <- paste0(i.fg,"_", names(mp) )
+}
+
+
+lapply(seq_along(iso.form),
+       function(if.id){
+         lapply(rownames(frag.c.matrix),function(fg.id){
+
+           get_iso_prob(frag.c.matrix[fg.id,],
+                        iso.form[[ if.id ]])
+         })->mp
+         names(mp) <- rownames(frag.c.matrix)
+         unlist(mp)
+       })->a
+b <- do.call(bind_rows,a)
+b <- t(b)
+b <- b[order(rownames(b)),]
+b[is.na(b)] <- 0
+
+
+# Wed Apr 10 18:15:03 2024 ------------------------------
+get_iso_prob <- function(fc, ifc){
+
+  ifc.prob <- fc[ifc]
+  #ifc.prob[2:4] <- c(0.2,0.4,0.6)
+  cv <- ifc.prob[which(ifc.prob>0&ifc.prob<1) ]
+  cs <- ifc.prob[which(ifc.prob==0|ifc.prob==1) ]
+  if (!length(cv)) {
+    iso.p <- 1
+    names(iso.p) <- paste0("M",sum(cs))
+    return(iso.p)
+  }
+
+  cvpm <- matrix(rep(cv,2^length(cv)),ncol = length(cv),byrow = T)
+  cvm <- expand.grid( rep(list(0:1),length(cv)))
+  cvpm <- 1-cvpm-cvm
+  cvpm[cvpm<0] <- -cvpm[cvpm<0]
+  cv.p <- apply(cvpm,1,prod)
+  cv.n <- apply(cvm,1,sum)
+  iso.p <- sapply(split(cv.p,cv.n),sum)
+  names(iso.p)<-paste0("M",as.numeric(names(iso.p))+sum(cs))
+  iso.p
+}
+
+iso.form.maps <- lapply(seq_along(iso.form),
+       function(if.id){
+         lapply(rownames(frag.c.matrix),function(fg.id){
+
+           get_iso_prob(frag.c.matrix[fg.id,],
+                        iso.form[[ if.id ]])
+         })->mp
+         names(mp) <- rownames(frag.c.matrix)
+         unlist(mp)
+       })
+iso.form.map <- t(do.call(bind_rows,iso.form.maps))
+iso.form.map <- iso.form.map[order(rownames(iso.form.map)),]
+iso.form.map[is.na(iso.form.map)] <- 0
+
+# Wed Apr 10 21:05:59 2024 ------------------------------
+a <- iso.form.map$iso.form.set.map
+b <- matrix(iso.form.map$iso.form.ratio,ncol = 1)
+qr(a)$rank
+qr(cbind(a,b))$rank
+
+
+sum(duplicated(a))
+
+
+
+
+
+
+
+

@@ -256,6 +256,44 @@ get_MSdev_iso_acq_list <- function(object,hw = 10){
 }
 
 
+get_iso_net_assign <- function(iso.ig,net.degree.ratio = 0.6){
+
+  iso.fdf <- vdata(iso.ig)
+  dis.con <-  as_adjacency_matrix(iso.ig,sparse	 =F ,type = "upper")
+  dis.mw <-  distances(iso.ig,mode = "out",
+                       weights = edata(iso.ig)$closest.iso.count)
+  if (nrow(iso.fdf)<=2) {
+    cl <- rep(1,nrow(iso.fdf))
+  }else
+    cl <- fpc::pamk(dis.con,krange = 1:(nrow(iso.fdf)-1))$pamobject$clustering
+  iso.seed <- rep(NA,nrow(iso.fdf))
+  names(iso.seed)<-iso.fdf$name
+  iso.count<- iso.seed
+  for (i.cl in unique(cl)) {
+    this.igraph.sub <- igraph_filter_vertex(iso.ig,cl==i.cl)
+
+    igraph::distances(this.igraph.sub,mode = "out",
+                      weights = edge.attributes(this.igraph.sub)$closest.iso.count )
+    to.delete <- degree(this.igraph.sub)<(length(V(this.igraph.sub))-1)*2*net.degree.ratio
+    this.igraph.sub <-delete.vertices(this.igraph.sub,to.delete )
+    #visNetwork::visIgraph(this.igraph.sub)
+    this.dis <- igraph::distances(this.igraph.sub,mode = "out",
+                                  weights = edge.attributes(this.igraph.sub)$closest.iso.count )
+    this.dis[this.dis<0] <- 0
+    dis.sum <- apply(this.dis,1,sum)
+    seed.fid <- names(which.max(dis.sum))
+    dis.to.seed <- this.dis[names(which.max(dis.sum)),]
+    iso.seed[names(dis.to.seed)] <- seed.fid
+    iso.count[names(dis.to.seed)] <- dis.to.seed
+  }
+
+  x <- list(iso.seed=iso.seed,iso.count=iso.count)
+  return(x)
+
+}
+
+
+
 #' get_isotopologues_Spectra_process
 #'
 #' @param iso.list iso.list
@@ -312,133 +350,21 @@ get_isotopologues_label_fraction <- function(iso.list){
                                  cfmd  = cfmd,ppm = 10,
                                  iso.count = i.iso)%>%
         dplyr::filter(!is.na(iso))
-      ### frag group to label fraction
-      {
-        fg.idx <- split(1:nrow(sp.frag.data),sp.frag.data$fragment_group)
-        frag.iso.matrix <- matrix(
-          nrow = length(fg.idx),ncol = i.iso+1,
-          dimnames = list(names(fg.idx),paste0("M",0:i.iso)))
-        frag.int.sum <- c()
-        for (i.fg in seq_along(fg.idx)) {
-          x.df <- sp.frag.data[fg.idx[[i.fg]],]
-          x.int <- x.df%>%
-            dplyr::select(-mz,-collisionEnergy)%>%
-            tidyr::pivot_wider(names_from ="iso",
-                               id_cols = "sp.id",
-                               values_from = "intensity",
-                               values_fn = sum)%>%
-            tibble::column_to_rownames("sp.id")%>%
-            dplyr::select(dplyr::starts_with("M"))%>%
-            as.matrix()
-          to.add <- setdiff(paste0("M",0:i.iso),colnames(x.int))
-          x.int <- cbind(matrix(0,nrow(x.int),length(to.add),
-                                dimnames = list(NULL,to.add)),x.int)
-          x.int <- x.int[,paste0("M",0:i.iso),drop =F]
-          x.int[is.na(x.int)] <- 0
-          x.weight <- rowSums(x.int)
-          x.int <- t(apply(x.int,1,function(z) z/sum(z)))
-          x.int.weighted <- apply(x.int,2,weighted.mean,m = x.weight)
-          frag.iso.matrix[i.fg,] <- x.int.weighted
-          frag.int.sum[i.fg] <- sum(x.weight)
-        }
-        }
 
-
-      ### frag group to C atom prob
-      {
-        frag.c.matrix <- matrix(ncol = length(c_ele),
-                         nrow = length(fg.idx),
-                         dimnames = list(names(fg.idx),
-                                         names(c_ele)))
-        for (i.fg in seq_along(fg.idx)) {
-
-          this.frag.group <- names(fg.idx)[i.fg]
-          this.frags <- cfmd@fragment_define[cfmd@fragment_define$fragment_group==this.frag.group,]
-          this.frag.ratio <-frag.iso.matrix[i.fg,]
-          this.frag.atom <- get_cfm_data_fg_atom_map(cfmd,this.frag.group)
-          this.frag.c <- this.frag.atom[names(c_ele)]
-          #this.iso.expectation <- sum(str_extract_num(names(this.frag.ratio))*this.frag.ratio)
-          #this.frag.c <- this.frag.c*this.iso.expectation/sum(this.frag.c)
-          #this.frag.c <- this.frag.c[this.frag.c!=0]
-          frag.c.matrix[this.frag.group,names(this.frag.c)] <- this.frag.c
-        }
-
-      }
-
+      fg.map <- get_frag_group_map(sp.frag.data,i.iso)
+      fg.map <- merge_frag_group_map(fg.map)
+      iso.form.map <- get_iso_form_map(fg.map ,vis = T)
       ### vis
       {
-       # h1 <- heatmap_atom_iso_prob(frag.c.matrix)
-       # h2 <- heatmap_atom_iso_prob(frag.iso.matrix)
-       # h1+h2
-       hm <-  heatmap.frag.group.maps(frag.c.matrix ,frag.iso.matrix)
+        hm <-  heatmap.fg.map(fg.map)
         open_plot_win(hm,10,5)
+
+
       }
 
       ### merge duplicate and complementary
-      {
-        z <- frag.c.matrix
-        z[z>0] <- 1
-        ### duplicated
-        frag.c.matrix1 <- matrix(nrow = 0,ncol=ncol(frag.c.matrix))
-        frag.iso.matrix1 <- matrix(nrow = 0,ncol=ncol(frag.iso.matrix))
-        frag.int.sum1 <- c()
-        z.split <- split(1:nrow(z),apply(z,1,paste0,collapse = ";"))
-        for (i.z in seq_along(z.split)) {
-          idx <- z.split[[i.z]]
-          this.frag.c <- apply(frag.c.matrix[idx,,drop =F],2,
-                               mean,weight = frag.int.sum[idx])
-          this.frag.iso <- apply(frag.iso.matrix[idx,,drop =F],2,
-                               mean,weight = frag.int.sum[idx])
-          frag.c.matrix1 <- rbind(frag.c.matrix1,this.frag.c)
-          frag.iso.matrix1 <- rbind(frag.iso.matrix1,this.frag.iso)
-          frag.int.sum1 <- c(frag.int.sum1, max(frag.int.sum[idx]) )
-          rn <- rownames(frag.iso.matrix)[idx][which.max(frag.int.sum[idx])]
-          rownames(frag.c.matrix1)[i.z] <- rownames(frag.iso.matrix1)[i.z]  <- rn
-        }
-        frag.c.matrix <- frag.c.matrix1
-        frag.iso.matrix <- frag.iso.matrix1
-        frag.int.sum <- frag.int.sum1
-        ### complementary
-        z <- frag.c.matrix
-        z[z>0] <- 1
-        z.comple <- apply(z,1,function(x){
-          z1 <- t(t(z)+x)
-          apply(z1,1,function(xx){all(xx==1)})
-          })
-        z.comple <- which(z.comple,arr.ind = T)
-        z.split <- sapply(1:nrow(z),function(x){
-          x.c <- z.comple[z.comple[,1] == x,2]
-          sort( c(x,x.c))
-        })
-        z.split <- z.split[!duplicated(z.split)]
-        frag.c.matrix1 <- matrix(nrow = 0,ncol=ncol(frag.c.matrix))
-        frag.iso.matrix1 <- matrix(nrow = 0,ncol=ncol(frag.iso.matrix))
-        frag.int.sum1 <- c()
-        for (i.z in seq_along(z.split)) {
-          idx <- z.split[[i.z]]
-          this.frag.c <- apply(frag.c.matrix[idx,,drop =F],2,
-                               mean,weight = frag.int.sum[idx])
-          this.frag.iso <- apply(frag.iso.matrix[idx,,drop =F],2,
-                                 mean,weight = frag.int.sum[idx])
-          frag.c.matrix1 <- rbind(frag.c.matrix1,this.frag.c)
-          frag.iso.matrix1 <- rbind(frag.iso.matrix1,this.frag.iso)
-          frag.int.sum1 <- c(frag.int.sum1, max(frag.int.sum[idx]) )
-          rn <- rownames(frag.iso.matrix)[idx][which.max(frag.int.sum[idx])]
-          rownames(frag.c.matrix1)[i.z] <- rownames(frag.iso.matrix1)[i.z]  <- rn
-        }
-        frag.c.matrix <- frag.c.matrix1
-        frag.iso.matrix <- frag.iso.matrix1
-        frag.int.sum <- frag.int.sum1
 
 
-      }
-
-
-      ### probability distribution
-      {
-        save(frag.c.matrix,frag.iso.matrix,frag.int.sum,file = "temp.rda")
-
-      }
 
     }
 
@@ -455,39 +381,6 @@ get_isotopologues_label_fraction <- function(iso.list){
 
 
 
-get_iso_net_assign <- function(iso.ig,net.degree.ratio = 0.6){
 
-  iso.fdf <- vdata(iso.ig)
-  dis.con <-  as_adjacency_matrix(iso.ig,sparse	 =F ,type = "upper")
-  dis.mw <-  distances(iso.ig,mode = "out",
-                       weights = edata(iso.ig)$closest.iso.count)
-  if (nrow(iso.fdf)<=2) {
-    cl <- rep(1,nrow(iso.fdf))
-  }else
-    cl <- fpc::pamk(dis.con,krange = 1:(nrow(iso.fdf)-1))$pamobject$clustering
-  iso.seed <- rep(NA,nrow(iso.fdf))
-  names(iso.seed)<-iso.fdf$name
-  iso.count<- iso.seed
-  for (i.cl in unique(cl)) {
-    this.igraph.sub <- igraph_filter_vertex(iso.ig,cl==i.cl)
 
-    igraph::distances(this.igraph.sub,mode = "out",
-                      weights = edge.attributes(this.igraph.sub)$closest.iso.count )
-    to.delete <- degree(this.igraph.sub)<(length(V(this.igraph.sub))-1)*2*net.degree.ratio
-    this.igraph.sub <-delete.vertices(this.igraph.sub,to.delete )
-    #visNetwork::visIgraph(this.igraph.sub)
-    this.dis <- igraph::distances(this.igraph.sub,mode = "out",
-                                  weights = edge.attributes(this.igraph.sub)$closest.iso.count )
-    this.dis[this.dis<0] <- 0
-    dis.sum <- apply(this.dis,1,sum)
-    seed.fid <- names(which.max(dis.sum))
-    dis.to.seed <- this.dis[names(which.max(dis.sum)),]
-    iso.seed[names(dis.to.seed)] <- seed.fid
-    iso.count[names(dis.to.seed)] <- dis.to.seed
-  }
-
-  x <- list(iso.seed=iso.seed,iso.count=iso.count)
-  return(x)
-
-}
 
