@@ -8,18 +8,17 @@
   msdev.dcx <- MSdev_xcmsProcessing(msdev.dcx)
   msdev.dcx <- MSdev_extract_Spectra(msdev.dcx)
   msdev.dcx <- MSdev_match_Spectra_to_feature(msdev.dcx)
-  msdev.dcx <- MSdev_match_Spectra_to_feature(msdev.dcx)
   msdev.dcx <- MSdev_annotation(msdev.dcx,
                                 expand_adduct= T,
-                                selected_adduct = c("[M-H]-",
-                                                    "[M-H2O-H]-",
-                                                    "[2M-H]-" ,
-                                                    "[M+FA-H]-" ,
-                                                    "[M+H]+" ,
-                                                    "[M-H2O+H]+",
-                                                    "[M+NH4]+"
-                                ) ,
-                                db.path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/SpectraDB/HMDB_KEGG_export_human_pathway.rda")
+                                #selected_adduct = c("[M-H]-",
+                                #                    "[M-H2O-H]-",
+                                #                    "[2M-H]-" ,
+                                #                    "[M+FA-H]-" ,
+                                #                    "[M+H]+" ,
+                                #                    "[M-H2O+H]+",
+                                #                    "[M+NH4]+"
+                                #) ,
+                                cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
   msdev.dcx <- MSdev_get_Stat(msdev.dcx,QC_RSD = Inf)
   MSdev_save(msdev.dcx)
   MSdev_export(msdev.dcx)

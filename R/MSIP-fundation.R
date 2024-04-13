@@ -62,7 +62,7 @@ get_frag_group_map <- function(sp.frag.data,iso.count){
 }
 
 
-get_iso_form_map <- function(fg.map,atom_prob = T,vis = F){
+get_iso_form_map <- function(fg.map,atom_prob = T ){
 
   #load("temp.rda")
   #iso.count <- 5
@@ -146,38 +146,6 @@ get_iso_form_map <- function(fg.map,atom_prob = T,vis = F){
                             function(x){ iso.form[x] })
   }
 
-  ### vis
-  if(vis){
-    #dim(iso.form.set.map)
-    Heatmap(iso.form.set.map,
-
-            border = T,
-            border_gp = gpar(col = "#808080"),
-            row_split = rep(1:nrow(frag.c.matrix),each = ncol(frag.iso.matrix)),
-            row_title = NULL,
-
-
-            cluster_rows = F,
-            show_column_names = F,
-            show_column_dend = T,
-            show_row_names = T,
-            row_names_side  = "l",
-            column_title = "Iso form set",
-            column_title_gp = gpar(fontsize = 30),
-            cluster_columns = T,
-            left_annotation = HeatmapAnnotation(
-              Ratio = (iso.form.ratio),
-              which = "row",
-              show_annotation_name = F,
-              width  = unit(20,"inch"),
-              col = list(Ratio = colramp())),
-            show_heatmap_legend = F,
-            col = colramp(colors = c("white","white","black")))->p
-    #p
-    open_plot_win(p,height = nrow(iso.form.set.map)*0.2+1,
-                  width = nrow(iso.form.set.map)*0.2*1.5)
-
-  }
 
 
   x <- list(iso.form.set.map = iso.form.set.map,
@@ -283,13 +251,148 @@ merge_frag_group_map <- function(fg.map){
       rn <- rownames(frag.iso.matrix)[idx][which.max(frag.int.sum[idx])]
       rownames(frag.c.matrix1)[i.z] <- rownames(frag.iso.matrix1)[i.z]  <- rn
     }
-    fg.map$frag.c.matrix <- frag.c.matrix1
-    fg.map$frag.iso.matrix <- frag.iso.matrix1
-    fg.map$frag.int <- frag.int.sum1
+    frag.c.matrix <- frag.c.matrix1
+    frag.iso.matrix <- frag.iso.matrix1
+    frag.int <- frag.int.sum1
+    names(frag.int) <- rownames(frag.c.matrix)
+  }
+  ### return
+  {
+    frag.c.matrix <- frag.c.matrix[order(rownames(frag.c.matrix)),]
+    frag.iso.matrix <- frag.iso.matrix[order(rownames(frag.iso.matrix)),]
+    frag.int <- frag.int[order(names(frag.int))]
 
+    fg.map$frag.c.matrix <- frag.c.matrix
+    fg.map$frag.iso.matrix <- frag.iso.matrix
+    fg.map$frag.int <- frag.int
+    return(fg.map)
   }
 
-  return(fg.map)
+
+}
+
+get_iso_form_prob_GLPK <- function(iso.form.map){
+
+  mat <- iso.form.map$iso.form.set.map
+  obj <- rep(1,ncol(mat))
+  # <- sample(c(0,1),ncol(mat),replace = T)
+  obj <- rnorm(ncol(mat))
+  #obj[1] <- 2
+
+  dir <- rep("==",nrow(mat))
+  rhs <- iso.form.map$iso.form.ratio
+
+  lp.result <- Rglpk_solve_LP(obj = obj,mat = mat,
+                      canonicalize_status = T,sensitivity_report = T,
+                      bounds = list(lower = list(ind = 1:ncol(mat),
+                                                 val = rep(0,ncol(mat))),
+                                    upper = list(ind = 1:ncol(mat),
+                                                 val = rep(1,ncol(mat)))),
+                      types = rep("C",ncol(mat)),
+                      dir = dir,rhs = rhs,max = F)
+  lp.result$status
+  iso.form.map$iso.form.prob <- lp.result$solution
+  iso.form.map$Rglpk <- lp.result
+  return(iso.form.map)
 }
 
 
+#' heatmap.fg.map
+#'
+#' @param fg.map fg.map
+#'
+#' @import ComplexHeatmap grid
+#' @return heatmap
+heatmap.fg.map <- function(fg.map){
+
+  frag.c.matrix <- fg.map$frag.c.matrix
+  frag.iso.matrix <- fg.map$frag.iso.matrix
+  cf <- circlize::colorRamp2(breaks = c(0,0.5,1),
+                             c("white","#888888","#111111"))
+  h1 <- ComplexHeatmap::Heatmap(frag.c.matrix,
+                                na_col  ="#999999",
+                                width = ncol(frag.c.matrix),
+                                name = "Atom map\nprobability",
+                                col = cf,
+                                cluster_columns = F,
+                                rect_gp = grid::gpar(lwd=2,col = "black",type = "none"),
+                                cell_fun = function(j, i, x, y, width, height,color, fill){
+                                  grid.rect(x = x, y = y, width = width, height = height,
+                                            gp = grid::gpar(col = "grey", fill = NA))
+                                  grid.circle(x = x, y = y, r = 0.02,
+                                              gp = grid::gpar(fill = color, col = color))
+                                },
+                                row_names_side  = "left",
+                                column_names_rot = -45,
+                                column_names_centered = F,
+                                column_names_gp = grid::gpar(fontsize = 8),
+                                #rect_gp =  grid::gpar(lwd=2,col = "white"),
+                                cluster_rows = F)
+  h1
+  h2 <- ComplexHeatmap::Heatmap(frag.iso.matrix,
+                                na_col  ="#999999",
+                                width = ncol(frag.iso.matrix)*2,
+                                name = "Isotope labeled\nratio",
+                                col = circlize::colorRamp2(breaks = c(0,0.5,1),
+                                                           c("white","#F7844F","#B20C26")),
+                                right_annotation  = rowAnnotation(
+                                  intensity = anno_numeric(round(log10(fg.map$frag.int),1),
+                                                           bg_gp = gpar(fill = "#AFAFAF", col = "black")),
+                                  width  = unit(0.8,"inch"),
+                                  annotation_label = list(intensity = "Log10\nIntensity"),
+                                  annotation_name_rot  = 0,
+                                  annotation_name_side  = "top"),
+                                cluster_columns = F,
+                                row_names_side  = "left",
+                                column_names_side = "top",
+                                column_names_rot = 0.5,
+                                column_names_centered = T,
+                                rect_gp =  grid::gpar(lwd=2,col = "black"),
+                                cluster_rows = F)
+  h1+h2
+  #open_plot_win(h1+h2,10,5)
+}
+
+
+heatmap.ifs.map <- function(iso.form.map){
+
+  iso.form.set.map <- iso.form.map$iso.form.set.map
+  iso.form.prob <- iso.form.map$iso.form.prob
+  if ("iso.form.prob" %in% names(iso.form.map)) {
+    top.anno <- HeatmapAnnotation(
+      ifp = iso.form.prob,
+      col = list(ifp = colramp(c(0,0.00000001,max(iso.form.prob)),
+                               c("grey","white","#0095D4"))),
+      annotation_label  = list(ifp = "iso form probability"),
+      show_annotation_name = F,
+      which = "c"
+    )
+  }
+
+  Heatmap(iso.form.set.map,
+
+          border = T,
+          border_gp = gpar(col = "#808080"),
+          row_split = str_extract(rownames(iso.form.set.map),".*(?=_M)"),
+          row_title = NULL,
+
+
+          cluster_rows = F,
+          show_column_names = F,
+          show_column_dend = T,
+          show_row_names = T,
+          row_names_side  = "l",
+          column_title = "Iso form set",
+          column_title_gp = gpar(fontsize = 30),
+          cluster_columns = T,
+          top_annotation = top.anno,
+          left_annotation = HeatmapAnnotation(
+            Ratio = iso.form.map$iso.form.ratio,
+            col = list(Ratio = colramp(c(0,0.0000001,0.5,1),
+                                       c("grey","white","#F7844F","#B20C26"))),
+            which = "row",
+            show_annotation_name = F,
+            width  = unit(20,"inch")),
+          show_heatmap_legend = F,
+          col = colramp(colors = c("white","white","black")))
+}

@@ -344,6 +344,7 @@ get_isotopologues_label_fraction <- function(iso.list){
     c_ele <- atom_ele[atom_ele=="C"]
     for (i.iso in iso.count) {
 
+      i.iso <- 2
       this.sp <-x.iso.cfm[[paste0("M",i.iso)]]
       this.sp <- Spectra_filter_noise(this.sp)
       sp.frag.data <- CFM_annotate_isotopologues(this.sp,
@@ -353,17 +354,20 @@ get_isotopologues_label_fraction <- function(iso.list){
 
       fg.map <- get_frag_group_map(sp.frag.data,i.iso)
       fg.map <- merge_frag_group_map(fg.map)
-      iso.form.map <- get_iso_form_map(fg.map ,vis = T)
+      iso.form.map <- get_iso_form_map(fg.map ,atom_prob = T)
+      iso.form.map <- get_iso_form_prob_GLPK(iso.form.map)
+      sum(iso.form.map$iso.form.prob)
       ### vis
       {
+
+
         hm <-  heatmap.fg.map(fg.map)
+        open_plot_win(hm,10,5)
+        hm <- heatmap.ifs.map(iso.form.map)
         open_plot_win(hm,10,5)
 
 
       }
-
-      ### merge duplicate and complementary
-
 
 
     }

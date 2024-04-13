@@ -1130,14 +1130,16 @@ get_MS_sampleinfo <- function(raw.data.dir,
                     ),
                     T~sample.type),
                     weight = NA ,
-                    xcmsProcessing = "Both")%>%
+                    xcmsProcessing = "Both",
+                    isotope_label = NA)%>%
       dplyr::select(no,sample.name,sample.type,sample.labels,group, weight,
                     raw.files,
                     polarity,
                     analysis.time,
                     msData.files,
                     ms.name,
-                    xcmsProcessing)
+                    xcmsProcessing,
+                    isotope_label)
 
 
   }
@@ -1388,7 +1390,7 @@ MSdev_xcms_group_features <- function(object,
 MSdev_checkSampleInfo <- function(object){
 
   sampleInfo <- object@sampleInfo
-  sampleInfo <- edit_df_in_excel(sampleInfo)
+  sampleInfo <- edit_df_in_excel(sampleInfo,rowname = F)
   ### save
   {
     object@sampleInfo <- sampleInfo

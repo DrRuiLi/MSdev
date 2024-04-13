@@ -153,3 +153,7 @@ get_file_formate <- function(file){
     sub("\\.",x = .,"")
 
 }
+
+
+
+
