@@ -178,7 +178,9 @@ MSdev_find_isotope_label <- function(object,
 }
 
 
-get_MSdev_iso_acq_list <- function(object,hw = 10){
+get_MSdev_iso_acq_list <- function(object,
+                                   hw = 10,
+                                   min.scan = 5){
 
 
 
@@ -192,64 +194,76 @@ get_MSdev_iso_acq_list <- function(object,hw = 10){
 
 
     ### Comp info
-    cpdb <- CompDb(msdev.fs@projectInfo$CompoundDB_path)
-    dbinfo <- get_CompDb_info(cpdb,
-                              xcms.fdf$compound_id,
-                              keys = c("name","formula","smiles"))
-    xcms.fdf <- cbind(xcms.fdf,dbinfo[,c("name","formula","smiles")])
-
-
+    {
+      cpdb <- CompDb(object@projectInfo$CompoundDB_path)
+      dbinfo <- get_CompDb_info(cpdb,
+                                xcms.fdf$compound_id,
+                                keys = c("name","formula","smiles"))
+      xcms.fdf <- cbind(xcms.fdf,dbinfo[,c("name","formula","smiles")])
+    }
     ### calc intensity of iso and un-iso labeled sample
-    xcms.pdata <- pData(xcms.xcms)%>%
-      dplyr::filter(!sample.type%in% c("Blank"))
-    xcms.fv <- featureValues(xcms.xcms,value = "maxo",missing = 1)[,xcms.pdata$sampleNames]
-    uniso.mean <- xcms.fv[,xcms.pdata$sampleNames[is.na(xcms.pdata$isotope_label)]]%>%
-      apply(1,mean)
-    iso.mean <- xcms.fv[,xcms.pdata$sampleNames[!is.na(xcms.pdata$isotope_label)]]%>%
-      apply(1,mean)
+    {
+      xcms.pdata <- pData(xcms.xcms)%>%
+        dplyr::filter(!sample.type%in% c("Blank"))
+      xcms.fv <- featureValues(xcms.xcms,value = "maxo",missing = 1)[,xcms.pdata$sampleNames]
+      uniso.mean <- xcms.fv[,xcms.pdata$sampleNames[is.na(xcms.pdata$isotope_label)]]%>%
+        apply(1,mean)
+      iso.mean <- xcms.fv[,xcms.pdata$sampleNames[!is.na(xcms.pdata$isotope_label)]]%>%
+        apply(1,mean)
 
-    xcms.fdf$mean.iso <- log10(iso.mean)
-    xcms.fdf$mean.uniso <- log10(uniso.mean)
+      xcms.fdf$mean.iso <- log10(iso.mean)
+      xcms.fdf$mean.uniso <- log10(uniso.mean)
 
 
+    }
     ### iso stat
-    xcms.fdf.stat <- xcms.fdf%>%
-      dplyr::mutate(compound_id = case_when(
-        feature_id == C13_seed~ compound_id,
-        T~ NA
-      ),name = case_when(
-        feature_id == C13_seed~ name,
-        T ~ NA
-      ))%>%
-      dplyr::filter(!is.na(C13_seed))%>%
-      dplyr::filter(peakMaxo > 1e5)%>%
-      dplyr::group_by(C13_seed)%>%
-      dplyr::mutate(total.isotopologues = n(),
-                    iso.maxo = max(log10(peakMaxo)))%>%
-      dplyr::arrange(-iso.maxo,
-                     C13_seed,
-                     C13_count)%>%
-      ### filter labeled and annotated
-      dplyr::filter(any( is_labeled ),
-                    any( !is.na( compound_id ) ) )%>%
-      ### fix rt to seed
-      dplyr::mutate(rtmed = rtmed[which(feature_id == C13_seed)],
-                    rtmin = rtmed - hw ,
-                    rtmax = rtmed + hw)%>%
-      dplyr::ungroup()%>%
-      dplyr::select("feature_id","mzmed","rtmed","rtmin","rtmax","peakMaxo","polarity","score","C13_seed","C13_count","is_labeled","compound_id","adduct","name","formula","smiles","mean.iso","mean.uniso","total.isotopologues","iso.maxo")
+    {
+      xcms.fdf.stat <- xcms.fdf%>%
+        dplyr::mutate(compound_id = case_when(
+          feature_id == C13_seed~ compound_id,
+          T~ NA
+        ),name = case_when(
+          feature_id == C13_seed~ name,
+          T ~ NA
+        ))%>%
+        dplyr::filter(!is.na(C13_seed))%>%
+        dplyr::filter(mean.iso > 5)%>%
+        dplyr::group_by(C13_seed)%>%
+        dplyr::mutate(total.isotopologues = n(),
+                      iso.maxo = max(log10(peakMaxo)))%>%
+        dplyr::arrange(-iso.maxo,
+                       C13_seed,
+                       C13_count)%>%
+        ### filter labeled and annotated
+        dplyr::filter(any( is_labeled ),
+                      any( !is.na( compound_id ) ) )%>%
+        ### fix rt to seed
+        dplyr::mutate(rtmed = rtmed[which(feature_id == C13_seed)],
+                      rtmin = rtmed - hw ,
+                      rtmax = rtmed + hw)%>%
+        dplyr::ungroup()%>%
+        dplyr::select("feature_id","mzmed","rtmed","rtmin","rtmax","peakMaxo","polarity","score","C13_seed","C13_count","is_labeled","compound_id","adduct","name","formula","smiles","mean.iso","mean.uniso","total.isotopologues","iso.maxo")
+    }
 
+    ### assign and split
+    {
+      scan.df <- simulate_prm(xcms.fdf.stat)
+      xcms.fdf.assign <- xcms.fdf.stat %>%
+        dplyr::mutate(scan.count = table(scan.df$ion_id)[as.character(1:n())],
+                      idx = sample(1:(ceiling(min.scan/min(scan.count))),n(),replace =T))
+      xcms.fdf.assign <- split(xcms.fdf.assign,xcms.fdf.assign$idx)
 
+    }
 
     ### trans to QE
-    pol.list <- QE_list_2feature_def(xcms.fdf.stat,keep = T)
+    pol.list <- lapply(xcms.fdf.assign,QE_list_2feature_def,keep=T)
 
     #edit_df_in_excel(xcms.fdf.stat)
     acq.list[[pol]] <- pol.list
 
 
   }
-  acq.list
+  unlist(acq.list,recursive = F)
 
 
 
@@ -344,7 +358,10 @@ get_isotopologues_label_fraction <- function(iso.list){
     c_ele <- atom_ele[atom_ele=="C"]
     for (i.iso in iso.count) {
 
-      i.iso <- 2
+      message(i.iso)
+      if (i.iso==0) {
+        next
+      }
       this.sp <-x.iso.cfm[[paste0("M",i.iso)]]
       this.sp <- Spectra_filter_noise(this.sp)
       sp.frag.data <- CFM_annotate_isotopologues(this.sp,
@@ -354,19 +371,28 @@ get_isotopologues_label_fraction <- function(iso.list){
 
       fg.map <- get_frag_group_map(sp.frag.data,i.iso)
       fg.map <- merge_frag_group_map(fg.map)
-      iso.form.map <- get_iso_form_map(fg.map ,atom_prob = T)
+      iso.form.map <- get_iso_form_map(fg.map ,atom_prob = F)
       iso.form.map <- get_iso_form_prob_GLPK(iso.form.map)
-      sum(iso.form.map$iso.form.prob)
+      c.prob <- get_iso_from_C_prob(iso.form.map,cfmd)
+      #sum(iso.form.map$iso.form.prob)
+
+
       ### vis
       {
-
-
+        this.dir <- paste0("d:/temp/nad_M",i.iso)
+        dir.create(this.dir,showWarnings = F)
         hm <-  heatmap.fg.map(fg.map)
-        open_plot_win(hm,10,5)
+        export::graph2png(hm,
+                          file = paste0(this.dir,"/Frag.map.png"),
+                          width = 10,
+                          height = nrow(fg.map$frag.c.matrix)*0.8)
         hm <- heatmap.ifs.map(iso.form.map)
-        open_plot_win(hm,10,5)
-
-
+        export::graph2png(draw(hm),
+                          file = paste0(this.dir,"/Iso.form.map.png"),
+                          width = 10,
+                          height = nrow(fg.map$frag.c.matrix)*1.5)
+        p <- vis_sdf_ig_prob(cfmd@fragment_igraph[[1]],c.prob,show.label = T)
+        saveWidget(p,file = paste0(this.dir,"/Atom.prob.html"))
       }
 
 

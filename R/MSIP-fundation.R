@@ -130,7 +130,7 @@ get_iso_form_map <- function(fg.map,atom_prob = T ){
       return(z)
     })
     iso.form.ratio <- unlist(iso.form.ratio)
-
+    iso.form.ratio <- iso.form.ratio[rownames(iso.form.map)]
   }
 
 
@@ -276,14 +276,14 @@ get_iso_form_prob_GLPK <- function(iso.form.map){
   mat <- iso.form.map$iso.form.set.map
   obj <- rep(1,ncol(mat))
   # <- sample(c(0,1),ncol(mat),replace = T)
-  obj <- rnorm(ncol(mat))
+  # <- rnorm(ncol(mat))
   #obj[1] <- 2
 
   dir <- rep("==",nrow(mat))
   rhs <- iso.form.map$iso.form.ratio
 
-  lp.result <- Rglpk_solve_LP(obj = obj,mat = mat,
-                      canonicalize_status = T,sensitivity_report = T,
+  lp.result <- Rglpk::Rglpk_solve_LP(obj = obj,mat = mat,
+                      canonicalize_status = T,
                       bounds = list(lower = list(ind = 1:ncol(mat),
                                                  val = rep(0,ncol(mat))),
                                     upper = list(ind = 1:ncol(mat),
@@ -294,6 +294,27 @@ get_iso_form_prob_GLPK <- function(iso.form.map){
   iso.form.map$iso.form.prob <- lp.result$solution
   iso.form.map$Rglpk <- lp.result
   return(iso.form.map)
+}
+
+get_iso_from_C_prob <- function(iso.form.map,cfm_data){
+
+  ig <- cfmd@fragment_igraph[[1]]
+  c <- get_atom_from_igraph(ig,"C")
+  c.prob <- rep(0,length(c))
+  names(c.prob) <- c
+  c.prob.m<- sapply(seq_along(iso.form.map$iso.form.prob),function(idx){
+
+    x <- c.prob
+    if (iso.form.map$iso.form.prob[idx] == 0) {
+
+    }else{
+      c.count <- table(unlist(iso.form.map$iso.form.set[idx]))
+      x.prob <- iso.form.map$iso.form.prob[idx]*c.count/sum(c.count)
+      x[names(x.prob)] <- x.prob
+    }
+    return(x)
+  })
+  apply(c.prob.m,1,sum)
 }
 
 

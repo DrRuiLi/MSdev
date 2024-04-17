@@ -430,6 +430,18 @@ plot_Spectra<- function(sp,label.top = 10){
 }
 
 
+plot_Spectra_quality <- function(sp){
+
+  plot_Spectra(sp)+
+    geom_hline(yintercept = sp$noise,col = "grey")+
+    labs(subtitle  = paste0("Pre.int: ",format(precursorIntensity(sp),digit = 3,sci = T) ,"\n",
+                           "TIC: ", format(sp$totIonCurrent,digit = 3,sci = T) ,"\n",
+                           "Base.int: ", format(sp$basePeakIntensity,digit = 3,sci = T),"\n",
+                           "Noise: ", format(sp$noise,digit = 3,sci = T),"\n",
+                           "SNR: ",format(sp$snr,digit = 3,sci = T)))
+
+}
+
 plot_Spectra_CE<-function(sp){
 
 

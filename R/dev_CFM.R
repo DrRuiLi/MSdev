@@ -661,35 +661,37 @@ CFM_data_get_igraph <- function(object){
     fragment.trans <- object@fragment_transition
     ### map for trans
     trans.atom.map <- list()
-    for (i in 1:nrow(fragment.trans)) {
-      ig.parent <- fragment.igraph[[fragment.trans$from[i]]]
-      ig.product <- fragment.igraph[[fragment.trans$to[i]]]
-      sdf.parent <- fragment.sdf[[fragment.trans$from[i]]]
-      sdf.product <- fragment.sdf[[fragment.trans$to[i]]]
-      atom.map <- get_atom_map(sdf.parent ,sdf.product ,ig.parent ,ig.product )
-      trans.atom.map[[i]] <- atom.map
-    }
-
-    ### map for frag
-    ig.trans <- get_CFM_data_trans_igraph(object)
     fragment.atom.map <- list()
-    for (i in 1:nrow(fragment.data)) {
-      this.frag <- fragment.data$fragment_id[i]
-      this.path <- shortest_paths(ig.trans,
+    if (nrow(fragment.trans)) {
+      for (i in 1:nrow(fragment.trans)) {
+        ig.parent <- fragment.igraph[[fragment.trans$from[i]]]
+        ig.product <- fragment.igraph[[fragment.trans$to[i]]]
+        sdf.parent <- fragment.sdf[[fragment.trans$from[i]]]
+        sdf.product <- fragment.sdf[[fragment.trans$to[i]]]
+        atom.map <- get_atom_map(sdf.parent ,sdf.product ,ig.parent ,ig.product )
+        trans.atom.map[[i]] <- atom.map
+      }
+
+      ### map for frag
+      ig.trans <- get_CFM_data_trans_igraph(object)
+      for (i in 1:nrow(fragment.data)) {
+        this.frag <- fragment.data$fragment_id[i]
+        this.path <- shortest_paths(ig.trans,
                                     1,this.frag,
-                                  output = "epath")
-      ep <- this.path$epath[[1]]
-      if (!length(ep)==0) {
-        maps <- trans.atom.map[match(ep,E(ig.trans))]
-        while(length(maps)>1){
-          maps[[2]] <- maps[[1]]%*% maps[[2]]
-          maps[[1]] <-NULL
+                                    output = "epath")
+        ep <- this.path$epath[[1]]
+        if (!length(ep)==0) {
+          maps <- trans.atom.map[match(ep,E(ig.trans))]
+          while(length(maps)>1){
+            maps[[2]] <- maps[[1]]%*% maps[[2]]
+            maps[[1]] <-NULL
+          }
+          fragment.atom.map[[i]] <- maps[[1]]
         }
-        fragment.atom.map[[i]] <- maps[[1]]
+
       }
 
     }
-
 
 
   }

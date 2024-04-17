@@ -1489,15 +1489,20 @@ MSdev_extract_Spectra <- function(object, msLevel = 2,
   } else {
     sp <- Spectra::Spectra(na.omit(sampleInfo$msData.files),
                            backend = Spectra::MsBackendMemory())
-    sp.ms1 <- filterMsLevel(sp,1)
-    sp.ms1$sp_id <- paste0("MS1_SP",num2str(1:length(sp.ms1)))
-    Spectra::spectraNames(sp.ms1) <- sp.ms1$sp_id
-    sp.ms2 <- filterMsLevel(sp,2)
-    sp.ms2$sp_id <- paste0("MS2_SP",num2str(1:length(sp.ms2)))
-    sp.ms2$precursorMz <- sp.ms2$isolationWindowTargetMz
-    if(eval.noise) sp.ms2 <- Spectra_get_noise(sp.ms2)
-    if(eval.ms1) sp.ms2 <- Spectra_get_purity(sp.ms2,sp.ms1 = sp.ms1)
-    Spectra::spectraNames(sp.ms2) <- sp.ms2$sp_id
+    if(1 %in% msLevel(sp)){
+      sp.ms1 <- filterMsLevel(sp,1)
+      sp.ms1$sp_id <- paste0("MS1_SP",num2str(1:length(sp.ms1)))
+      Spectra::spectraNames(sp.ms1) <- sp.ms1$sp_id
+    }
+    if (2 %in% msLevel(sp)) {
+      sp.ms2 <- filterMsLevel(sp,2)
+      sp.ms2$sp_id <- paste0("MS2_SP",num2str(1:length(sp.ms2)))
+      sp.ms2$precursorMz <- sp.ms2$isolationWindowTargetMz
+      if(eval.noise) sp.ms2 <- Spectra_get_noise(sp.ms2)
+      if(eval.ms1) sp.ms2 <- Spectra_get_purity(sp.ms2,sp.ms1 = sp.ms1)
+      Spectra::spectraNames(sp.ms2) <- sp.ms2$sp_id
+    }
+
 
   }
 

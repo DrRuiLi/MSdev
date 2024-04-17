@@ -726,6 +726,7 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
   {
     xcms.se <- get_xcms_feature_se(xcms.xcms,
                                    missing = 1)
+    xcms.se <- xcms.se[,xcms.se$sample.type=="Sample"]
     rownames(xcms.se) <- rowData(xcms.se)$xcms_feature_id
     iso.colname <- paste0(str_extract(string = isotope,pattern = "[[:alpha:]]+"),
                           str_extract(string = isotope,pattern = "[[:digit:]]+"))
@@ -780,6 +781,8 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
   {
     xcms.fda <- featureDefinitions(xcms.xcms)
     xcms.fda$is_labeled <- iso.stat$is_labeled
+    xcms.fda$ratio_to_seed_label <- iso.stat$labeled.mean
+    xcms.fda$ratio_to_seed_unlabel <- iso.stat$unlabeled.mean
     xcms.fda -> featureDefinitions(xcms.xcms)
     message("Get ",
             sum(xcms.fda$is_labeled ),
@@ -2008,4 +2011,38 @@ simulate_dda <- function(xcms.fdf,
 
   return(scan.df)
 
+}
+
+
+simulate_prm <- function(xcms.fdf,
+                         total.time = 28*60,
+                         ms2.time = 0.265){
+
+
+  t <- 0
+  scan.df <- data.frame(spIdx = NULL,
+                        msLevel= NULL,
+                        retentionTime= NULL,
+                        precursorMZ= NULL,
+                        ion_id = NULL
+  )
+  while(t < max(xcms.fdf$rtmax)){
+
+    ion.to.ms2 <- which(t < xcms.fdf$rtmax&t>xcms.fdf$rtmin)
+    ion.to.ms2 <- na.omit(ion.to.ms2)
+    ms2.scan <- data.frame(spIdx = rep(NA,length(ion.to.ms2)),
+                           msLevel= rep(2,length(ion.to.ms2)),
+                           retentionTime= t + seq_along(ion.to.ms2)*ms2.time,
+                           precursorMZ = xcms.fdf$mzmed[ion.to.ms2],
+                           ion_id = ion.to.ms2
+    )
+    scan.df <- rbind(scan.df,ms2.scan)
+    t <- t + ifelse(ms2.time*length(ion.to.ms2)>0,ms2.time*length(ion.to.ms2),0.1)
+
+
+  }
+
+
+
+  return(scan.df)
 }

@@ -209,6 +209,21 @@ get_sdf_igraph <- function(sdf,addH = F){
 
 }
 
+
+
+get_atom_from_igraph <- function(ig,ele = "all"){
+
+  vdf <- vdata(ig)
+  if (ele== "all") {
+    return(vdf$name)
+  }else{
+    vdf <- vdf %>%
+      dplyr::filter(atom %in% ele)
+    return(vdf$name)
+  }
+
+}
+
 #' add_sdf_igraph_highlight
 #'
 #' @param sdf.igraph igraph
@@ -294,13 +309,42 @@ vis_sdf_igraph <- function(sdf.igraph ,
 }
 
 vis_sdf_ig_prob <- function(sdf.igraph,
-                            colors){
+                            prob,
+                            show.label = F){
 
+  atom <- get_atom_from_igraph(sdf.igraph)
+  atom.prob <- rep(0,length(atom))
+  atom.prob <- prob[atom]
+  names(atom.prob) <- atom
+  #atom.prob[is.na(atom.prob)] <- 0
+  atom.color <- colramp(breaks = c(0,max(prob)/2,max(prob)),
+                        colors = c("white","#F7844F","#B20C26")
+                          )(atom.prob)
   sdf.igraph.colors <- add_sdf_igraph_color(sdf.igraph,
-                                                   colors )
-
+                                            atom.color )
+ #node.legend <- data.frame(label = round( c(0,max(prob)/2,max(prob)),2),
+ #                          color =  c("white","#F7844F","#B20C26"),
+ #                          border = "black")
+  node.legend <- list(list(label = sprintf("%1.2f",0),
+                           font = list(size = 10,vadjust = 30,
+                                       align = "left"),
+                           shape = "circle",
+                           color = list(background = "white",
+                                        border = "#black")),
+                      list(label = sprintf("%1.2f",max(prob)/2),
+                           font = list(size = 10,vadjust = 30),
+                           shape = "circle",
+                           color = list(background = "#F7844F",
+                                                  border = "#black")),
+                      list(label = sprintf("%1.2f",max(prob)),
+                           font = list(size = 10,vadjust = 30),
+                           size = 20,
+                           shape = "circle",
+                           color = list(background = "#B20C26",
+                                                  border = "#black"))
+                      )
   sdf.igraph.colors%>%
-    visIgraph(idToLabel = !show.label)%>%
+    visIgraph(idToLabel = show.label)%>%
     visNodes(font = list(size = 40,
                          align = "left",
                          vadjust = 3,
@@ -311,7 +355,10 @@ vis_sdf_ig_prob <- function(sdf.igraph,
              color = list(background = "transparent",
                           border = "#black"))%>%
     visEdges(arrows = list(to = F),
-             length = 0.8)
+             length = 0.8)%>%
+    visLegend(addNodes = node.legend,
+              main = "Probability",width = 0.1,
+              useGroups = F)
 
 
 }
