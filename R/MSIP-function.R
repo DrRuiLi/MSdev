@@ -8,11 +8,12 @@
 #' @return a list of isotopologues
 #' @export
 #'
-get_MSdev_isotopologues <- function(object){
+get_MSdev_isotopologues <- function(object,iso_ele = "[13]C"){
 
   iso.list <- list()
   sp.ms2 <- object@spectra$MS2_Spectra
   cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
+
   ### Requirement in xcms features
   ### C13_seed
   for (i in 0:1) {
@@ -25,7 +26,7 @@ get_MSdev_isotopologues <- function(object){
                              keys = c("name","kegg_id",
                                       "formula", "inchikey","smiles"))
     xcms.fdf <- cbind(xcms.fdf,db.info)
-    iso <- grep(pattern = "_seed",colnames(xcms.fdf),value = T)
+    iso <- grep(pattern = "_seed$",colnames(xcms.fdf),value = T)
     xcms.fdf[,"iso_seed"] <- xcms.fdf[,iso]
     xcms.fdf[,"iso_count"] <- xcms.fdf[,sub(x = iso,pattern = "_seed",replacement = "_count")]
     xcms.fdf <- xcms.fdf%>%
@@ -49,10 +50,11 @@ get_MSdev_isotopologues <- function(object){
       {
         this.list$compound_info <- list(name = this.seed.df$name,
                                         compound_id = this.seed.df$compound_id,
+                                        mz = this.seed.df$mzmed,
+                                        rt = this.seed.df$rtmed,
                                         formula = this.seed.df$formula,
                                         smiles = this.seed.df$smiles,
                                         score = this.seed.df$score,
-                                        mz_ref = this.seed.df$mz_ref,
                                         adduct = this.seed.df$adduct,
                                         polarity = this.seed.df$polarity)
       }
@@ -62,15 +64,24 @@ get_MSdev_isotopologues <- function(object){
         names(this.sp.list) <- paste0("M",
                                       this.fdf$iso_count[ match(names(this.sp.list),this.fdf$feature_id)])
 
-        this.list <- append(this.list,this.sp.list)
+        this.list$Spectra <- this.sp.list
       }
 
       ### filter
       {
-        if (!"M0" %in% names(this.list)) next
-        if (!all(c(10,20,40) %in% collisionEnergy(this.list$M0))) next
-        if (is.na(this.list$compound_info$smiles)) next
-        if (length(this.list)<=2) next
+        if (!"M0" %in% names(this.list$Spectra)) next
+        if (!all(c(10,20,40) %in% collisionEnergy(this.list$Spectra$M0))) next
+        if (is.na(this.list$compound_info$formula)) next
+        uniso.ele <- get_ele_uniso(iso_ele)
+        atom.count <- MSCC:::chemform_parse(this.list$compound_info$formula)
+        if (!uniso.ele%in% colnames(atom.count)) {
+          max.atom <- 0
+        }else
+          max.atom <- atom.count[,uniso.ele]
+        idx <- str_extract_num(names(this.list$Spectra)) < max.atom
+        this.list$Spectra <- this.list$Spectra[idx]
+
+        if (length(this.list$Spectra)<=1) next
 
       }
 
@@ -102,7 +113,7 @@ get_isotopologues_CFM_annotation<- function(iso.list,
     {
       ### process M0 Spectra
       {
-        seed.sp.c <- Spectra_filter_noise(x$M0)
+        seed.sp.c <- Spectra_filter_noise(x$Spectra$M0)
         seed.sp.c <- normalizeSpectra(sp = seed.sp.c,norm_to = "tic")
         seed.sp.c<- combineSpectra_groupby_ce(seed.sp.c,ppm = 10,
                                     minProp = 0.3,
@@ -346,57 +357,71 @@ get_isotopologues_Spectra_process <- function(iso.list){
 
 
 
-get_isotopologues_label_fraction <- function(iso.list){
+get_isotopologues_label_fraction <- function(iso.cfm){
 
   .f <- function(x.iso.cfm){
-    x.iso.cfm <- iso.cfm$FT7478_Positive
+    #x.iso.cfm <- iso.cfm$FT7478_Positive
     cfmd <- x.iso.cfm$CFM_annotation
-    iso.count <- stringr::str_extract(names(x.iso.cfm),"[:digit:]+")%>%
+    iso.count <- stringr::str_extract(names(x.iso.cfm$Spectra),"[:digit:]+")%>%
       as.numeric()%>%na.omit()
-    atom_ele <-  vdata(cfmd@fragment_igraph$Fragment001)$atom
-    names(atom_ele) <- vdata(cfmd@fragment_igraph$Fragment001)$name
+    atom_ele <-  vdata(cfmd@fragment_igraph[[1]])$atom
+    names(atom_ele) <- vdata(cfmd@fragment_igraph[[1]])$name
     c_ele <- atom_ele[atom_ele=="C"]
     for (i.iso in iso.count) {
 
-      message(i.iso)
+     # message(i.iso)
       if (i.iso==0) {
         next
       }
-      this.sp <-x.iso.cfm[[paste0("M",i.iso)]]
+      this.sp <-x.iso.cfm$Spectra[[paste0("M",i.iso)]]
       this.sp <- Spectra_filter_noise(this.sp)
       sp.frag.data <- CFM_annotate_isotopologues(this.sp,
                                  cfmd  = cfmd,ppm = 10,
                                  iso.count = i.iso)%>%
         dplyr::filter(!is.na(iso))
-
-      fg.map <- get_frag_group_map(sp.frag.data,i.iso)
+      if (!nrow(sp.frag.data)) next
+      fg.map <- get_frag_group_map(sp.frag.data,cfmd,c_ele,i.iso)
       fg.map <- merge_frag_group_map(fg.map)
-      iso.form.map <- get_iso_form_map(fg.map ,atom_prob = F)
+      iso.form.map <- get_iso_form_prob_GLPK_map(fg.map ,atom_prob = F)
       iso.form.map <- get_iso_form_prob_GLPK(iso.form.map)
-      c.prob <- get_iso_from_C_prob(iso.form.map,cfmd)
+      c.prob <- get_iso_from_C_prob(iso.form.map, x.iso.cfm$CFM_annotation,i.iso)
       #sum(iso.form.map$iso.form.prob)
 
 
+
+
       ### vis
+     # {
+     #   this.dir <- paste0("d:/temp/nad_M",i.iso)
+     #   dir.create(this.dir,showWarnings = F)
+     #   hm <-  heatmap.fg.map(fg.map)
+     #   export::graph2png(hm,
+     #                     file = paste0(this.dir,"/Frag.map.png"),
+     #                     width = 10,
+     #                     height = nrow(fg.map$frag.c.matrix)*0.8)
+     #   hm <- heatmap.ifs.map(iso.form.map)
+     #   export::graph2png(draw(hm),
+     #                     file = paste0(this.dir,"/Iso.form.map.png"),
+     #                     width = 10,
+     #                     height = nrow(fg.map$frag.c.matrix)*1.5)
+     #   p <- vis_sdf_ig_prob(cfmd@fragment_igraph[[1]],c.prob,show.label = T)
+     #   saveWidget(p,file = paste0(this.dir,"/Atom.prob.html"))
+     # }
+
+      ### SAVE
       {
-        this.dir <- paste0("d:/temp/nad_M",i.iso)
-        dir.create(this.dir,showWarnings = F)
-        hm <-  heatmap.fg.map(fg.map)
-        export::graph2png(hm,
-                          file = paste0(this.dir,"/Frag.map.png"),
-                          width = 10,
-                          height = nrow(fg.map$frag.c.matrix)*0.8)
-        hm <- heatmap.ifs.map(iso.form.map)
-        export::graph2png(draw(hm),
-                          file = paste0(this.dir,"/Iso.form.map.png"),
-                          width = 10,
-                          height = nrow(fg.map$frag.c.matrix)*1.5)
-        p <- vis_sdf_ig_prob(cfmd@fragment_igraph[[1]],c.prob,show.label = T)
-        saveWidget(p,file = paste0(this.dir,"/Atom.prob.html"))
+        x.iso.cfm$msip_data[[paste0("M",i.iso)]] <- list(
+          fg.map = fg.map,
+          iso.form.map = iso.form.map,
+          c.prob = c.prob
+        )
+
+
       }
 
-
     }
+
+    return(x.iso.cfm)
 
 
 
@@ -404,6 +429,8 @@ get_isotopologues_label_fraction <- function(iso.list){
 
 
   }
+
+  bplapply(iso.cfm,.f,BPPARAM = SerialParam(progressbar = T))
 
 
 

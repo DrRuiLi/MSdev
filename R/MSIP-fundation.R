@@ -1,4 +1,4 @@
-get_frag_group_map <- function(sp.frag.data,iso.count){
+get_frag_group_map <- function(sp.frag.data,cfmd,c_ele,iso.count){
 
   ### frag group to label fraction
   {
@@ -89,11 +89,11 @@ get_iso_form_map <- function(fg.map,atom_prob = T ){
       #iso.form.iso.count.matrix[i.fg,] <- this.iso.count
       #iso.form.prob.matrix[i.fg,] <- this.iso[paste0("M",this.iso.count)]
 
-      this.iso.form.map <- sapply(0:(ncol(frag.iso.matrix)-1),function(x){
+      this.iso.form.map <- lapply(0:(ncol(frag.iso.matrix)-1),function(x){
         z <-rep(0,length(this.iso.count))
         z[this.iso.count==x] <- 1
         z
-      })%>%t
+      })%>%do.call("rbind",.)
       rownames(this.iso.form.map) <-paste0(rownames(frag.c.matrix)[i.fg],
                                            "_M",
                                            0:(ncol(frag.iso.matrix)-1))
@@ -142,7 +142,7 @@ get_iso_form_map <- function(fg.map,atom_prob = T ){
     iso.form.set.map <- sapply(iso.form.split ,
                                 function(x){ iso.form.map[,x[1]] },
                                 USE.NAMES=F)
-    iso.form.set <- sapply( iso.form.split,
+    iso.form.set <- lapply( iso.form.split,
                             function(x){ iso.form[x] })
   }
 
@@ -214,7 +214,7 @@ merge_frag_group_map <- function(fg.map){
     frag.c.matrix <- frag.c.matrix1
     frag.iso.matrix <- frag.iso.matrix1
     frag.int.sum <- frag.int.sum1
-
+    names(frag.int.sum) <- rownames(frag.c.matrix)
 
   }
 
@@ -230,41 +230,44 @@ merge_frag_group_map <- function(fg.map){
 
     })
     z.comple <- which(z.comple,arr.ind = T)
-    z.split <- sapply(1:nrow(z),function(x){
-      x.c <- z.comple[z.comple[,1] == x,2]
-      sort( c(x,x.c))
-    })
-    z.split <- unique(z.split)
-    frag.c.matrix1 <- matrix(nrow = 0,ncol=ncol(frag.c.matrix))
-    frag.iso.matrix1 <- matrix(nrow = 0,ncol=ncol(frag.iso.matrix))
-    frag.int.sum1 <- c()
-    for (i.z in seq_along(z.split)) {
-      idx <- z.split[[i.z]]
-      this.frag.c <- frag.c.matrix[idx[1],,drop=F]
-      this.frag.iso <- frag.iso.matrix[idx,,drop =F]
-      this.frag.iso[setdiff(nrow(this.frag.iso),1),] <- this.frag.iso[setdiff(nrow(this.frag.iso),1),ncol(this.frag.iso):1]
-      this.frag.iso <- apply(this.frag.iso,2,
-                             weighted.mean,w = frag.int.sum[idx])
-      frag.c.matrix1 <- rbind(frag.c.matrix1,this.frag.c)
-      frag.iso.matrix1 <- rbind(frag.iso.matrix1,this.frag.iso)
-      frag.int.sum1 <- c(frag.int.sum1, max(frag.int.sum[idx]) )
-      rn <- rownames(frag.iso.matrix)[idx][which.max(frag.int.sum[idx])]
-      rownames(frag.c.matrix1)[i.z] <- rownames(frag.iso.matrix1)[i.z]  <- rn
+    if (any(z.comple)) {
+      z.split <- sapply(1:nrow(z),function(x){
+        x.c <- z.comple[z.comple[,1] == x,2]
+        sort( c(x,x.c))
+      })
+      z.split <- unique(z.split)
+      frag.c.matrix1 <- matrix(nrow = 0,ncol=ncol(frag.c.matrix))
+      frag.iso.matrix1 <- matrix(nrow = 0,ncol=ncol(frag.iso.matrix))
+      frag.int.sum1 <- c()
+      for (i.z in seq_along(z.split)) {
+        idx <- z.split[[i.z]]
+        this.frag.c <- frag.c.matrix[idx[1],,drop=F]
+        this.frag.iso <- frag.iso.matrix[idx,,drop =F]
+        this.frag.iso[setdiff(nrow(this.frag.iso),1),] <- this.frag.iso[setdiff(nrow(this.frag.iso),1),ncol(this.frag.iso):1]
+        this.frag.iso <- apply(this.frag.iso,2,
+                               weighted.mean,w = frag.int.sum[idx])
+        frag.c.matrix1 <- rbind(frag.c.matrix1,this.frag.c)
+        frag.iso.matrix1 <- rbind(frag.iso.matrix1,this.frag.iso)
+        frag.int.sum1 <- c(frag.int.sum1, max(frag.int.sum[idx]) )
+        rn <- rownames(frag.iso.matrix)[idx][which.max(frag.int.sum[idx])]
+        rownames(frag.c.matrix1)[i.z] <- rownames(frag.iso.matrix1)[i.z]  <- rn
+      }
+      frag.c.matrix <- frag.c.matrix1
+      frag.iso.matrix <- frag.iso.matrix1
+      frag.int.sum <- frag.int.sum1
+      names(frag.int.sum) <- rownames(frag.c.matrix)
     }
-    frag.c.matrix <- frag.c.matrix1
-    frag.iso.matrix <- frag.iso.matrix1
-    frag.int <- frag.int.sum1
-    names(frag.int) <- rownames(frag.c.matrix)
+
   }
   ### return
   {
-    frag.c.matrix <- frag.c.matrix[order(rownames(frag.c.matrix)),]
-    frag.iso.matrix <- frag.iso.matrix[order(rownames(frag.iso.matrix)),]
-    frag.int <- frag.int[order(names(frag.int))]
+    frag.c.matrix <- frag.c.matrix[order(rownames(frag.c.matrix)),,drop = F]
+    frag.iso.matrix <- frag.iso.matrix[order(rownames(frag.iso.matrix)),,drop = F]
+    frag.int.sum <- frag.int.sum[order(names(frag.int.sum))]
 
     fg.map$frag.c.matrix <- frag.c.matrix
     fg.map$frag.iso.matrix <- frag.iso.matrix
-    fg.map$frag.int <- frag.int
+    fg.map$frag.int <- frag.int.sum
     return(fg.map)
   }
 
@@ -296,7 +299,7 @@ get_iso_form_prob_GLPK <- function(iso.form.map){
   return(iso.form.map)
 }
 
-get_iso_from_C_prob <- function(iso.form.map,cfm_data){
+get_iso_from_C_prob <- function(iso.form.map,cfmd,iso.count){
 
   ig <- cfmd@fragment_igraph[[1]]
   c <- get_atom_from_igraph(ig,"C")
@@ -314,7 +317,8 @@ get_iso_from_C_prob <- function(iso.form.map,cfm_data){
     }
     return(x)
   })
-  apply(c.prob.m,1,sum)
+
+  apply(c.prob.m,1,sum)*iso.count
 }
 
 
@@ -416,4 +420,13 @@ heatmap.ifs.map <- function(iso.form.map){
             width  = unit(20,"inch")),
           show_heatmap_legend = F,
           col = colramp(colors = c("white","white","black")))
+}
+
+
+get_ele_uniso <- function(iso_ele){
+
+  sub(pattern = "\\[.+\\]",
+      x = iso_ele,
+      replacement = "")
+
 }

@@ -288,7 +288,6 @@ vis_sdf_igraph <- function(sdf.igraph ,
                            highlight = NULL){
 
 
-
   sdf.igraph.highlight <- add_sdf_igraph_highlight(sdf.igraph,
                                                    highlight )
 
@@ -310,6 +309,7 @@ vis_sdf_igraph <- function(sdf.igraph ,
 
 vis_sdf_ig_prob <- function(sdf.igraph,
                             prob,
+                            show.legend = F,
                             show.label = F){
 
   atom <- get_atom_from_igraph(sdf.igraph)
@@ -343,7 +343,7 @@ vis_sdf_ig_prob <- function(sdf.igraph,
                            color = list(background = "#B20C26",
                                                   border = "#black"))
                       )
-  sdf.igraph.colors%>%
+  p <- sdf.igraph.colors%>%
     visIgraph(idToLabel = show.label)%>%
     visNodes(font = list(size = 40,
                          align = "left",
@@ -355,10 +355,15 @@ vis_sdf_ig_prob <- function(sdf.igraph,
              color = list(background = "transparent",
                           border = "#black"))%>%
     visEdges(arrows = list(to = F),
-             length = 0.8)%>%
-    visLegend(addNodes = node.legend,
-              main = "Probability",width = 0.1,
-              useGroups = F)
+             length = 0.8)
+
+  if (show.legend) {
+    p <- p%>%
+      visLegend(addNodes = node.legend,
+                main = "Probability",width = 0.1,
+                useGroups = F)
+  }
+  return(p)
 
 
 }

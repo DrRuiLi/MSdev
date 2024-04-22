@@ -4,7 +4,7 @@
 \alias{get_MSdev_isotopologues}
 \title{get_MSdev_isotopologues}
 \usage{
-get_MSdev_isotopologues(object)
+get_MSdev_isotopologues(object, iso_ele = "[13]C")
 }
 \arguments{
 \item{object}{MSdev}

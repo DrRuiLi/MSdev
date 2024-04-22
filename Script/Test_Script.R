@@ -1318,9 +1318,66 @@ sum(duplicated(a))
 
 
 
+# Fri Apr 19 20:44:16 2024 ------------------------------
+
+sdf.igraph.highlight <- add_sdf_igraph_highlight(sdf.igraph,
+                                                 highlight )
+sdf.igraph.colors <- add_sdf_igraph_color(sdf.igraph.highlight,
+                                          atom.color )
+
+vdata(sdf.igraph.colors)$color <- NULL
+vdata(sdf.igraph.colors)$color.border <- "#033658"
+vdata(sdf.igraph.colors)$color.background  <- "#336541"
+
+sdf.igraph.colors%>%
+  visIgraph(idToLabel = F)%>%
+  visNodes(font = list(size = 40,
+                       align = "left",
+                       vadjust = 3,
+                       hadjust = 0.8,
+                       strokeWidth = 2),
+           size = 40,
+           borderWidth  = 5)%>%
+  visEdges(arrows = list(to = F),
+           length = 0.8)
 
 
+shiny_vis_ig(shiny_get_fg_ig(iso_msip ),
+             prob.border = atom.map[[1]],
+             prob.fill = iso_msip$msip_data$M2$c.prob)
+
+# Sun Apr 21 09:36:52 2024 ------------------------------
+nodes <- data.frame(id = 1:3)
+edges <- data.frame(from = c(1,2), to = c(1,3))
+
+visNetwork(nodes, edges)
+
+data(gapminder, package = "gapminder")
+gg <- ggplot(gapminder, aes(gdpPercap, lifeExp, color = continent)) +
+  geom_point(aes(size = pop, frame = year, ids = country)) +
+  scale_x_log10()
+gg
+ggplotly(gg)
 
 
+library(plotly)
+mtcars %>%
+  highlight_key(~cyl) %>%
+  plot_ly(
+    x = ~wt, y = ~mpg, text = ~cyl, mode = "markers+text",
+    textposition = "top", hoverinfo = "x+y"
+  ) %>%
+  highlight(on = "plotly_hover", off = "plotly_doubleclick")
 
+
+# Sun Apr 21 15:13:34 2024 ------------------------------
+
+draw(Legend(col_fun = shiny_col_ramp_atom_prob(),
+            direction = "h",border = T,
+            title = "Atom labeled probability",
+            legend_height = 1,legend_width = ))
+
+# Mon Apr 22 11:54:27 2024 XCMS MS1 purity------------------------------
+xcms.xcms <- load_demo("xcms")
+xcms.sp <- get_xcms_Spectra(xcms.xcms)
 

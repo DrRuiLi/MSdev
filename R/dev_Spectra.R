@@ -230,7 +230,7 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
 combineSpectra_groupby_ce <- function(sp,
                                       minProp = 0.5,
                                       ppm = 5,
-                                      plot = T,
+                                      plot = F,
                                       ...){
 
   sp.ce <- Spectra::combineSpectra(sp,

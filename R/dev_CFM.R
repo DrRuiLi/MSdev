@@ -588,6 +588,11 @@ CFM_annotate_isotopologues <- function(sp,
                                               energy == "energy1"~20,
                                               energy == "energy2"~40,
     ))
+  if (!nrow(cfm.peaks.data))
+    cfm.peaks.data <-  cfmd@peak_assignment%>%
+    dplyr::mutate(mz = 0)
+
+
   iso.mz.diff <- (0:iso.count)*chemform_mz("[13]CC-1")
   mz.labeled.m <- matrixSub(cfm.peaks.data$mz,-iso.mz.diff)%>%
     `colnames<-`(paste0("M",0:iso.count))%>%
@@ -690,7 +695,7 @@ CFM_data_get_igraph <- function(object){
         }
 
       }
-
+      names(fragment.atom.map) <-fragment.data$fragment_id
     }
 
 
@@ -708,6 +713,8 @@ CFM_data_get_igraph <- function(object){
 
   return(object)
 }
+
+
 
 get_CFM_data_trans_igraph <- function(object){
 
@@ -744,6 +751,7 @@ get_cfm_data_fg_atom_map <- function(cfm_data,frag.group){
   frag.def <- cfm_data@fragment_define%>%
     dplyr::filter(fragment_group == frag.group)
   frag.maps <- cfm_data@fragment_atom_map[frag.idx]
+  frag.maps <- frag.maps[!sapply(frag.maps,is.null)]
   frag.atoms.prob <- sapply(frag.maps,rowSums)%>%
     rowMeans()
   return(frag.atoms.prob)
