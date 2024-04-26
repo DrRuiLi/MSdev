@@ -5,11 +5,11 @@
 #' @return NULL
 #' @export
 #' @import  shiny
-MSIP_shiny_start <- function(iso.msip.list){
+MSIP_shiny_start <- function(object){
 
   ### load temp
   {
-    load("temp.rda")
+    iso.msip.list <- object@statData$iso.msip.list
   }
 
 

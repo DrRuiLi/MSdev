@@ -795,9 +795,9 @@ plot_Spectra_Injection <- function(sp){
 #' @return Spcetra
 #' @export
 #'
-get_Spectra_from_CFM <- function(cfm.data ){
+get_Spectra_from_CFM_data <- function(cfmd ){
 
-  cfm.df <- cfm.data$peak_assignment
+  cfm.df <- cfmd@peak_assignment
   sp.list<- list()
   for (i in 0:2) {
     this.sp.data <- cfm.df%>%
@@ -1135,7 +1135,7 @@ setMethod(noise,"Spectra",
 
 #' Spectra_get_purity
 #'
-#' estimate purity with MS1 scan
+#' estimate a ms2 spectra purity with MS1 scan
 #'
 #' @param sp Spectra
 #'
@@ -1200,5 +1200,17 @@ Spectra_get_purity <- function(sp,sp.ms1= NULL){
   return(sp.raw)
 }
 
+get_spectra_ion_purity <- function(sp,ion_mz,ppm = 10,isolation_half_window = 0.2){
 
+  sp.peaks.data <- peaksData(sp)
+  ion.purity <- sapply(sp.peaks.data,function(x){
+    mz.diff <-abs(x[,1]-ion_mz)
+    idx.in.window <- which( mz.diff < isolation_half_window)
+    idx.target <- which(mz.diff/ion_mz < ppm*1e-6)
+    unname(sum(x[idx.target,2])/sum(x[idx.in.window,2]))
+  })
+  ion.purity[is.infinite(ion.purity)] <- 0
+  ion.purity[is.nan(ion.purity)] <- 0
+  return(ion.purity)
 
+}

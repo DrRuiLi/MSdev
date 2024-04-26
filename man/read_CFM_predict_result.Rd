@@ -4,7 +4,9 @@
 \alias{read_CFM_predict_result}
 \title{read_CFM_predict_result}
 \usage{
-read_CFM_predict_result(result_path)
+read_CFM_predict_result(
+  result_path = "c:/Users/91879/OneDrive/Code/Docker/cfm/data/cfm_predict_result.txt"
+)
 }
 \arguments{
 \item{result_path}{path}

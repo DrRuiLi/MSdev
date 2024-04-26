@@ -323,10 +323,9 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
 #' @export
 #'
 
-read_CFM_predict_result <- function(result_path){
+read_CFM_predict_result <- function(result_path =  "c:/Users/91879/OneDrive/Code/Docker/cfm/data/cfm_predict_result.txt"){
 
   cfm_data <- readr::read_lines(result_path)
-  save(cfm_data,file= "d:/temp/cfm_temp.rda")
   cfm.df <- data.frame(line.no = 1:length(cfm_data),
                        line.data = cfm_data)%>%
     dplyr::mutate(session.sep = line.data == "",
@@ -431,6 +430,15 @@ read_CFM_predict_result <- function(result_path){
     fragment_define = session.data.2
   )
 
+
+  ### create cfm_data
+  {
+    cfm_data <- new("CFM_data")
+    cfm_data@peak_assignment <- peak_assignment
+    cfm_data@fragment_define <- session.data.2
+
+
+  }
   return(invisible(cfm_data))
 
 }

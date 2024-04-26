@@ -4,7 +4,7 @@
 \alias{MSIP_shiny_start}
 \title{Title}
 \usage{
-MSIP_shiny_start(iso.msip.list)
+MSIP_shiny_start(object)
 }
 \arguments{
 \item{iso.msip.list}{from msip}

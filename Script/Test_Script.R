@@ -1377,7 +1377,121 @@ draw(Legend(col_fun = shiny_col_ramp_atom_prob(),
             title = "Atom labeled probability",
             legend_height = 1,legend_width = ))
 
+# Mon Apr 22 14:13:27 2024 CFM Spectera db------------------------------
+cpdb <- MSdb::get_CompoundDB_Compound()
+a <- CFM_predict(smiles_or_inchi_or_file = cpdb$smiles[34])
+b <- CFM_fraggen(smiles_or_inchi = cpdb$smiles[34],max_depth = 1)
+c <- CFM_annotate(smiles_or_inchi = cpdb$smiles[34],
+                  spectrum_file = makeSpectra(collisionEnergy = c(10,20,40)))
+
+a.mz <-a@peak_assignment$mz %>%unique()
+b.mz <- b$fragment_define%>%
+  dplyr::filter(!intermediate)%>%
+  dplyr::pull(fragment_mz)%>%
+  unique()
+match_mz(a.mz,b.mz,mz.ppm = 5)
+
+get_Spectra_from_CFM
+
+
 # Mon Apr 22 11:54:27 2024 XCMS MS1 purity------------------------------
 xcms.xcms <- load_demo("xcms")
 xcms.sp <- get_xcms_Spectra(xcms.xcms)
+
+i <- 1236
+ms1_purity[[i]][1]
+xcms.fdf$mzmed[i]
+xcms.fdf[i,]
+plotly_Spectra(f.sp[[i]][8])
+
+# Tue Apr 23 10:37:55 2024 ------------------------------
+p1 <- ggplot(xcms.fdf)+
+  geom_histogram(aes(x = ms1_purity))+
+  labs(title = "All feature")
+p2 <- ggplot(xcms.fdf.stat1)+
+  geom_histogram(aes(x = ms1_purity))+
+  geom_vline(xintercept = 0.9)+
+  labs(title = "Iso-feature")
+
+open_plot_win(p1/p2)
+# Tue Apr 23 19:40:35 2024 ------------------------------
+a <- iso.cfm$FT00127_Negative$CFM_annotation@fragment_define
+b <- iso.cfm$FT00438_Negative$CFM_annotation@fragment_define
+c <- iso.cfm$FT00440_Negative$CFM_annotation@fragment_define
+d <- iso.cfm$FT00445_Negative$CFM_annotation@fragment_define
+
+iso.cfm$FT00127_Negative$compound_info$smiles
+e <- CFM_fraggen("C[C@@H](O)C(O)=O",max_depth = 5,param_adduct = "[M-H]-")
+view(e$fragment_define)
+
+
+
+# Wed Apr 24 15:10:44 2024 ------------------------------
+msdev.CX <- MSdev_annotation(msdev.CX,cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb",
+                             selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
+
+
+# Wed Apr 24 19:43:54 2024 ------------------------------
+xcms.xcms <- msdev.combine@xcmsData$NegativeMS1
+
+##ATP
+xcms.xcms %>%
+  filterFile(seq(1,10,3))%>%
+  filterRt(c(900,1100))%>%
+  filterMz(mz.range.ppm( 505.988,10))%>%
+  plot(type = "XIC")
+
+## glu
+xcms.xcms %>%
+  filterFile(seq(1,10,3))%>%
+  filterRt(c(780,900))%>%
+  filterMz(mz.range.ppm( chemform_mz("[13]C6C0H11O6",-1),10))%>%
+  plot(type = "XIC")
+
+###NAD
+xcms.xcms %>%
+  filterFile(seq(1,10,3))%>%
+  filterRt(c(800,1200))%>%
+  filterMz(mz.range.ppm( chemform_mz("C4H5O5",-1),10))%>%
+  plot(type = "XIC")
+
+
+
+# Wed Apr 24 21:24:27 2024 ------------------------------
+rowData(xcms.se)$ID <- rowData(xcms.se)$feature_id
+rowData(xcms.se)$name <- rowData(xcms.se)$feature_id
+colData(xcms.se)$condition <- colData(xcms.se)$group
+colData(xcms.se)$replicate <- 1:12
+colData(xcms.se)$label <- colData(xcms.se)$group
+a <- DEP::test_diff(xcms.se,control = "FSLowCCon")
+a <- DEP_add_rejections(a,p.adjust = F)
+b <- DEP_get_diff_table(a)
+
+# Thu Apr 25 20:32:35 2024 ------------------------------
+ui <- fluentPage(
+  textOutput("test_text"),
+  DTOutput("analysis")
+)
+
+server <- function(input, output, session) {
+
+  a <- reactiveVal(1)
+  observeEvent(input$analysis_cells_clicked,{
+    a(input$analysis_cells_clicked)
+  })
+  output$test_text <- renderText({
+    a()
+  })
+
+  output$analysis <- renderDT({
+
+
+    iris%>%
+      datatable(selection = list(target = "row"))
+  })
+}
+
+shinyApp(ui, server)
+
+
 
