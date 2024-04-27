@@ -1839,3 +1839,17 @@ get_MSdev_ms2_Spectra <- function(object){
 }
 
 
+MSdev_get_feature_chrom <- function(object){
+
+  for (i in 0:1) {
+    pol <- ifelse(i==0,"Negative","Positive")
+    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.chrom <- get_xcms_feature_chrom(xcms.xcms,
+                                        sample = "all",rt = "all",
+                                        BPPARAM = SnowParam(progressbar = T))
+    object@xcmsData[[paste0(pol,"_Chromatograms")]] <- xcms.chrom
+  }
+
+  return(object)
+
+}

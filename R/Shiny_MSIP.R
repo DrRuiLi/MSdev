@@ -27,3 +27,23 @@ MSIP_shiny_start <- function(object){
 }
 
 
+MSIP_shiny_Acq <- function(object){
+
+
+
+  ### Start Shiny APP
+  {
+    shinyApp(ui = MSIP_shiny_Acq_ui(),
+             server = MSIP_shiny_Acq_server(object),
+             options = list(host = "0.0.0.0",
+                            launch.browser = F,
+                            port = 6548))
+
+
+  }
+
+
+
+
+}
+

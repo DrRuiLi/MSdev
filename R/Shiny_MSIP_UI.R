@@ -95,3 +95,25 @@ MSIP_shiny_ui <- function(){
 
 }
 
+
+
+
+MSIP_shiny_Acq_ui <- function(){
+
+  fluidPage(
+    column(
+      width = 6,
+      selectInput(inputId = "select_polarity",
+                         label = "Polarity",
+                         choices = c("Positive","Negative")),
+      DTOutput(outputId = "feature_tab")
+    ),
+    column(
+      width = 6,
+      verbatimTextOutput(outputId = "test_info"),
+      plotlyOutput(outputId = "feature_chrom")
+    )
+
+  )
+
+}

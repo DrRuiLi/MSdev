@@ -169,3 +169,85 @@ MSIP_shiny_server <- function(iso.msip.list){
   }
 
 }
+
+
+MSIP_shiny_Acq_server <- function(object){
+
+  acq.list <- object@statData$iso.acq.list
+  function(input, output, session) {
+
+
+    ### REACTVAL
+    {
+      acq.list.table <- reactiveVal()
+      selected <- reactiveVal(
+        list(Positive = rep(T,nrow(acq.list$Positive)),
+             Negative = rep(T,nrow(acq.list$Negative)))
+      )
+
+    }
+
+    observeEvent(input$select_polarity,{
+      acq.list.table(shiny_format_acq(
+        acq.list[[input$select_polarity]],
+        selected()[[input$select_polarity]]
+      ))
+      dataTableProxy("feature_tab")%>%
+        showCols(show = 1:5,reset = T)
+
+    })
+
+    observeEvent(input$feature_tab_cell_clicked,{
+      if (length(input$feature_tab_cell_clicked$col )) {
+        if (input$feature_tab_cell_clicked$col== 5) {
+          x <- selected()
+          x[[input$select_polarity]][input$feature_tab_cell_clicked$row] <-
+            !x[[input$select_polarity]][input$feature_tab_cell_clicked$row]
+          selected(x)
+        }
+      }
+
+      x <- shiny_format_acq(
+        acq.list[[input$select_polarity]],
+        selected()[[input$select_polarity]]
+      )
+      dataTableProxy("feature_tab")%>%
+        replaceData(x,resetPaging = F )%>%
+        showCols(show = 1:5,reset = T)
+
+
+    })
+
+    observe({
+
+    })
+
+    output$feature_tab <- renderDT({
+      acq.list.table()%>%
+        datatable(escape = F,selection = "single",
+                  extensions = c('RowGroup',"Scroller"),
+                  options = list(rowGroup = list(dataSrc = 6),
+                                 ordering = F,
+                                 searching= F,
+                                 deferRender = TRUE,
+                                 scrollY = 500,
+                                 scroller = TRUE))
+    }
+    )
+
+
+
+    output$test_info <- renderPrint({
+
+      head(as.HTML.checkbox.logical( acq.list.table()$selected))
+      input$feature_tab_cell_clicked
+      input$feature_tab_cell_clicked$col
+      head(selected()[[input$select_polarity]])
+
+    })
+
+
+
+  }
+
+}

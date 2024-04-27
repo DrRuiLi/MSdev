@@ -188,7 +188,7 @@ MSdev_find_isotope_label <- function(object,
 }
 
 
-get_MSdev_iso_acq_list <- function(object,
+MSdev_get_iso_acq_list <- function(object,
                                    hw = 10){
 
 
@@ -290,8 +290,12 @@ get_MSdev_iso_acq_list <- function(object,
   }
   #unlist(acq.list,recursive = F)
 
-  acq.list
+  object@statData$iso.acq.list <- acq.list
 
+
+}
+get_MSdev_iso_acq_list <- function(object){
+  object@statData$iso.acq.list
 }
 
 

@@ -258,34 +258,41 @@ xcms_get_feature_group <- function(xcms.xcms,
 
 #' extract_chrom
 #'
-#' @param xcms.xcms XCMSnExp object
-#' @param rtr rt range
-#' @param mzr MZ range
-#' @param sample
+#' @param object XCMSnExp object
+#' @param rt rt range
+#' @param mz MZ range
 #'
 #' @return xcms
 #' @export
 #'
+get_xcms_chromatogram <- function(object,
+                                  ...){
 
-extract_chrom <- function(xcms.xcms,
-                          rtr,
-                          mzr,
-                          sample){
-  xcms.xcms <- MSnbase::filterFile(xcms.xcms,sample)
-  xcms::chromatogram(xcms.xcms,
-                     rt = rtr,
-                     mz = mzr,
-                     BPPARAM = BiocParallel::SerialParam()
-                     )
+
+  xcms.split <- sapply(seq_along(filepaths(object)),
+                       function(x) filterFile(object,x))
+
+  xcms.chrom <- bplapply(xcms.split,
+                         function(x,...){
+    #message(nrow(rt))
+    register(SerialParam())
+    y <-NA
+    try(y <- xcms::chromatogram(x,BPPARAM = SerialParam(),...)
+    )
+    return(y)
+  },...)
+
+
+  do.call(cbind_Chromatograms,xcms.chrom)
+
 }
 
 
-
-
 get_xcms_feature_chrom <- function(xcms.xcms,
-                                    feature.id,
+                                    feature.id = featureDefinitions(xcms.xcms)$feature_id,
                                     sample = "maxo",
-                                    rt = "expand"){
+                                    rt = "expand",
+                                   BPPARAM = SerialParam()){
 
   features.data <- featureDefinitions(xcms.xcms)
   features.val <- featureValues(xcms.xcms,missing = "rowmin_half")
@@ -301,7 +308,6 @@ get_xcms_feature_chrom <- function(xcms.xcms,
     xcms.sub <- MSnbase::filterFile(xcms.xcms, sample )
   }
 
-    bp <-BiocParallel::SerialParam(progressbar = F)
 
 
   rtr <- switch (rt,
@@ -310,11 +316,10 @@ get_xcms_feature_chrom <- function(xcms.xcms,
                  "identity" = features.data[,c("peakRtMin","peakRtMax"),drop =F]
 
   )
-  x.chrom <-  xcms::chromatogram(xcms.sub,
-                                 mz = features.data[,c("peakMzMin","peakMzMax")]%>%as.matrix(),
-                                 rt = rtr,
-                                 aggregationFun = "max",
-                                 BPPARAM = bp)
+  x.chrom <-  get_xcms_chromatogram(xcms.sub,
+                                  mz = features.data[,c("peakMzMin","peakMzMax")]%>%as.matrix(),
+                                  rt = rtr,
+                                  BPPARAM = BPPARAM)
   return(x.chrom)
 }
 
@@ -2114,4 +2119,30 @@ xcms_get_feature_purity <- function(xcms.xcms,
   }
   xcms.fdf -> featureDefinitions(xcms.xcms)
   return(xcms.xcms)
+}
+
+
+
+cbind_Chromatograms <- function(...){
+
+  chrom.list <- list(...)
+  chrom.featureDefinitions <- sapply(chrom.list,
+                                     function(x)x@featureDefinitions)[[1]]
+  chrom.phenoData <- sapply(chrom.list,
+                                     function(x)x@phenoData)%>%
+    do.call(Biobase::combine,.)
+  chrom.featureData <- sapply(chrom.list,
+                                     function(x)x@featureData)%>%
+    do.call(Biobase::combine,.)
+  chrom.Data<- sapply(chrom.list,
+                              function(x)x@.Data)
+  chrom.processHistory<- sapply(chrom.list,
+                              function(x)x@.processHistory)[1]
+  xchrom <-XChromatograms(chrom.Data,
+                     ncol = ncol(chrom.Data),
+                     phenoData = chrom.phenoData)
+  xchrom@featureDefinitions <- chrom.featureDefinitions
+  xchrom@featureData <- chrom.featureData
+  xchrom@.processHistory <- chrom.processHistory
+  return(xchrom)
 }

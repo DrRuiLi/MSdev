@@ -1493,5 +1493,58 @@ server <- function(input, output, session) {
 
 shinyApp(ui, server)
 
+# Sat Apr 27 09:19:32 2024 ------------------------------
+xcms.xcms <- load_demo("xcms")
+xcms.fdf <- featureDefinitions(xcms.xcms)
+mzr <- xcms.fdf[,c("mzmin","mzmax")]%>%as.matrix()
+rtr <-  xcms.fdf[,c("rtmin","rtmax")]%>%as.matrix()
+a <- MSnbase::chromatogram(xcms.xcms,
+                           mz = mzr[1:100,],
+                           rt = rtr[1:100,],
+                           aggregationFun = "max",
+                           BPPARAM = SnowParam(progressbar = T)
+                           )
+
+
+xcms.fdf <- featureDefinitions(xcms.xcms)
+mzr <- xcms.fdf[,c("mzmin","mzmax")]%>%as.matrix()
+rtr <-  xcms.fdf[,c("rtmin","rtmax")]%>%as.matrix()
+xcms.split <- sapply(seq_along(filepaths(xcms.xcms)),
+                     function(x) filterFile(xcms.xcms,x))
+xcms.chrom <- bplapply(xcms.split,function(x,mzr,rtr){
+  register(SerialParam())
+  y <-NA
+  try(y <- xcms::chromatogram(x,
+                            mz = mzr[1:100,],
+                            rt = rtr[1:100,],
+                            aggregationFun = "max",
+                            BPPARAM = SerialParam())
+  )
+  return(y)
+},rtr=rtr,mzr = mzr,BPPARAM = SnowParam(workers = 4,
+                      progressbar = T))
+
+xcms.sub <- filterFile(xcms.xcms,1:3)
+
+a <- get_xcms_chromatogram(xcms.sub,
+                           rt = c(-Inf,Inf),
+                           BPPARAM = SnowParam(workers = 3,progressbar = T),
+                           #BPPARAM = SerialParam(progressbar = T),
+                           mz = mzr[1:10,])
+
+
+getMethod(t,"XChromatograms")
+
+
+# Sat Apr 27 14:05:29 2024 ------------------------------
+xcms.xcms <- load_demo("xcms")
+a <- get_xcms_feature_chrom(xcms.xcms,
+                            feature.id = 1:5,
+                            sample = "all",rt= "all",
+                            BPPARAM = SnowParam(workers = 4,
+                                                progressbar = T))
+
+b <- groupChromPeaks(a,param = PeakDensityParam(sampleGroups = rep("A",14)))
+
 
 

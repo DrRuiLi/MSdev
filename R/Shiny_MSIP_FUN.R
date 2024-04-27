@@ -335,3 +335,30 @@ shiny_change_ig_label <- function(ig,
 
 }
 
+
+as.HTML.checkbox.checked <- function(x){
+
+  x.code <- x
+  x.code[x] <- '<input type="checkbox" checked />'
+  x.code[!x] <- '<input type="checkbox" />'
+  return(x.code)
+
+}
+
+as.HTML.checkbox.logical <- function(x){
+
+  x.logic <- x=='<input type="checkbox" checked />'
+  x.logic
+}
+shiny_format_acq <- function(acq.list.table,selected ){
+
+  acq.list.table%>%
+    dplyr::mutate(mz = round(mzmed,4),
+                  rt = round(rtmed,0),
+                  selected = as.HTML.checkbox.checked(selected),
+                  group_label = paste0(C13_seed,": ",name),
+                  isotope = paste0("M",C13_count)
+                  )%>%
+    dplyr::select(feature_id,mz,rt,isotope,selected,group_label)
+
+}
