@@ -102,16 +102,23 @@ MSIP_shiny_Acq_ui <- function(){
 
   fluidPage(
     column(
-      width = 6,
+      width = 4,
       selectInput(inputId = "select_polarity",
                          label = "Polarity",
                          choices = c("Positive","Negative")),
-      DTOutput(outputId = "feature_tab")
+      DTOutput(outputId = "feature_tab",height  = "600px"),
+      fluidRow(
+        column(width = 2,offset = 8,
+               actionButton(inputId = "save_button",label = "Save")),
+        column(width = 2,offset = 0,
+               actionButton(inputId = "quit_button",label = "Quit")))
     ),
+    br(),
     column(
-      width = 6,
+      width = 8,
+      h1("chromatograms"),
       verbatimTextOutput(outputId = "test_info"),
-      plotlyOutput(outputId = "feature_chrom")
+      wellPanel(plotlyOutput(outputId = "feature_chrom",height  = "600px"))
     )
 
   )

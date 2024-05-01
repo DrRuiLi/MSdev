@@ -37,7 +37,8 @@ MSIP_shiny_Acq <- function(object){
              server = MSIP_shiny_Acq_server(object),
              options = list(host = "0.0.0.0",
                             launch.browser = F,
-                            port = 6548))
+                            port = 6548))%>%
+      runApp()
 
 
   }

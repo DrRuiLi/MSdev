@@ -171,6 +171,11 @@ MSIP_shiny_server <- function(iso.msip.list){
 }
 
 
+#' Title
+#'
+#' @param object MSdev
+#' @import DT
+#' @return MSdev
 MSIP_shiny_Acq_server <- function(object){
 
   acq.list <- object@statData$iso.acq.list
@@ -180,10 +185,14 @@ MSIP_shiny_Acq_server <- function(object){
     ### REACTVAL
     {
       acq.list.table <- reactiveVal()
+      ### checkbox
       selected <- reactiveVal(
-        list(Positive = rep(T,nrow(acq.list$Positive)),
-             Negative = rep(T,nrow(acq.list$Negative)))
+        list(Positive = acq.list$Positive$selected_to_acq,
+             Negative = acq.list$Negative$selected_to_acq)
       )
+      clicked_row <- reactiveVal(NA)
+      xchrom <- reactiveVal()
+      feature_id <- reactiveVal()
 
     }
 
@@ -194,31 +203,48 @@ MSIP_shiny_Acq_server <- function(object){
       ))
       dataTableProxy("feature_tab")%>%
         showCols(show = 1:5,reset = T)
-
     })
 
     observeEvent(input$feature_tab_cell_clicked,{
       if (length(input$feature_tab_cell_clicked$col )) {
         if (input$feature_tab_cell_clicked$col== 5) {
           x <- selected()
+          clicked_row(input$feature_tab_cell_clicked$row)
           x[[input$select_polarity]][input$feature_tab_cell_clicked$row] <-
             !x[[input$select_polarity]][input$feature_tab_cell_clicked$row]
           selected(x)
+
         }
       }
+
+
 
       x <- shiny_format_acq(
         acq.list[[input$select_polarity]],
         selected()[[input$select_polarity]]
       )
       dataTableProxy("feature_tab")%>%
-        replaceData(x,resetPaging = F )%>%
+        replaceData(x,resetPaging = F,clearSelection ="none" )%>%
         showCols(show = 1:5,reset = T)
 
 
     })
 
-    observe({
+    observeEvent(input$feature_tab_rows_selected,{
+
+      feature_id(
+        acq.list.table()$feature_id[input$feature_tab_rows_selected]
+      )
+      cdf <- featureDefinitions(object@xcmsData[[paste0(input$select_polarity,"_Chromatograms")]])
+      id <- match(feature_id(),cdf$feature_id)
+      if (is.na(id)){
+        xchrom(NA)
+      }else{
+        xchrom(object@xcmsData[[paste0(input$select_polarity,"_Chromatograms")]][
+          id,
+        ])
+      }
+
 
     })
 
@@ -227,6 +253,11 @@ MSIP_shiny_Acq_server <- function(object){
         datatable(escape = F,selection = "single",
                   extensions = c('RowGroup',"Scroller"),
                   options = list(rowGroup = list(dataSrc = 6),
+                                 autoWidth = F,
+                                 columnDefs = list(
+                                   list(width = "500px",
+                                        targets = 0:4)
+                                 ),
                                  ordering = F,
                                  searching= F,
                                  deferRender = TRUE,
@@ -234,6 +265,14 @@ MSIP_shiny_Acq_server <- function(object){
                                  scroller = TRUE))
     }
     )
+    output$feature_chrom <- renderPlotly({
+
+      if (!all(is.na(xchrom()))) {
+        shiny_plotly_chrom(xchrom()  )
+      }
+
+
+    })
 
 
 
@@ -243,9 +282,23 @@ MSIP_shiny_Acq_server <- function(object){
       input$feature_tab_cell_clicked
       input$feature_tab_cell_clicked$col
       head(selected()[[input$select_polarity]])
-
+      dim(xchrom())
+      input$feature_tab_rows_selected
+      feature_id()
     })
 
+    observeEvent(input$save_button,{
+      object@statData$iso.acq.list[[input$select_polarity]]$selected_to_acq <-
+        selected()[[input$select_polarity]]
+    })
+
+    observeEvent(input$quit_button,{
+      object@statData$iso.acq.list$Positive$selected_to_acq <-
+        selected()$Positive
+      object@statData$iso.acq.list$Negative$selected_to_acq <-
+        selected()$Negative
+      stopApp(object)
+    })
 
 
   }

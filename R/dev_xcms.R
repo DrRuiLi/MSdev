@@ -316,8 +316,10 @@ get_xcms_feature_chrom <- function(xcms.xcms,
                  "identity" = features.data[,c("peakRtMin","peakRtMax"),drop =F]
 
   )
+  mzr <- features.data[,c("peakMzMin","peakMzMax")]%>%as.matrix()
+
   x.chrom <-  get_xcms_chromatogram(xcms.sub,
-                                  mz = features.data[,c("peakMzMin","peakMzMax")]%>%as.matrix(),
+                                  mz = mzr,
                                   rt = rtr,
                                   BPPARAM = BPPARAM)
   return(x.chrom)

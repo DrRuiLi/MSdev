@@ -1839,14 +1839,37 @@ get_MSdev_ms2_Spectra <- function(object){
 }
 
 
-MSdev_get_feature_chrom <- function(object){
+#' MSdev_get_feature_chrom
+#'
+#' @param object MSdev
+#' @param feature.list list of feature_id, named "Positve" and "Negative"
+#'
+#' @return MSdev
+#' @export
+#'
+MSdev_get_feature_chrom <- function(object,feature.list =NULL){
 
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
-    xcms.chrom <- get_xcms_feature_chrom(xcms.xcms,
-                                        sample = "all",rt = "all",
-                                        BPPARAM = SnowParam(progressbar = T))
+    if (is.null(feature.list[[pol]])) {
+      fid = featureDefinitions(xcms.xcms)$feature_id
+    }else{
+      fid = feature.list[[pol]]
+    }
+    message("Extract ", length(fid) , " features ",pol)
+    #xcms.chrom <- get_xcms_feature_chrom(xcms.xcms,
+    #                                     feature.id = fid,
+    #                                    sample = "all",rt = "all",
+    #                                    BPPARAM = SnowParam(progressbar = T))
+    xcms.chrom <- featureChromatograms(xcms.xcms,
+                                       features = fid,
+                                       expandRt = Inf,
+                                       BPPARAM = SnowParam(
+                                         workers  = min(snowWorkers(), length(fileNames(xcms.xcms))),
+                                         progressbar = T)
+                                       )
+    #rownames(xcms.chrom) <- fid
     object@xcmsData[[paste0(pol,"_Chromatograms")]] <- xcms.chrom
   }
 

@@ -356,9 +356,68 @@ shiny_format_acq <- function(acq.list.table,selected ){
     dplyr::mutate(mz = round(mzmed,4),
                   rt = round(rtmed,0),
                   selected = as.HTML.checkbox.checked(selected),
-                  group_label = paste0(C13_seed,": ",name),
+                  group_label = paste0(C13_seed,": ",str_short(name,50),", ",adduct),
                   isotope = paste0("M",C13_count)
                   )%>%
     dplyr::select(feature_id,mz,rt,isotope,selected,group_label)
+
+}
+
+
+shiny_plotly_chrom <- function(xchrom ){
+
+  chrom.pda <- pData(xchrom)
+  groups <- unique(chrom.pda$group)
+  groups.col <- ggsci::pal_npg()(length(groups))
+
+  chrom.data <- get_chroms_data(xchrom)%>%
+    dplyr::mutate(group = chrom.pda$group[col],
+                  group = as.factor(group))%>%
+    dplyr::filter(!is.na(intensity))
+  chrom.def <- featureDefinitions(xchrom)
+  names(groups.col) <- groups
+  plot_ly(chrom.data)%>%
+    layout(shapes = list(
+      list( type = "line",
+        x0 = chrom.def$rtmed, x1 = chrom.def$rtmed,
+        y0 = 0,  y1 = max(chrom.data$intensity)*1.1,
+        line = list(color = "#666666")
+      ),
+      list(type = "rect",
+           line = list(color = "#88888833"),
+           fillcolor= "88888833",
+           x0 = chrom.def$peakRtMin, x1 = chrom.def$peakRtMax,
+           y0 = 0,y1 = max(chrom.data$intensity))),
+      plot_bgcolor = "#00000000")%>%
+    add_lines(x = ~rt,
+              y = ~intensity,
+              split  = ~ col,
+              color = ~ group,
+              colors = groups.col,
+              showlegend = F)%>%
+    layout(xaxis = list(title =" retention time",showgrid = F),
+           yaxis = list(showgrid = F,tickformat = ".1"))->p
+    p
+
+    chrom.val <- data.frame( chrom.pda,
+                        val = as.vector(featureValues(xchrom,value = "maxo")))%>%
+      dplyr::arrange(desc(group))%>%
+      dplyr::mutate(group = as.factor(group),
+                    sample.name = factor(sample.name,level = sample.name))
+    chrom.val$val[is.na(chrom.val$val)] <- 0
+    p%>%
+      add_bars(data = chrom.val,
+               y = ~sample.name,
+               x = ~val ,
+               colors = groups.col,
+               color= ~ group,
+               xaxis = "x2",
+               yaxis = "y2")%>%
+      layout(legend = list(x = 0.8,y=0.2,bgcolor = "#00000000"),
+             xaxis2 = list(domain = c(0.8, 0.95),tickformat = ".1", anchor='y2'),
+             yaxis2 = list(categoryorder = "2",domain = c(0.6, 0.95), anchor='x2', showticklabels = F))
+
+
+
 
 }

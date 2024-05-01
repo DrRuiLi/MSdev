@@ -174,8 +174,7 @@ MSdev_find_isotope_label <- function(object,
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     xcms.xcms <- xcms_get_feature_isotopologues(xcms.xcms,
                                                 isotope = isotope,
-                                                ppm = 10,
-                                                net.degree.ratio = 0.5,
+                                                ppm = 5,
                                                 ...)
     xcms.xcms <- xcms_get_feature_isotope_label(xcms.xcms,
                                                 isotope = isotope,
@@ -188,8 +187,7 @@ MSdev_find_isotope_label <- function(object,
 }
 
 
-MSdev_get_iso_acq_list <- function(object,
-                                   hw = 10){
+MSdev_get_iso_acq_list <- function(object){
 
 
 
@@ -204,9 +202,12 @@ MSdev_get_iso_acq_list <- function(object,
     {
       sample.idx <- !is.na(pData(xcms.xcms)$isotope_label)
       #sample.idx <-  pData(xcms.xcms)$group=="FSLowCFullGlu"
-      xcms.xcms <- xcms_get_feature_purity(xcms.xcms,
-                                           grouped = T,
-                                           selected.sample = sample.idx)
+      if ( !"ms1_purity"%in%   colnames(xcms.xcms@msFeatureData$featureDefinitions)) {
+        xcms.xcms <- xcms_get_feature_purity(xcms.xcms,
+                                             grouped = T,
+                                             selected.sample = sample.idx)
+        xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+      }
       xcms.fdf <- featureDefinitions(xcms.xcms)%>%
         as.data.frame()
       }
@@ -243,21 +244,26 @@ MSdev_get_iso_acq_list <- function(object,
                      "mz_ref","rt_ref","formula","smiles")] <- NA
       xcms.fdf.iso$ms1_purity[xcms.fdf.iso$is_seed] <- 1
       xcms.fdf.iso <- xcms.fdf.iso%>%
+        ### filter not assigned iso
         dplyr::filter(!is.na(C13_seed))%>%
-        dplyr::filter(mean.iso > 4|mean.uniso>4,
-                      ms1_purity > 0.4)%>%
         dplyr::group_by(C13_seed)%>%
-        dplyr::mutate(total.isotopologues = n()
-                      )%>%
-        ### filter labeled and annotated
-        dplyr::filter(any( is_labeled ),
-                      any( !is.na( compound_id ) ))%>%
-        ### fix rt to seed
-        dplyr::mutate(rtmed = rtmed[which(feature_id == C13_seed)],
-                      rtmin = rtmed - hw ,
-                      rtmax = rtmed + hw,
-                      compound_id = na.omit(compound_id),
-                      name = na.omit(name))%>%
+        ### filter not annotated
+        dplyr::filter(any( !is.na( compound_id ) ),
+                      any( is_labeled ))%>%
+        dplyr::mutate(
+          compound_id = na.omit(compound_id),
+          name = na.omit(name),
+          adduct = na.omit(adduct),
+          formula = na.omit(formula),
+          smiles = na.omit(smiles),
+          selected_to_acq = T)%>%
+        dplyr::mutate(
+          selected_to_acq = case_when(
+            mean.iso < 4&mean.uniso<4 ~F,
+            ms1_purity < 0.8~ F,
+            !is_labeled&!is_seed~ F,
+            T~selected_to_acq
+          ))%>%
         dplyr::ungroup()%>%
         dplyr::arrange(#-mean.uniso,
           C13_seed,
@@ -266,8 +272,7 @@ MSdev_get_iso_acq_list <- function(object,
                       "score","C13_seed","C13_count",
                       "is_labeled","compound_id","adduct",
                       "name","formula","smiles","mean.iso",
-                      "mean.uniso","total.isotopologues",
-                      "ms1_purity")
+                      "mean.uniso", "ms1_purity","selected_to_acq")
     }
 
    # ### assign and split
@@ -291,11 +296,32 @@ MSdev_get_iso_acq_list <- function(object,
   #unlist(acq.list,recursive = F)
 
   object@statData$iso.acq.list <- acq.list
-
+  return(object)
 
 }
 get_MSdev_iso_acq_list <- function(object){
-  object@statData$iso.acq.list
+
+  acq.list <- object@statData$iso.acq.list
+  for (i in 0:1) {
+
+    pol <- ifelse(i==0,"Negative","Positive")
+    acq.list.pol <- acq.list[[pol]]%>%
+      dplyr::filter(selected_to_acq)%>%
+      dplyr::mutate(rtmed = case_when(
+        feature_id == C13_seed ~ rtmed,
+        T ~ NA
+      ))%>%
+      dplyr::group_by(C13_seed)%>%
+      dplyr::filter(n()>1)%>%
+      dplyr::mutate(rtmed = na.omit(rtmed),
+                    rtmin = rtmed - 10,
+                    rtmax = rtmed+10
+                    )
+
+    acq.list.pol <- acq.list[[pol]] <- QE_list_2feature_def(acq.list.pol)
+
+  }
+  return(acq.list)
 }
 
 

@@ -1391,7 +1391,6 @@ b.mz <- b$fragment_define%>%
   unique()
 match_mz(a.mz,b.mz,mz.ppm = 5)
 
-get_Spectra_from_CFM
 
 
 # Mon Apr 22 11:54:27 2024 XCMS MS1 purity------------------------------
@@ -1548,3 +1547,24 @@ b <- groupChromPeaks(a,param = PeakDensityParam(sampleGroups = rep("A",14)))
 
 
 
+
+# Sun Apr 28 14:44:10 2024 MSdev_get_feature_chrom test------------------------------
+msdev <- MSdev:::load_demo()
+a <- MSdev::MSdev_get_feature_chrom(msdev,
+                             feature.list = list(Positive = 1:3,
+                                                 Negative = 5:8))
+
+
+xcms.xcms <-  MSdev:::load_demo("xcms")
+a <- featureChromatograms(xcms.xcms,
+                     features = 1:5000,
+                     BPPARAM = SnowParam(workers = 14,progressbar = T)
+                     )
+
+fig <- plotly::plot_ly()
+fig <- plotly::add_trace(fig, x = c(1, 2, 3), y = c(4, 3, 2), mode='lines')
+fig <- plotly::add_trace(fig, x = c(20, 30, 40), y = c(30, 40, 50), xaxis='x2', yaxis='y2', mode='lines')
+fig <- plotly::layout(fig, xaxis2 = list(domain = c(0.6, 0.95), anchor='y2'),
+                      yaxis2 = list(domain = c(0.6, 0.95), anchor='x2'))
+
+fig
