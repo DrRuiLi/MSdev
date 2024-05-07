@@ -103,6 +103,7 @@ get_MSdev_isotopologues <- function(object,iso_ele = "[13]C"){
 #' @export
 #'
 get_isotopologues_CFM_annotation<- function(iso.list,
+                                            ppm = 20,
                                             BPPARAM = SnowParam(
                                               workers = 12,
                                               progressbar = T)){
@@ -113,18 +114,20 @@ get_isotopologues_CFM_annotation<- function(iso.list,
     {
       ### process M0 Spectra
       {
+        ### M0 just annotated for smiles assign
         seed.sp.c <- Spectra_filter_noise(x$Spectra$M0)
-        seed.sp.c <- normalizeSpectra(sp = seed.sp.c,norm_to = "tic")
-        seed.sp.c<- combineSpectra_groupby_ce(seed.sp.c,ppm = 10,
+        #seed.sp.c <- normalizeSpectra(sp = seed.sp.c,norm_to = "tic")
+        seed.sp.c <- combineSpectra_groupby_ce(seed.sp.c,ppm = ppm,
                                     minProp = 0.3,
                                     plot = F)
+        seed.sp.c <- Spectra_fill_3CE(seed.sp.c)
       }
       CFM_result <- NA
       try.return <- try(
         CFM_result <- CFM_annotate(smiles_or_inchi = x$compound_info$smiles,
                                      spectrum_file = seed.sp.c,
-                                     ppm_mass_tol = 10,
-                                     abs_mass_tol = 0.002,
+                                     ppm_mass_tol = ppm,
+                                     abs_mass_tol = 0.005,
                                      param_adduct = switch(x$compound_info$polarity,
                                                            "0"="[M-H]-",
                                                            "1"="[M+H]+") )

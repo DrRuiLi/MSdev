@@ -200,19 +200,17 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
     as.data.frame()%>%
     dplyr::mutate(id = 1:n())
 
-  mz <- mz(sp)%>%
-    as.data.frame()%>%
-    dplyr::select(everything(),mz = value)
-  int <- intensity(sp)%>%
-    as.data.frame()%>%
-    dplyr::select(everything(),intensity = value)
+  sp.peaks.data <- peaksData(sp)%>%
+    unname%>%
+    #lapply(as.matrix,ncol = 2)%>%
+    lapply(data.frame)%>%
+    data.table::rbindlist(use.names = F,
+                          idcol = "sp.id")
 
-  spec.df <- mz %>%
-    dplyr::mutate(int,
-                  sp.id = group)%>%
-    dplyr::select(sp.id ,!all_of(c("group","group_name")))
-  var.data <- sp.data[match(spec.df$sp.id,sp.data$id)   ,var,drop = F]
-  spec.df <- cbind(spec.df,var.data)
+  spec.df <- sp.peaks.data %>%
+    dplyr::mutate(
+      sp.data[match(sp.id,sp.data$id)   ,var,drop = F]
+    )
   if (!is.null(spectraNames(sp)))
     spec.df$sp.id <- spectraNames(sp)[spec.df$sp.id]
 
@@ -249,7 +247,7 @@ combineSpectra_groupby_ce <- function(sp,
       p <- ggplot_sum_patchwork(this.p.list)+
         plot_layout(ncol = 2)+
         plot_annotation(title = paste0("collisionEnergy = ",ce))
-      open_ggplot_win(p,10,ceiling(length(this.p.list)/2)*3)
+      open_plot_win(p,10,ceiling(length(this.p.list)/2)*3)
     }
 
 
@@ -257,6 +255,23 @@ combineSpectra_groupby_ce <- function(sp,
 
   return(sp.ce)
 
+}
+
+Spectra_fill_3CE <- function(sp){
+
+  ce.to.fill <- setdiff(c(10,20,40),
+                        collisionEnergy(sp))
+  sp.to.fill <- sp[1]
+  remove_peaks <- function(z){
+    z[1,] <- c(0,0)
+    z[1,,drop = F]
+  }
+  sp.to.fill <- addProcessing(sp,remove_peaks)%>%
+    applyProcessing(BPPARAM = SerialParam())
+  sp.to.fill <- sp.to.fill[rep(1,length(ce.to.fill))]
+  collisionEnergy(sp.to.fill) <- ce.to.fill
+  sp.filled <- c(sp,sp.to.fill)
+  return(sp.filled)
 }
 
 get_Spectra_ms2_feature_id <- function(sp,
@@ -1132,6 +1147,12 @@ Spectra_filter_noise <- function(sp){
 
 setMethod(noise,"Spectra",
           definition = function(object )object$noise)
+
+
+setMethod(sampleNames,"Spectra",
+          definition = function(object){
+            basename(object$dataOrigin)
+          })
 
 #' Spectra_get_purity
 #'

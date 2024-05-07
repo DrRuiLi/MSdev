@@ -1541,7 +1541,8 @@ MSdev_extract_Spectra <- function(object, msLevel = 2,
 #' @return MSdev
 #' @export
 #'
-MSdev_match_Spectra_to_feature <- function(object){
+MSdev_match_Spectra_to_feature <- function(object,
+                                           rt.tol = 10){
 
 
   object@spectra$MS2_Spectra$feature_id<-NA
@@ -1553,7 +1554,9 @@ MSdev_match_Spectra_to_feature <- function(object){
     xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
       as.data.frame()
     sp.ms2.data <- get_Spectra_ms2_feature_id(sp.ms2,
-                                              xcms.fdf)
+                                              xcms.fdf,
+                                              ppm = 10,
+                                              rt.tol = rt.tol)
 
 
     ### update MS2_Spectra
@@ -1808,11 +1811,25 @@ MSdev_update_xcms_pdata <- function(object){
   sample_info <- object@sampleInfo
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
-    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
-    xcms.pdata <- Biobase::pData(xcms.xcms)%>%
-      dplyr::mutate(sample_info[match(msData.files,sample_info$msData.files),  ])
-    xcms.pdata -> Biobase::pData(xcms.xcms)
-    xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+    ###XCMSnExp
+    {
+      xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+      xcms.pdata <- Biobase::pData(xcms.xcms)%>%
+        dplyr::mutate(sample_info[match(msData.files,sample_info$msData.files),  ])
+      xcms.pdata -> Biobase::pData(xcms.xcms)
+      xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+    }
+
+    ###XChromatograms
+    {
+      xcms.chrom <- object@xcmsData[[paste0(pol,"_Chromatograms")]]
+      if (is.null(xcms.chrom)) next
+      xcms.pdata <- Biobase::pData(xcms.chrom)%>%
+        dplyr::mutate(sample_info[match(msData.files,
+                                        sample_info$msData.files),  ])
+      xcms.pdata -> Biobase::pData(xcms.chrom)
+      xcms.chrom -> object@xcmsData[[paste0(pol,"_Chromatograms")]]
+    }
   }
 
   return(object)
@@ -1865,10 +1882,12 @@ MSdev_get_feature_chrom <- function(object,feature.list =NULL){
     xcms.chrom <- featureChromatograms(xcms.xcms,
                                        features = fid,
                                        expandRt = Inf,
+                                       filled = T,
                                        BPPARAM = SnowParam(
                                          workers  = min(snowWorkers(), length(fileNames(xcms.xcms))),
                                          progressbar = T)
                                        )
+    #featureValues( xcms.chrom ,value = "maxo")
     #rownames(xcms.chrom) <- fid
     object@xcmsData[[paste0(pol,"_Chromatograms")]] <- xcms.chrom
   }

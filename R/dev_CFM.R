@@ -140,6 +140,27 @@ CFM_annotate<- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
   }
 }
 
+
+### undone
+CFM_annotate_by_fraggen <- function(
+    smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
+    spectrum_file = NULL,
+    max_depth = 1,
+    id = "AN_ID",
+    ppm_mass_tol = 5.0,
+    abs_mass_tol = 0,
+    param_adduct = "[M+H]+",
+    output_file = NULL){
+
+  cfm.fragen <- CFM_fraggen(smiles_or_inchi,
+                            max_depth = max_depth,
+                            param_adduct = param_adduct)
+  sp.data <- get_Spectra_data(spectrum_file)
+
+
+
+}
+
 CFM_fraggen <- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
                         max_depth = 2,
                         param_adduct = "[M+H]+",
@@ -501,10 +522,14 @@ read_CFM_fraggen_result <- function(result_path){
 
   }
 
-  cfm_data <- list(
-    fragment_define = session.data.1,
-    fragment_transition = session.data.2
-  )
+
+  ### create cfm_data
+  {
+    cfm_data <- new("CFM_data")
+    cfm_data@fragment_define <- session.data.1
+    cfm_data@fragment_transition <- session.data.2
+
+  }
 
 
   return(invisible(cfm_data))
@@ -580,6 +605,18 @@ plot_CFM_annotated_Spectra <- function(cfm_annoate_result){
 
 
 
+#' CFM_annotate_isotopologues
+#'
+#' @param sp Spectra
+#' @param cfmd cfmd_data
+#' @param isotope "[13]C"
+#' @param iso.count num
+#' @param ppm 20
+#'
+#' @return null
+#' @export
+#' @import MSCC
+#'
 CFM_annotate_isotopologues <- function(sp,
                                  cfmd,
                                  isotope = "[13]C",

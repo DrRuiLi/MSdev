@@ -144,7 +144,7 @@ get_smiles_sdf <- function(smiles,smiles.id = NULL){
 
 get_smile_formula <- function(smile){
 
-  smile.sdf <- get_smile_sdf(smile)
+  smile.sdf <- get_smiles_sdf(smile)
   smile.formula <- get_sdf_formula(smile.sdf)
   smile.formula <- case_when(smile=="O"~"H2O1",
                  smile=="[HH]"~"H2",

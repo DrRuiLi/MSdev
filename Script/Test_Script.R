@@ -1430,7 +1430,7 @@ msdev.CX <- MSdev_annotation(msdev.CX,cpdb_path = "c:/Users/91879/OneDrive/Code/
                              selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
 
 
-# Wed Apr 24 19:43:54 2024 ------------------------------
+# Wed Apr 24 19:43:54 2024 XIC------------------------------
 xcms.xcms <- msdev.combine@xcmsData$NegativeMS1
 
 ##ATP
@@ -1568,3 +1568,83 @@ fig <- plotly::layout(fig, xaxis2 = list(domain = c(0.6, 0.95), anchor='y2'),
                       yaxis2 = list(domain = c(0.6, 0.95), anchor='x2'))
 
 fig
+# Wed May  1 17:51:23 2024 ------------------------------
+
+
+
+
+
+# Fri May  3 12:36:31 2024 CFM annotate------------------------------
+cpdn <- MSdb::get_CompoundDB_Compound()
+x.smiles <- cpdn$smiles[1254]
+cfm.pred <- CFM_predict(x.smiles)
+cfm.fragen <- CFM_fraggen(x.smiles,max_depth = 2)
+cfm.sp <- get_Spectra_from_CFM_data(cfm.pred)
+cfm.anno <- CFM_annotate(spectrum_file = cfm.sp,
+                         smiles_or_inchi = x.smiles)
+
+
+idx <- match(cfm.pred@fragment_define$smiles,
+             cfm.fragen@fragment_define$smiles)
+a <- cfm.pred@fragment_define
+b <- cfm.fragen@fragment_define%>%
+  dplyr::filter(!intermediate)
+a <- a%>%
+  dplyr::mutate(defined = smiles %in% b$smiles)
+
+a$smiles%in% b$smiles
+a1 <- a[6,]
+b1 <- b[!is.na(match_mz(b$fragment_mz,a1$fragment_mz)),]
+get_smile_formula(a1$smiles)
+get_smile_formula(b1$smiles)
+
+vis_sdf_igraph_compare(
+  get_sdf_igraph(get_smiles_sdf(a1$smiles)[[1]]),
+  get_sdf_igraph(get_smiles_sdf(b1$smiles[6])[[1]])
+)
+
+vis_sdf_igraph(get_sdf_igraph(get_smiles_sdf(a1$smiles)[[1]]))
+
+
+rp <- function(x){
+  idx <- sample(sample(1:nrow(x),nrow(x)*0.9))
+  x[idx,"mz"] <-  x[idx,"mz"]*1.2
+  x
+}
+cfm.sp <- addProcessing(cfm.sp,rp)%>%
+  applyProcessing(BPPARAM = SerialParam())
+plotSpec(cfm.sp)
+
+# Fri May  3 19:14:54 2024 xic lactate ------------------------------
+
+
+
+
+
+
+xcms.xcms %>%
+  filterFile(seq(1,10,3))%>%
+  filterRt(c(600,800))%>%
+  filterMz(mz.range.ppm( 91.03113 ,5))%>%
+  plot(type = "XIC")
+
+
+xcms.peaks <- get_xcms_peaks_stat(xcms.xcms)%>%
+  dplyr::filter(mz >90.027,mz < 90.028,
+                rt > 650,rt < 700)
+# Mon May  6 14:37:58 2024 ------------------------------
+sp.peaks.data <- peaksData(seed.sp.c)%>%
+  unname%>%
+  lapply(as.data.frame)%>%
+  data.table::rbindlist(use.names = F,
+                        idcol = "sp.idx")
+
+fdf.pos <- get_xcms_feature_definitions(msdev.Threegroup@xcmsData$PositiveMS1)
+fdf.neg <- get_xcms_feature_definitions(msdev.Threegroup@xcmsData$NegativeMS1)
+
+
+
+a <- fdf.neg%>%
+  dplyr::filter(mzmed >87,mzmed < 90 )
+
+

@@ -193,6 +193,9 @@ MSIP_shiny_Acq_server <- function(object){
       clicked_row <- reactiveVal(NA)
       xchrom <- reactiveVal()
       feature_id <- reactiveVal()
+      fid_selected <- reactiveVal()
+      fid_seed <- reactiveVal()
+
 
     }
 
