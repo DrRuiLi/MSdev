@@ -156,4 +156,8 @@ get_file_formate <- function(file){
 
 
 
+object.size.mb <- function(x){
+
+  format(object.size(x),"MB")
+}
 

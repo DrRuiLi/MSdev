@@ -15,5 +15,5 @@ combineSpectra_groupby_ce(sp, minProp = 0.5, ppm = 5, plot = F, ...)
 Spectra
 }
 \description{
-combineSpectra_groupby_ce
+using \link{combinePeaksData_tic_weighted}, refer to \link[Spectra:combinePeaksData]{Spectra::combinePeaksData}
 }

@@ -1509,13 +1509,10 @@ MSdev_extract_Spectra <- function(object, msLevel = 2,
   ### iso-labeled ms2
   {
     if ("isotope_label"%in% colnames(sampleInfo)) {
-      sp.data <- spectraData(sp.ms2)%>%
-        as.data.frame()%>%
-        tibble::rownames_to_column("sp.name" )%>%
-        dplyr::mutate(isotope_label = sampleInfo$isotope_label[match(
-          dataOrigin , sampleInfo$msData.files
-        )])
-      sp.ms2$from_iso <- !is.na(sp.data$isotope_label)
+
+      sp.ms2$isotope_label <- sampleInfo$isotope_label[match(sampleNames(sp.ms2),
+                                     basename(sampleInfo$msData.files))]
+      sp.ms2$from_iso <- !is.na(sp.ms2$isotope_label)
 
     }
 

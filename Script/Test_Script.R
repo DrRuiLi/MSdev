@@ -1648,3 +1648,44 @@ a <- fdf.neg%>%
   dplyr::filter(mzmed >87,mzmed < 90 )
 
 
+
+# Wed May  8 17:10:24 2024  combinespectra------------------------------
+sp <- sp.list[[1]]
+sp <- sp[collisionEnergy(sp)==10]
+raw.data <- get_Spectra_data(sp)%>%
+  dplyr::filter(mz > mz.range.ppm(704.5245,10)[1],
+                mz < mz.range.ppm(704.5245,10)[2])
+sp <- combineSpectra(sp,f = 1:length(sp),
+                     intensityFun = max ,
+                     weighted  =T,
+                     ppm = 10
+                     )
+a <- combineSpectra(sp,
+                        peaks = "intersect",
+                        intensityFun = mean,
+                        FUN =combinePeaksData_tic_weighted,
+                        f = sp$collisionEnergy,
+                        weighted =T,
+                        minProp=0.5,
+                        ppm = 10)
+
+plotSpec(a[1])
+a.data <- get_Spectra_data(a)%>%
+  dplyr::filter(mz > 704)
+
+
+b <- combineSpectra(sp,
+                    peaks = "intersect",
+                    intensityFun = mean,
+                    FUN =combinePeaksData,
+                    f = sp$collisionEnergy,
+                    weighted =T,
+                    minProp=0.5,
+                    ppm = 5)
+# Thu May  9 15:38:05 2024 ------------------------------
+shiny_plotly_iso_msip_spectra(
+  shiny_get_sp_data(iso.msip.list[[4]],"Con","M3"))
+
+a <-
+  shiny_get_sp_data(iso.msip.list[[1]],"Con","M1")
+b <- shiny_get_sp_data(iso.msip.list[[4]],"Con","M3")

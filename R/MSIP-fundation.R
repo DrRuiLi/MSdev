@@ -1,4 +1,4 @@
-get_frag_group_map <- function(sp.frag.data,cfmd,c_ele,iso.count){
+get_frag_group_map <- function(sp.frag.data,cfmd,iso.count){
 
   ### frag group to label fraction
   {
@@ -35,17 +35,18 @@ get_frag_group_map <- function(sp.frag.data,cfmd,c_ele,iso.count){
 
   ### frag group to C atom prob
   {
+    c_ele <- get_atom_from_igraph(get_cfm_data_sdf_igraph(cfmd),"C")
     frag.c.matrix <- matrix(ncol = length(c_ele),
                             nrow = length(fg.idx),
                             dimnames = list(names(fg.idx),
-                                            names(c_ele)))
+                                            c_ele))
     for (i.fg in seq_along(fg.idx)) {
 
       this.frag.group <- names(fg.idx)[i.fg]
       this.frags <- cfmd@fragment_define[cfmd@fragment_define$fragment_group==this.frag.group,]
       this.frag.ratio <-frag.iso.matrix[i.fg,]
       this.frag.atom <- get_cfm_data_fg_atom_map(cfmd,this.frag.group)
-      this.frag.c <- this.frag.atom[names(c_ele)]
+      this.frag.c <- this.frag.atom[c_ele]
       #this.iso.expectation <- sum(str_extract_num(names(this.frag.ratio))*this.frag.ratio)
       #this.frag.c <- this.frag.c*this.iso.expectation/sum(this.frag.c)
       #this.frag.c <- this.frag.c[this.frag.c!=0]
@@ -186,6 +187,11 @@ get_iso_prob <- function(fc, ifc){
 
 
 merge_frag_group_map <- function(fg.map){
+
+
+  if (nrow(fg.map$frag.c.matrix)<=1) {
+    return(fg.map)
+  }
 
   ### merge duplicate
   {
@@ -423,10 +429,23 @@ heatmap.ifs.map <- function(iso.form.map){
 }
 
 
-get_ele_uniso <- function(iso_ele){
+get_ele_uniso <- function(iso_ele = "[13]C"){
 
   sub(pattern = "\\[.+\\]",
       x = iso_ele,
       replacement = "")
+
+}
+
+trans_iso_ele <- function(iso_ele = "[13]C"){
+
+  if (grepl(pattern = "\\[",x = iso_ele)) {
+    x <- paste0(str_extract(iso_ele,"[:alpha:]+"),
+           str_extract(iso_ele,"[:digit:]+"))
+  }else{
+    x <- paste0("[",str_extract(iso_ele,"[:digit:]+"),"]",
+                str_extract(iso_ele,"[:alpha:]+") )
+  }
+  return(x)
 
 }

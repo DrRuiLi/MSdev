@@ -649,11 +649,18 @@ CFM_annotate_isotopologues <- function(sp,
 
 
   sp.data <- get_Spectra_data(sp,var = "collisionEnergy")%>%
-    dplyr::mutate(idx =match_mz(mz,mz.labeled.m$mz,mz.ppm = ppm),
+    dplyr::mutate(fragment_group = NA,iso=NA)
+  if (nrow(sp.data)) {
+
+
+  sp.data <- sp.data%>%
+    dplyr::mutate(idx =match_mz(mz1=mz,
+                                mz2 = mz.labeled.m$mz,
+                                mz.ppm = ppm),
                   fragment_group = mz.labeled.m$fragment_group[idx],
                    iso = mz.labeled.m$iso[idx])%>%
     dplyr::select(-idx)
-
+  }
 
 
   return(sp.data)
@@ -803,6 +810,11 @@ get_cfm_data_fg_atom_map <- function(cfm_data,frag.group){
 }
 
 
+get_cfm_data_sdf_igraph <- function(cfm_data,fragment_id = 1 ){
+
+  cfm_data@fragment_igraph[[fragment_id]]
+
+}
 
 heatmap_atom_iso_prob <- function(x){
 

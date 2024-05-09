@@ -1,23 +1,34 @@
-MSIP_shiny_server <- function(iso.msip.list){
+MSIP_shiny_server <- function(object){
 
 
+  iso.msip.list <- object@statData$MSIP$isotopologues_data
+  all.sample<- object@sampleInfo%>%
+    dplyr::filter(sample.type == "Sample")%>%
+    dplyr::pull(sample.source)%>%
+    unique()
   function(input, output, session) {
+
 
 
 
     output$test_info <- renderPrint({
 
-
+      names(iso.msip()$MSIP_result[[1]])
       #vdata(mol.ig())
     })
 
 
     ### reactiveval
     {
-      iso.msip <- reactiveVal(iso.msip.list[[1]])
+      fid.selected <- reactiveVal()
+      iso.msip <- reactiveVal()
+      iso.count.selected <- reactiveVal()
+      sample.selected <- reactiveVal()
+
+
+
       iso.sp.data <- reactiveVal()
       fg.selected <- reactiveVal()
-      fid.selected <- reactiveVal()
       mol.ig <- reactiveVal()
       mol.atom.map <- reactiveVal()
       frag.ig <- reactiveVal()
@@ -38,28 +49,43 @@ MSIP_shiny_server <- function(iso.msip.list){
 
 
       observeEvent(input$metabolite_table_rows_selected,{
-        iso.msip( iso.msip.list[[input$metabolite_table_rows_selected]] )
+        fid.selected(
+          names(iso.msip.list)[input$metabolite_table_rows_selected]
+        )
+        iso.msip( iso.msip.list[[fid.selected()]])
+        all.iso.count <- names(iso.msip()$MSIP_result)
+        iso.count.selected(all.iso.count[1])
         updateSelectInput(inputId = "select_iso_count",
-                          choices = names(iso.msip()$msip_data),
-                          selected = names(iso.msip()$msip_data)[1])
-        mol.ig.show.label(F)
+                          choices = all.iso.count,
+                          selected = iso.count.selected())
+        sample.selected(all.sample[1])
+        updateSelectInput(inputId = "select_sample",
+                          choices = all.sample,
+                          selected = sample.selected())
+        #mol.ig.show.label(F)
       })
 
 
 
     }
 
+    ### selectInput, iso.count and sample
+    {
+    }
+
     ### Spectra
     {
       #input$select_iso_count
       observe({
-
+        sample.selected(input$select_sample)
+        iso.count.selected(input$select_iso_count)
         iso.sp.data(shiny_get_sp_data(iso_msip = iso.msip(),
-                                      iso_count =  input$select_iso_count))
-        fg.selected(shiny_get_fg(sp.data = iso.sp.data(),
-                                 x = event_data("plotly_click",
-                                                source = "plotly_ms2_sp",
-                                                priority  = "event")$x))
+                                      sample = sample.selected(),
+                                      iso_count =  iso.count.selected()))
+        #fg.selected(shiny_get_fg(sp.data = iso.sp.data(),
+        #                         x = event_data("plotly_click",
+        #                                        source = "plotly_ms2_sp",
+        #                                        priority  = "event")$x))
         })
 
       output$plotly_ms2_sp <-  renderPlotly({
@@ -78,44 +104,44 @@ MSIP_shiny_server <- function(iso.msip.list){
 
       observeEvent(fg.selected(),{
 
-        updateSelectInput(inputId = "select_fid",
-                          choices = shiny_get_fid(iso_msip = iso.msip(),
-                                                  fg = fg.selected()))
+        #updateSelectInput(inputId = "select_fid",
+        #                  choices = shiny_get_fid(iso_msip = iso.msip(),
+        #                                          fg = fg.selected()))
 
       })
 
 
       observe({
-        mol.ig(iso.msip()$CFM_annotation@fragment_igraph[[1]])
-        frag.ig(shiny_get_fg_ig(iso_msip =iso.msip(),
-                                fid = input$select_fid  ))
-        atom_map <- shiny_get_atom_map(iso.msip(),
-                                       input$select_fid ,
-                                       prob = T)
-        mol.atom.map(atom_map[[1]])
-        frag.atom.map(atom_map[[2]])
-        mol.atom.c.prob(iso.msip()$msip_data[[input$select_iso_count]]$c.prob)
+        #mol.ig(iso.msip()$CFM_annotation@fragment_igraph[[1]])
+        #frag.ig(shiny_get_fg_ig(iso_msip =iso.msip(),
+        #                        fid = input$select_fid  ))
+        #atom_map <- shiny_get_atom_map(iso.msip(),
+        #                               input$select_fid ,
+        #                               prob = T)
+        #mol.atom.map(atom_map[[1]])
+        #frag.atom.map(atom_map[[2]])
+        #mol.atom.c.prob(iso.msip()$msip_data[[input$select_iso_count]]$c.prob)
       })
 
       output$mol_graph <- renderVisNetwork(
         {
 
-          shiny_vis_ig(ig = mol.ig() ,
-                       prob.border = mol.atom.map(),
-                       prob.fill =mol.atom.c.prob())
+          #shiny_vis_ig(ig = mol.ig() ,
+          #             prob.border = mol.atom.map(),
+          #             prob.fill =mol.atom.c.prob())
         }
       )
       output$frag_graph <- renderVisNetwork(
         {
-
-          shiny_vis_ig(frag.ig(),
-                       prob.border  = frag.atom.map() )
+#
+          #shiny_vis_ig(frag.ig(),
+          #             prob.border  = frag.atom.map() )
 
         }
       )
       output$frag_formula <- renderText({
-        shiny_get_frag_formula(iso_msip = iso.msip(),
-                               fid =input$select_fid  )
+        #shiny_get_frag_formula(iso_msip = iso.msip(),
+        #                       fid =input$select_fid  )
       })
 
 
@@ -131,32 +157,32 @@ MSIP_shiny_server <- function(iso.msip.list){
       )
 
       output$atom_prob_table <- renderTable({
-
-        if (!length(mol.atom.c.prob())) {
-          tb <- NULL
-        }else{
-          tb <- data.frame(Atom = names(mol.atom.c.prob()),
-                           Prob = mol.atom.c.prob())%>%
-            dplyr::mutate(Prob = round(Prob,4))
-        }
-        tb
+#
+        #if (!length(mol.atom.c.prob())) {
+        #  tb <- NULL
+        #}else{
+        #  tb <- data.frame(Atom = names(mol.atom.c.prob()),
+        #                   Prob = mol.atom.c.prob())%>%
+        #    dplyr::mutate(Prob = round(Prob,4))
+        #}
+        #tb
 
 
       })
 
       observeEvent(input$mol.ig.button,{
-        mol.ig.show.label(!mol.ig.show.label() )
+        #mol.ig.show.label(!mol.ig.show.label() )
         #updateActionButton(inputId = "mol.ig.button",
         #                   label = ifelse(
         #  mol.ig.show.label(),
         #  "Show Atom ID",
         #  "Hide Atom ID"))
-        igvd <- shiny_change_ig_label(ig = mol.ig(),
-                              id = mol.ig.show.label())
+        #igvd <- shiny_change_ig_label(ig = mol.ig(),
+        #                      id = mol.ig.show.label())
 
-        visNetworkProxy(shinyId = "mol_graph")%>%
-          visUpdateNodes(nodes = igvd,
-                         updateOptions= F)
+        #visNetworkProxy(shinyId = "mol_graph")%>%
+        #  visUpdateNodes(nodes = igvd,
+        #                 updateOptions= F)
 
       })
     }

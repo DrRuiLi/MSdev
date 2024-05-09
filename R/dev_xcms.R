@@ -731,39 +731,18 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
 
   ### feature data
   {
-    xcms.se <- get_xcms_feature_se(xcms.xcms,
-                                   missing = 1)
-    xcms.se <- xcms.se[,xcms.se$sample.type=="Sample"]
-    rownames(xcms.se) <- rowData(xcms.se)$xcms_feature_id
-    iso.colname <- paste0(str_extract(string = isotope,pattern = "[[:alpha:]]+"),
-                          str_extract(string = isotope,pattern = "[[:digit:]]+"))
-    xcms.rda <- rowData(xcms.se)%>%
-      as.data.frame()
-    xcms.rda$iso_seed <- xcms.rda[,paste0(iso.colname,"_seed")]
-    xcms.rda$iso_count <- xcms.rda[,paste0(iso.colname,"_count")]
-    xcms.val <- assay(xcms.se)
+
+    xcms.se <- quantify(xcms.xcms,missing = 1,value = "maxo")
   }
 
   ###calc iso ratio to seed
   {
-    xcms.ratio.to.seed <- xcms.val
-    xcms.ratio.to.seed[,] <-NA
-    xcms.fseed <- xcms.rda$iso_seed %>%
-      unique()%>%na.omit()
-    for (i in seq_unique(xcms.fseed)) {
-      this.fid <- xcms.fseed[i]
-      this.iso <- xcms.rda%>%
-        dplyr::filter(iso_seed %in% this.fid)
-      this.matrix <- xcms.val[this.iso$xcms_feature_id,]
-      this.matrix <- t(t(this.matrix)/this.matrix[this.fid,])
-      xcms.ratio.to.seed[rownames(this.matrix),] <- this.matrix
-    }
 
-    xcms.ratio.to.seed[is.nan(xcms.ratio.to.seed)] <- 0
+    xcms.ratio.to.seed<- get_xcms_iso_fraction(xcms.xcms ,isotope        )
 
   }
 
-  ### compare labeled and unlabeled
+  ### compare labeled and unlabeled between group
   {
     is.iso <- xcms.se$isotope_label%in% isotope
     group.uniso <- unique(xcms.se$group[!is.iso])
@@ -789,6 +768,8 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
       return(iso.stat$is_labeled)
     })
     is_labeled <- apply(is_labeled,1,any)
+
+
   }
 
 
@@ -805,6 +786,46 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
   }
 
   return(xcms.xcms)
+}
+
+
+get_xcms_iso_fraction <- function(xcms.xcms,
+                                  isotope = "[13]C"){
+
+
+  ### feature data
+  {
+    xcms.se <- quantify(xcms.xcms,missing = 1,value = "maxo")
+    xcms.se <- xcms.se[,xcms.se$sample.type=="Sample"]
+    iso.colname <- paste0(str_extract(string = isotope,pattern = "[[:alpha:]]+"),
+                          str_extract(string = isotope,pattern = "[[:digit:]]+"))
+    xcms.rda <- rowData(xcms.se)%>%
+      as.data.frame()
+    xcms.rda$iso_seed <- xcms.rda[,paste0(iso.colname,"_seed")]
+    xcms.rda$iso_count <- xcms.rda[,paste0(iso.colname,"_count")]
+    xcms.val <- assay(xcms.se)
+  }
+
+  ###calc iso ratio to seed
+  {
+    xcms.ratio.to.seed <- xcms.val
+    xcms.ratio.to.seed[,] <-NA
+    xcms.fseed <- xcms.rda$iso_seed %>%
+      unique()%>%na.omit()
+    for (i in seq_unique(xcms.fseed)) {
+      this.fid <- xcms.fseed[i]
+      this.iso <- xcms.rda%>%
+        dplyr::filter(iso_seed %in% this.fid)
+      this.matrix <- xcms.val[this.iso$feature_id,]
+      this.matrix <- t(t(this.matrix)/this.matrix[this.fid,])
+      xcms.ratio.to.seed[rownames(this.matrix),] <- this.matrix
+    }
+
+    xcms.ratio.to.seed[is.nan(xcms.ratio.to.seed)] <- 0
+
+  }
+  return(xcms.ratio.to.seed)
+
 }
 
 

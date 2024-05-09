@@ -53,7 +53,7 @@ shiny_plotly_iso_msip_spectra <- function(sp.data){
                              "40" ="#E64B35FF" ),
                   color = ~ collisionEnergy,
                   text = ~ hover_label,
-                  hovertemplate = "%{text}<extra></extra>",
+                  #hovertemplate = "%{text}<extra></extra>",
                   hoverinfo = "text",
                   showlegend = T)%>%
       highlight(on = "plotly_click",
@@ -62,28 +62,6 @@ shiny_plotly_iso_msip_spectra <- function(sp.data){
                   showlegend = F
                 ),
                 defaultValues=filter(sp.data,!is.na(fragment_group))$fragment_group[1])%>%
-    #  dplyr::filter(fragment_group %in% fg)%>%
-    #  add_segments(x = ~x , xend = ~x,
-    #               y = I(0),yend = ~y,
-    #               size = I(5),
-    #               colors = c(" "= "#BBBBBB",
-    #                          "10"="#4DBBD5FF",
-    #                          "20" ="#FF7F0E",
-    #                          "40" ="#E64B35FF" ),
-    #               showlegend = F,
-    #               color = ~ collisionEnergy)%>%
-    #  add_markers(x = ~x,
-    #              y = ~y,
-    #              size = I(50),
-    #              colors = c(" "= "#BBBBBB",
-    #                         "10"="#4DBBD5FF",
-    #                         "20" ="#FF7F0E",
-    #                         "40" ="#E64B35FF" ),
-    #              color = ~ collisionEnergy,
-    #              text = ~ hover_label,
-    #              hovertemplate = "%{text}<extra></extra>",
-    #              hoverinfo = "text",
-    #              showlegend = F)%>%
       layout(dragmode = "zoom",
              xaxis = list(range = c(0, max(sp.data$mz)*1.1),
                           title = "mz",
@@ -98,22 +76,35 @@ shiny_plotly_iso_msip_spectra <- function(sp.data){
 
 
 shiny_get_sp_data <- function(iso_msip,
-                              iso_count = names(iso_msip$msip_data)[1]){
+                              sample ,
+                              iso_count ){
 
 
   ### if
   {
+    if (length(iso_msip)==0|length(sample)==0|length(iso_count)==0) {
+      return(NA)
+    }
+
     if (!iso_count %in% names(iso_msip$Spectra)) {
       return(NA)
     }
   }
+  ### debug
+  {
+    #message(names(iso_msip))
+    #message(sample)
+    #message(iso_count)
+  }
 
   ### sp data
   {
-    sp.m0 <-iso_msip$Spectra$M0%>%
+    sp.m0 <-iso_msip$Spectra$M0
+    sp.m0 <- sp.m0[sp.m0$sample.source==sample]%>%
       normalizeSpectra()%>%
       combineSpectra_groupby_ce()
-    sp.iso <- iso_msip$Spectra[[iso_count]]%>%
+    sp.iso <- iso_msip$Spectra[[iso_count]]
+    sp.iso <- sp.iso[sp.iso$sample.source==sample]%>%
       normalizeSpectra()%>%
       combineSpectra_groupby_ce()
 

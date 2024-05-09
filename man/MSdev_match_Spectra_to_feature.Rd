@@ -4,7 +4,7 @@
 \alias{MSdev_match_Spectra_to_feature}
 \title{MSdev_match_Spectra_to_feature}
 \usage{
-MSdev_match_Spectra_to_feature(object)
+MSdev_match_Spectra_to_feature(object, rt.tol = 10)
 }
 \arguments{
 \item{object}{MSdev}

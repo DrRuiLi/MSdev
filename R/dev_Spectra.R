@@ -218,22 +218,24 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
 }
 
 #' combineSpectra_groupby_ce
+#' @description using [combinePeaksData_tic_weighted], refer to [Spectra::combinePeaksData]
 #'
 #' @param sp Spectra
-#' @param minProp NUM
+#' @param minProp num
 #'
 #' @return Spectra
 #' @export
 #'
 combineSpectra_groupby_ce <- function(sp,
                                       minProp = 0.5,
-                                      ppm = 5,
+                                      ppm = 10,
                                       plot = F,
                                       ...){
 
   sp.ce <- Spectra::combineSpectra(sp,
                                    peaks = "intersect",
                                    intensityFun = mean,
+                                   FUN = combinePeaksData_tic_weighted,
                  f = sp$collisionEnergy,
                  weighted =T,
                  minProp=minProp,
@@ -256,6 +258,66 @@ combineSpectra_groupby_ce <- function(sp,
   return(sp.ce)
 
 }
+
+
+combinePeaksData_tic_weighted <-
+  function (x, intensityFun = base::mean, mzFun = base::mean,
+          weighted = FALSE, tolerance = 0, ppm = 0, timeDomain = FALSE,
+          peaks = c("union", "intersect"), main = integer(), minProp = 0.5,
+          ...)
+{
+  peaks <- match.arg(peaks)
+  lenx <- length(x)
+  if (lenx == 1)
+    return(x[[1]])
+  mzs <- lapply(x, "[", , y = 1)
+  mzs_lens <- lengths(mzs)
+  mzs <- unlist(mzs, use.names = FALSE)
+  mz_order <- order(mzs)
+  mzs <- mzs[mz_order]
+  if (timeDomain)
+    mz_groups <- MsCoreUtils::group(sqrt(mzs), tolerance = tolerance,
+                       ppm = ppm)
+  else mz_groups <- MsCoreUtils::group(mzs, tolerance = tolerance, ppm = ppm)
+  ints <- unlist(lapply(x, "[", , y = 2), use.names = FALSE)[mz_order]
+  tics <- rep(sapply(lapply(x, "[", , y = 2),sum),mzs_lens)[mz_order]
+  if (length(main)) {
+    if (main < 1 || main > lenx)
+      stop("'main' has to be larger than 1 and smaller than ",
+           lenx)
+    is_in_main <- rep.int(seq_along(mzs_lens), mzs_lens)[mz_order] ==
+      main
+    keep <- mz_groups %in% mz_groups[is_in_main]
+    mz_groups <- mz_groups[keep]
+    mzs <- mzs[keep]
+    ints <- ints[keep]
+  }
+  mzs <- split(mzs, mz_groups)
+  ints <- split(ints, mz_groups)
+  tics <- split(tics,mz_groups)
+  if (peaks == "intersect") {
+    keep <- lengths(mzs) >= (lenx * minProp)
+    if (any(keep)) {
+      mzs <- mzs[keep]
+      ints <- ints[keep]
+      tics <- tics[keep]
+    }
+    else return(cbind(mz = numeric(), intensity = numeric()))
+  }
+  if (weighted) {
+    wm <- stats::weighted.mean
+    mzs <- mapply(mzs, ints, FUN = function(mz, w) wm(mz,
+                                                      w + 1, na.rm = TRUE, USE.NAMES = FALSE))
+  }
+  else mzs <- vapply1d(mzs, FUN = mzFun)
+  if (is.unsorted(mzs))
+    stop("m/z values of combined spectrum are not ordered increasingly")
+  ints <- mapply(ints, tics, FUN = function(int, w) stats::weighted.mean(int,
+                                                    w , na.rm = TRUE, USE.NAMES = FALSE))
+ # vapply1d(ints, FUN = intensityFun)
+  cbind(mz = mzs, intensity = ints)
+}
+
 
 Spectra_fill_3CE <- function(sp){
 

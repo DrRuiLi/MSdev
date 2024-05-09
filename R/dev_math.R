@@ -287,6 +287,9 @@ match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
 
 match_mz <- function(mz1,mz2,mz.ppm = 10){
 
+  if (length(mz1)==0) {
+    return(NULL)
+  }
   match.df <- match_mz_rt(mz1= mz1,
                           mz2= mz2,
                           mz.ppm = mz.ppm)

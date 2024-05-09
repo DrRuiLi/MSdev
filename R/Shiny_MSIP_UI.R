@@ -27,10 +27,18 @@ MSIP_shiny_ui <- function(){
       navbarPage(title = NULL,
                  tabPanel("Main result",
                           wellPanel(
-
-                            selectInput(inputId = "select_iso_count",
-                                        label = "Select iso-labeled count",
-                                        choices = paste0("M",1:5) ),
+                            fluidRow(
+                              column(4,offset = 4,
+                                selectInput(inputId = "select_sample",
+                                            label = "Select sample",
+                                            choices = "U" )
+                              ),
+                              column(4,
+                                selectInput(inputId = "select_iso_count",
+                                            label = "Select iso-labeled count",
+                                            choices = paste0("M",1:5) )
+                              )
+                            ),
                             plotlyOutput(outputId = "plotly_ms2_sp")
                           ),
                           fluidRow(
