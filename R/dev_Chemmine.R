@@ -199,8 +199,11 @@ get_sdf_igraph <- function(sdf,addH = F){
 
   if (class(sdf)=="SDFset") {
     sdf.igraph <- list()
+    sdf.valid <- validSDF(sdf)
     for (i in 1:length(sdf)) {
-      sdf.igraph[[i]] <- .f(sdf[[i]],addH  )
+
+        sdf.igraph[[i]] <- .f(sdf[[i]],addH  )
+
     }
   }
 

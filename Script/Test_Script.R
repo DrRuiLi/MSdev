@@ -1689,3 +1689,36 @@ shiny_plotly_iso_msip_spectra(
 a <-
   shiny_get_sp_data(iso.msip.list[[1]],"Con","M1")
 b <- shiny_get_sp_data(iso.msip.list[[4]],"Con","M3")
+
+# Sat May 11 18:09:04 2024 CFM annotate------------------------------
+smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O"
+spectrum_file = NULL
+max_depth = 1
+id = "AN_ID"
+ppm_mass_tol = 5.0
+abs_mass_tol = 0
+param_adduct = "[M+H]+"
+output_file = NULL
+
+cfm_pred <- CFM_predict(smiles_or_inchi)
+cfm_pred_sp <- get_CFM_data_Spectra(cfm_pred)
+cfm_anno <-CFM_annotate(smiles_or_inchi,
+                       spectrum_file = cfm_pred_sp)
+x <- cfm_pred@fragment_define$smiles %in% cfm_anno@fragment_define$smiles
+sum(x)/length(x)
+a <- CFM_annotate_by_predict(smiles_or_inchi)
+
+
+# Sun May 12 13:20:53 2024 ------------------------------
+a <- lapply(trans.idx,function(x){
+  if (all(is.na(trans.atom.map[[x]]))) {
+    return( .trace.atom.map[x])
+  }
+  return(trans.atom.map[[x]])
+})
+trans.atom.map[trans.idx] <- a
+
+# Tue May 14 15:08:16 2024 ------------------------------
+msip.data <- msdev.combine@statData$MSIP$isotopologues_data
+setdiff(names(msip.data),names(a))
+

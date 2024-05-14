@@ -424,7 +424,8 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
                           column_names_gp  = grid::gpar(fontsize= 6),
 
                           show_column_dend = F,
-                          show_row_dend = F
+                          show_row_dend = F,
+                          show_row_names = F
                           )->p
   p
 

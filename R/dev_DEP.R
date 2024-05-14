@@ -468,17 +468,17 @@ DEP.plot.heatmap <- function(data.se,
 
   col.info <-SummarizedExperiment::colData(data.se)%>%
     as.data.frame()%>%
-    dplyr::mutate(col.group = condition,
-                  col.label = sample.label)
+    dplyr::mutate(col_group = condition,
+                  column_labels = sample.label)
   row.info <-DEP::plot_volcano(data.se,contrast,plot = F,adjusted = p.adjust )%>%
     dplyr::mutate(SummarizedExperiment::rowData(data.se[protein,])%>%
                     as.data.frame()
     )%>%
-    dplyr::mutate(row.group = "",
-                  row.label = name)%>%
+    dplyr::mutate(row_group = "",
+                  row_labels = name)%>%
     dplyr::filter(significant)
 
-  heatmap.matrix <-SummarizedExperiment::assay(data.se[row.info$ID,col.info$ID])%>%
+  heatmap.matrix <-SummarizedExperiment::assay(data.se[row.info$name,col.info$ID])%>%
     `^`(2,.)%>%t%>%scale%>%t
 
 

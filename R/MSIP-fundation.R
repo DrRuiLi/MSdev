@@ -1,7 +1,9 @@
-get_frag_group_map <- function(sp.frag.data,cfmd,iso.count){
+get_frag_group_map <- function(sp.frag.data,cfmd,iso.count,atom_prob = F){
 
   ### frag group to label fraction
   {
+    sp.frag.data <- sp.frag.data%>%
+      dplyr::filter(sp.id== "combined_sp")
     fg.idx <- split(1:nrow(sp.frag.data),sp.frag.data$fragment_group)
     frag.iso.matrix <- matrix(
       nrow = length(fg.idx),ncol = iso.count+1,
@@ -25,7 +27,7 @@ get_frag_group_map <- function(sp.frag.data,cfmd,iso.count){
       x.int[is.na(x.int)] <- 0
       x.weight <- rowSums(x.int)
       x.int <- t(apply(x.int,1,function(z) z/sum(z)))
-      x.int.weighted <- apply(x.int,2,weighted.mean,m = x.weight)
+      x.int.weighted <- apply(x.int,2,weighted.mean,w = x.weight)
       frag.iso.matrix[i.fg,] <- x.int.weighted
       frag.int.sum[i.fg] <- sum(x.weight)
     }
@@ -55,6 +57,24 @@ get_frag_group_map <- function(sp.frag.data,cfmd,iso.count){
 
   }
 
+
+  ### return
+  {
+    if (atom_prob) {
+
+    }else{
+      frag.c.matrix.max <- apply(frag.c.matrix,1,function(x){
+        x.sum <- sum(x)
+        x.new <- rep(0,length(x))
+        x.new[tail(order(x),x.sum)] <- 1
+        x.new
+      })%>%t
+      colnames(frag.c.matrix.max) <- colnames(frag.c.matrix)
+      frag.c.matrix <- frag.c.matrix.max
+    }
+
+  }
+
   x <- list(frag.c.matrix=frag.c.matrix,
             frag.iso.matrix=frag.iso.matrix,
             frag.int = frag.int.sum)
@@ -63,7 +83,7 @@ get_frag_group_map <- function(sp.frag.data,cfmd,iso.count){
 }
 
 
-get_iso_form_map <- function(fg.map,atom_prob = T ){
+get_iso_form_map_old <- function(fg.map,atom_prob = T ){
 
   #load("temp.rda")
   #iso.count <- 5
@@ -161,6 +181,93 @@ get_iso_form_map <- function(fg.map,atom_prob = T ){
 
 }
 
+get_iso_form_map <- function(fg.map){
+
+
+  ### required info
+  {
+
+    frag.c.matrix <- fg.map$frag.c.matrix
+    frag.iso.matrix <-fg.map$frag.iso.matrix
+    frag.max.iso <- ncol(frag.iso.matrix)-1
+
+  }
+  ### all possible iso form
+  {
+    iso.form <- combn(colnames(frag.c.matrix),frag.max.iso,simplify = F)
+    names(iso.form) <- paste0("iso_form_",num2str(1:length(iso.form)))
+  }
+  ### iso form map to iso ratio
+  {
+    iso.form.maps <- lapply(seq_along(iso.form),
+                            function(if.id){
+                              lapply(rownames(frag.c.matrix),function(fg.id){
+
+                                get_iso_prob(frag.c.matrix[fg.id,],
+                                             iso.form[[ if.id ]])
+                              })->mp
+                              names(mp) <- rownames(frag.c.matrix)
+                              unlist(mp)
+                            })
+    iso.form.map <- t(do.call(bind_rows,iso.form.maps))
+    iso.form.map <- iso.form.map[order(rownames(iso.form.map)),,drop = F]
+    iso.form.map[is.na(iso.form.map)] <- 0
+    rownames(iso.form.map) <- sub(pattern = ".",x = rownames(iso.form.map),
+                                  replacement = "_",fixed = T)
+    colnames(iso.form.map) <- names(iso.form)
+  }
+
+
+  x <- list(iso.form = iso.form,
+            iso.form.map = iso.form.map)
+  return(x)
+
+
+}
+
+get_iso_form_set_map <- function(if.map,fg.map){
+
+
+
+
+  ### iso form ratio
+  {
+    frag.iso.matrix <- fg.map$frag.iso.matrix
+    iso.form.ratio <- lapply(rownames(frag.iso.matrix),function(fg.id){
+      z <- frag.iso.matrix[fg.id,]
+      names(z) <- paste0(fg.id,"_",names(z))
+      return(z)
+    })
+    iso.form.ratio <- unlist(iso.form.ratio)
+
+    iso.form.map <-if.map$iso.form.map
+    to.add <- matrix(0,
+                     nrow = length(setdiff(names(iso.form.ratio),rownames(iso.form.map))),
+                     ncol = ncol(iso.form.map),
+                     dimnames = list(rowname = setdiff(names(iso.form.ratio),rownames(iso.form.map))))
+    iso.form.map <- rbind(iso.form.map,to.add)
+    iso.form.map <- iso.form.map[names(iso.form.ratio), ,drop = F]
+    #iso.form.ratio <- iso.form.ratio[rownames(iso.form.set.map)]
+    #iso.form.int <- rep(fg.map$frag.int,each = ncol(frag.iso.matrix))
+  }
+
+  ### iso form set
+  {
+    iso.form.split <- apply(iso.form.map, 2, function(x){paste0(x,collapse = ";")})
+    iso.form.split <-  split(seq_along(if.map$iso.form),iso.form.split)
+    names(iso.form.split) <- paste0("iso_form_set_",num2str(seq_along(iso.form.split)))
+    iso.form.set.map <- sapply(iso.form.split ,
+                               function(x){ iso.form.map[,x[1]] },
+                               USE.NAMES=F)
+  }
+
+  if.map$iso.form.set <- iso.form.split
+  if.map$iso.form.set.map <- iso.form.set.map
+  if.map$iso.form.ratio <- iso.form.ratio
+  #if.map$iso.form.int <- iso.form.int
+
+  return(if.map)
+}
 
 get_iso_prob <- function(fc, ifc){
 
@@ -237,7 +344,7 @@ merge_frag_group_map <- function(fg.map){
     })
     z.comple <- which(z.comple,arr.ind = T)
     if (any(z.comple)) {
-      z.split <- sapply(1:nrow(z),function(x){
+      z.split <- lapply(1:nrow(z),function(x){
         x.c <- z.comple[z.comple[,1] == x,2]
         sort( c(x,x.c))
       })
@@ -317,7 +424,7 @@ get_iso_from_C_prob <- function(iso.form.map,cfmd,iso.count){
     if (iso.form.map$iso.form.prob[idx] == 0) {
 
     }else{
-      c.count <- table(unlist(iso.form.map$iso.form.set[idx]))
+      c.count <- table(unlist(iso.form.map$iso.form[iso.form.map$iso.form.set[[idx]]]))
       x.prob <- iso.form.map$iso.form.prob[idx]*c.count/sum(c.count)
       x[names(x.prob)] <- x.prob
     }

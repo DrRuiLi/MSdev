@@ -725,7 +725,7 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
 }
 
 xcms_get_feature_isotope_label <- function(xcms.xcms,
-                                           isotope = "[13]C",
+                                           iso_ele = "[13]C",
                                            ...){
 
 
@@ -733,42 +733,27 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
   {
 
     xcms.se <- quantify(xcms.xcms,missing = 1,value = "maxo")
+    xcms.se <- xcms.se[,xcms.se$sample.type=="Sample"]
   }
 
   ###calc iso ratio to seed
   {
 
-    xcms.ratio.to.seed<- get_xcms_iso_fraction(xcms.xcms ,isotope        )
+    xcms.ratio.to.seed <- get_xcms_iso_fraction(xcms.xcms ,iso_ele )
+    xcms.ratio.to.seed <- apply(xcms.ratio.to.seed ,1,
+               function(x){  mean_f(x , f = xcms.se$sample.source,na.rm=T)})%>%
+      t
 
   }
 
   ### compare labeled and unlabeled between group
   {
-    is.iso <- xcms.se$isotope_label%in% isotope
-    group.uniso <- unique(xcms.se$group[!is.iso])
-    group.iso <- unique(xcms.se$group[is.iso])
-    is_labeled <- sapply(group.iso,function(x.group){
-      idx <- c(which(xcms.se$group%in%group.uniso),
-               which(xcms.se$group%in% x.group))
-      ratio.matrix <- xcms.ratio.to.seed[,idx]
-      x.is.iso <- is.iso[idx]
-      iso.stat <- apply(ratio.matrix,1, function(x){
-        labeled.mean <- mean(x[x.is.iso])
-        unlabeled.mean <- mean(x[!x.is.iso])
-        p.t.test <- t.test_dev(x[x.is.iso],x[!x.is.iso])
-        data.frame(labeled.mean,
-                   unlabeled.mean,
-                   p.t.test
-        )
-      })%>%
-        data.table::rbindlist(idcol = "feature_id")
-      iso.stat <- iso.stat%>%
-        dplyr::mutate(is_labeled = (labeled.mean > unlabeled.mean&
-                                      p.t.test < 0.05))
-      return(iso.stat$is_labeled)
+    is.iso <- xcms.se$isotope_label%in% iso_ele
+    sample.source.uniso <- unique(xcms.se$sample.source[!is.iso])
+    sample.source.iso <- unique(xcms.se$sample.source[is.iso])
+    is_labeled <- apply(xcms.ratio.to.seed,1,function(x){
+      any(x[sample.source.iso] > mean( x[sample.source.uniso],na.rm = T),na.rm =T)
     })
-    is_labeled <- apply(is_labeled,1,any)
-
 
   }
 
@@ -777,6 +762,8 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
   {
     xcms.fda <- featureDefinitions(xcms.xcms)
     xcms.fda$is_labeled <- is_labeled
+    colnames(xcms.ratio.to.seed) <- paste0("Ratio_to_seed_",colnames(xcms.ratio.to.seed))
+    xcms.fda <- cbind(xcms.fda,xcms.ratio.to.seed)
     #xcms.fda$ratio_to_seed_label <- iso.stat$labeled.mean
     #xcms.fda$ratio_to_seed_unlabel <- iso.stat$unlabeled.mean
     xcms.fda -> featureDefinitions(xcms.xcms)

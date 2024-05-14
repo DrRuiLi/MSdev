@@ -122,8 +122,9 @@ MSIP_get_isotopologues_table <- function(object,extract_chrom = F){
         dplyr::select("feature_id","mzmed","rtmed","rtmin","rtmax","peakMaxo","polarity",
                       "score","C13_seed","C13_count",
                       "is_seed","is_isotopologues","is_labeled","compound_id","adduct",
-                      "name","formula","smiles","mean.iso",
-                      "mean.uniso", "ms1_purity","selected_to_acq")
+                      "name","formula","smiles","mean.iso", "mean.uniso",
+                      grep(pattern = "Ratio_to_seed",colnames(xcms.fdf),value = T),
+                      "ms1_purity","selected_to_acq")
     }
 
 
@@ -221,7 +222,6 @@ MSIP_get_isotopologues_data <- function(object,iso_ele = "[13]C"){
                     n() > 1,
                     rep(any(is_labeled) ,n()))%>%
       dplyr::ungroup()
-
     seed.id <- unique(xcms.fdf$iso_seed)
     for (i_seed_id in seq_along(seed.id)) {
       #message(i_seed_id)
@@ -249,9 +249,18 @@ MSIP_get_isotopologues_data <- function(object,iso_ele = "[13]C"){
         #this.sp <- lapply(this.sp,combineSpectra_groupby_ce)
         names(this.sp) <- paste0("M", this.fdf$iso_count[ match(names(this.sp),
                                                                 this.fdf$feature_id)])
-
+        this.sp <- lapply(this.sp , function(x) split(x,x$sample.source))
         this.list$Spectra <- this.sp
 
+      }
+
+      ### Ratio matrix
+      {
+        ratio_matrix <- this.fdf %>%
+          dplyr::select(contains("Ratio_to_seed"))%>%
+          as.matrix()
+        rownames(ratio_matrix) <- paste0("M",this.fdf$iso_count)
+        this.list$compound_info$ratio_matrix <- ratio_matrix
       }
 
 
@@ -301,13 +310,14 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
 
 
   ff <- function(x){
-
+      x <- msdev.combine@statData$MSIP$isotopologues_data[["FT7476_Negative"]]
     ### combine sp of seed to cfm-annotate
     {
       ### process M0 Spectra
       {
         ### M0 just annotated for smiles assign
-        seed.sp.c <- Spectra_filter_noise(x$Spectra$M0)
+        seed.sp.c <- do.call(c,unname(x$Spectra$M0))
+        seed.sp.c <- Spectra_filter_noise(seed.sp.c)
         seed.sp.c <- normalizeSpectra(sp = seed.sp.c,norm_to = "tic")
         seed.sp.c <- combineSpectra_groupby_ce(seed.sp.c,
                                                ppm = ppm,
@@ -317,11 +327,11 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
       }
       CFM_result <- NA
       try.return <- try(
-        CFM_result <- CFM_annotate(smiles_or_inchi = x$compound_info$smiles,
+        CFM_result <- CFM_annotate_by_predict(smiles_or_inchi = x$compound_info$smiles,
                                    spectrum_file = seed.sp.c,
                                    ppm_mass_tol = ppm,
                                    abs_mass_tol = 0.005,
-                                   param_adduct = switch(x$compound_info$polarity,
+                                   param_adduct = switch(as.character(x$compound_info$polarity),
                                                          "0"="[M-H]-",
                                                          "1"="[M+H]+") )
       )
@@ -337,9 +347,9 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
 
 
 
-  iso.cfm <- bplapply(object@statData$MSIP$isotopologues_data,ff,
-                      BPPARAM = BPPARAM
-  )
+  iso.cfm <- bplapply(object@statData$MSIP$isotopologues_data,
+                      ff,
+                      BPPARAM = BPPARAM )
   annotated <- sapply(iso.cfm,function(x) "CFM_annotation" %in% names(x))
   object@statData$MSIP$isotopologues_data <- iso.cfm[annotated]
   object
@@ -450,11 +460,16 @@ get_isotopologues_Spectra_process <- function(iso.list){
 MSIP_get_isotopologues_label_fraction <- function(object,ppm = 20){
 
   .f <- function(x.iso.cfm){
-    #x.iso.cfm <- iso.cfm$FT7478_Positive
+    #x.iso.cfm <- msdev.combine@statData$MSIP$isotopologues_data$FT0288_Negative
     cfmd <- x.iso.cfm$CFM_annotation
     all.iso.count <- stringr::str_extract(names(x.iso.cfm$Spectra),"[:digit:]+")%>%
       as.numeric()%>%na.omit()
     msip_result <-list()
+    natural.ratio.matrix <- get_iso_natural_ratio(
+      formula = x.iso.cfm$compound_info$formula,
+      iso_ele = "[13]C",
+      ratio_matrix = x.iso.cfm$compound_info$ratio_matrix)
+    msip_result <- list()
     for (i.iso in all.iso.count) {
 
      # message(i.iso)
@@ -462,12 +477,19 @@ MSIP_get_isotopologues_label_fraction <- function(object,ppm = 20){
         next
       }
       this.sp <-x.iso.cfm$Spectra[[paste0("M",i.iso)]]
-      this.sp <- split(this.sp,this.sp$sample.source)
       lengths(this.sp)
-      msip_result[[paste0("M",i.iso)]] <- lapply(this.sp,
-             .get_isotopologues_label_fraction,
-             cfmd = cfmd,ppm = ppm,iso.count = i.iso
-             )
+      for (i.sample in names(this.sp)) {
+        x <- .get_isotopologues_label_fraction(
+          sp.iso = this.sp[[i.sample]],
+          cfmd = cfmd,
+          ppm = ppm,
+          iso.count = i.iso,
+          natural.ratio = natural.ratio.matrix[paste0("M",i.iso),
+                                               paste0("Ratio_to_seed_",i.sample)]
+        )
+        msip_result[[paste0("M",i.iso)]][[i.sample]] <- x
+      }
+
 
 
     }
@@ -477,7 +499,7 @@ MSIP_get_isotopologues_label_fraction <- function(object,ppm = 20){
 
   }
 
-  bplapply(object@statData$MSIP$isotopologues_data,
+  object@statData$MSIP$MSIP_result <- bplapply(object@statData$MSIP$isotopologues_data,
            .f,
            BPPARAM = SerialParam(progressbar = T))
   #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[1]]
@@ -489,19 +511,30 @@ MSIP_get_isotopologues_label_fraction <- function(object,ppm = 20){
 .get_isotopologues_label_fraction <- function(sp.iso,
                                               cfmd,
                                               ppm = 10,
-                                              iso.count){
+                                              iso.count,
+                                              natural.ratio){
 
   sp.iso <- Spectra_filter_noise(sp.iso)
+  #sp.iso <- combineSpectra_groupby_ce(sp.back,
+  #                                    minProp = 0.5,plot = T,
+  #                                    ppm = 20)
   sp.frag.data <- CFM_annotate_isotopologues(sp.iso,
-                                             cfmd  = cfmd,ppm = ppm,
-                                             iso.count = iso.count)%>%
-    dplyr::filter(!is.na(iso))
-  if (!nrow(sp.frag.data)) return(NA)
+                                             cfmd  = cfmd,
+                                             ppm = ppm,
+                                             iso.count = iso.count)
+  sp.frag.data <- CFM_spectra_data_int_weight(sp.frag.data,iso.count)
+  if (sum(sp.frag.data$sp.id=="combined_sp")==0) return(NA)
+  fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso.count = iso.count)
+  heatmap.fg.map(fg.map)
+  if.map <- get_iso_form_map(fg.map)
+  sp.frag.data <- CFM_spectra_data_remove_natural(sp.frag.data,natural.ratio,if.map)
+  if (sum(sp.frag.data$sp.id=="combined_sp")==0) return(NA)
   fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso.count = iso.count)
   fg.map <- merge_frag_group_map(fg.map)
-  iso.form.map <- get_iso_form_map(fg.map ,atom_prob = F)
-  iso.form.map <- get_iso_form_prob_GLPK(iso.form.map)
-  c.prob <- get_iso_from_C_prob(iso.form.map, cfmd,iso.count)
+  if.map <- get_iso_form_set_map(if.map ,fg.map)
+  if.map <- get_iso_form_prob_GLPK(if.map)
+  heatmap.ifs.map(if.map)
+  c.prob <- get_iso_from_C_prob(if.map, cfmd,iso.count)
   #sum(iso.form.map$iso.form.prob)
 
 
@@ -528,14 +561,37 @@ MSIP_get_isotopologues_label_fraction <- function(object,ppm = 20){
   ### SAVE
   {
     return(list(
+      sp.data = sp.frag.data,
       fg.map = fg.map,
-      iso.form.map = iso.form.map,
+      if.map = if.map,
       c.prob = c.prob
     ))
 
 
   }
 
+
+}
+
+
+
+
+get_iso_natural_ratio <- function(formula, iso_ele, ratio_matrix  ){
+
+  iso_pattern <- chemform_isotopes_pattern_enviPat(
+    formula,
+    thresh = min(ratio_matrix))%>%
+    dplyr::filter(grepl(iso_ele,isotope_element,fixed = T)|isotope_element=="")%>%
+    dplyr::mutate(iso_count = sub(pattern = iso_ele,
+                                  x = isotope_element,
+                                  replacement = "",fixed = T),
+                  iso_count = case_when(iso_count==""~"0",
+                                        T~iso_count),
+                  iso_count = paste0("M",iso_count))%>%
+    dplyr::filter(iso_count%in% rownames(ratio_matrix))%>%
+    dplyr::add_row(iso_count = setdiff(rownames(ratio_matrix),.$iso_count),
+                   abundance = 0)
+  iso_pattern$abundance/100/ratio_matrix[iso_pattern$iso_count,,drop=F]
 
 }
 

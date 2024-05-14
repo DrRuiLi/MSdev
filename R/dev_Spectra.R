@@ -865,14 +865,14 @@ plot_Spectra_Injection <- function(sp){
 
 
 
-#' get_Spectra_from_CFM
+#' get_CFM_data_Spectra
 #'
 #' @param cfm.data from read_CFM_xxx
 #'
 #' @return Spcetra
 #' @export
 #'
-get_Spectra_from_CFM_data <- function(cfmd ){
+get_CFM_data_Spectra <- function(cfmd ){
 
   cfm.df <- cfmd@peak_assignment
   sp.list<- list()

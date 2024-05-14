@@ -32,6 +32,7 @@ CFM_get_param_config <- function(adduct = c("[M+H]+","[M-H]-"),
 }
 
 #' CFM predict
+#' @description
 #' see CFM doc
 #' @param smiles_or_inchi_or_file smiles
 #' @param prob_thresh prob
@@ -104,7 +105,7 @@ CFM_annotate<- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
                           ppm_mass_tol = 5.0,
                           abs_mass_tol = 0,
                           param_adduct = "[M+H]+",
-                          output_file = NULL){
+                          output_file = NULL,...){
 
   out.file <- ifelse(is.null(output_file),
                      tempfile(),
@@ -141,7 +142,27 @@ CFM_annotate<- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
 }
 
 
-### undone
+#' CFM_annotate_by_fraggen
+#' @description
+#' this function generate CFM_data by CFM_fraggen,
+#' not rely on Spectra input
+#'
+#' @note
+#' filter fragment of mz > 30 to avoid error when smiles transform to sdf
+#'
+#'
+#' @param smiles_or_inchi smiles
+#' @param spectrum_file NULL
+#' @param max_depth 1
+#' @param id ID
+#' @param ppm_mass_tol 20
+#' @param abs_mass_tol 0
+#' @param param_adduct adduct
+#' @param output_file NULL
+#'
+#' @return CFM_data
+#' @export
+#'
 CFM_annotate_by_fraggen <- function(
     smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
     spectrum_file = NULL,
@@ -150,13 +171,59 @@ CFM_annotate_by_fraggen <- function(
     ppm_mass_tol = 5.0,
     abs_mass_tol = 0,
     param_adduct = "[M+H]+",
-    output_file = NULL){
+    output_file = NULL,...){
 
   cfm.fragen <- CFM_fraggen(smiles_or_inchi,
                             max_depth = max_depth,
                             param_adduct = param_adduct)
-  sp.data <- get_Spectra_data(spectrum_file)
 
+
+  peak.data <- cfm.fragen@fragment_define%>%
+    dplyr::filter(!intermediate)%>%
+    dplyr::mutate(energy = "energy0",
+                  intensity = NA,
+                  fragment_score= NA)%>%
+    dplyr::add_row(energy = c(rep("energy1",nrow(.)),
+                              rep("energy2",nrow(.))),
+                   fragment_mz=rep(.$fragment_mz,2),
+                   fragment_id = rep(.$fragment_id,2))%>%
+    dplyr::select(energy,
+                  mz =fragment_mz,
+                  intensity,
+                  fragment_id,
+                  fragment_score)%>%
+    remove_rownames()
+
+  cfm.fragen@peak_assignment <- peak.data
+  return(cfm.fragen)
+
+
+}
+
+
+#' CFM_annotate_by_predict
+#' @description
+#' [CFM_predict] and then [CFM_annotate]
+#'
+#' @export
+#' @inheritParams  CFM_annotate
+CFM_annotate_by_predict <- function(
+    smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
+    id = "AN_ID",
+    ppm_mass_tol = 5.0,
+    abs_mass_tol = 0,
+    param_adduct = "[M+H]+",
+    output_file = NULL,...){
+
+  cfm.pred <- CFM_predict(smiles_or_inchi,
+                            param_adduct = param_adduct)
+  cfm.pred.sp <- get_CFM_data_Spectra(cfm.pred)
+  cfm.anno <- CFM_annotate(smiles_or_inchi = smiles_or_inchi,
+               spectrum_file = cfm.pred.sp,
+               ppm_mass_tol=ppm_mass_tol,
+               abs_mass_tol=abs_mass_tol,
+               param_adduct=param_adduct   )
+  return(cfm.anno)
 
 
 }
@@ -538,69 +605,14 @@ read_CFM_fraggen_result <- function(result_path){
 
 
 
-plot_CFM_annotated_Spectra <- function(cfm_annoate_result){
+plot_CFM_annotated_Spectra <- function(cfmd){
 
-  peak.assign <- cfm_annoate_result$peak_assignment
-  fragment.define <- cfm_annoate_result$fragment_define
-  fragment.sdf <- smiles2sdf(fragment.define$smiles )
+  peak.assign <- cfmd@peak_assignment
+  fragment.define <- cfmd@fragment_define
 
+  get_CFM_data_Spectra(cfmd)%>%
+    plot_Spectra()
 
-  peak.assign.unique <- peak.assign%>%
-    dplyr::group_by(mz)%>%
-    dplyr::slice_max(fragment_score)%>%
-    dplyr::mutate(fragment.define[match(fragment_id,fragment.define$fragment_id),])%>%
-    dplyr::mutate(x = mz,
-                  xend = mz,
-                  y = 0,
-                  yend = intensity,
-                  annotated = !is.na(fragment_score))
-  x.range <-c(min(peak.assign.unique$mz),
-              max(peak.assign.unique$mz))
-  y.range <-c(0,
-              max(peak.assign.unique$intensity)*1.2)
-
-  ggplot(peak.assign.unique)+
-   # geom_hline(yintercept = 0 , size = 0.2,col = "grey")+
-    geom_segment(aes(x = x,y =y,xend = xend,
-                     yend = yend ,col = annotated),
-                 size = 0.2,
-                 show.legend = F)+
-    geom_point(aes(x = x, y = yend ,
-                   alpha = annotated,col = annotated),
-               show.legend = F,size = 0.5)+
-    scale_color_manual(values = c(`FALSE` = "grey",`TRUE` = "#80B1D3"))+
-    scale_alpha_manual(values = c(`FALSE` = 0,`TRUE` =1))+
-    scale_y_continuous(expand = expansion(0,0),
-                       limits = y.range)+
-    labs(x = "Mz",y = "Intensity")+
-    theme_classic()+
-    theme(plot.margin = unit(c(0.1,0.1,0.1,0.1),"inch"),
-          axis.line = element_line(linewidth = 0.1),
-          axis.ticks = element_line(linewidth = 0.1))->p.sp
-
-  p.annotated <- p.sp
-  x.width = 10
-  y.height = 10
-  for (i in 1:nrow(peak.assign.unique)) {
-    smiles <- peak.assign.unique$smiles[i]
-    if (is.na(smiles)) {
-      next
-    }
-    sdf <- smiles2sdf(smiles)[[1]]
-    if (is.null(sdf)) {
-      next
-    }
-    p.sdf <- ggplot_sdf(sdf,show_ele = T,cex = 0.3)
-    p.annotated+annotation_custom(
-      ggplotGrob(p.sdf),
-      xmin = peak.assign.unique$x[i]-x.width/2,
-      xmax = peak.assign.unique$x[i]+x.width/2,
-      ymin = peak.assign.unique$yend[i]-y.height/2 ,
-      ymax= peak.assign.unique$yend[i] + y.height
-    )->p.annotated
-  }
-
-  return(p.annotated)
 }
 
 
@@ -701,13 +713,27 @@ CFM_data_get_igraph <- function(object){
   {
     fragment.data <- object@fragment_define
     fragment.sdf <- suppressWarnings(smiles2sdf(fragment.data$smiles))
-    cid(fragment.sdf) <- fragment.data$fragment_id
     fragment.data$formula <- get_sdf_formula(fragment.sdf)
+
+  }
+
+  ### filter valid smiles and sdf
+  {
+    fragment.data <- fragment.data%>%
+      dplyr::filter(!is.na(formula))
+    object@fragment_define <- fragment.data
+    object@fragment_transition <-
+      object@fragment_transition %>%
+      dplyr::filter(from %in% object@fragment_define $fragment_id,
+                    to %in% object@fragment_define $fragment_id
+      )
 
   }
 
   ### igraph
   {
+    fragment.sdf <- suppressWarnings(smiles2sdf(fragment.data$smiles))
+    cid(fragment.sdf) <- fragment.data$fragment_id
     fragment.igraph <- get_sdf_igraph(fragment.sdf)
     names(fragment.igraph) <- fragment.data$fragment_id
   }
@@ -717,17 +743,18 @@ CFM_data_get_igraph <- function(object){
   {
     fragment.trans <- object@fragment_transition
     ### map for trans
-    trans.atom.map <- list()
-    fragment.atom.map <- list()
+    trans.atom.map <- as.list(rep(NA,nrow(fragment.trans)))
+    fragment.atom.map <-list()
+    .trace.atom.map <- function(i.trans){
+      ig.parent <- fragment.igraph[[fragment.trans$from[i.trans]]]
+      ig.product <- fragment.igraph[[fragment.trans$to[i.trans]]]
+      sdf.parent <- fragment.sdf[[fragment.trans$from[i.trans]]]
+      sdf.product <- fragment.sdf[[fragment.trans$to[i.trans]]]
+      atom.map <- get_atom_map(sdf.parent ,sdf.product ,ig.parent ,ig.product )
+      atom.map
+    }
     if (nrow(fragment.trans)) {
-      for (i in 1:nrow(fragment.trans)) {
-        ig.parent <- fragment.igraph[[fragment.trans$from[i]]]
-        ig.product <- fragment.igraph[[fragment.trans$to[i]]]
-        sdf.parent <- fragment.sdf[[fragment.trans$from[i]]]
-        sdf.product <- fragment.sdf[[fragment.trans$to[i]]]
-        atom.map <- get_atom_map(sdf.parent ,sdf.product ,ig.parent ,ig.product )
-        trans.atom.map[[i]] <- atom.map
-      }
+
 
       ### map for frag
       ig.trans <- get_CFM_data_trans_igraph(object)
@@ -738,7 +765,15 @@ CFM_data_get_igraph <- function(object){
                                     output = "epath")
         ep <- this.path$epath[[1]]
         if (!length(ep)==0) {
-          maps <- trans.atom.map[match(ep,E(ig.trans))]
+          trans.idx <- match(ep,E(ig.trans))
+          maps <- lapply(trans.idx,function(x){
+            if (all(is.na(trans.atom.map[[x]]))) {
+              return( .trace.atom.map(x))
+            }
+            return(trans.atom.map[[x]])
+          })
+          trans.atom.map[trans.idx] <- maps
+
           while(length(maps)>1){
             maps[[2]] <- maps[[1]]%*% maps[[2]]
             maps[[1]] <-NULL
@@ -800,12 +835,20 @@ cfm_data_get_fragment_group <- function(cfm_data,ppm = 10){
 get_cfm_data_fg_atom_map <- function(cfm_data,frag.group){
 
   frag.idx <- which(cfm_data@fragment_define$fragment_group == frag.group)
-  frag.def <- cfm_data@fragment_define%>%
-    dplyr::filter(fragment_group == frag.group)
-  frag.maps <- cfm_data@fragment_atom_map[frag.idx]
-  frag.maps <- frag.maps[!sapply(frag.maps,is.null)]
-  frag.atoms.prob <- sapply(frag.maps,rowSums)%>%
-    rowMeans()
+  if (1%in%frag.idx) {
+    ele <- get_atom_from_igraph(get_cfm_data_sdf_igraph(cfm_data))
+    frag.atoms.prob <- rep(1,length(ele))
+    names(frag.atoms.prob) <- ele
+  }else{
+    frag.def <- cfm_data@fragment_define%>%
+      dplyr::filter(fragment_group == frag.group)
+    frag.maps <- cfm_data@fragment_atom_map[frag.idx]
+    frag.maps <- frag.maps[!sapply(frag.maps,is.null)]
+    frag.atoms.prob <- sapply(frag.maps,rowSums)%>%
+      rowMeans()
+  }
+
+
   return(frag.atoms.prob)
 }
 
@@ -831,5 +874,115 @@ heatmap_atom_iso_prob <- function(x){
 }
 
 
+CFM_spectra_data_int_weight <- function(sp.data,iso.count){
 
 
+
+  ### weighted intensity matrix
+  {
+    fg.idx <- split(1:nrow(sp.data),sp.data$fragment_group)
+    if (!length(fg.idx))  return(sp.data)
+    frag.iso.matrix <- matrix(
+      nrow = length(fg.idx),ncol = iso.count+1,
+      dimnames = list(names(fg.idx),paste0("M",0:iso.count)))
+    frag.int.sum <- c()
+    for (i.fg in seq_along(fg.idx)) {
+      x.df <- sp.data[fg.idx[[i.fg]],]
+      x.int <- x.df%>%
+        dplyr::select(-mz,-collisionEnergy)%>%
+        tidyr::pivot_wider(names_from ="iso",
+                           id_cols = "sp.id",
+                           values_from = "intensity",
+                           values_fn = sum)%>%
+        tibble::column_to_rownames("sp.id")%>%
+        dplyr::select(dplyr::starts_with("M"))%>%
+        as.matrix()
+      to.add <- setdiff(paste0("M",0:iso.count),colnames(x.int))
+      x.int <- cbind(matrix(0,nrow(x.int),length(to.add),
+                            dimnames = list(NULL,to.add)),x.int)
+      x.int <- x.int[,paste0("M",0:iso.count),drop =F]
+      x.int[is.na(x.int)] <- 0
+      x.ratio <- t(apply(x.int,1,function(z) z/sum(z)))
+      x.weight <- rowSums(x.int)
+      x.int.weighted <- apply(x.int,2,weighted.mean,w = x.weight)
+      x.ratio.weighted <- apply(x.ratio,2,weighted.mean,w = x.weight)
+      frag.iso.matrix[i.fg,] <- x.int.weighted
+      frag.int.sum[i.fg] <- sum(x.int.weighted)
+    }
+    names(frag.int.sum) <- names(fg.idx)
+
+  }
+
+
+  ### merge
+  {
+    sp.mz <- sp.data%>%
+      dplyr::filter(!is.na(fragment_group))%>%
+      dplyr::mutate(fg.iso = paste0(fragment_group,iso))
+
+    iso.peak.data <- frag.iso.matrix%>%
+      as.data.frame()%>%
+      rownames_to_column("fragment_group")%>%
+      tidyr::pivot_longer(starts_with("M"),
+                          names_to = "iso",
+                          values_to = "intensity")%>%
+      dplyr::mutate(sp.id= "combined_sp",
+                    fg.iso = paste0(fragment_group,iso),
+                    mz = sp.mz$mz[match(fg.iso,sp.mz$fg.iso)])%>%
+      dplyr::filter(!is.na(mz))
+    sp.data.weighted <- bind_rows(
+      sp.data,
+      iso.peak.data
+    )%>%
+      dplyr::select(-fg.iso)
+
+
+  }
+  return(sp.data.weighted)
+}
+
+CFM_spectra_data_remove_natural <-function(sp.data,
+                                           natural.ratio,
+                                           if.map){
+
+
+  ### calculate intensity from natrual
+  {
+    sp.data.merged <- sp.data%>%
+      dplyr::filter(sp.id== "combined_sp")%>%
+      dplyr::mutate(fg.iso = paste0(fragment_group,"_",iso))
+    int_sum <- sp.data.merged%>%
+      dplyr::group_by(fragment_group)%>%
+      dplyr::summarise(int_sum = sum(intensity))%>%
+      #dplyr::mutate(int_sum = sum(intensity),
+      #              fgi = paste0(fragment_group,"_",iso))%>%
+      #column_to_rownames("fragment_group")%>%
+      dplyr::pull(int_sum,name  = fragment_group)
+    max.iso <- max(str_extract_num(sp.data.merged$iso))
+    suffix <- paste0("_M",rep(0:max.iso,length(int_sum)))
+    int_sum <- rep(int_sum,each = max.iso+1)
+    names(int_sum) <- paste0(names(int_sum) , suffix)
+    natural.distribution <- apply(if.map$iso.form.map,1,
+                                sum)/ncol(if.map$iso.form.map)
+    natural.int <- int_sum[names(natural.distribution)]*natural.distribution*natural.ratio
+
+  }
+
+  {
+    sp.data.removed <-  sp.data.merged %>%
+      dplyr::mutate(intensity = intensity - natural.int[fg.iso],
+                    intensity = case_when(intensity <0 ~0,
+                                          is.na(intensity)~0,
+                                          T~intensity))%>%
+      dplyr::group_by(fragment_group)%>%
+      dplyr::filter(!all(intensity==0))%>%
+      dplyr::select(-fg.iso)
+    sp.data <- sp.data%>%
+      dplyr::filter(!sp.id== "combined_sp")%>%
+      rbind(sp.data.removed)
+  }
+
+  return(sp.data)
+
+
+}

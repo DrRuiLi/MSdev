@@ -2,8 +2,7 @@
 % Please edit documentation in R/dev_CFM.R
 \name{CFM_predict}
 \alias{CFM_predict}
-\title{CFM predict
-see CFM doc}
+\title{CFM predict}
 \usage{
 CFM_predict(
   smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
@@ -34,6 +33,5 @@ CFM_predict(
 list of cfm data
 }
 \description{
-CFM predict
 see CFM doc
 }
