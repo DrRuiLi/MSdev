@@ -181,7 +181,7 @@ get_iso_form_map_old <- function(fg.map,atom_prob = T ){
 
 }
 
-get_iso_form_map <- function(fg.map){
+get_iso_form_map <- function(fg.map,max_combn = 500000){
 
 
   ### required info
@@ -194,6 +194,8 @@ get_iso_form_map <- function(fg.map){
   }
   ### all possible iso form
   {
+    if.combn <- choose(ncol(frag.c.matrix),frag.max.iso)
+    if (if.combn > max_combn) return(NA)
     iso.form <- combn(colnames(frag.c.matrix),frag.max.iso,simplify = F)
     names(iso.form) <- paste0("iso_form_",num2str(1:length(iso.form)))
   }

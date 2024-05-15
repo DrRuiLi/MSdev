@@ -844,8 +844,15 @@ get_cfm_data_fg_atom_map <- function(cfm_data,frag.group){
       dplyr::filter(fragment_group == frag.group)
     frag.maps <- cfm_data@fragment_atom_map[frag.idx]
     frag.maps <- frag.maps[!sapply(frag.maps,is.null)]
-    frag.atoms.prob <- sapply(frag.maps,rowSums)%>%
-      rowMeans()
+    if (!length(frag.maps)) {
+      ele <- get_atom_from_igraph(get_cfm_data_sdf_igraph(cfm_data))
+      frag.atoms.prob <- rep(1,length(ele))
+      names(frag.atoms.prob) <- ele
+    }else{
+      frag.atoms.prob <- sapply(frag.maps,rowSums)%>%
+        rowMeans()
+    }
+
   }
 
 

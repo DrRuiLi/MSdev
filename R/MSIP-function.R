@@ -460,7 +460,7 @@ get_isotopologues_Spectra_process <- function(iso.list){
 MSIP_get_isotopologues_label_fraction <- function(object,ppm = 20){
 
   .f <- function(x.iso.cfm){
-    #x.iso.cfm <- msdev.combine@statData$MSIP$isotopologues_data$FT0288_Negative
+    #x.iso.cfm <- msdev.combine@statData$MSIP$isotopologues_data[[79]]
     cfmd <- x.iso.cfm$CFM_annotation
     all.iso.count <- stringr::str_extract(names(x.iso.cfm$Spectra),"[:digit:]+")%>%
       as.numeric()%>%na.omit()
@@ -479,6 +479,7 @@ MSIP_get_isotopologues_label_fraction <- function(object,ppm = 20){
       this.sp <-x.iso.cfm$Spectra[[paste0("M",i.iso)]]
       lengths(this.sp)
       for (i.sample in names(this.sp)) {
+        #message(i.sample,i.iso)
         x <- .get_isotopologues_label_fraction(
           sp.iso = this.sp[[i.sample]],
           cfmd = cfmd,
@@ -499,12 +500,13 @@ MSIP_get_isotopologues_label_fraction <- function(object,ppm = 20){
 
   }
 
-  object@statData$MSIP$MSIP_result <- bplapply(object@statData$MSIP$isotopologues_data,
+  object@statData$MSIP$MSIP_result <- bplapply(
+    object@statData$MSIP$isotopologues_data[1:10],
            .f,
            BPPARAM = SerialParam(progressbar = T))
   #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[1]]
 
-
+  object
 }
 
 
@@ -525,15 +527,16 @@ MSIP_get_isotopologues_label_fraction <- function(object,ppm = 20){
   sp.frag.data <- CFM_spectra_data_int_weight(sp.frag.data,iso.count)
   if (sum(sp.frag.data$sp.id=="combined_sp")==0) return(NA)
   fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso.count = iso.count)
-  heatmap.fg.map(fg.map)
+  #heatmap.fg.map(fg.map)
   if.map <- get_iso_form_map(fg.map)
+  if (all(is.na(if.map))) return(NA)
   sp.frag.data <- CFM_spectra_data_remove_natural(sp.frag.data,natural.ratio,if.map)
   if (sum(sp.frag.data$sp.id=="combined_sp")==0) return(NA)
   fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso.count = iso.count)
   fg.map <- merge_frag_group_map(fg.map)
   if.map <- get_iso_form_set_map(if.map ,fg.map)
   if.map <- get_iso_form_prob_GLPK(if.map)
-  heatmap.ifs.map(if.map)
+  #heatmap.ifs.map(if.map)
   c.prob <- get_iso_from_C_prob(if.map, cfmd,iso.count)
   #sum(iso.form.map$iso.form.prob)
 
