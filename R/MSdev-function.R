@@ -1129,17 +1129,19 @@ get_MS_sampleinfo <- function(raw.data.dir,
                       replacement = ""
                     ),
                     T~sample.type),
+                    sample.source = group,
                     weight = NA ,
                     xcmsProcessing = "Both",
-                    isotope_label = NA)%>%
-      dplyr::select(no,sample.name,sample.type,sample.labels,group, weight,
+                    isotope_tracer = NA)%>%
+      dplyr::select(no,sample.name,sample.type,sample.labels,sample.source,
+                    group, weight,
                     raw.files,
                     polarity,
                     analysis.time,
                     msData.files,
                     ms.name,
                     xcmsProcessing,
-                    isotope_label)
+                    isotope_tracer)
 
 
   }
@@ -1499,7 +1501,7 @@ MSdev_extract_Spectra <- function(object, msLevel = 2,
       sp.ms2$sp_id <- paste0("MS2_SP",num2str(1:length(sp.ms2)))
       sp.ms2$precursorMz <- sp.ms2$isolationWindowTargetMz
       if(eval.noise) sp.ms2 <- Spectra_get_noise(sp.ms2)
-      if(eval.ms1) sp.ms2 <- Spectra_get_purity(sp.ms2,sp.ms1 = sp.ms1)
+      if(eval.ms1) sp.ms2 <- Spectra_get_purity(sp.ms2,msLevel = 1,sp.ms1 = sp.ms1)
       Spectra::spectraNames(sp.ms2) <- sp.ms2$sp_id
     }
 

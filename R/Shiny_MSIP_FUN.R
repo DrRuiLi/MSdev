@@ -1,7 +1,9 @@
 
 get_iso_cfm_compound_info <- function(iso.list){
 
-  compound_info <-  lapply(iso.list, function(x){x$compound_info})%>%
+  compound_info <-  lapply(iso.list, function(x){
+    x$compound_info[c("name","compound_id","mz","rt","formula","smiles","score","adduct","polarity")]
+    })%>%
     data.table::rbindlist()%>%
     dplyr::mutate(mz = format(mz,digits = 4),
                   rt =  format(rt,digits = 2),
@@ -30,6 +32,7 @@ shiny_plotly_iso_msip_spectra <- function(sp.data){
   {
 
     ymax <- max(abs(sp.data$y))*1.2
+    ymin <- min((sp.data$y))*1.2
 
     sp.data%>%
       plot_ly(source = "plotly_ms2_sp")%>%
@@ -39,6 +42,7 @@ shiny_plotly_iso_msip_spectra <- function(sp.data){
                    y = I(0),yend = ~y,
                    alpha = 0.5,
                    colors = c(" "= "#BBBBBB",
+                              "CE=NA"="#4DBBD5FF",
                               "CE=10"="#4DBBD5FF",
                               "CE=20" ="#FF7F0E",
                               "CE=40" ="#E64B35FF" ),
@@ -48,14 +52,15 @@ shiny_plotly_iso_msip_spectra <- function(sp.data){
       add_markers(x = ~x,
                   y = ~y,
                   colors = c(" "= "#BBBBBB",
-                             "10"="#4DBBD5FF",
-                             "20" ="#FF7F0E",
-                             "40" ="#E64B35FF" ),
+                             "CE=NA"="#4DBBD5FF",
+                             "CE=10"="#4DBBD5FF",
+                             "CE=20" ="#FF7F0E",
+                             "CE=40" ="#E64B35FF"),
                   color = ~ collisionEnergy,
                   text = ~ hover_label,
                   #hovertemplate = "%{text}<extra></extra>",
                   hoverinfo = "text",
-                  showlegend = T)%>%
+                  showlegend = F)%>%
       highlight(on = "plotly_click",
                 off = NULL,
                 selected = attrs_selected(
@@ -89,6 +94,8 @@ shiny_get_sp_data <- function(iso_msip,
     if (!iso_count %in% names(iso_msip$Spectra)) {
       return(NA)
     }
+
+
   }
   ### debug
   {
@@ -99,30 +106,33 @@ shiny_get_sp_data <- function(iso_msip,
 
   ### sp data
   {
-    sp.m0 <-iso_msip$Spectra$M0
-    sp.m0 <- sp.m0[sp.m0$sample.source==sample]%>%
-      normalizeSpectra()%>%
-      combineSpectra_groupby_ce()
-    sp.iso <- iso_msip$Spectra[[iso_count]]
-    sp.iso <- sp.iso[sp.iso$sample.source==sample]%>%
-      normalizeSpectra()%>%
-      combineSpectra_groupby_ce()
+    sp.m0 <-iso_msip$Spectra$M0%>%
+      unname()%>%
+      do.call(c,.)%>%
+      combineSpectra_groupby_ce(minProp = 0.01)%>%
+      applyProcessing()
 
     sp.m0.frag.data <- CFM_annotate_isotopologues(sp.m0,
                                                   cfmd  = iso_msip$CFM_annotation,
                                                   ppm = 10,
                                                   iso.count = 0)
-    sp.iso.frag.data <- CFM_annotate_isotopologues(sp.iso,
-                                                   cfmd  = iso_msip$CFM_annotation,
-                                                   ppm = 10,
-                                                   iso.count = str_extract_num(iso_count))
+    if (all(is.na(iso_msip$MSIP_result[[iso_count]][[sample]])) ){
+      sp.iso.frag.data<- sp.m0.frag.data[0,]
+      }else{
+        sp.iso.frag.data <-iso_msip$MSIP_result[[iso_count]][[sample]]$sp.data%>%
+          dplyr::filter(sp.id == "combined_sp"|is.na(fragment_group  ))%>%
+          dplyr::arrange(sp.id)
+    }
 
     sp.m0.frag.data <- sp.m0.frag.data%>%
-      dplyr::mutate(sp.id=1,x = mz,y = intensity)
-    sp.iso.frag.data <- sp.iso.frag.data%>%
-      dplyr::mutate(sp.id=2,
-                    x = mz,
-                    y = - intensity)
+      dplyr::mutate(sp.id=1,x = mz,
+                    y = 100*intensity/max(intensity))
+    suppressWarnings(
+      sp.iso.frag.data <- sp.iso.frag.data%>%
+        dplyr::mutate(sp.id=2,
+                      x = mz,
+                      y = -100* intensity/max(intensity))
+    )
 
     sp.data <- rbind(sp.m0.frag.data,sp.iso.frag.data)%>%
       dplyr::mutate(annotated = !is.na(fragment_group),
@@ -208,7 +218,9 @@ shiny_get_atom_map <- function(iso_msip,
                                fid,
                                prob = T){
   x <- list(NA,NA)
-  if (is.null(iso_msip)) {
+  #message("A",names(iso_msip))
+  #message("B",fid)
+  if (is.null(iso_msip)|is.null(fid)) {
     return(x)
   }
   if (all(is.na(iso_msip))) {
@@ -220,6 +232,7 @@ shiny_get_atom_map <- function(iso_msip,
   }
 
   map.matrix <- iso_msip$CFM_annotation@fragment_atom_map[[fid]]
+  if (is.null(map.matrix)) return(x)
   if (nrow(map.matrix)) {
 
     if (prob) {
@@ -341,16 +354,20 @@ as.HTML.checkbox.logical <- function(x){
   x.logic <- x=='<input type="checkbox" checked />'
   x.logic
 }
-shiny_format_acq <- function(acq.list.table,selected ){
+shiny_format_acq <- function(acq.list.table,acq.selected ){
 
-  acq.list.table%>%
+  tb <- acq.list.table%>%
     dplyr::mutate(mz = round(mzmed,4),
                   rt = round(rtmed,0),
-                  selected = as.HTML.checkbox.checked(selected),
+                  ms1_purity = round(ms1_purity,2),
+                  selected_to_acq = acq.selected[feature_id] ,
+                  selected_to_acq = as.HTML.checkbox.checked(selected_to_acq),
                   group_label = paste0(C13_seed,": ",str_short(name,50),", ",adduct),
                   isotope = paste0("M",C13_count)
                   )%>%
-    dplyr::select(feature_id,mz,rt,isotope,selected,group_label)
+    dplyr::filter(!is.na(C13_seed),!is.na(compound_id),!is.infinite(C13_count))%>%
+    dplyr::select(feature_id,mz,rt,isotope,ms1_purity,selected_to_acq,group_label)
+  return(tb)
 
 }
 
@@ -411,4 +428,14 @@ shiny_plotly_chrom <- function(xchrom ){
 
 
 
+}
+
+shiny_get_C_prob <- function(iso_msip,iso_count,sample){
+
+  x <- iso_msip$MSIP_result[[iso_count]][[sample]]
+  if (all(is.na(x))) {
+    return(NA)
+  }else{
+    return(x$c.prob)
+  }
 }

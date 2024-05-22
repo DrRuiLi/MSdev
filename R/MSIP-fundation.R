@@ -558,3 +558,21 @@ trans_iso_ele <- function(iso_ele = "[13]C"){
   return(x)
 
 }
+
+
+get_formula_ele_count <- function(formula,ele = "C"){
+
+  .f<-function(formula){
+    if (is.na(formula)) {
+      return(NA)
+    }
+    atom.count <- MSCC:::chemform_parse(formula)
+    if (!ele%in% colnames(atom.count)) {
+      max.atom <- 0
+    }else
+      max.atom <- atom.count[,ele]
+  }
+  max.atom <- unname(sapply(formula,.f))
+  return(max.atom)
+
+}

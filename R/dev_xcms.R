@@ -615,6 +615,21 @@ xcms_get_feature_stat <- function(xcms.xcms){
 }
 
 
+#' xcms_get_feature_isotopologues
+#' @description
+#' screen isotopologues peaks by mz and rt diff,
+#' record result in featureDefinitions
+#'
+#'
+#' @param xcms.xcms  xcms
+#' @param isotope "\[13\]C"
+#' @param max_label 10
+#' @param ppm 20
+#' @param net.degree.ratio 0.5
+#'
+#' @return xcms
+#' @export
+#'
 xcms_get_feature_isotopologues <- function(xcms.xcms,
                                            isotope = "[13]C",
                                            max_label = 10,
@@ -724,6 +739,16 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
 
 }
 
+#' xcms_get_feature_isotope_label
+#' @description
+#' calculate ratio_to_seed
+#'
+#' @inheritParams xcms_get_feature_isotopologues
+#' @param iso_ele "\[13\]C"
+#' @param ...
+#'
+#' @export
+#'
 xcms_get_feature_isotope_label <- function(xcms.xcms,
                                            iso_ele = "[13]C",
                                            ...){
@@ -2123,7 +2148,7 @@ xcms_get_feature_purity <- function(xcms.xcms,
     sapply(unique(idx.group),function(x.group){
       apply(ms1_purity_matrix[,idx.group==x.group],1,mean)
     })->ms1_purity_group_mean
-    xcms.fdf$ms1_purity <- apply(ms1_purity_group_mean,1,max)
+    xcms.fdf$ms1_purity <- apply(ms1_purity_group_mean,1,mean)
   }else{
     xcms.fdf$ms1_purity <- sapply(ms1_purity,mean)
   }

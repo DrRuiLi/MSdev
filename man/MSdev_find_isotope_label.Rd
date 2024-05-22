@@ -4,16 +4,16 @@
 \alias{MSdev_find_isotope_label}
 \title{MSdev_find_isotope_label}
 \usage{
-MSdev_find_isotope_label(object, isotope = "[13]C", ...)
+MSdev_find_isotope_label(object, isotope = "[13]C", ppm = 10, ...)
 }
 \arguments{
 \item{object}{MSdev}
 
 \item{isotope}{"\link{13}C"}
 
-\item{max_label}{10}
-
 \item{ppm}{20}
+
+\item{max_label}{10}
 
 \item{net.degree.ratio}{0.5}
 }

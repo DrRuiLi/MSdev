@@ -69,9 +69,9 @@ MSIP_shiny_ui <- function(){
                                      )
                               ),
                               column(width = 5,
-                                     selectInput(inputId = "select_fid",
+                                     selectInput(inputId = "select_fgid",
                                                  label = "Possible fragment structure",
-                                                 choices = paste0("M",1:5)),
+                                                 choices = paste0("Fragment",2:5)),
                                      fluidRow(align = "center",
                                        textOutput(outputId = "frag_formula" )
                                      ),

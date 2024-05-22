@@ -1722,3 +1722,32 @@ trans.atom.map[trans.idx] <- a
 msip.data <- msdev.combine@statData$MSIP$isotopologues_data
 setdiff(names(msip.data),names(a))
 
+# Wed May 15 14:00:21 2024 ------------------------------
+a <- msdev.combine@statData$MSIP$isotopologues_data
+
+a.stat <- lapply(a,
+       function(x){
+          atom.count <- chemform_parse(x$compound_info$formula)[,"C"]
+          iso.count <- str_extract_num(max(rownames( x$compound_info$ratio_matrix)))
+          data.frame(c.count = atom.count,
+                     iso.count= iso.count,
+                     calc.time = choose(atom.count,iso.count))
+       })%>%
+  data.table::rbindlist()
+# Wed May 15 16:48:21 2024 ------------------------------
+a <- shiny_get_sp_data(iso_msip,sample,iso_count)
+shiny_plotly_iso_msip_spectra(a)
+
+
+CFM_spectra_data_int_weight()
+
+# Thu May 16 19:07:37 2024 ------------------------------
+acq.selected <-
+  list(Positive = acq.list$Positive%>%
+         dplyr::pull(selected_to_acq,name = feature_id),
+       Negative = acq.list$Negative%>%
+         dplyr::pull(selected_to_acq,name = feature_id))
+
+shiny_format_acq(acq.list$Positive,
+                 acq.selected$Positive )->a
+

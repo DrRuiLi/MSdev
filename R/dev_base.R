@@ -65,7 +65,10 @@ colorMix <- function(...){
 
 }
 
+message_with_time <- function(...){
 
+  message(format(Sys.time(),digits = 0)," ",...)
+}
 
 
 #' @title open_dir

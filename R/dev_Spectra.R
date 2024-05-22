@@ -1225,7 +1225,22 @@ setMethod(sampleNames,"Spectra",
 #' @return Spectra
 #' @export
 #'
-Spectra_get_purity <- function(sp,sp.ms1= NULL){
+Spectra_get_purity <- function(sp,msLevel = 2,sp.ms1= NULL){
+
+  if (msLevel == 1) {
+    sp <- .Spectra_get_purity_ms1(sp,sp.ms1)
+  }
+  if (msLevel == 2) {
+    sp <- .Spectra_get_purity_ms2(sp)
+  }
+
+  return(sp)
+
+}
+
+
+.Spectra_get_purity_ms1 <- function(sp,sp.ms1= NULL){
+
 
   sp.raw <- sp
   sp$temp.id = 1:length(sp)
@@ -1282,6 +1297,12 @@ Spectra_get_purity <- function(sp,sp.ms1= NULL){
 
   return(sp.raw)
 }
+
+.Spectra_get_purity_ms2 <- function(sp){
+
+}
+
+
 
 get_spectra_ion_purity <- function(sp,ion_mz,ppm = 10,isolation_half_window = 0.2){
 

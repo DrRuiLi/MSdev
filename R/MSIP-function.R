@@ -11,6 +11,7 @@
 #'
 MSdev_find_isotope_label <- function(object,
                                      isotope = "[13]C",
+                                     ppm = 10,
                                      ...){
 
   for (i in 0:1) {
@@ -19,7 +20,7 @@ MSdev_find_isotope_label <- function(object,
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     xcms.xcms <- xcms_get_feature_isotopologues(xcms.xcms,
                                                 isotope = isotope,
-                                                ppm = 10,
+                                                ppm = ppm,
                                                 ...)
     xcms.xcms <- xcms_get_feature_isotope_label(xcms.xcms,
                                                 isotope = isotope,
@@ -32,7 +33,9 @@ MSdev_find_isotope_label <- function(object,
 }
 
 
-MSIP_get_isotopologues_table <- function(object,extract_chrom = F){
+MSIP_get_isotopologues_table <- function(object,
+                                         int_thresh = 5,
+                                         extract_chrom = F){
 
 
 
@@ -79,11 +82,11 @@ MSIP_get_isotopologues_table <- function(object,extract_chrom = F){
 
 
     }
-    ### iso stat and filter
+    ### iso stat and filter, marker features to acq
     {
 
       xcms.fdf.iso <- xcms.fdf%>%
-        dplyr::mutate(is_seed = feature_id%in% C13_seed )
+        dplyr::mutate(is_seed = feature_id%in% C13_seed)
       xcms.fdf.iso[!xcms.fdf.iso$is_seed,
                    c("compound_id","name","adduct","score",
                      "mz_ref","rt_ref","formula","smiles")] <- NA
@@ -92,14 +95,21 @@ MSIP_get_isotopologues_table <- function(object,extract_chrom = F){
         if (all(is.na(x))) return(NA)
         return(unique(na.omit(x)))
       }
-      xcms.fdf.iso <- xcms.fdf.iso%>%
+      xcms.fdf.selected <- xcms.fdf.iso%>%
         ### filter not assigned iso
         #dplyr::filter(!is.na(C13_seed))%>%
         dplyr::group_by(C13_seed)%>%
-        dplyr::mutate(is_isotopologues = !is.na(C13_seed)&any(!is.na(compound_id))  )%>%
-        ### filter not annotated
-        #dplyr::filter(any( !is.na( compound_id ) ),
-        #              any( is_labeled ))%>%
+        dplyr::mutate(
+          is_isotopologues = !is.na(C13_seed)&any(!is.na(compound_id)),
+          formula_max_iso_count = get_formula_ele_count(formula))%>%
+        dplyr::mutate(
+          formula_max_iso_count = na.unique(formula_max_iso_count),
+          C13_seed = case_when(C13_count > formula_max_iso_count~ NA,
+                               T~C13_seed),
+          C13_count = case_when(C13_count > formula_max_iso_count~ NA,
+                               T~C13_count))%>%
+        dplyr::ungroup()%>%
+        dplyr::group_by(C13_seed)%>%
         dplyr::mutate(
           compound_id = na.unique(compound_id),
           name = na.unique(name),
@@ -110,10 +120,19 @@ MSIP_get_isotopologues_table <- function(object,extract_chrom = F){
         dplyr::mutate(
           selected_to_acq = case_when(
             all(is.na(compound_id))~F,
-            mean.iso < 4&mean.uniso<4 ~F,
+            mean.iso < int_thresh&mean.uniso<int_thresh ~F,
             ms1_purity < 0.8~ F,
             !is_labeled&!is_seed~ F,
             T~selected_to_acq
+          ),
+          seed.acq = is_seed&selected_to_acq,
+          selected_to_acq = case_when(
+            any(seed.acq)~ selected_to_acq,
+            T~F
+          ),
+          selected_to_acq = case_when(
+            sum(selected_to_acq)>1~ selected_to_acq,
+            T~F
           ))%>%
         dplyr::ungroup()%>%
         dplyr::arrange(#-mean.uniso,
@@ -129,13 +148,13 @@ MSIP_get_isotopologues_table <- function(object,extract_chrom = F){
 
 
 
-    object@statData$MSIP$isotopologues_table[[pol]] <- xcms.fdf.iso
+    object@statData$MSIP$isotopologues_table[[pol]] <- xcms.fdf.selected
 
 
     ### extract chrom
     {
       if (extract_chrom) {
-        fid <- xcms.fdf.iso%>%
+        fid <- xcms.fdf.selected%>%
           dplyr::filter(is_isotopologues)%>%
           dplyr::pull(feature_id)
         xcms.chrom <- featureChromatograms(xcms.xcms,
@@ -310,7 +329,7 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
 
 
   ff <- function(x){
-      x <- msdev.combine@statData$MSIP$isotopologues_data[["FT7476_Negative"]]
+      #x <- msdev.combine@statData$MSIP$isotopologues_data[["FT7476_Negative"]]
     ### combine sp of seed to cfm-annotate
     {
       ### process M0 Spectra
@@ -357,24 +376,24 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
 
 get_MSdev_iso_acq_list <- function(object){
 
-  acq.list <- object@statData$iso.acq.list
+  acq.list <- object@statData$MSIP$isotopologues_table
   for (i in 0:1) {
 
     pol <- ifelse(i==0,"Negative","Positive")
     acq.list.pol <- acq.list[[pol]]%>%
       dplyr::filter(selected_to_acq)%>%
       dplyr::mutate(rtmed = case_when(
-        feature_id == C13_seed ~ rtmed,
+        is_seed  ~ rtmed,
         T ~ NA
       ))%>%
       dplyr::group_by(C13_seed)%>%
-      dplyr::filter(n()>1)%>%
+      dplyr::filter(n()>1&any(is_seed))%>%
       dplyr::mutate(rtmed = na.omit(rtmed),
                     rtmin = rtmed - 10,
                     rtmax = rtmed+10
                     )
 
-    acq.list.pol <- acq.list[[pol]] <- QE_list_2feature_def(acq.list.pol)
+    acq.list[[pol]] <- QE_list_2feature_def(acq.list.pol)
 
   }
   return(acq.list)
@@ -460,7 +479,7 @@ get_isotopologues_Spectra_process <- function(iso.list){
 MSIP_get_isotopologues_label_fraction <- function(object,ppm = 20){
 
   .f <- function(x.iso.cfm){
-    #x.iso.cfm <- msdev.combine@statData$MSIP$isotopologues_data[[79]]
+    #x.iso.cfm <- msdev.combine@statData$MSIP$isotopologues_data[[4]]
     cfmd <- x.iso.cfm$CFM_annotation
     all.iso.count <- stringr::str_extract(names(x.iso.cfm$Spectra),"[:digit:]+")%>%
       as.numeric()%>%na.omit()
@@ -501,7 +520,7 @@ MSIP_get_isotopologues_label_fraction <- function(object,ppm = 20){
   }
 
   object@statData$MSIP$MSIP_result <- bplapply(
-    object@statData$MSIP$isotopologues_data[1:10],
+    object@statData$MSIP$isotopologues_data,
            .f,
            BPPARAM = SerialParam(progressbar = T))
   #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[1]]

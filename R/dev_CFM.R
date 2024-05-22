@@ -909,7 +909,12 @@ CFM_spectra_data_int_weight <- function(sp.data,iso.count){
                             dimnames = list(NULL,to.add)),x.int)
       x.int <- x.int[,paste0("M",0:iso.count),drop =F]
       x.int[is.na(x.int)] <- 0
-      x.ratio <- t(apply(x.int,1,function(z) z/sum(z)))
+      if (ncol(x.int)==1) {
+        x.ratio <- x.int
+        x.ratio[,1] <- 1
+      }else{
+        x.ratio <- t(apply(x.int,1,function(z) z/sum(z)))
+      }
       x.weight <- rowSums(x.int)
       x.int.weighted <- apply(x.int,2,weighted.mean,w = x.weight)
       x.ratio.weighted <- apply(x.ratio,2,weighted.mean,w = x.weight)

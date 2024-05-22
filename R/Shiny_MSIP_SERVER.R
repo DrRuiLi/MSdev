@@ -1,7 +1,7 @@
 MSIP_shiny_server <- function(object){
 
 
-  iso.msip.list <- object@statData$MSIP$isotopologues_data
+  iso.msip.list <- object@statData$MSIP$MSIP_result
   all.sample<- object@sampleInfo%>%
     dplyr::filter(sample.type == "Sample")%>%
     dplyr::pull(sample.source)%>%
@@ -13,7 +13,8 @@ MSIP_shiny_server <- function(object){
 
     output$test_info <- renderPrint({
 
-      names(iso.msip()$MSIP_result[[1]])
+      mol.atom.c.prob()
+     # names(iso.msip()$MSIP_result[[1]])
       #vdata(mol.ig())
     })
 
@@ -21,7 +22,7 @@ MSIP_shiny_server <- function(object){
     ### reactiveval
     {
       fid.selected <- reactiveVal()
-      iso.msip <- reactiveVal()
+      iso.msip <- reactiveVal(iso.msip.list[[1]])
       iso.count.selected <- reactiveVal()
       sample.selected <- reactiveVal()
 
@@ -71,6 +72,7 @@ MSIP_shiny_server <- function(object){
 
     ### selectInput, iso.count and sample
     {
+
     }
 
     ### Spectra
@@ -82,10 +84,10 @@ MSIP_shiny_server <- function(object){
         iso.sp.data(shiny_get_sp_data(iso_msip = iso.msip(),
                                       sample = sample.selected(),
                                       iso_count =  iso.count.selected()))
-        #fg.selected(shiny_get_fg(sp.data = iso.sp.data(),
-        #                         x = event_data("plotly_click",
-        #                                        source = "plotly_ms2_sp",
-        #                                        priority  = "event")$x))
+        fg.selected(shiny_get_fg(sp.data = iso.sp.data(),
+                                 x = event_data("plotly_click",
+                                                source = "plotly_ms2_sp",
+                                                priority  = "event")$x))
         })
 
       output$plotly_ms2_sp <-  renderPlotly({
@@ -104,44 +106,48 @@ MSIP_shiny_server <- function(object){
 
       observeEvent(fg.selected(),{
 
-        #updateSelectInput(inputId = "select_fid",
-        #                  choices = shiny_get_fid(iso_msip = iso.msip(),
-        #                                          fg = fg.selected()))
+        updateSelectInput(inputId = "select_fgid",
+                          choices = shiny_get_fid(iso_msip = iso.msip(),
+                                                  fg = fg.selected()))
 
       })
 
 
       observe({
-        #mol.ig(iso.msip()$CFM_annotation@fragment_igraph[[1]])
-        #frag.ig(shiny_get_fg_ig(iso_msip =iso.msip(),
-        #                        fid = input$select_fid  ))
-        #atom_map <- shiny_get_atom_map(iso.msip(),
-        #                               input$select_fid ,
-        #                               prob = T)
-        #mol.atom.map(atom_map[[1]])
-        #frag.atom.map(atom_map[[2]])
-        #mol.atom.c.prob(iso.msip()$msip_data[[input$select_iso_count]]$c.prob)
+        mol.ig(shiny_get_fg_ig(iso_msip =iso.msip(),
+                               fid = 1  ))
+        frag.ig(shiny_get_fg_ig(iso_msip =iso.msip(),
+                                fid = input$select_fgid  ))
+        atom_map <- shiny_get_atom_map(iso.msip(),
+                                       input$select_fgid ,
+                                       prob = T)
+        mol.atom.map(atom_map[[1]])
+        frag.atom.map(atom_map[[2]])
+        mol.atom.c.prob({
+          shiny_get_C_prob(iso.msip(),
+                           input$select_iso_count,
+                           input$select_sample)
+        })
       })
 
       output$mol_graph <- renderVisNetwork(
         {
-
-          #shiny_vis_ig(ig = mol.ig() ,
-          #             prob.border = mol.atom.map(),
-          #             prob.fill =mol.atom.c.prob())
+#
+         shiny_vis_ig(ig = mol.ig() ,
+                      prob.border = mol.atom.map(),
+                      prob.fill =mol.atom.c.prob())
         }
       )
       output$frag_graph <- renderVisNetwork(
         {
-#
-          #shiny_vis_ig(frag.ig(),
-          #             prob.border  = frag.atom.map() )
-
+          shiny_vis_ig(frag.ig(),
+                       prob.border  = frag.atom.map() )
         }
       )
       output$frag_formula <- renderText({
-        #shiny_get_frag_formula(iso_msip = iso.msip(),
-        #                       fid =input$select_fid  )
+        shiny_get_frag_formula(
+          iso_msip = iso.msip(),
+          fid =input$select_fgid)
       })
 
 
@@ -157,17 +163,14 @@ MSIP_shiny_server <- function(object){
       )
 
       output$atom_prob_table <- renderTable({
-#
-        #if (!length(mol.atom.c.prob())) {
-        #  tb <- NULL
-        #}else{
-        #  tb <- data.frame(Atom = names(mol.atom.c.prob()),
-        #                   Prob = mol.atom.c.prob())%>%
-        #    dplyr::mutate(Prob = round(Prob,4))
-        #}
-        #tb
-
-
+        if (!length(mol.atom.c.prob())|all(is.na(mol.atom.c.prob()))){
+          tb <- NULL
+        }else{
+          tb <- data.frame(Atom = names(mol.atom.c.prob()),
+                           Prob = mol.atom.c.prob())%>%
+            dplyr::mutate(Prob = round(Prob,4))
+        }
+        tb
       })
 
       observeEvent(input$mol.ig.button,{
@@ -204,7 +207,7 @@ MSIP_shiny_server <- function(object){
 #' @return MSdev
 MSIP_shiny_Acq_server <- function(object){
 
-  acq.list <- object@statData$iso.acq.list
+  acq.list <- object@statData$MSIP$isotopologues_table
   function(input, output, session) {
 
 
@@ -212,9 +215,11 @@ MSIP_shiny_Acq_server <- function(object){
     {
       acq.list.table <- reactiveVal()
       ### checkbox
-      selected <- reactiveVal(
-        list(Positive = acq.list$Positive$selected_to_acq,
-             Negative = acq.list$Negative$selected_to_acq)
+      acq.selected <- reactiveVal(
+        list(Positive = acq.list$Positive%>%
+               dplyr::pull(selected_to_acq,name = feature_id),
+             Negative = acq.list$Negative%>%
+               dplyr::pull(selected_to_acq,name = feature_id))
       )
       clicked_row <- reactiveVal(NA)
       xchrom <- reactiveVal()
@@ -228,20 +233,21 @@ MSIP_shiny_Acq_server <- function(object){
     observeEvent(input$select_polarity,{
       acq.list.table(shiny_format_acq(
         acq.list[[input$select_polarity]],
-        selected()[[input$select_polarity]]
+        acq.selected()[[input$select_polarity]]
       ))
       dataTableProxy("feature_tab")%>%
-        showCols(show = 1:5,reset = T)
+        showCols(show = 1:6,reset = T)
     })
 
     observeEvent(input$feature_tab_cell_clicked,{
       if (length(input$feature_tab_cell_clicked$col )) {
-        if (input$feature_tab_cell_clicked$col== 5) {
-          x <- selected()
+        if (input$feature_tab_cell_clicked$col== 6) {
+          x <- acq.selected()
           clicked_row(input$feature_tab_cell_clicked$row)
-          x[[input$select_polarity]][input$feature_tab_cell_clicked$row] <-
-            !x[[input$select_polarity]][input$feature_tab_cell_clicked$row]
-          selected(x)
+          clicked_fid <- acq.list.table()$feature_id[ clicked_row() ]
+          x[[input$select_polarity]][clicked_fid] <-
+            !x[[input$select_polarity]][clicked_fid]
+          acq.selected(x)
 
         }
       }
@@ -250,11 +256,11 @@ MSIP_shiny_Acq_server <- function(object){
 
       x <- shiny_format_acq(
         acq.list[[input$select_polarity]],
-        selected()[[input$select_polarity]]
+        acq.selected()[[input$select_polarity]]
       )
       dataTableProxy("feature_tab")%>%
         replaceData(x,resetPaging = F,clearSelection ="none" )%>%
-        showCols(show = 1:5,reset = T)
+        showCols(show = 1:6,reset = T)
 
 
     })
@@ -281,7 +287,7 @@ MSIP_shiny_Acq_server <- function(object){
       acq.list.table()%>%
         datatable(escape = F,selection = "single",
                   extensions = c('RowGroup',"Scroller"),
-                  options = list(rowGroup = list(dataSrc = 6),
+                  options = list(rowGroup = list(dataSrc = 7),
                                  autoWidth = F,
                                  columnDefs = list(
                                    list(width = "500px",
@@ -307,25 +313,30 @@ MSIP_shiny_Acq_server <- function(object){
 
     output$test_info <- renderPrint({
 
-      head(as.HTML.checkbox.logical( acq.list.table()$selected))
-      input$feature_tab_cell_clicked
-      input$feature_tab_cell_clicked$col
-      head(selected()[[input$select_polarity]])
-      dim(xchrom())
-      input$feature_tab_rows_selected
-      feature_id()
+     #object@statData$MSIP$isotopologues_table$Positive%>%
+     #   dplyr::pull(selected_to_acq,name = feature_id)
     })
 
+
     observeEvent(input$save_button,{
-      object@statData$iso.acq.list[[input$select_polarity]]$selected_to_acq <-
-        selected()[[input$select_polarity]]
+
+      object@statData$MSIP$isotopologues_table$Positive$selected_to_acq <-
+        acq.selected()$Positive[object@statData$MSIP$isotopologues_table$Positive$feature_id]
+      object@statData$MSIP$isotopologues_table$Negative$selected_to_acq <-
+        acq.selected()$Negative[object@statData$MSIP$isotopologues_table$Negative$feature_id]
+
     })
 
     observeEvent(input$quit_button,{
-      object@statData$iso.acq.list$Positive$selected_to_acq <-
-        selected()$Positive
-      object@statData$iso.acq.list$Negative$selected_to_acq <-
-        selected()$Negative
+      #object@statData$iso.acq.list$Positive$selected_to_acq <-
+      #  selected()$Positive
+      #object@statData$iso.acq.list$Negative$selected_to_acq <-
+      #  selected()$Negative
+      object@statData$MSIP$isotopologues_table$Positive$selected_to_acq <-
+        acq.selected()$Positive[object@statData$MSIP$isotopologues_table$Positive$feature_id]
+      object@statData$MSIP$isotopologues_table$Negative$selected_to_acq <-
+        acq.selected()$Negative[object@statData$MSIP$isotopologues_table$Negative$feature_id]
+
       stopApp(object)
     })
 

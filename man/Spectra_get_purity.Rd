@@ -4,7 +4,7 @@
 \alias{Spectra_get_purity}
 \title{Spectra_get_purity}
 \usage{
-Spectra_get_purity(sp, sp.ms1 = NULL)
+Spectra_get_purity(sp, msLevel = 2, sp.ms1 = NULL)
 }
 \arguments{
 \item{sp}{Spectra}
