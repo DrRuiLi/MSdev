@@ -14,5 +14,5 @@ xcms_get_feature_isotope_label(xcms.xcms, iso_ele = "[13]C", ...)
 \item{...}{}
 }
 \description{
-A short description...
+calculate ratio_to_seed
 }

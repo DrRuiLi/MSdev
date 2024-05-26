@@ -13,5 +13,5 @@ Spectra_get_purity(sp, msLevel = 2, sp.ms1 = NULL)
 Spectra
 }
 \description{
-estimate a ms2 spectra purity with MS1 scan
+estimate ms2 spectra precursor purity with MS1 scan
 }

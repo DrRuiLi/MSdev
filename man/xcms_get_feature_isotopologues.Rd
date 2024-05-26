@@ -6,7 +6,7 @@
 \usage{
 xcms_get_feature_isotopologues(
   xcms.xcms,
-  isotope = "[13]C",
+  iso_ele = "[13]C",
   max_label = 10,
   ppm = 5,
   net.degree.ratio = 0.5
@@ -15,13 +15,13 @@ xcms_get_feature_isotopologues(
 \arguments{
 \item{xcms.xcms}{xcms}
 
-\item{isotope}{"[13]C"}
-
 \item{max_label}{10}
 
 \item{ppm}{20}
 
 \item{net.degree.ratio}{0.5}
+
+\item{isotope}{"[13]C"}
 }
 \value{
 xcms

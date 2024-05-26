@@ -4,7 +4,7 @@
 \alias{MSdev_extract_Spectra}
 \title{MSdev_extract_Spectra}
 \usage{
-MSdev_extract_Spectra(object, msLevel = 2, eval.noise = F, eval.ms1 = F)
+MSdev_extract_Spectra(object, eval.noise = F, eval.ms1 = F)
 }
 \arguments{
 \item{object}{MSdev}
@@ -13,5 +13,5 @@ MSdev_extract_Spectra(object, msLevel = 2, eval.noise = F, eval.ms1 = F)
 MSdev
 }
 \description{
-MSdev_extract_Spectra
+Extract all spectra, split to MS1 and MS2, store in \code{onDiskData}
 }
