@@ -224,3 +224,21 @@ colramp<- function(breaks = c(0,0.5,1),
                        ...)
 }
 
+
+make_group_color <- function(x,palette = "random",verbose=F){
+
+  palette <- match.arg(palette,c(names(ggsci:::ggsci_db),"random"))
+  x <- unique(x)
+  if (palette == "random") {
+    col  <- randomcoloR::distinctColorPalette(length(x))
+  }else{
+    col <- ggsci:::ggsci_db[[palette]][[1]][1:length(x)]
+
+  }
+  if (verbose) {
+    message(paste0(mapply(x,col,FUN = colored_text),collapse = " "))
+
+  }
+  names(col)<-x
+  return(col)
+}

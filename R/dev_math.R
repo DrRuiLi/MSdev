@@ -202,10 +202,13 @@ normalize_max_min<- function(x){
 
 }
 
-mz.range.ppm <- function(mz = 200, ppm = 5){
 
-  mz.range <- c(mz - mz * ppm /1e6,mz+mz*ppm/1e6)
-  return(mz.range)
+
+mz.range.ppm <- function(mz = 200 ,ppm = 5){
+
+  cbind(mz-mz*ppm/1e6,  mz+mz*ppm/1e6 )
+
+
 }
 
 

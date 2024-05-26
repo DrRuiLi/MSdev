@@ -631,7 +631,7 @@ xcms_get_feature_stat <- function(xcms.xcms){
 #' @export
 #'
 xcms_get_feature_isotopologues <- function(xcms.xcms,
-                                           isotope = "[13]C",
+                                           iso_ele = "[13]C",
                                            max_label = 10,
                                            ppm = 5,
                                            net.degree.ratio= 0.5){
@@ -654,7 +654,8 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
       dplyr::filter(rt.diff < 5)
 
     #isotope <- "[13]C"
-    iso.chemform <- paste0(isotope,1,str_extract(string = isotope,pattern = "[[:alpha:]]+"),-1)
+    iso.chemform <- paste0(iso_ele,1,
+                             str_extract(string = iso_ele,pattern = "[[:alpha:]]+"),-1)
     iso.count <- -max_label:max_label
     iso.mz <- chemform_mz(iso.chemform,0)*iso.count
 
@@ -686,8 +687,8 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
   ### assign isotope
   {
 
-    iso.colname <- paste0(str_extract(string = isotope,pattern = "[[:alpha:]]+"),
-                          str_extract(string = isotope,pattern = "[[:digit:]]+"))
+    iso.colname <- paste0(str_extract(string = iso_ele,pattern = "[[:alpha:]]+"),
+                          str_extract(string = iso_ele,pattern = "[[:digit:]]+"))
     xcms.fdf[,paste0(iso.colname,"_seed")] <- NA
     xcms.fdf[,paste0(iso.colname,"_count")] <- NA
     fdf.iso.igraph <- igraph::graph_from_data_frame(fdf.iso.connect)
@@ -757,7 +758,7 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
   ### feature data
   {
 
-    xcms.se <- quantify(xcms.xcms,missing = 1,value = "maxo")
+    xcms.se <- quantify(xcms.xcms,missing = 1,method="max",value = "maxo")
     xcms.se <- xcms.se[,xcms.se$sample.type=="Sample"]
   }
 
@@ -773,7 +774,7 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
 
   ### compare labeled and unlabeled between group
   {
-    is.iso <- xcms.se$isotope_label%in% iso_ele
+    is.iso <- xcms.se$isotope_tracer%in% iso_ele
     sample.source.uniso <- unique(xcms.se$sample.source[!is.iso])
     sample.source.iso <- unique(xcms.se$sample.source[is.iso])
     is_labeled <- apply(xcms.ratio.to.seed,1,function(x){
@@ -802,15 +803,15 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
 
 
 get_xcms_iso_fraction <- function(xcms.xcms,
-                                  isotope = "[13]C"){
+                                  iso_ele = "[13]C"){
 
 
   ### feature data
   {
-    xcms.se <- quantify(xcms.xcms,missing = 1,value = "maxo")
+    xcms.se <- quantify(xcms.xcms,method="max",value = "maxo",missing = 1)
     xcms.se <- xcms.se[,xcms.se$sample.type=="Sample"]
-    iso.colname <- paste0(str_extract(string = isotope,pattern = "[[:alpha:]]+"),
-                          str_extract(string = isotope,pattern = "[[:digit:]]+"))
+    iso.colname <- paste0(str_extract(string = iso_ele,pattern = "[[:alpha:]]+"),
+                          str_extract(string = iso_ele,pattern = "[[:digit:]]+"))
     xcms.rda <- rowData(xcms.se)%>%
       as.data.frame()
     xcms.rda$iso_seed <- xcms.rda[,paste0(iso.colname,"_seed")]
@@ -1977,7 +1978,7 @@ get_xcms_Spectra <- function(xcms.xcms){
   xcms.files <- paste0(dirname(xcms.xcms),"/",sampleNames(xcms.xcms))
   xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
   xcms.sp <- Spectra(xcms.files,
-                         backend = MsBackendDataFrame(),
+                         backend = MsBackendMemory(),
                          BPPARAM = SerialParam(progressbar = T))%>%
     filterPolarity(unique(polarity(xcms.xcms)))
   spectraNames(xcms.sp) <- xcms.sp$scan_id <- xcms.scan$scan_id
@@ -2096,62 +2097,89 @@ simulate_prm <- function(xcms.fdf,
 }
 
 
+get_xcms_feature_purity_matrix <- function(xcms.xcms,
+                                           xcms.ms1.sp = NULL,
+                                           ppm = 10,
+                                           isolation_half_window = 0.2){
+
+  xcms.fdf <- featureDefinitions(xcms.xcms)
+
+  ### sp process
+  {
+
+    if (is.null(xcms.ms1.sp)) {
+      message_with_time("Import ms1 spectra")
+      xcms.sp <- get_xcms_Spectra(xcms.xcms)
+      xcms.ms1.sp <- xcms.sp[msLevel(xcms.sp)==1]
+    }
+
+  }
+
+  ### calc ms1_purity by ms1.sp
+  {
+    sp.rt <- rtime(xcms.ms1.sp)
+    sp.origin <- xcms.ms1.sp$dataOrigin
+    sp.idx.split <- split(seq_along(xcms.ms1.sp),sp.origin)
+    f.sp.idx <- lapply(seq_len(nrow(xcms.fdf)),function(x){
+      rt.diff <- abs(sp.rt-xcms.fdf$rtmed[x])
+      rt.diff <- split(rt.diff,f = sp.origin)
+      rt.idx <- unname(sapply(rt.diff,which.min))
+      sapply(seq_along(rt.idx),function(i){
+        sp.idx.split[[i]][rt.idx[i] ]
+      })
+    })
+    f.sp <- lapply(f.sp.idx,function(x){xcms.ms1.sp[x]})
+    message_with_time("calculating MS1 purity...")
+    ms1_purity <- bplapply(seq_len(nrow(xcms.fdf)),function(x){
+      get_spectra_ion_purity(f.sp[[x]],xcms.fdf$mzmed[x],ppm,isolation_half_window)
+    },BPPARAM = SerialParam(progressbar = T))
+    ms1_purity_matrix <- do.call(rbind,ms1_purity)
+    rownames(ms1_purity_matrix) <-xcms.fdf$feature_id
+  }
+
+  return(ms1_purity_matrix)
+
+}
+
+
 
 xcms_get_feature_purity <- function(xcms.xcms,
                                     xcms.ms1.sp = NULL,
-                                    grouped = F,
-                                    selected.sample = pData(xcms.xcms)$sample.type !="Blank",
+                                    ms1_purity_matrix = NULL,
+                                    split_source = F,
+                                    selected.sample =which( pData(xcms.xcms)$sample.type !="Blank"),
+                                    FUN = max,
                                     ppm = 10 ,
                                     isolation_half_window = 0.2
                                     ){
 
   xcms.fdf <- featureDefinitions(xcms.xcms)
 
-  ### sp process
+  ### calc ms1_purity_matrix
   {
-    if (is.logical(selected.sample)) {
-      selected.sample <- which(selected.sample)
+    if (is.null(ms1_purity_matrix)) {
+      ms1_purity_matrix <- get_xcms_feature_purity_matrix(xcms.xcms,
+                                                          xcms.ms1.sp = xcms.ms1.sp,
+                                                          ppm = ppm,
+                                                          isolation_half_window = isolation_half_window)
+    }
+  }
+
+  ### aggregate purity
+  {
+
+    xcms.pdata <- pData(xcms.xcms)[selected.sample,]
+    xcms.pm <- ms1_purity_matrix[,xcms.pdata$sampleNames]
+    if (split_source) {
+      xcms.pm <- apply(xcms.pm,1,mean_f,xcms.pdata$sample.source,simplify =F)%>%
+        do.call(rbind,.)
     }
 
-    if (is.null(xcms.ms1.sp)) {
-      xcms.temp <- filterFile(xcms.xcms,selected.sample)
-      message("import Spectra...")
-      xcms.sp <- get_xcms_Spectra(xcms.temp)
-      xcms.ms1.sp <- xcms.sp[msLevel(xcms.sp)==1]
-    }else{
-      xcms.ms1.sp <-xcms.ms1.sp[normalizePath( dataOrigin(xcms.ms1.sp))%in%
-                                  normalizePath(filepaths(xcms.xcms)[selected.sample])]
-    }
+    ms1_purity <- apply(xcms.pm,1,FUN,na.rm =T)
 
   }
-  sp.rt <- rtime(xcms.ms1.sp)
-  sp.origin <- xcms.ms1.sp$dataOrigin
-  sp.idx.split <- split(seq_along(xcms.ms1.sp),sp.origin)
-  f.sp.idx <- lapply(seq_len(nrow(xcms.fdf)),function(x){
-    rt.diff <- abs(sp.rt-xcms.fdf$rtmed[x])
-    rt.diff <- split(rt.diff,f = sp.origin)
-    rt.idx <- unname(sapply(rt.diff,which.min))
-    sapply(seq_along(rt.idx),function(i){
-      sp.idx.split[[i]][rt.idx[i] ]
-    })
-  })
-  f.sp <- lapply(f.sp.idx,function(x){xcms.ms1.sp[x]})
-  message("calculating MS1 purity...")
-  ms1_purity <- bplapply(seq_len(nrow(xcms.fdf)),function(x){
-    get_spectra_ion_purity(f.sp[[x]],xcms.fdf$mzmed[x],ppm,isolation_half_window)
-  },BPPARAM = SerialParam(progressbar = T))
-  if (grouped) {
-    ms1_purity_matrix <- do.call(rbind,ms1_purity)
-    xcms.pdata <- pData(xcms.xcms)
-    idx.sample <- match(normalizePath(names(sp.idx.split)),normalizePath(xcms.pdata$msData.files) )
-    idx.group <- xcms.pdata$group[idx.sample]
-    sapply(unique(idx.group),function(x.group){
-      apply(ms1_purity_matrix[,idx.group==x.group],1,mean)
-    })->ms1_purity_group_mean
-    xcms.fdf$ms1_purity <- apply(ms1_purity_group_mean,1,mean)
-  }else{
-    xcms.fdf$ms1_purity <- sapply(ms1_purity,mean)
-  }
+
+  xcms.fdf$ms1_purity <- ms1_purity
   xcms.fdf -> featureDefinitions(xcms.xcms)
   return(xcms.xcms)
 }

@@ -10,7 +10,7 @@
 #' @export
 #'
 MSdev_find_isotope_label <- function(object,
-                                     isotope = "[13]C",
+                                     iso_ele = "[13]C",
                                      ppm = 10,
                                      ...){
 
@@ -19,11 +19,11 @@ MSdev_find_isotope_label <- function(object,
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     xcms.xcms <- xcms_get_feature_isotopologues(xcms.xcms,
-                                                isotope = isotope,
+                                                iso_ele = iso_ele,
                                                 ppm = ppm,
                                                 ...)
     xcms.xcms <- xcms_get_feature_isotope_label(xcms.xcms,
-                                                isotope = isotope,
+                                                iso_ele = iso_ele,
                                                 ...)
     xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
   }
@@ -35,6 +35,7 @@ MSdev_find_isotope_label <- function(object,
 
 MSIP_get_isotopologues_table <- function(object,
                                          int_thresh = 5,
+                                         ppm=10,
                                          extract_chrom = F){
 
 
@@ -48,19 +49,25 @@ MSIP_get_isotopologues_table <- function(object,
 
     ### MS1 purity
     {
-      sample.idx <- !is.na(pData(xcms.xcms)$isotope_label)
+      sample.idx <- !is.na(pData(xcms.xcms)$isotope_tracer)
       #sample.idx <-  pData(xcms.xcms)$group=="FSLowCFullGlu"
       if ( !"ms1_purity"%in%   colnames(xcms.xcms@msFeatureData$featureDefinitions)) {
+        xcms.purity.matrix <- get_xcms_feature_purity_matrix(xcms.xcms ,
+                                                             ppm = ppm,
+                                                             isolation_half_window = 0.2)
         xcms.xcms <- xcms_get_feature_purity(xcms.xcms,
-                                             grouped = T,
+                                             ms1_purity_matrix =xcms.purity.matrix,
+                                             split_source  = T,
                                              selected.sample = sample.idx)
         xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+        xcms.purity.matrix -> object@statData$MSIP$isotopologues_matrix$ms1_purity[[pol]]
       }
-      xcms.fdf <- featureDefinitions(xcms.xcms)%>%
-        as.data.frame()
+
       }
     ### Comp info
     {
+      xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+        as.data.frame()
       cpdb <- CompDb(object@projectInfo$CompoundDB_path)
       dbinfo <- get_CompDb_info(cpdb,
                                 xcms.fdf$compound_id,
@@ -71,17 +78,17 @@ MSIP_get_isotopologues_table <- function(object,
     {
       xcms.pdata <- pData(xcms.xcms)%>%
         dplyr::filter(!sample.type%in% c("Blank"))
-      xcms.fv <- featureValues(xcms.xcms,value = "maxo",missing = 1)[,xcms.pdata$sampleNames]
-      uniso.mean <- xcms.fv[,xcms.pdata$sampleNames[is.na(xcms.pdata$isotope_label)]]%>%
-        apply(1,mean)
-      iso.mean <- xcms.fv[,xcms.pdata$sampleNames[!is.na(xcms.pdata$isotope_label)]]%>%
-        apply(1,mean)
+      xcms.fv <- featureValues(xcms.xcms,method="max",value = "maxo",missing = 1)[,xcms.pdata$sampleNames]
+      f.traced <- ifelse(is.na(xcms.pdata$isotope_tracer),
+                         "int_mean_nontracer","int_mean_tracer")
+      int.mean <- apply(xcms.fv,1,mean_f,f = f.traced,simplify = F)%>%do.call(rbind,.)
+      xcms.fdf <- cbind(xcms.fdf,int.mean)
 
-      xcms.fdf$mean.iso <- log10(iso.mean)
-      xcms.fdf$mean.uniso <- log10(uniso.mean)
-
-
+      ratio.matrix <- get_xcms_iso_fraction(xcms.xcms)
+      ratio.matrix -> object@statData$MSIP$isotopologues_matrix$ratio_to_seed[[pol]]
     }
+
+
     ### iso stat and filter, marker features to acq
     {
 
@@ -120,7 +127,7 @@ MSIP_get_isotopologues_table <- function(object,
         dplyr::mutate(
           selected_to_acq = case_when(
             all(is.na(compound_id))~F,
-            mean.iso < int_thresh&mean.uniso<int_thresh ~F,
+            int_mean_tracer < int_thresh&int_mean_nontracer<int_thresh ~F,
             ms1_purity < 0.8~ F,
             !is_labeled&!is_seed~ F,
             T~selected_to_acq
@@ -135,13 +142,13 @@ MSIP_get_isotopologues_table <- function(object,
             T~F
           ))%>%
         dplyr::ungroup()%>%
-        dplyr::arrange(#-mean.uniso,
+        dplyr::arrange(#-int_mean_nontracer,
           C13_seed,
           C13_count)%>%
         dplyr::select("feature_id","mzmed","rtmed","rtmin","rtmax","peakMaxo","polarity",
                       "score","C13_seed","C13_count",
                       "is_seed","is_isotopologues","is_labeled","compound_id","adduct",
-                      "name","formula","smiles","mean.iso", "mean.uniso",
+                      "name","formula","smiles","int_mean_tracer", "int_mean_nontracer",
                       grep(pattern = "Ratio_to_seed",colnames(xcms.fdf),value = T),
                       "ms1_purity","selected_to_acq")
     }

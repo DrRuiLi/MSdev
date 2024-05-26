@@ -11,7 +11,15 @@ date_suffix <- function(){
 
 }
 
+between.range <- function(x, r){
 
+  rm <- matrix(r,ncol =2,byrow= F)
+  if (nrow(rm)==1|nrow(rm)==length(x)) {
+    between(x,rm[,1],rm[,2])
+  }else{
+    stop( "size of x and r not match")
+  }
+}
 
 
 

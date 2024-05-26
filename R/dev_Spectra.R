@@ -1300,6 +1300,23 @@ Spectra_get_purity <- function(sp,msLevel = 2,sp.ms1= NULL){
 
 .Spectra_get_purity_ms2 <- function(sp){
 
+  pmz <- precursorMz(sp)
+  iwlm <- isolationWindowLowerMz(sp)
+  iwum <- isolationWindowUpperMz(sp)
+
+  spd <- peaksData(sp)
+
+  sp$ms2_purity <- sapply(seq_along(spd),
+                          function(x){
+                            pd <- spd[[x]]
+                            iniw <-  between(pd[,1],iwlm[x],iwum[x])
+                            isp <- between.range(pd[,1],
+                                                 mz.range.ppm(pmz[x],ppm))
+                            purity <- sum(pd[isp,2])/sum(pd[iniw,2])
+                            ifelse(is.nan(purity),NA,purity)
+                          })
+
+  return(sp)
 }
 
 
@@ -1307,6 +1324,7 @@ Spectra_get_purity <- function(sp,msLevel = 2,sp.ms1= NULL){
 get_spectra_ion_purity <- function(sp,ion_mz,ppm = 10,isolation_half_window = 0.2){
 
   sp.peaks.data <- peaksData(sp)
+  names(sp.peaks.data) <- basename(dataOrigin(sp))
   ion.purity <- sapply(sp.peaks.data,function(x){
     mz.diff <-abs(x[,1]-ion_mz)
     idx.in.window <- which( mz.diff < isolation_half_window)

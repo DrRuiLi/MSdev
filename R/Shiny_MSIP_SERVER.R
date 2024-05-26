@@ -208,6 +208,9 @@ MSIP_shiny_server <- function(object){
 MSIP_shiny_Acq_server <- function(object){
 
   acq.list <- object@statData$MSIP$isotopologues_table
+  rt.range <- range(rtime(object@xcmsData$PositiveMS1),
+                    rtime(object@xcmsData$NegativeMS1))
+  col.sample.source <- make_group_color(object@sampleInfo$sample.source,palette = "npg")
   function(input, output, session) {
 
 
@@ -224,8 +227,8 @@ MSIP_shiny_Acq_server <- function(object){
       clicked_row <- reactiveVal(NA)
       xchrom <- reactiveVal()
       feature_id <- reactiveVal()
-      fid_selected <- reactiveVal()
-      fid_seed <- reactiveVal()
+      ratio_matrix <- reactiveVal()
+      purity_matrix <- reactiveVal()
 
 
     }
@@ -235,8 +238,14 @@ MSIP_shiny_Acq_server <- function(object){
         acq.list[[input$select_polarity]],
         acq.selected()[[input$select_polarity]]
       ))
+
       dataTableProxy("feature_tab")%>%
         showCols(show = 1:6,reset = T)
+
+      ratio_matrix(object@statData$MSIP$isotopologues_matrix$ratio_to_seed
+                   [[input$select_polarity]]    )
+      purity_matrix(object@statData$MSIP$isotopologues_matrix$ms1_purity
+                   [[input$select_polarity]]    )
     })
 
     observeEvent(input$feature_tab_cell_clicked,{
@@ -270,23 +279,29 @@ MSIP_shiny_Acq_server <- function(object){
       feature_id(
         acq.list.table()$feature_id[input$feature_tab_rows_selected]
       )
-      cdf <- featureDefinitions(object@xcmsData[[paste0(input$select_polarity,"_Chromatograms")]])
-      id <- match(feature_id(),cdf$feature_id)
-      if (is.na(id)){
-        xchrom(NA)
-      }else{
-        xchrom(object@xcmsData[[paste0(input$select_polarity,"_Chromatograms")]][
-          id,
-        ])
-      }
 
+      ### get chrom
+      {
+        cdf <- featureDefinitions(object@xcmsData[[paste0(input$select_polarity,"_Chromatograms")]])
+        id <- match(feature_id(),cdf$feature_id)
+        if (is.na(id)){
+          xchrom(NA)
+        }else{
+          xchrom(object@xcmsData[[paste0(input$select_polarity,"_Chromatograms")]][
+            id,
+          ])
+        }
+      }
 
     })
 
     output$feature_tab <- renderDT({
       acq.list.table()%>%
-        datatable(escape = F,selection = "single",
+        datatable(escape = F,
                   extensions = c('RowGroup',"Scroller"),
+                  selection = list(
+                    mode = 'single', selected = 1,target="row"
+                  ),
                   options = list(rowGroup = list(dataSrc = 7),
                                  autoWidth = F,
                                  columnDefs = list(
@@ -298,23 +313,41 @@ MSIP_shiny_Acq_server <- function(object){
                                  deferRender = TRUE,
                                  scrollY = 500,
                                  scroller = TRUE))
-    }
-    )
+    })
     output$feature_chrom <- renderPlotly({
 
       if (!all(is.na(xchrom()))) {
-        shiny_plotly_chrom(xchrom()  )
+        shiny_plotly_chrom(xchrom(),col.map = col.sample.source,rtr = rt.range  )
       }
 
 
     })
+    output$p1 <- renderPlotly({
+      if (!all(is.na(xchrom())))
+      shiny_plotly_feature_int(xchrom(),col.map = col.sample.source)
 
+    })
+    output$p2 <- renderPlotly({
+      if (!all(is.na(xchrom())))
+      shiny_plotly_feature_ratio(xchrom(),
+                                 col.map = col.sample.source,
+                                 ratio_to_seed = ratio_matrix()[feature_id(),] )
 
+    })
+    output$p3 <- renderPlotly({
+      if (!all(is.na(xchrom())))
+        shiny_plotly_feature_purity(xchrom(),
+                                   col.map = col.sample.source,
+                                     ms1_purity = purity_matrix()[feature_id(),] )
+    })
+    output$p4 <- renderPlotly({
 
+    })
     output$test_info <- renderPrint({
 
      #object@statData$MSIP$isotopologues_table$Positive%>%
      #   dplyr::pull(selected_to_acq,name = feature_id)
+      #head(ratio_matrix())
     })
 
 

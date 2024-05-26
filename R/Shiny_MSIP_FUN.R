@@ -372,7 +372,7 @@ shiny_format_acq <- function(acq.list.table,acq.selected ){
 }
 
 
-shiny_plotly_chrom <- function(xchrom ){
+shiny_plotly_chrom_int_merged <- function(xchrom ,rtr = range(rtime(xchrom[1,1]))){
 
   chrom.pda <- pData(xchrom)
   groups <- unique(chrom.pda$group)
@@ -408,7 +408,7 @@ shiny_plotly_chrom <- function(xchrom ){
     p
 
     chrom.val <- data.frame( chrom.pda,
-                        val = as.vector(featureValues(xchrom,value = "maxo")))%>%
+                        val = as.vector(featureValues(xchrom,method="max",value = "maxo")))%>%
       dplyr::arrange(desc(group))%>%
       dplyr::mutate(group = as.factor(group),
                     sample.name = factor(sample.name,level = sample.name))
@@ -430,6 +430,119 @@ shiny_plotly_chrom <- function(xchrom ){
 
 }
 
+shiny_plotly_chrom <- function(xchrom ,
+                               col.map ,
+                               rtr = range(rtime(xchrom[1,1]))){
+
+  chrom.pda <- pData(xchrom)
+  chrom.data <- get_chroms_data(xchrom)%>%
+    dplyr::mutate(group = chrom.pda$sample.source[col],
+                  group = as.factor(group))%>%
+    dplyr::filter(!is.na(intensity))
+  chrom.def <- featureDefinitions(xchrom)
+  plot_ly(chrom.data)%>%
+    layout(shapes = list(
+      list( type = "line",
+            x0 = chrom.def$rtmed, x1 = chrom.def$rtmed,
+            y0 = 0,  y1 = max(chrom.data$intensity)*1.1,
+            line = list(color = "#666666")
+      ),
+      list(type = "rect",
+           line = list(color = "#88888833"),
+           fillcolor= "#88888833",
+           x0 = chrom.def$peakRtMin, x1 = chrom.def$peakRtMax,
+           y0 = 0,y1 = max(chrom.data$intensity))),
+      plot_bgcolor = "#00000000")%>%
+    add_lines(x = ~rt,
+              y = ~intensity,
+              split  = ~ col,
+              color = ~ group,
+              colors = col.map,
+              showlegend = F)%>%
+    layout(xaxis = list(title =" retention time",
+                        range = rtr,
+                        showgrid = F),
+           yaxis = list(showgrid = F,tickformat = ".1"))->p
+  p
+
+
+
+
+}
+
+shiny_plotly_feature_int <- function(xchrom,
+                                     col.map){
+
+  chrom.val <- data.frame( pData(xchrom),
+                           val = as.vector(featureValues(xchrom,method="max",value = "maxo")))%>%
+    dplyr::arrange(desc(sample.source),desc(sample.name))%>%
+    dplyr::mutate(group = as.factor(sample.source),
+                  sample.name = factor(sample.name,level = sample.name))
+  chrom.val$val[is.na(chrom.val$val)] <- 0
+  plot_ly()%>%
+    add_bars(data = chrom.val,
+             y = ~sample.name,
+             x = ~val ,
+             colors = col.map,
+             color= ~ group,
+             showlegend = F)%>%
+    layout(xaxis = list(tickformat = ".1",title = "Intensity",tickangle = 45),
+           yaxis = list(title = " "))
+
+
+
+}
+
+
+shiny_plotly_feature_ratio <- function(xchrom,
+                                     col.map,
+                                     ratio_to_seed
+                                     ){
+
+  chrom.val <- data.frame( pData(xchrom))%>%
+    dplyr::arrange(desc(sample.source),desc(sample.name))%>%
+    dplyr::mutate(group = as.factor(sample.source),
+                  val = ratio_to_seed[sampleNames],
+                  sample.name = factor(sample.name,level = sample.name))
+  chrom.val$val[is.na(chrom.val$val)] <- 0
+  plot_ly()%>%
+    add_bars(data = chrom.val,
+             y = ~sample.name,
+             x = ~val ,
+             colors = col.map,
+             color= ~ group,
+             showlegend = F)%>%
+    layout(xaxis = list(tickformat = ".1",title = "Ratio",tickangle = 45),
+           yaxis = list(title = " "))
+
+
+
+}
+
+shiny_plotly_feature_purity <- function(xchrom,
+                                       col.map,
+                                       ms1_purity
+){
+
+  chrom.val <- data.frame( pData(xchrom))%>%
+    dplyr::arrange(desc(sample.source),desc(sample.name))%>%
+    dplyr::mutate(group = as.factor(sample.source),
+                  val = ms1_purity[sampleNames],
+                  sample.name = factor(sample.name,level = sample.name))
+  chrom.val$val[is.na(chrom.val$val)] <- 0
+  plot_ly()%>%
+    add_bars(data = chrom.val,
+             y = ~sample.name,
+             x = ~val ,
+             colors = col.map,
+             color= ~ group,
+             showlegend = F)%>%
+    layout(xaxis = list(tickformat = ".1",range= c(0,1),title = "Purity",tickangle = 45),
+           yaxis = list(title = " "))
+
+
+
+}
 shiny_get_C_prob <- function(iso_msip,iso_count,sample){
 
   x <- iso_msip$MSIP_result[[iso_count]][[sample]]
