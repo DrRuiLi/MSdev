@@ -1751,3 +1751,35 @@ acq.selected <-
 shiny_format_acq(acq.list$Positive,
                  acq.selected$Positive )->a
 
+
+# Sun May 26 10:10:32 2024 sp.purity and rtime------------------------------
+msip.data <- msdev.combine@statData$MSIP$MSIP_result
+
+cors <- NA
+poiont.n <- NA
+for (i in seq_along(msip.data)) {
+  message(i)
+  sp <- msip.data[[i]]$Spectra$M0%>%
+    unname()%>%
+    do.call(c,.)
+  sp <- Spectra_get_purity(sp)
+  sp.data <- spectraData(sp)%>%
+    as.data.frame()%>%
+    dplyr::mutate(rtc = abs(rtime-mean(range(rtime))))%>%
+    dplyr::filter(!is.na(ms2_purity))
+
+  cors[i] <- cor(sp.data$rtc,sp.data$ms2_purity)
+  poiont.n[i] <- nrow(sp.data)
+}
+stat <- data.frame(poiont.n,cors)
+
+hist(cors)
+
+
+ggplot(sp.data)+
+  geom_point(aes(x = rtc,
+                 y = ms2_purity,
+                 col = factor(collisionEnergy)))
+
+
+

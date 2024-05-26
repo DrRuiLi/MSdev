@@ -1218,7 +1218,7 @@ setMethod(sampleNames,"Spectra",
 
 #' Spectra_get_purity
 #'
-#' estimate a ms2 spectra purity with MS1 scan
+#' estimate ms2 spectra precursor purity with MS1 scan
 #'
 #' @param sp Spectra
 #'
@@ -1298,7 +1298,7 @@ Spectra_get_purity <- function(sp,msLevel = 2,sp.ms1= NULL){
   return(sp.raw)
 }
 
-.Spectra_get_purity_ms2 <- function(sp){
+.Spectra_get_purity_ms2 <- function(sp,ppm = 10){
 
   pmz <- precursorMz(sp)
   iwlm <- isolationWindowLowerMz(sp)

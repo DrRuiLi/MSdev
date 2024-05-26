@@ -1470,6 +1470,8 @@ MSdev_msConvert<- function(object){
 
 
 #' MSdev_extract_Spectra
+#' @description
+#' Extract all spectra, split to MS1 and MS2, store as `onDiskData`
 #'
 #' @param object  MSdev
 #'
@@ -1477,12 +1479,11 @@ MSdev_msConvert<- function(object){
 #' @import Spectra dplyr
 #' @export
 #'
-MSdev_extract_Spectra <- function(object, msLevel = 2,
+MSdev_extract_Spectra <- function(object,
                                   eval.noise = F,
                                   eval.ms1 = F){
 
   sampleInfo <- object@sampleInfo%>%
-    dplyr::filter(xcmsProcessing %in% c("Both","MS2"))%>%
     dplyr::mutate(msData.files = normalizePath(msData.files))
 
   sp.list <- list()
@@ -1510,22 +1511,33 @@ MSdev_extract_Spectra <- function(object, msLevel = 2,
 
   ### iso-labeled ms2
   {
-    if ("isotope_label"%in% colnames(sampleInfo)) {
+    if ("isotope_tracer"%in% colnames(sampleInfo)) {
 
-      sp.ms2$isotope_label <- sampleInfo$isotope_label[match(sampleNames(sp.ms2),
+      sp.ms2$isotope_tracer <- sampleInfo$isotope_tracer[match(sampleNames(sp.ms2),
                                      basename(sampleInfo$msData.files))]
-      sp.ms2$from_iso <- !is.na(sp.ms2$isotope_label)
+      sp.ms2$from_isotope_tracer <- !is.na(sp.ms2$isotope_tracer)
 
     }
 
   }
-  if (1 %in% msLevel) {
-    object@spectra$MS1_Spectra <- sp.ms1
-  }
-  if (2 %in% msLevel){
 
-    object@spectra$MS2_Spectra <- sp.ms2
+
+  ### save on disk
+  {
+    if(1 %in% msLevel(sp)){
+      sp.ms1 <- onDiskData(sp.ms1,
+                           path = paste0(object@projectInfo$projectDir,"/MS1_Spectra.rds"))
+      object@spectra$MS1_Spectra <- sp.ms1
+    }
+
+    if(2 %in% msLevel(sp)){
+      sp.ms2 <- onDiskData(sp.ms2,
+                           path = paste0(object@projectInfo$projectDir,"/MS2_Spectra.rds"))
+      object@spectra$MS2_Spectra <- sp.ms2
+    }
+
   }
+
 
   return(object)
 

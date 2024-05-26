@@ -172,6 +172,8 @@ MSIP_get_isotopologues_table <- function(object,
                                              workers  = min(snowWorkers(), length(fileNames(xcms.xcms))),
                                              progressbar = T)
         )
+        xcms.chrom <- onDiskData(xcms.chrom,
+                                 path = paste0(object@projectInfo$projectDir,"/",pol,"_Chromatograms.rds"))
         object@xcmsData[[paste0(pol,"_Chromatograms")]] <- xcms.chrom
 
       }
