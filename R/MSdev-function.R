@@ -1556,10 +1556,12 @@ MSdev_match_Spectra_to_feature <- function(object,
                                            rt.tol = 10){
 
 
-  object@spectra$MS2_Spectra$feature_id<-NA
+
+  MS2_Spectra <- onDiskData_retrieve(object@spectra$MS2_Spectra)
+  MS2_Spectra$feature_id<-NA
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
-    sp.ms2 <- object@spectra$MS2_Spectra%>%
+    sp.ms2 <- MS2_Spectra%>%
       ProtGenerics::filterPolarity(i)
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
@@ -1571,14 +1573,14 @@ MSdev_match_Spectra_to_feature <- function(object,
 
 
     ### update MS2_Spectra
-    sp.ms2.total <-object@spectra$MS2_Spectra %>%
+    sp.ms2.total <-MS2_Spectra %>%
       Spectra::spectraData()%>%
       as.data.frame()%>%
       dplyr::mutate(feature_id= case_when(
         polarity==i ~ sp.ms2.data[sp_id,]$feature_id,
         T~feature_id
       ))
-    Spectra::spectraData(object@spectra$MS2_Spectra ) <- S4Vectors::DataFrame(sp.ms2.total)
+    Spectra::spectraData(MS2_Spectra ) <- S4Vectors::DataFrame(sp.ms2.total)
 
     ### update xcms featuredef
     xcms.fdf$ms2_id <- sapply(xcms.fdf$feature_id,
@@ -1593,6 +1595,8 @@ MSdev_match_Spectra_to_feature <- function(object,
 
 
   }
+  object@spectra$MS2_Spectra <- onDiskData(MS2_Spectra,
+                                           path = object@spectra$MS2_Spectra@path)
 
   return(object)
 
@@ -1612,6 +1616,7 @@ MSdev_match_Spectra_to_feature <- function(object,
 
 MSdev_annotation <- function(object,
                              cpdb_path,
+                             ppm = 10,
                              ...){
 
   cpdb <- CompoundDb::CompDb(cpdb_path)
@@ -1619,15 +1624,23 @@ MSdev_annotation <- function(object,
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
-    message(Sys.time()," Find MS1 candidate...")
+    message_with_time("Find MS1 candidate...")
     xcms.xcms <- xcms_get_feature_ms1_candidate(xcms.xcms,
                                                 cpdb,
                                                 ...)
-    message(Sys.time()," calculate MS2 score...")
+    message_with_time("Calculate MS2 score...")
+    sp.ms2 <- onDiskData_retrieve(object@spectra$MS2_Spectra)
     xcms.xcms <- xcms_get_feature_ms2_score(xcms.xcms ,
                                             cpdb = cpdb,
-                                            object@spectra$MS2_Spectra,
+                                            sp.ms2 = sp.ms2,
+                                            ppm = ppm,
                                             ...)
+    message_with_time("Calculate isopattern score...")
+    xcms.xcms <- xcms_get_feature_isopattern_score(xcms.xcms,
+                                                   ppm = 10,
+                                                   BPPARAM = SnowParam(
+                                                     workers = 6,progressbar = T
+                                                   ))
     xcms.xcms <- xcms_get_feature_annotation(xcms.xcms,
                                              ...)
     xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]

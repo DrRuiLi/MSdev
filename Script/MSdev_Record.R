@@ -413,23 +413,24 @@
 # Thu May 23 13:45:06 2024 cx------------------------------
 {
   msdev.CX  <- MSdev("D:/2024_05_20-Chenxin/Data/")
-  #msdev.CX <- load_as_var("")
+  msdev.CX <- load_as_var("D:/2024_05_20-Chenxin/MSdev_2024_05_23.Rdata")
   msdev.CX <- MSdev_msConvert(msdev.CX)
   msdev.CX <- MSdev_checkSampleInfo(msdev.CX)
   msdev.CX <- MSdev_xcmsProcessing(msdev.CX)
   msdev.CX <- MSdev_extract_Spectra(msdev.CX)
   msdev.CX <- MSdev_match_Spectra_to_feature(msdev.CX)
-  msdev.CX <- MSdev_annotation(msdev.CX,cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast.sqlite",
+  msdev.CX <- MSdev_annotation(msdev.CX,
+                               cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast.sqlite",
                                selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
   msdev.CX <- MSdev_get_Stat(msdev.CX,candi = T,QC_RSD = 10)
-  MSdev_export(msdev.CX)
+  MSdev_export(msdev.CX,candi = F)
   MSdev_save(msdev.CX)
 
   {
 
     proj.dir <- msdev.CX@projectInfo$projectDir
     data.se <- get_MSdev_DEP_se(msdev.CX,from = "metabolite")
-    #data.se <- data.se[,!colnames(data.se)%in% c( "WT_C1",   "WT_C2" ,  "WT_C3") ]
+    data.se <- data.se[,!colnames(data.se)%in% c( "WT_C1",   "WT_C2" ,  "WT_C3") ]
     p.pca <- DEP_plot_PCA(data.se)
     export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
                      width = 5,height = 5)

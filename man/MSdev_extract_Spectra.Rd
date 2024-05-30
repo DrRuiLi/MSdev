@@ -13,5 +13,5 @@ MSdev_extract_Spectra(object, eval.noise = F, eval.ms1 = F)
 MSdev
 }
 \description{
-Extract all spectra, split to MS1 and MS2, store in \code{onDiskData}
+Extract all spectra, split to MS1 and MS2, store as \code{onDiskData}
 }

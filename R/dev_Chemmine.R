@@ -607,3 +607,53 @@ atom <- function(sdf){
 
 
 }
+
+
+get_isopattern_score <- function(formula,
+                                 mzs,
+                                 int_matrix,
+                                 ppm = 10){
+
+
+  if (!length(formula)) return(NULL)
+  formula.f <- factor(formula)
+  iso_patterns <- lapply(levels(formula.f),
+                        MSCC::chemform_isotopes_pattern_enviPat )
+  iso_pattern <- iso_patterns[[1]]
+  ip.score  <- lapply(iso_patterns,
+         function(iso_pattern){
+           if (nrow(iso_pattern)<=1) return(NA)
+           iso_patterng <-iso_pattern %>%
+             dplyr::ungroup()%>%
+             dplyr::mutate(groupMz(x =m.z, ppm=ppm,return.type = "d"))%>%
+             dplyr::group_by(mz.center)%>%
+             dplyr::mutate(abundance=sum(abundance))%>%
+             dplyr::distinct(mz.center,abundance)%>%
+             dplyr::ungroup()
+
+           id <- match_mz(mz1 = iso_patterng$mz.center,
+                             mz2 = mzs,
+                             mz.ppm  = ppm)
+           iso.valm <- int_matrix[id,]
+           iso.ratio <- t(t(iso.valm)/iso.valm[1,])*100
+           apply(iso.ratio , 2, function(iso.ratio.x){
+             x <- iso_patterng$abundance[-1]
+             y <- iso.ratio.x[-1]
+             if (!length(x)) return(NA)
+             if (all(is.na(y)))  return(0)
+             y[is.na(y)] <- 0
+             id.na <- is.na(x)|is.na(y)
+             x <- x[!id.na]
+             y <- y[!id.na]
+             sum(x*y)^2/(sum(x^2L) *
+                           sum(y^2L))
+             1/exp(weighted.mean((abs(x-y)/x),w = x))
+           })
+
+
+         })
+
+  ip.score <- sapply(ip.score,mean)
+  ip.score <- ip.score[as.numeric(formula.f)]
+  return(ip.score)
+}

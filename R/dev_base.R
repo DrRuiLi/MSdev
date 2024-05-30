@@ -172,3 +172,12 @@ object.size.mb <- function(x){
   format(object.size(x),"MB")
 }
 
+unlist_to_df <- function(x,name_to = "name",value_to = "value"){
+  x.df <- data.frame(
+    rep(names(x),times =
+          lengths(x)),
+    unlist(x)
+  )
+  colnames(x.df) <- c(name_to,value_to)
+  x.df
+}

@@ -642,7 +642,7 @@ analyzeMSdevDEP <- function(object){
 #' @return NULL
 #' @export
 #'
-MSdev_export <- function(object){
+MSdev_export <- function(object,candi = F){
 
   dir.create(paste0(object@projectInfo$projectDir,"/Statistic"),recursive = T,showWarnings = F)
   DEP_export_data(object@statData$metabolite.se,
@@ -651,6 +651,7 @@ MSdev_export <- function(object){
   DEP_export_data(object@statData$feature.se,
                   file = paste0(object@projectInfo$projectDir,"/Statistic/Features.xlsx")
   )
+  if (candi)
   DEP_export_data(object@statData$candidate.se,
                   file = paste0(object@projectInfo$projectDir,"/Statistic/Candidates.xlsx")
   )

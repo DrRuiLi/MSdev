@@ -4,7 +4,7 @@
 \alias{MSdev_export}
 \title{MSdev_export}
 \usage{
-MSdev_export(object)
+MSdev_export(object, candi = F)
 }
 \arguments{
 \item{object}{MSdev}

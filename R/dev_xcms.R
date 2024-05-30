@@ -871,7 +871,8 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
     dplyr::mutate(polarity = case_when(Ion_mode == "negative"~0,T~1))%>%
     dplyr::filter(polarity %in% polarity(xcms.xcms))
   cp.adduct <- MSCC::chemform_adduct(cpdbt$formula,
-                                     adducts$adduct.formated )
+                                     adducts$adduct.formated,
+                                     value = "all" )
   cp.adduct <- cp.adduct%>%
     dplyr::mutate(compound_id=cpdbt$compound_id[id]  )%>%
     dplyr::filter( findInterval(chemform.adduct.mz,
@@ -884,9 +885,13 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
   matched.df <- match_mz_rt(mz1 = xcms.featuredef$mzmed,
                             mz2 = cp.adduct$chemform.adduct.mz,
                             mz.ppm = mz.ppm)
-  xcms.featuredef$candidate <- sapply(1:nrow(xcms.featuredef),function(i){
+  xcms.featuredef$candidate.id <- sapply(1:nrow(xcms.featuredef),function(i){
     idx <- matched.df$ion2[matched.df$ion1 == i]
     cp.adduct$compound_id[as.numeric(idx)]
+  })
+  xcms.featuredef$candidate.formula <- sapply(1:nrow(xcms.featuredef),function(i){
+    idx <- matched.df$ion2[matched.df$ion1 == i]
+    cp.adduct$chemform[as.numeric(idx)]
   })
   xcms.featuredef$candidate.adduct <- sapply(1:nrow(xcms.featuredef),function(i){
     idx <- matched.df$ion2[matched.df$ion1 == i]
@@ -911,82 +916,113 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
 
 
   ### load spectra database
-  Spectra_database <- Spectra(cpdb)
-  Spectra_database <- get_Spectra_MEM_backend(Spectra_database)
-  Spectra_database <- filterPolarity(Spectra_database,
-                                     unique(polarity(xcms.xcms)))
-  #spectraNames(Spectra_database) <- Spectra_database$compound_id
-  xcms.fdf <- featureDefinitions(xcms.xcms)
+  {
+    Spectra_database <- Spectra(cpdb)
+    Spectra_database <- get_Spectra_MEM_backend(Spectra_database)
+    Spectra_database <- filterPolarity(Spectra_database,
+                                       unique(polarity(xcms.xcms)))
+
+    #spectraNames(Spectra_database) <- Spectra_database$compound_id
+    xcms.fdf <- featureDefinitions(xcms.xcms)
+  }
 
   ### sp process
-  Spectra_database <- Spectra_database%>%
-    filterSpectra_below_PrecursorMz()%>%
-    normalizeSpectra(norm_to = "max")%>%
-    filterSpectraIntensity(ratio = 0.05)%>%
-      applyProcessing()
-
-  if(length(sp.ms2)!=0){
-    sp.ms2 <- sp.ms2%>%
+  {
+    Spectra_database <- Spectra_database%>%
       filterSpectra_below_PrecursorMz()%>%
       normalizeSpectra(norm_to = "max")%>%
       filterSpectraIntensity(ratio = 0.05)%>%
-      get_Spectra_MEM_backend()%>%
       applyProcessing()
-    #if ("from_iso" %in% spectraVariables(sp.ms2)) {
-    #  sp.ms2 <- sp.ms2[!sp.ms2$from_iso]
-    #}
-
-  }
-
-
-
-  sp.exp <- sapply(1:nrow(xcms.fdf),function(i){
-
-    x <- xcms.fdf$ms2_id[[i]]
-    if (length(x)==0) {
-      sp <- makeSpectra(xcms.fdf$mzmed[i],
-                        xcms.fdf$rtmed[i])
-    }else
-    sp <- list(sp.ms2[x])
-    return(sp)
-  })
-  if (!all(unlist(xcms.fdf$candidate)%in% Spectra_database$compound_id)) {
-    sp.empty <- makeEmptySpectra(compound_id= setdiff(unlist(xcms.fdf$candidate),
-                                                      Spectra_database$compound_id))
-    Spectra_database <- c(Spectra_database,sp.empty)
-  }
-  sp.ref.list <- split(Spectra_database,
-                       Spectra_database$compound_id)
-  sp.ref <- bplapply(1:nrow(xcms.fdf), function(i){
-
-    cp_id <- xcms.fdf$candidate[[i]]
-    sp.temp <- sp.ref.list[cp_id]
-    if (length(sp.temp)==0) return(NULL)
-    for (j in 1:length(cp_id)) {
-      sp.temp[[j]]$adduct <- xcms.fdf$candidate.adduct[[i]][j]
-      sp.temp[[j]]$precursorMz <- xcms.fdf$candidate.mz[[i]][j]
+    if(length(sp.ms2)!=0){
+      sp.ms2 <- sp.ms2%>%
+        filterSpectra_below_PrecursorMz()%>%
+        normalizeSpectra(norm_to = "max")%>%
+        filterSpectraIntensity(ratio = 0.05)%>%
+        get_Spectra_MEM_backend()%>%
+        applyProcessing()
+      #if ("from_iso" %in% spectraVariables(sp.ms2)) {
+      #  sp.ms2 <- sp.ms2[!sp.ms2$from_iso]
+      #}
     }
-    sp.temp <- do.call(what = "c",args = unname(sp.temp))
-    return(sp.temp)
-  },BPPARAM = SerialParam(progressbar = T))
+    if (!all(unlist(xcms.fdf$candidate.id)%in%
+             Spectra_database$compound_id)) {
+      sp.empty <- makeEmptySpectra(compound_id= setdiff(unlist(xcms.fdf$candidate.id),
+                                                        Spectra_database$compound_id))
+      Spectra_database <- c(Spectra_database,sp.empty)
+    }
+  }
+
+  ### sp ms2 split
+  {
+    sp.exp <- sapply(1:nrow(xcms.fdf),function(i){
+
+      x <- xcms.fdf$ms2_id[[i]]
+      if (!length(x)) return(NULL)
+      sp.ms2[x]
+      #if (length(x)==0) {
+      #  sp <- makeSpectra(xcms.fdf$mzmed[i],
+      #                    xcms.fdf$rtmed[i])
+      #}else
+      #  sp <- list(sp.ms2[x])
+      #return(sp)
+    })
+    names(sp.exp) <- xcms.fdf$feature_id
 
 
+  }
+
+  ### sp ref split
+  {
+    sp.split.df <- lapply(1:nrow(xcms.fdf),
+                          function( i ){
+                            i.candi <- xcms.fdf$candidate.id[[i]]
+                            i.adduct <- xcms.fdf$candidate.adduct[[i]]
+                            if (!length(i.candi)) return(NULL)
+                            i.df <- lapply(i.candi,
+                                           function(x){which(Spectra_database$compound_id==x)}
+                            )%>%
+                              `names<-`(xcms.fdf$candidate.id[[i]])%>%
+                              unlist_to_df(name_to = "compound_id",
+                                           value_to = "sp_id")
+                            i.df$adduct <- i.adduct[match(i.df$compound_id,i.candi)]
+                            i.df
+                          })%>%
+      data.table::rbindlist(use.names = T,idcol = "feature_id")
+    sp.ref <- Spectra_database[sp.split.df$sp_id]
+    sp.ref$adduct <- sp.split.df$adduct
+    sp.ref <- split(sp.ref,xcms.fdf$feature_id[sp.split.df$feature_id])
+
+
+
+  }
 
   ### output all candidate score
   {
     .f <- function(expSpec,refSpec,...){
-      if (is.null(refSpec)) {
-        return(NULL)
+      if (is.null(expSpec)) {
+        if (is.null(refSpec)) {
+          return(NULL)
+        }else{
+          x <- unique(paste0(refSpec$compound_id,"_",refSpec$adduct))
+          y <- rep(0,length(x))
+          names(y )<-x
+          return(y)
+        }
       }
+      if (is.null(refSpec)) return(NULL)
       scorem <- compareSpectra(expSpec,refSpec,...)
       dim(scorem) <- c(length(expSpec),length(refSpec))
       scorem[is.infinite(scorem)|is.na(scorem )] <- 0
       scores <- apply(scorem,2,max,na.rm=T)
-      unname(mean_f(scores,paste0(refSpec$compound_id,"_",refSpec$adduct)))
+      (mean_f(scores,paste0(refSpec$compound_id,"_",refSpec$adduct)))
     }
-    xcms.fdf$candidate.score <- BiocParallel::bplapply(1:length(sp.exp),
+    xcms.fdf$score.ms2 <- BiocParallel::bplapply(1:length(sp.exp),
                                                        function(i){
-      .f(expSpec = sp.exp[[i]], refSpec = sp.ref[[i]])
+        fid <-xcms.fdf$feature_id[i]
+      s <- .f(expSpec = sp.exp[[i]], refSpec = sp.ref[[fid]])
+      s[paste0(xcms.fdf$candidate.id[[i]],"_",
+               xcms.fdf$candidate.adduct[[i]])]%>%
+        unname()
     },BPPARAM = BiocParallel::SerialParam(
       progressbar = T))
 
@@ -999,6 +1035,54 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
   return(xcms.xcms)
 
 }
+
+xcms_get_feature_isopattern_score <- function(xcms.xcms,
+                                              ppm = 10,
+                                              BPPARAM = SerialParam(progressbar = T)){
+
+  ### data to calc isopattern
+  {
+    xcms.se <- quantify(xcms.xcms,missing = 1,method="max",value = "maxo")
+    xcms.se <- xcms.se[,is.na(xcms.se$isotope_tracer)]
+    xcms.se <- xcms.se[,!xcms.se$sample.type%in% "Blank"]
+  }
+
+  ### calculate iso-pattern score
+  {
+
+   iso.score <- bplapply(seq_len(nrow(xcms.se)),
+             FUN = function(i,xcms.se,ppm){
+               xcms.fdf <- SummarizedExperiment::rowData(xcms.se)
+               xcms.se.temp <- xcms.se[MSdev:::between.range(xcms.fdf$rtmed,
+                                                     c(xcms.fdf$rtmed[i]-10,
+                                                       xcms.fdf$rtmed[i]+10)),]
+               formulas <-mapply(chemform_adduct,
+                                 chemform = xcms.fdf$candidate.formula[[i]],
+                                 adduct =  xcms.fdf$candidate.adduct[[i]],
+                                 value = "chemform")
+               get_isopattern_score(formula = formulas,
+                                    mzs = rowData(xcms.se.temp)$mzmed,
+                                    int_matrix = assay(xcms.se.temp),
+                                    ppm = ppm)
+             },xcms.se=xcms.se,ppm=ppm,
+             BPPARAM =BPPARAM)
+
+
+
+  }
+
+
+  ### return
+  {
+    xcms.fdf <- featureDefinitions(xcms.xcms)
+    xcms.fdf$score.isopattern <-iso.score
+    xcms.fdf -> featureDefinitions(xcms.xcms)
+    return(xcms.xcms)
+  }
+
+
+}
+
 
 
 get_xcms_feature_all_candidate <- function(xcms.xcms){
@@ -1035,24 +1119,26 @@ xcms_get_feature_annotation <- function(xcms.xcms,
   for (i in 1:nrow(xcms.fdf)) {
 
     this.mz <- xcms.fdf$mzmed[i]
-    candi.compound_id <- xcms.fdf$candidate[[i]]
+    candi.compound_id <- xcms.fdf$candidate.id[[i]]
     candi.mz <- xcms.fdf$candidate.mz[[i]]
     candi.adduct <- xcms.fdf$candidate.adduct[[i]]
-    candi.score <- xcms.fdf$candidate.score[[i]]
-
+    candi.score.ms2 <- xcms.fdf$score.ms2[[i]]
+    candi.score.isopattern <- xcms.fdf$score.isopattern[[i]]
+    candi.score.isopattern[is.nan(candi.score.isopattern)|is.na(candi.score.isopattern)] <-0
     if (length(candi.compound_id)==0) next
 
     ### score
-    score.mz <- abs(candi.mz-this.mz)
-    score.mz <- 1-score.mz/max(score.mz)
-    score.ms2 <- candi.score
-    score <- score.mz * 0.2 + score.ms2*0.8
+    #score.mz <- abs(candi.mz-this.mz)
+    #score.mz <- 1-score.mz/max(score.mz)
+    score.ms2 <- candi.score.ms2
+    score.isopattern <- candi.score.isopattern
+    score <- score.isopattern * 0.2 + score.ms2*0.8
     selected <- which.max(score)
 
     ### info
     xcms.fdf$compound_id[i] <- candi.compound_id[selected]
     xcms.fdf$adduct[i] <- candi.adduct[selected]
-    xcms.fdf$score[i] <- candi.score[selected]
+    xcms.fdf$score[i] <- score[selected]
     xcms.fdf$mz_ref[i] <- candi.mz[selected]
     #xcms.fdf$rt_ref[i] <- candi.msdbid[selected]
 

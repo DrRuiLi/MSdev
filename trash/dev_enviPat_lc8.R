@@ -85,22 +85,3 @@ chemform_mz_lc8 <- function(chemform = "C2H4O1S2P1"){
 }
 
 
-
-#' @title chemform_formate
-#' @description
-#' formate a chemical formula
-#'
-#' @param chemform
-#'
-#' @return
-#' @export
-#'
-#' @examples
-chemform_formate <- function(chemform = "C11H22NO4"){
-
-  data("isotopes",package = "enviPat")
-  enviPat::check_chemform(chemforms = chemform,isotopes=isotopes )$new_formula%>%
-    sub(pattern = "D(?=[0-9])",replacement = "[2]H",perl = T)### Replace D with [2]H
-
-
-}

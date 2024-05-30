@@ -1783,3 +1783,61 @@ ggplot(sp.data)+
 
 
 
+
+# Mon May 27 15:43:02 2024 isotope score ------------------------------
+msdev.Threegroup <- load_demo("MSdev")
+msdev.Threegroup <- MSdev_extract_Spectra(msdev.Threegroup)
+msdev.Threegroup <- MSdev_match_Spectra_to_feature(msdev.Threegroup)
+cpdb_path <- "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite"
+cpdb <- CompDb(cpdb_path)
+xcms.xcms <- xcms_get_feature_ms1_candidate(xcms.xcms,cpdb)
+sp.ms2 <- onDiskData_retrieve(msdev.Threegroup@spectra$MS2_Spectra)
+xcms.xcms <- xcms_get_feature_ms2_score(xcms.xcms ,
+                                        cpdb = cpdb,
+                                        sp.ms2 = sp.ms2,
+                                        ppm = 10)
+xcms.fdf <- featureDefinitions(xcms.xcms)
+xcms.fdf$score.ms2%>%sapply(max)->a
+sum(a>0.1,na.rm =T)
+# Thu May 30 10:38:55 2024 ------------------------------
+Spectra_database
+xcms.fdf$candidate.id
+candi.map <- data.frame(
+  fid = rep(xcms.fdf$feature_id,times =
+              lengths(xcms.fdf$candidate.id)),
+  cpid = unlist(xcms.fdf$candidate.id)
+)
+
+
+sp.split.df <- lapply(1:nrow(xcms.fdf),
+       function( i ){
+         i.candi <- xcms.fdf$candidate.id[[i]]
+         i.adduct <- xcms.fdf$candidate.adduct[[i]]
+         if (!length(i.candi)) return(NULL)
+         i.df <- lapply(i.candi,
+                function(x){which(Spectra_database$compound_id==x)}
+                )%>%
+           `names<-`(xcms.fdf$candidate.id[[i]])%>%
+           unlist_to_df(name_to = "compound_id",
+                        value_to = "sp_id")
+         i.df$adduct <- i.adduct[match(i.df$compound_id,i.candi)]
+         i.df
+       })%>%
+  rbindlist(use.names = T,idcol = "feature_id")
+sp <- Spectra_database[sp.split.df$sp_id]
+sp$adduct <- sp.split.df$adduct
+sp.f <- split(sp,xcms.fdf$feature_id[sp.split.df$feature_id])
+
+xcms.fdf <- featureDefinitions(xcms.xcms)
+a <- data.frame(a=lengths(xcms.fdf$candidate.id),
+                #b=lengths(xcms.fdf$score.ms2),
+                c=lengths(xcms.fdf$score.isopattern) )
+which(a$a!=a$c)
+a <- sapply(xcms.fdf$score.ms2,max)
+sum(a>0,na.rm = T)
+# Thu May 30 19:09:08 2024 ------------------------------
+
+xcms.xcms <- msdev.CX@xcmsData$PositiveMS1
+cpdb <- CompDb(msdev.CX@projectInfo$CompoundDB_path)
+xcms.xcms<- xcms_get_feature_ms1_candidate(xcms.xcms,cpdb )
+xcms.xcms<- xcms_get_feature_isopattern_score(xcms.xcms )
