@@ -225,6 +225,7 @@ MSIP_shiny_Acq_server <- function(object){
                dplyr::pull(selected_to_acq,name = feature_id))
       )
       clicked_row <- reactiveVal(NA)
+
       xchrom <- reactiveVal()
       feature_id <- reactiveVal()
       ratio_matrix <- reactiveVal()

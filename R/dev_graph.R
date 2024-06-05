@@ -24,6 +24,14 @@ igraph_filter_vertex <- function(ig,v){
 
 }
 
+igraph_filter_shortest_path <- function(ig,from,to){
+
+  sp <- shortest_paths(ig,from,to)
+  ids <- sapply(sp$vpath,as_ids)
+  ids <- unique(unlist(ids))
+  igraph_filter_vertex(ig,ids)
+}
+
 
 show_vis_icon <- function(icon_code = paste0("f",num2str(1:900)),
                           type = c("FontAwesome","Ionicons")){
@@ -81,4 +89,13 @@ vdata <-  function(ig){
   vertex.attributes(ig) <- as.list(value)
   ig
 }
+
+open_visNet <- function(x){
+
+  tpf <- tempfile(fileext = ".html")
+  htmlwidgets::saveWidget(x,file = tpf)
+  open_file(tpf)
+
+}
+
 

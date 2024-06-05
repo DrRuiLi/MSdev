@@ -91,7 +91,7 @@ check_sdf <- function(sdf){
 
   atom.map.matrix <- atomcountMA(sdf)
   atom.map.matrix <- atom.map.matrix[,setdiff(colnames(atom.map.matrix),"0"),drop =F]
-  apply(atom.map.matrix,1,sum) >0
+  id.atom <- apply(atom.map.matrix,1,sum)>1
 
 }
 
@@ -287,26 +287,74 @@ add_sdf_igraph_color <- function(sdf.igraph,
 #' @export
 #' @import igraph visNetwork
 vis_sdf_igraph <- function(sdf.igraph ,
-                           show.label = T,
+                           show.id = F,
+                           prob.border = NULL,
+                           prob.fill = NULL,
                            highlight = NULL){
 
+  sdf.igraph.temp <-sdf.igraph
 
-  sdf.igraph.highlight <- add_sdf_igraph_highlight(sdf.igraph,
-                                                   highlight )
+  ### map prob to color and hight
+  {
 
-  sdf.igraph.highlight%>%
-    visIgraph(idToLabel = !show.label)%>%
-    visNodes(font = list(size = 40,
-                         align = "left",
-                         vadjust = 3,
-                         hadjust = 0.8,
-                         strokeWidth = 2),
-             size = 40,
-             borderWidth  = 3,
-             color = list(background = "transparent",
-                          border = "#2B7CE9"))%>%
+
+  #prob.fill <- prob.border <- runif(10,0,1)%>%`names<-`(sample(get_atom_from_igraph(sdf.igraph),10))
+    if (is.numeric(highlight)|is.logical(highlight)) highlight <- ele[highlight]
+    prob.border[highlight] <- 1
+    col.border <- .get_vis_col(sdf.igraph,prob.border,
+                              colramp(breaks = c(0,Inf,1),
+                                       colors = c("#aaaaaa","#97C2FC","#2B7CE9")))
+  col.fill <- .get_vis_col(sdf.igraph,prob.fill,
+                             colramp(breaks = c(0,Inf,1),
+                                     colors = c("#FFFFFF","#F7844F","#B20C26")))
+  ele <- get_atom_from_igraph(sdf.igraph)
+
+  }
+
+  vda <- vdata(sdf.igraph.temp)<- vdata(sdf.igraph.temp)%>%
+    dplyr::mutate(label = case_when(show.id~id,
+                                    T~paste0(" ",atom," ")),
+                  label = str_format_len(label),
+                  font.size = case_when(show.id~20,T~40),
+                  font.multi= T,
+                  font.bold = T,
+                  font.bold.mod = "bold",
+                  font.bold.size = 500,
+                  font.vadjust = 5,
+                  font.strokeWidth = 2,
+                  font.strokeColor = "black",
+                  font.align = "left",
+                  borderWidth = 3,
+                  color.background = col.fill[name],
+                  color.border = col.border[name],
+                  shape = "circle"
+                  )
+
+  sdf.igraph.temp%>%
+    visIgraph(idToLabel = F,
+              type = "square")%>%
     visEdges(arrows = list(to = F),
-             length = 0.8)
+             length = 2)
+
+}
+
+.get_vis_col <- function(sdf.igraph,prob,colramp = colramp()){
+
+  ele <- get_atom_from_igraph(sdf.igraph,ele = "all")
+  if (is.null(prob)) prob <- 0
+  if (is.null(names(prob))&length(prob)==1){
+    prob <- rep(prob,length(ele))
+    names(prob)<-ele
+  }else{
+    x <- setdiff(ele,names(prob))
+    xx <- rep(0,length(x))
+    names(xx) <-x
+    prob <- c(prob,xx)[ele]
+  }
+  colramp(prob)
+
+}
+.get_highlight <- function(sdf.igraph,highlight){
 
 }
 
@@ -383,10 +431,8 @@ vis_sdf_igraph_compare <- function(sdf.igraph1,
                                    sdf.igraph2,
                                    atom_id1=NULL,
                                    atom_id2=NULL,
-                                   show.label= T){
+                                   show.id= T){
 
-  sdf.igraph1 <- add_sdf_igraph_highlight(sdf.igraph1,atom_id1)
-  sdf.igraph2 <- add_sdf_igraph_highlight(sdf.igraph2,atom_id2)
   #hw1 <- diff(range(V(sdf.igraph1)$x))
   #hw2 <- diff(range(V(sdf.igraph2)$x))
   #V(sdf.igraph1)$x <- V(sdf.igraph1)$x-hw1/1.5
@@ -402,7 +448,13 @@ vis_sdf_igraph_compare <- function(sdf.igraph1,
   V(sdf.igraph1)$id <- paste0(V(sdf.igraph1)$id,"_1")
   V(sdf.igraph2)$id <- paste0(V(sdf.igraph2)$id,"_2")
 
-  nodes <- rbind(
+  atom.hl <- c(
+    paste0(atom_id1,"_1"),
+    paste0(atom_id2,"_2")
+
+  )
+
+  nodes <- bind_rows(
     vdata(sdf.igraph1),
     vdata(sdf.igraph2)
   )
@@ -412,25 +464,31 @@ vis_sdf_igraph_compare <- function(sdf.igraph1,
   )
   new.igraph <- graph_from_data_frame(edges,
                                       vertices = nodes)
-  vis_sdf_igraph(new.igraph,show.label = show.label)
-
+  vi <- vis_sdf_igraph(new.igraph,show.id = show.id,highlight = atom.hl)%>%
+    visIgraphLayout(type ="full" )%>%
+    visOptions(width = "150%")
+  #vi$x$nodes$y <- normalize_max_min(vi$x$nodes$y)
+  return(vi)
 }
 
 
 vis_cfm_data_atom_map <- function(cfmd,fragment_id,
-                                  show.label= T){
+                                  show.id= T){
 
   maps <- cfmd@fragment_atom_map[[fragment_id]]
   maps <- maps[apply(maps, 1, function(x)any(x!=0)),
-               apply(maps, 2, function(x)any(x!=0))
-               ]
+               apply(maps, 2, function(x)any(x!=0)) ]
+
   vis_sdf_igraph_compare(
     cfmd@fragment_igraph[[1]],
     cfmd@fragment_igraph[[fragment_id]],
-    atom_id1 = match( rownames(maps),names(V( cfmd@fragment_igraph[[1]]))),
-    atom_id2 = match( colnames(maps),names(V( cfmd@fragment_igraph[[fragment_id]]))),
-    show.label = T
-
+    atom_id1 = row.names(maps),
+    atom_id2 = colnames(maps),
+    #atom_id1 = match( rownames(maps),
+    #                  names(V( cfmd@fragment_igraph[[1]]))),
+    #atom_id2 = match( colnames(maps),
+    #                  names(V( cfmd@fragment_igraph[[fragment_id]]))),
+    show.id = show.id
   )
 
 }

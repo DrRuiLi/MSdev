@@ -875,40 +875,6 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 
 
 
-#' @title getSEMSdev
-#' @description extrat SummarizedExperiment::SummarizedExperiment, which combine coldata(sample info) and rowdata (metabolites/feature)
-#' and perform data filter, normalization and imputation, refer to package DEP
-#'
-#' @param MSdev.obj MSdev
-#'
-#' @return MSdev
-#' @export
-#'
-
-MSdev_get_SE <- function(MSdev.obj){
-
-  col.info <- MSdev.obj@sampleInfo%>%
-    dplyr::filter(sample.type == "Sample")%>%
-    dplyr::mutate(label = sample.name,
-                  condition = group ,
-                  replicate = 1)%>%
-    dplyr::group_by(condition)%>%
-    dplyr::mutate(replicate = 1:n())
-
-  data.unique <- DEP::make_unique(MSdev.obj@statData$metabolites , names ="feature_id" , ids = "feature_id")
-  data.colum <- which(colnames(data.unique )%in% col.info$sample.name)
-  data.se <- DEP::make_se(proteins_unique = data.unique,
-                          columns = data.colum,
-                          expdesign = col.info )
-  data_filt <- DEP::filter_missval(data.se, thr = min(table(col.info$group))*0.3)
-  data_norm <- DEP::normalize_vsn(data_filt)
-  data_imp <- DEP::impute(data_norm, fun = "MinProb")
-
-  MSdev.obj@statData$data.se$data.raw$data.raw <- data_imp
-  MSdev.obj
-}
-
-
 
 
 
@@ -1792,10 +1758,49 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
 }
 
 
+#' @title getSEMSdev
+#' @description extrat SummarizedExperiment::SummarizedExperiment, which combine coldata(sample info) and rowdata (metabolites/feature)
+#' and perform data filter, normalization and imputation, refer to package DEP
+#'
+#' @param MSdev.obj MSdev
+#'
+#' @return MSdev
+#' @export
+#'
+
+MSdev_get_SE <- function(MSdev.obj){
+
+  .Deprecated("get_MSdev_DEP_se")
+  return(MSdev.obj)
+  col.info <- MSdev.obj@sampleInfo%>%
+    dplyr::filter(sample.type == "Sample")%>%
+    dplyr::mutate(label = sample.name,
+                  condition = group ,
+                  replicate = 1)%>%
+    dplyr::group_by(condition)%>%
+    dplyr::mutate(replicate = 1:n())
+
+  data.unique <- DEP::make_unique(MSdev.obj@statData$metabolites ,
+                                  names ="feature_id" ,
+                                  ids = "feature_id")
+  data.colum <- which(colnames(data.unique )%in% col.info$sample.name)
+  data.se <- DEP::make_se(proteins_unique = data.unique,
+                          columns = data.colum,
+                          expdesign = col.info )
+  data_filt <- DEP::filter_missval(data.se, thr = min(table(col.info$group))*0.3)
+  data_norm <- DEP::normalize_vsn(data_filt)
+  data_imp <- DEP::impute(data_norm, fun = "MinProb")
+
+  MSdev.obj@statData$data.se$data.raw$data.raw <- data_imp
+  MSdev.obj
+}
+
+
 
 
 get_MSdev_DEP_se <- function(object,
-                             from = c("feature.se","metabolite.se")){
+                             from = c("feature.se",
+                                      "metabolite.se")){
 
   from <- match.arg(from)
   data.se <- object@statData[[from]]
@@ -1823,9 +1828,12 @@ get_MSdev_DEP_se <- function(object,
   rowData(data.se) <- rda%>%S4Vectors::DataFrame()
 
   assay(data.se) <- log2(assay(data.se))
+  data_filt <- DEP::filter_missval(data.se,
+                                   thr = min(table(cda$group))*0.3)
+  data_norm <- DEP::normalize_vsn(data_filt)
+  data_imp <- DEP::impute(data_norm, fun = "MinProb")
 
-
-  return(data.se)
+  return(data_imp)
 }
 
 

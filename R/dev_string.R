@@ -101,6 +101,21 @@ str_formate <- function(str){
 }
 
 
+str_format_len <- function(str,to = "max"){
+
+  nc <- nchar(str)
+  if (to=="max") {
+    nc.max <- max(nc)
+    to.add <- sapply(nc.max-nc,
+                     function(x){
+                       paste0(rep(" ",x),collapse = "")
+                     })
+    str1 <- paste0(str,to.add)
+  }
+
+  return(str1)
+}
+
 
 
 str_search_files <- function(str,file_path = paste0(getwd(),"/R")){

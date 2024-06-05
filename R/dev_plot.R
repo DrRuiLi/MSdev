@@ -228,7 +228,7 @@ colramp<- function(breaks = c(0,0.5,1),
 make_group_color <- function(x,palette = "random",verbose=F){
 
   palette <- match.arg(palette,c(names(ggsci:::ggsci_db),"random"))
-  x <- unique(x)
+  x <- unique(x)%>%sort()
   if (palette == "random") {
     col  <- randomcoloR::distinctColorPalette(length(x))
   }else{

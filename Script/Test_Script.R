@@ -1841,3 +1841,132 @@ xcms.xcms <- msdev.CX@xcmsData$PositiveMS1
 cpdb <- CompDb(msdev.CX@projectInfo$CompoundDB_path)
 xcms.xcms<- xcms_get_feature_ms1_candidate(xcms.xcms,cpdb )
 xcms.xcms<- xcms_get_feature_isopattern_score(xcms.xcms )
+
+cpdb_path <- "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb"
+cpdb <- CompDb(cpdb_path)
+
+
+
+a <- MSdev_get_Stat(msdev.demo)
+
+# Fri May 31 19:26:32 2024 ------------------------------
+xcms.xcms <- msdev.Threegroup@xcmsData$NegativeMS1
+xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+  as.data.frame()
+
+xcms.fdf1 <- xcms.fdf%>%
+  dplyr::mutate(ms2_count = lengths(ms2_id))%>%
+  dplyr::filter(!is.na(C13_seed))
+
+edit_df_in_excel(xcms.fdf1)
+
+ms2_sp <- onDiskData_retrieve(msdev.Threegroup@spectra$MS2_Spectra)
+id.with.ms2 <-which( xcms.fdf1$ms2_count>0)
+i <- 2
+FID <- xcms.fdf1$feature_id[id.with.ms2[i]]
+SPID <- xcms.fdf1$ms2_id[[id.with.ms2[i]]]
+sp <- ms2_sp[SPID]
+precursorMz(sp)
+xcms.fdf1$mzmed[[id.with.ms2[i]]]
+sp$isolationWindowTargetMz
+plotSpec(sp[10])
+
+# Sat Jun  1 10:31:05 2024 ------------------------------
+load("temp.rds")
+a <- getMethod(atomcount,"SDFset")
+a <- getMethod(atomcount,"SDF")
+sdf.m <- atomcountMA(fragment.sdf)
+a(fragment.sdf[[49]],addH=T)
+x <- fragment.sdf[[49]]
+table(c(gsub("_.*", "", rownames(x@atomblock)),
+        rep("H", bonds(x, type = "addNH"))))
+
+bonds(x, type = "addNH")
+
+a <- bondblock(fragment.sdf)
+
+
+
+.bonds <- function(x, type = type) {
+  atomMA <- atomblock(x)
+  atoms <- gsub("_.*", "", rownames(atomMA))
+  bondMA <- bondblock(x)
+  Nbonds1 <- cbind(atoms = c(bondMA[, 1], bondMA[, 2]),
+                   bonds = c(bondMA[, 3], bondMA[, "C3"]))
+  Nbonds1 <- tapply(Nbonds1[, "bonds"], Nbonds1[, "atoms"],
+                    sum)
+  Nbonds <- rep(0, length(atomMA[, 1]))
+  names(Nbonds) <- seq(along = atomMA[, 1])
+  Nbonds[names(Nbonds1)] <- Nbonds1
+  val <- c(`1` = 1, `17` = 1, `2` = 2, `16` = 2, `13` = 3,
+           `15` = 3, `14` = 4)
+  group <- as.numeric(atomprop$Group)
+  names(group) <- as.character(atomprop$Symbol)
+  Nbondrule <- val[as.character(group[atoms])]
+  Nbondrule[is.na(Nbondrule)] <- 0
+  Nbondrule[Nbondrule < Nbonds] <- Nbonds[Nbondrule < Nbonds]
+  charge <- c(`0` = 0, `1` = 3, `2` = 2, `3` = 1, `4` = 0,
+              `5` = -1, `6` = -2, `7` = -3)
+  charge <- charge[as.character(atomMA[, 5])]
+  Nbonds <- data.frame(atom = atoms, Nbondcount = Nbonds,
+                       Nbondrule = Nbondrule, charge = charge)
+  if (type == "bonds") {
+    return(Nbonds)
+  }
+  if (type == "charge") {
+    chargeindex <- Nbonds[, "charge"] != 0
+    if (sum(chargeindex) == 0) {
+      return(NULL)
+    }
+    else {
+      chargeDF <- Nbonds[chargeindex, ]
+      charge <- chargeDF[, "charge"]
+      names(charge) <- chargeDF[, "atom"]
+      return(charge)
+    }
+  }
+  if (type == "addNH") {
+    Nbonds[Nbonds[, "Nbondcount"] >= Nbonds[, "Nbondrule"],
+           "charge"] <- 0
+    Nbonds[Nbonds[, "Nbondcount"] == 0, c("Nbondrule",
+                                          "charge")] <- 0
+    NH <- sum((Nbonds[, "Nbondrule"] + Nbonds[, "charge"]) -
+                Nbonds[, "Nbondcount"])
+    if (NH < 0)
+      NH <- 0
+    return(NH)
+  }
+}
+
+ui <- function(){
+  visNetworkOutput("vis")
+}
+
+server <- function(input, output){
+  output$vis <- renderVisNetwork(
+    visNetwork(nodes = node.df,
+               edges = edge.df)%>%
+      visNodes(color = list(background = "transparent",
+                            border = "#2B7CE9"))%>%
+      visEdges(arrows = list(to = T,
+                             from=list(enabled= T,scaleFactor =0,
+                                       type = "bar")),
+               arrowStrikethrough=F)%>%
+      visIgraphLayout()%>%
+      visExport()
+
+  )
+}
+
+# Mon Jun  3 14:41:22 2024 VIS sdf igraph------------------------------
+{
+  object <- msdev.Threegroup
+  cfmd <- object@statData$MSIP$MSIP_result$FT09305_Positive$CFM_annotation
+  sdf.igraph <- get_cfm_data_sdf_igraph(cfmd, 1 )
+  vi<-  vis_sdf_igraph(sdf.igraph,
+                       highlight = sample(ele,10))
+  vi <- vis_cfm_data_atom_map(cfmd,99,
+                              show.id = T)
+  open_visNet(vi)
+
+}

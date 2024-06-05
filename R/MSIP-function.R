@@ -82,7 +82,7 @@ MSIP_get_isotopologues_table <- function(object,
       f.traced <- ifelse(is.na(xcms.pdata$isotope_tracer),
                          "int_mean_nontracer","int_mean_tracer")
       int.mean <- apply(xcms.fv,1,mean_f,f = f.traced,simplify = F)%>%do.call(rbind,.)
-      xcms.fdf <- cbind(xcms.fdf,int.mean)
+      xcms.fdf[,colnames(int.mean)] <- int.mean
 
       ratio.matrix <- get_xcms_iso_fraction(xcms.xcms)
       ratio.matrix -> object@statData$MSIP$isotopologues_matrix$ratio_to_seed[[pol]]
@@ -146,7 +146,7 @@ MSIP_get_isotopologues_table <- function(object,
           C13_seed,
           C13_count)%>%
         dplyr::select("feature_id","mzmed","rtmed","rtmin","rtmax","peakMaxo","polarity",
-                      "score","C13_seed","C13_count",
+                      "score","C13_seed","C13_count","ms2_id",
                       "is_seed","is_isotopologues","is_labeled","compound_id","adduct",
                       "name","formula","smiles","int_mean_tracer", "int_mean_nontracer",
                       grep(pattern = "Ratio_to_seed",colnames(xcms.fdf),value = T),
@@ -164,6 +164,7 @@ MSIP_get_isotopologues_table <- function(object,
         fid <- xcms.fdf.selected%>%
           dplyr::filter(is_isotopologues)%>%
           dplyr::pull(feature_id)
+        message_with_time("Extract ",length(fid)," Chromatograms in ",pol)
         xcms.chrom <- featureChromatograms(xcms.xcms,
                                            features = fid,
                                            expandRt = Inf,
@@ -228,10 +229,11 @@ MSIP_assign_MS2 <- function(object,rt.tol = 10){
 #' @return a list of isotopologues
 #' @export
 #'
-MSIP_get_isotopologues_data <- function(object,iso_ele = "[13]C"){
+MSIP_get_isotopologues_data <- function(object,
+                                        iso_ele = get_MSdev_iso_ele(object)){
 
-  iso.list <- list()
-  sp.ms2 <- object@spectra$MS2_Spectra
+
+  sp.ms2 <- onDiskData_retrieve(object@spectra$MS2_Spectra)
   sp.ms2$sample.source <- object@sampleInfo$sample.source[
     match(sampleNames(sp.ms2),basename(object@sampleInfo$msData.files))]
   #cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
@@ -241,19 +243,23 @@ MSIP_get_isotopologues_data <- function(object,iso_ele = "[13]C"){
   for (i in 0:1) {
 
     pol <- ifelse(i==0,"Negative","Positive")
-    xcms.fdf <- object@statData$MSIP$isotopologues_table[[pol]]
-    xcms.fdf[,"iso_seed"] <- xcms.fdf[,paste0(trans_iso_ele(iso_ele),"_seed")]
-    xcms.fdf[,"iso_count"] <- xcms.fdf[,paste0(trans_iso_ele(iso_ele),"_count")]
-    xcms.fdf <- xcms.fdf%>%
+    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.fdf <- featureDefinitions(xcms.xcms)
+    iso.table <- object@statData$MSIP$isotopologues_table[[pol]]
+    iso.table$ms2_id <-xcms.fdf$ms2_id[match(iso.table$feature_id,xcms.fdf$feature_id  )]
+    iso.table[,"iso_seed"] <- iso.table[,paste0(trans_iso_ele(iso_ele),"_seed")]
+    iso.table[,"iso_count"] <- iso.table[,paste0(trans_iso_ele(iso_ele),"_count")]
+    iso.table <- iso.table%>%
+      dplyr::mutate(ms2_count = lengths(ms2_id))%>%
       dplyr::group_by(iso_seed)%>%
       dplyr::filter(!is.na(iso_seed),
                     n() > 1,
                     rep(any(is_labeled) ,n()))%>%
       dplyr::ungroup()
-    seed.id <- unique(xcms.fdf$iso_seed)
+    seed.id <- unique(iso.table$iso_seed)
     for (i_seed_id in seq_along(seed.id)) {
       #message(i_seed_id)
-      this.fdf <- xcms.fdf%>%
+      this.fdf <- iso.table%>%
         dplyr::filter(iso_seed == seed.id[i_seed_id])
       this.seed.df <- this.fdf%>%
         dplyr::filter(feature_id==iso_seed)
@@ -324,6 +330,20 @@ MSIP_get_isotopologues_data <- function(object,iso_ele = "[13]C"){
 }
 
 
+get_MSdev_iso_ele <- function(object){
+  iso_ele <- object@sampleInfo$isotope_tracer
+  iso_ele <- unique(na.omit(iso_ele))
+  if(length(iso_ele)>1){
+    message("Multiple iso_ele, please check")
+    iso_ele <- iso_ele[1]
+  }
+  if(length(iso_ele)==0){
+    message("No iso_ele, please check")
+
+  }
+  return(iso_ele)
+}
+
 #' get_isotopologues_CFM_annotation
 #'
 #' @param object msdev
@@ -342,7 +362,7 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
     ### combine sp of seed to cfm-annotate
     {
       ### process M0 Spectra
-      {
+      if(F){
         ### M0 just annotated for smiles assign
         seed.sp.c <- do.call(c,unname(x$Spectra$M0))
         seed.sp.c <- Spectra_filter_noise(seed.sp.c)
@@ -356,7 +376,7 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
       CFM_result <- NA
       try.return <- try(
         CFM_result <- CFM_annotate_by_predict(smiles_or_inchi = x$compound_info$smiles,
-                                   spectrum_file = seed.sp.c,
+                                   #spectrum_file = seed.sp.c,
                                    ppm_mass_tol = ppm,
                                    abs_mass_tol = 0.005,
                                    param_adduct = switch(as.character(x$compound_info$polarity),
