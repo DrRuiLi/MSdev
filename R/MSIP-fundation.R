@@ -4,6 +4,7 @@ get_frag_group_map <- function(sp.frag.data,cfmd,iso.count,atom_prob = F){
   {
     sp.frag.data <- sp.frag.data%>%
       dplyr::filter(sp.id== "combined_sp")
+    if (nrow(sp.frag.data)==0) return(NA)
     fg.idx <- split(1:nrow(sp.frag.data),sp.frag.data$fragment_group)
     frag.iso.matrix <- matrix(
       nrow = length(fg.idx),ncol = iso.count+1,
@@ -184,6 +185,11 @@ get_iso_form_map_old <- function(fg.map,atom_prob = T ){
 get_iso_form_map <- function(fg.map,max_combn = 500000){
 
 
+  ###
+  {
+    if (all(is.na(fg.map))) return(NA)
+  }
+
   ### required info
   {
 
@@ -230,6 +236,12 @@ get_iso_form_map <- function(fg.map,max_combn = 500000){
 get_iso_form_set_map <- function(if.map,fg.map){
 
 
+
+  ###
+  {
+    if (all(is.na(if.map)|all(is.na(fg.map)))) return(NA)
+
+  }
 
 
   ### iso form ratio
@@ -298,9 +310,9 @@ get_iso_prob <- function(fc, ifc){
 merge_frag_group_map <- function(fg.map){
 
 
-  if (nrow(fg.map$frag.c.matrix)<=1) {
-    return(fg.map)
-  }
+
+  if (all(is.na(fg.map))) return(NA)
+  if (nrow(fg.map$frag.c.matrix)<=1)  return(fg.map)
 
   ### merge duplicate
   {
@@ -391,6 +403,10 @@ merge_frag_group_map <- function(fg.map){
 
 get_iso_form_prob_GLPK <- function(iso.form.map){
 
+  {
+    if (all(is.na(iso.form.map))) return(NA)
+  }
+
   mat <- iso.form.map$iso.form.set.map
   obj <- rep(1,ncol(mat))
   # <- sample(c(0,1),ncol(mat),replace = T)
@@ -414,10 +430,119 @@ get_iso_form_prob_GLPK <- function(iso.form.map){
   return(iso.form.map)
 }
 
-get_iso_from_C_prob <- function(iso.form.map,cfmd,iso.count){
 
-  ig <- cfmd@fragment_igraph[[1]]
-  c <- get_atom_from_igraph(ig,"C")
+.get_isotopologues_label_fraction <- function(sp.iso,
+                                              cfmd,
+                                              ppm = 10,
+                                              iso.count,
+                                              natural.ratio){
+
+  sp.iso <- Spectra_filter_noise(sp.iso)
+  #sp.iso <- combineSpectra_groupby_ce(sp.back,
+  #                                    minProp = 0.5,plot = T,
+  #                                    ppm = 20)
+  sp.frag.data <- CFM_annotate_isotopologues(sp.iso,
+                                             cfmd  = cfmd,
+                                             ppm = ppm,
+                                             iso.count = iso.count)
+  sp.frag.data <- CFM_spectra_data_int_weight(sp.frag.data,iso.count)
+  fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso.count = iso.count)
+  if.map <- get_iso_form_map(fg.map)
+  ### adjust nature
+  sp.frag.data <- CFM_spectra_data_remove_natural(sp.frag.data,natural.ratio,if.map)
+  fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso.count = iso.count)
+  ### merge fragment
+  fgn.map <- merge_frag_group_map(fg.map)
+
+  ### calc by if-set
+  if.map <- get_iso_form_set_map(if.map ,fgn.map)
+  if.map <- get_iso_form_prob_GLPK(if.map)
+  c.prob <- get_iso_from_C_prob(if.map, cfmd,iso.count)
+
+  #heatmap.fg.map(fg.map)
+  #heatmap.ifs.map(if.map)
+  #sum(iso.form.map$iso.form.prob)
+
+
+
+
+  ### vis
+  # {
+  #   this.dir <- paste0("d:/temp/nad_M",i.iso)
+  #   dir.create(this.dir,showWarnings = F)
+  #   hm <-  heatmap.fg.map(fg.map)
+  #   export::graph2png(hm,
+  #                     file = paste0(this.dir,"/Frag.map.png"),
+  #                     width = 10,
+  #                     height = nrow(fg.map$frag.c.matrix)*0.8)
+  #   hm <- heatmap.ifs.map(iso.form.map)
+  #   export::graph2png(draw(hm),
+  #                     file = paste0(this.dir,"/Iso.form.map.png"),
+  #                     width = 10,
+  #                     height = nrow(fg.map$frag.c.matrix)*1.5)
+  #   p <- vis_sdf_ig_prob(cfmd@fragment_igraph[[1]],c.prob,show.label = T)
+  #   saveWidget(p,file = paste0(this.dir,"/Atom.prob.html"))
+  # }
+
+  ### SAVE
+  {
+    return(list(
+      sp.data = sp.frag.data,
+      fg.map = fg.map,
+      fgn.map = fgn.map,
+      if.map = if.map,
+      c.prob = c.prob
+    ))
+
+
+  }
+
+
+}
+
+.re_calculate_isotopologues_label_fraction <- function(msip.core.data){
+
+  ### select include
+  {
+    fg.map <- msip.core.data$fg.map
+    #fg.map$frag.include <- fg.map$frag.int>1e3
+    if (all(is.null(fg.map$frag.include))) {
+
+      frag.include <- rep(T,nrow(fg.map$frag.c.matrix))
+      names(frag.include) <- rownames(fg.map$frag.c.matrix)
+    }else{
+      frag.include <- fg.map$frag.include
+    }
+    fg.map$frag.c.matrix <- fg.map$frag.c.matrix [frag.include,]
+    fg.map$frag.iso.matrix <- fg.map$frag.iso.matrix [frag.include,]
+    fg.map$frag.int <- fg.map$frag.int [frag.include]
+    fg.map$frag.include <- fg.map$frag.include [frag.include]
+  }
+
+  ### merge fragment
+  fgn.map <- merge_frag_group_map(fg.map)
+
+  ### calc by if-set
+  if.map <- get_iso_form_set_map(msip.core.data$if.map ,fgn.map)
+  if.map <- get_iso_form_prob_GLPK(if.map)
+  c.prob <- get_iso_from_C_prob(if.map)
+
+  ### return
+  {
+    msip.core.data$fgn.map <- fgn.map
+    msip.core.data$if.map <- if.map
+    msip.core.data$c.prob <- c.prob
+    return(msip.core.data)
+  }
+
+}
+
+
+get_iso_from_C_prob <- function(iso.form.map){
+
+  if (all(is.na(iso.form.map))) return(NA)
+
+  c <- unique(unlist(iso.form.map$iso.form))
   c.prob <- rep(0,length(c))
   names(c.prob) <- c
   c.prob.m<- sapply(seq_along(iso.form.map$iso.form.prob),function(idx){
@@ -433,7 +558,7 @@ get_iso_from_C_prob <- function(iso.form.map,cfmd,iso.count){
     return(x)
   })
 
-  apply(c.prob.m,1,sum)*iso.count
+  apply(c.prob.m,1,sum)*length(iso.form.map$iso.form[[1]])
 }
 
 
@@ -445,13 +570,32 @@ get_iso_from_C_prob <- function(iso.form.map,cfmd,iso.count){
 #' @return heatmap
 heatmap.fg.map <- function(fg.map){
 
+  ### size
+  {
+    ppi <- 72
+    mhpx <- 500
+    mwpx <- 800
+    nr <- nrow(fg.map$frag.c.matrix)
+    nc <- ncol(fg.map$frag.c.matrix)+ncol(fg.map$frag.iso.matrix)
+    cell.unit <- "inches"
+    length.unit <- 0.3
+    max.height <- mhpx/ppi
+    max.width <- mwpx/ppi-1
+    if (nr*length.unit>max.height)
+      length.unit <- max.height/nc
+    if (nc*length.unit>max.width)
+      length.unit <- max.width/nc
+
+  }
+
   frag.c.matrix <- fg.map$frag.c.matrix
   frag.iso.matrix <- fg.map$frag.iso.matrix
   cf <- circlize::colorRamp2(breaks = c(0,0.5,1),
                              c("white","#888888","#111111"))
   h1 <- ComplexHeatmap::Heatmap(frag.c.matrix,
                                 na_col  ="#999999",
-                                width = ncol(frag.c.matrix),
+                               # width = unit(ncol(frag.c.matrix)*length.unit,cell.unit),
+                               # height =unit(nrow(frag.c.matrix)*length.unit,cell.unit),
                                 name = "Atom map\nprobability",
                                 col = cf,
                                 cluster_columns = F,
@@ -459,7 +603,7 @@ heatmap.fg.map <- function(fg.map){
                                 cell_fun = function(j, i, x, y, width, height,color, fill){
                                   grid.rect(x = x, y = y, width = width, height = height,
                                             gp = grid::gpar(col = "grey", fill = NA))
-                                  grid.circle(x = x, y = y, r = 0.02,
+                                  grid.circle(x = x, y = y, r = min(width,height)/3,
                                               gp = grid::gpar(fill = color, col = color))
                                 },
                                 row_names_side  = "left",
@@ -471,7 +615,8 @@ heatmap.fg.map <- function(fg.map){
   h1
   h2 <- ComplexHeatmap::Heatmap(frag.iso.matrix,
                                 na_col  ="#999999",
-                                width = ncol(frag.iso.matrix)*2,
+                               # width = unit( ncol(frag.iso.matrix)*length.unit,cell.unit),
+                               # height =unit( nrow(frag.c.matrix)*length.unit,cell.unit),
                                 name = "Isotope labeled\nratio",
                                 col = circlize::colorRamp2(breaks = c(0,0.5,1),
                                                            c("white","#F7844F","#B20C26")),
@@ -489,7 +634,10 @@ heatmap.fg.map <- function(fg.map){
                                 column_names_centered = T,
                                 rect_gp =  grid::gpar(lwd=2,col = "black"),
                                 cluster_rows = F)
-  h1+h2
+  draw(h1+h2,#padding =  unit(c(max.height-nr*length.unit, 0, 10,
+             #                  max.width-nc*length.unit), "points"),
+       padding = unit(c(0,0,0.2,1), "inches"),
+       background  = "#00000000")
   #open_plot_win(h1+h2,10,5)
 }
 

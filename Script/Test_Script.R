@@ -1970,3 +1970,30 @@ server <- function(input, output){
   open_visNet(vi)
 
 }
+
+# Thu Jun  6 16:37:49 2024 ------------------------------
+lapply(msdev.Threegroup@statData$MSIP$isotopologues_data,
+       function(x){
+         x.l <- lapply(x$Spectra,function(y){
+           y.l <- lengths(y)
+           if (length(y.l)) return(y.l)
+           return(0)
+         })
+          x.l<-do.call(rbind,x.l)
+         x.l
+       })->a
+
+for (i in seq_along(a)) {
+  do.call(rbind,a[[i]])
+}
+
+
+xcms.xcms <- msdev.Threegroup@xcmsData$PositiveMS1
+xcms.fdf <- featureDefinitions(xcms.xcms)
+
+id <- grepl(pattern = "Ratio_to.*1$",
+      colnames(xcms.fdf))
+xcms.fdf <- xcms.fdf[,!id]
+
+xcms.fdf -> featureDefinitions(xcms.xcms)
+xcms.xcms -> msdev.Threegroup@xcmsData$PositiveMS1

@@ -280,7 +280,7 @@ add_sdf_igraph_color <- function(sdf.igraph,
 #' vis_sdf_igraph
 #'
 #' @param sdf.igraph igraph
-#' @param show.label logic
+#' @param show.id logic
 #' @param highlight vector
 #'
 #' @return vis html
@@ -305,6 +305,7 @@ vis_sdf_igraph <- function(sdf.igraph ,
                               colramp(breaks = c(0,Inf,1),
                                        colors = c("#aaaaaa","#97C2FC","#2B7CE9")))
   col.fill <- .get_vis_col(sdf.igraph,prob.fill,
+                           na.col = "#DDDDDD",
                              colramp(breaks = c(0,Inf,1),
                                      colors = c("#FFFFFF","#F7844F","#B20C26")))
   ele <- get_atom_from_igraph(sdf.igraph)
@@ -316,13 +317,13 @@ vis_sdf_igraph <- function(sdf.igraph ,
                                     T~paste0(" ",atom," ")),
                   label = str_format_len(label),
                   font.size = case_when(show.id~20,T~40),
-                  font.multi= T,
-                  font.bold = T,
-                  font.bold.mod = "bold",
-                  font.bold.size = 500,
+                 # font.multi= T,
+                 # font.bold = T,
+                 # font.bold.mod = "bold",
+                 # font.bold.size = 500,
                   font.vadjust = 5,
-                  font.strokeWidth = 2,
-                  font.strokeColor = "black",
+                 # font.strokeWidth = 2,
+                #  font.strokeColor = "black",
                   font.align = "left",
                   borderWidth = 3,
                   color.background = col.fill[name],
@@ -338,7 +339,7 @@ vis_sdf_igraph <- function(sdf.igraph ,
 
 }
 
-.get_vis_col <- function(sdf.igraph,prob,colramp = colramp()){
+.get_vis_col <- function(sdf.igraph,prob,colramp = colramp(),na.col = "#AAAAAA"){
 
   ele <- get_atom_from_igraph(sdf.igraph,ele = "all")
   if (is.null(prob)) prob <- 0
@@ -351,8 +352,10 @@ vis_sdf_igraph <- function(sdf.igraph ,
     names(xx) <-x
     prob <- c(prob,xx)[ele]
   }
-  colramp(prob)
-
+  col <- colramp(prob)
+  names(col)<-names(prob)
+  col[is.na(col)] <- na.col
+  col
 }
 .get_highlight <- function(sdf.igraph,highlight){
 

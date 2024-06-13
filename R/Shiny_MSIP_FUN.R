@@ -34,7 +34,7 @@ shiny_plotly_iso_msip_spectra <- function(sp.data){
     ymax <- max(abs(sp.data$y))*1.2
     ymin <- min((sp.data$y))*1.2
 
-    sp.data%>%
+    p <- sp.data%>%
       plot_ly(source = "plotly_ms2_sp")%>%
       highlight_key(~fragment_group
                     )%>%
@@ -77,6 +77,43 @@ shiny_plotly_iso_msip_spectra <- function(sp.data){
       event_register("plotly_click")
 
   }
+
+  ### add message
+  {
+    fg <- sp.data%>%
+      dplyr::filter(y<0,!is.na(fragment_group))%>%
+      dplyr::pull(fragment_group)
+    if (length(fg)==0) {
+      p <- p%>%
+        add_text(x = mean(range(sp.data$x)),
+                 y = -ymax/2,text = "No fragment")
+    }
+
+  }
+
+  return(p)
+}
+
+
+shiny_isotopologues_info <- function(iso_msip,
+                                     sample,
+                                     iso_count){
+
+  if (is.null(iso_msip)|is.null(sample)|is.null(iso_count)) {
+    return(NA)
+  }
+  ms1_purity <- ms2_count <- NULL
+  purity_matrix <- iso_msip$compound_info$purity_matrix
+  if (iso_count%in% rownames(purity_matrix)&sample%in% colnames(purity_matrix))
+    ms1_purity <- purity_matrix[iso_count,sample]
+
+  ms2_count_matrix <- iso_msip$compound_info$ms2_count
+  if (iso_count%in% rownames(ms2_count_matrix)&sample%in% colnames(ms2_count_matrix))
+    ms2_count <- ms2_count_matrix[iso_count,sample]
+
+
+  paste0("Purity: ",format(ms1_purity,digits=2),"\n",
+         "MS2 count: ",ms2_count)
 }
 
 
@@ -251,6 +288,13 @@ shiny_get_atom_map <- function(iso_msip,
     return(atom.map)
   }
   return(x)
+}
+
+shiny_get_fg_map <- function(iso_msip,
+                             sample ,
+                             iso_count){
+  fg.map <- iso_msip$MSIP_result[[iso_count]][[sample]]$fg.map
+  return(fg.map)
 }
 
 
@@ -543,12 +587,73 @@ shiny_plotly_feature_purity <- function(xchrom,
 
 
 }
+
+
 shiny_get_C_prob <- function(iso_msip,iso_count,sample){
 
+  ele <- get_atom_from_igraph(
+    get_cfm_data_sdf_igraph(iso_msip$CFM_annotation),"C")
   x <- iso_msip$MSIP_result[[iso_count]][[sample]]
-  if (all(is.na(x))) {
-    return(NA)
+  if (all(is.na(x))|all(is.null(x))) {
+    prob <- rep(NA,length(ele))
+    names(prob) <- ele
   }else{
-    return(x$c.prob)
+    prob <- x$c.prob
   }
+
+  return(prob)
 }
+
+shiny_DT_fg_include <- function(msip.core.data){
+
+  if (all(is.na(msip.core.data$fg.map))) {
+    return(data.frame())
+  }
+  if (all(is.null(msip.core.data$fg.map$frag.include))) {
+    frag.include <- rep(T,nrow(msip.core.data$fg.map$frag.c.matrix))
+    names(frag.include) <- rownames(msip.core.data$fg.map$frag.c.matrix)
+  }else{
+    frag.include <- msip.core.data$fg.map$frag.include
+  }
+  data.frame(#fragment.group = names(frag.include),
+             include = as.HTML.checkbox.checked(frag.include)
+             )
+
+}
+
+shiny_get_fg_include <- function(msip.core.data){
+
+  if (all(is.na(msip.core.data$fg.map))) {
+    return(NULL)
+  }
+  if (all(is.null(msip.core.data$fg.map$frag.include))) {
+    frag.include <- rep(T,nrow(msip.core.data$fg.map$frag.c.matrix))
+    names(frag.include) <- rownames(msip.core.data$fg.map$frag.c.matrix)
+  }else{
+    frag.include <- msip.core.data$fg.map$frag.include
+  }
+  return(frag.include)
+}
+
+shiny_update_fg_include <- function(frag.include,x){
+
+
+  frag.include[x] <- !frag.include[x]
+  return(frag.include)
+
+}
+
+shiny_update_msip_core_data <- function(msip.core.data,frag.include){
+
+  msip.core.data$fg.map$frag.include <- frag.include
+  return(msip.core.data)
+}
+
+
+shiny_update_iso_msip_list <- function(iso.msip.list,feature_id,
+                                       sample,iso_count,msip.core.data){
+  iso.msip.list[[feature_id]][["MSIP_result"]][[iso_count]][[sample]] <- msip.core.data
+  return(iso.msip.list)
+}
+
+

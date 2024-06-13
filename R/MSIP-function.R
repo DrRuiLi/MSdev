@@ -292,9 +292,13 @@ MSIP_get_isotopologues_data <- function(object,
           if (length(y.l)) return(y.l)
           return(0)
         })%>%do.call(rbind,.)
-
-
-
+        to.add <- setdiff(unique(xcms.se$sample.source),colnames(sp_count))
+        if (length(to.add)) {
+          sp_count <- cbind(sp_count,  matrix(
+            rep(0,length(this.sp)*length(to.add) )  ,nrow =length(this.sp),
+            dimnames = list(names(this.sp),
+                            to.add)))
+        }
         this.list$Spectra <- this.sp
         this.list$compound_info$ms2_count <-sp_count
       }
@@ -524,7 +528,7 @@ MSIP_get_isotopologues_label_fraction <- function(object,
                                                   BPPARAM = SerialParam(progressbar = T)){
 
   .f <- function(x.iso.cfm,ppm = ppm,selected.source ){
-    #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[1]]
+    #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[2]]
     cfmd <- x.iso.cfm$CFM_annotation
     all.iso.count <- stringr::str_extract(names(x.iso.cfm$Spectra),"[:digit:]+")%>%
       as.numeric()%>%na.omit()
@@ -588,73 +592,6 @@ MSIP_get_isotopologues_label_fraction <- function(object,
     dplyr::pull(isotope_tracer,name = sample.source)
 
   return(x)
-
-}
-
-.get_isotopologues_label_fraction <- function(sp.iso,
-                                              cfmd,
-                                              ppm = 10,
-                                              iso.count,
-                                              natural.ratio){
-
-  sp.iso <- Spectra_filter_noise(sp.iso)
-  #sp.iso <- combineSpectra_groupby_ce(sp.back,
-  #                                    minProp = 0.5,plot = T,
-  #                                    ppm = 20)
-  sp.frag.data <- CFM_annotate_isotopologues(sp.iso,
-                                             cfmd  = cfmd,
-                                             ppm = ppm,
-                                             iso.count = iso.count)
-  sp.frag.data <- CFM_spectra_data_int_weight(sp.frag.data,iso.count)
-  if (sum(sp.frag.data$sp.id=="combined_sp")==0) return(NA)
-  fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso.count = iso.count)
-  #heatmap.fg.map(fg.map)
-  if.map <- get_iso_form_map(fg.map)
-  if (all(is.na(if.map))) return(NA)
-  sp.frag.data <- CFM_spectra_data_remove_natural(sp.frag.data,natural.ratio,if.map)
-  if (sum(sp.frag.data$sp.id=="combined_sp")==0) return(NA)
-  fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso.count = iso.count)
-  fgn.map <- merge_frag_group_map(fg.map)
-  if.map <- get_iso_form_set_map(if.map ,fgn.map)
-  if.map <- get_iso_form_prob_GLPK(if.map)
-  #heatmap.ifs.map(if.map)
-  c.prob <- get_iso_from_C_prob(if.map, cfmd,iso.count)
-  #sum(iso.form.map$iso.form.prob)
-
-
-
-
-  ### vis
-  # {
-  #   this.dir <- paste0("d:/temp/nad_M",i.iso)
-  #   dir.create(this.dir,showWarnings = F)
-  #   hm <-  heatmap.fg.map(fg.map)
-  #   export::graph2png(hm,
-  #                     file = paste0(this.dir,"/Frag.map.png"),
-  #                     width = 10,
-  #                     height = nrow(fg.map$frag.c.matrix)*0.8)
-  #   hm <- heatmap.ifs.map(iso.form.map)
-  #   export::graph2png(draw(hm),
-  #                     file = paste0(this.dir,"/Iso.form.map.png"),
-  #                     width = 10,
-  #                     height = nrow(fg.map$frag.c.matrix)*1.5)
-  #   p <- vis_sdf_ig_prob(cfmd@fragment_igraph[[1]],c.prob,show.label = T)
-  #   saveWidget(p,file = paste0(this.dir,"/Atom.prob.html"))
-  # }
-
-  ### SAVE
-  {
-    return(list(
-      sp.data = sp.frag.data,
-      fg.map = fg.map,
-      fgn.map = fgn.map,
-      if.map = if.map,
-      c.prob = c.prob
-    ))
-
-
-  }
-
 
 }
 

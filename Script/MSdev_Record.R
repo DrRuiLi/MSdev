@@ -55,13 +55,13 @@
 
   ### STAT
   {
-    msdev.WYQ <- load_as_var("d:/WYQ/2024_01_10-Wangyongqiang/MSdev_2024_01_14.Rdata")
-    msdev.WYQ <- MSdev_checkSampleInfo(msdev.WYQ)
-    msdev.WYQ <- MSdev_update_xcms_pdata(msdev.WYQ)
+    msdev.wyq <- load_as_var("d:/WYQ/2024_01_10-Wangyongqiang/MSdev_2024_01_14.Rdata")
+    msdev.wyq <- MSdev_checkSampleInfo(msdev.wyq)
+    msdev.wyq <- MSdev_update_xcms_pdata(msdev.wyq)
     {
 
-      proj.dir <- msdev.WYQ@projectInfo$projectDir
-      data.se <- get_MSdev_DEP_se(msdev.WYQ,from = "metabolite")
+      proj.dir <- msdev.wyq@projectInfo$projectDir
+      data.se <- get_MSdev_DEP_se(msdev.wyq,from = "metabolite")
       data.se$condition <- data.se$group <- data.se$condition%>%
         gsub(pattern = "_",replacement = "")
       p.pca <- DEP_plot_PCA(data.se)
@@ -166,14 +166,14 @@
 
   ### STAT
   {
-    msdev.WYQ <- load_as_var("d:/WYQ/2024_01_11-Wangyongqiang/MSdev_2024_01_23.Rdata")
-    msdev.WYQ <- MSdev_checkSampleInfo(msdev.WYQ)
-    msdev.WYQ <- MSdev_update_xcms_pdata(msdev.WYQ)
-    msdev.WYQ <- MSdev_get_Stat(msdev.WYQ)
+    msdev.wyq <- load_as_var("d:/WYQ/2024_01_11-Wangyongqiang/MSdev_2024_01_23.Rdata")
+    msdev.wyq <- MSdev_checkSampleInfo(msdev.wyq)
+    msdev.wyq <- MSdev_update_xcms_pdata(msdev.wyq)
+    msdev.wyq <- MSdev_get_Stat(msdev.wyq)
     {
 
-      proj.dir <- msdev.WYQ@projectInfo$projectDir
-      data.se <- get_MSdev_DEP_se(msdev.WYQ,from = "metabolite")
+      proj.dir <- msdev.wyq@projectInfo$projectDir
+      data.se <- get_MSdev_DEP_se(msdev.wyq,from = "metabolite")
       data.se$condition <- data.se$group <- data.se$condition%>%
         gsub(pattern = "_",replacement = "")
       p.pca <- DEP_plot_PCA(data.se)
@@ -468,3 +468,190 @@
 }
 
 
+
+
+# Fri Jun  7 09:14:22 2024 WYQ------------------------------
+{
+  msdev.wyq <- MSdev("d:/2024_06_04-Wangyongqiang/Data/")
+  msdev.wyq <- load_as_var("d:/2024_06_04-Wangyongqiang/MSdev_2024_06_07.Rdata")
+  msdev.wyq <- MSdev_msConvert(msdev.wyq)
+  msdev.wyq <- MSdev_checkSampleInfo(msdev.wyq)
+  msdev.wyq <- MSdev_xcmsProcessing(msdev.wyq)
+  msdev.wyq <- MSdev_extract_Spectra(msdev.wyq)
+  msdev.wyq <- MSdev_match_Spectra_to_feature(msdev.wyq)
+  msdev.wyq <- MSdev_annotation(msdev.wyq,
+                                expand_adduct= T,
+                                #selected_adduct = c("[M-H]-",
+                                #                    "[M-H2O-H]-",
+                                #                    "[2M-H]-" ,
+                                #                    "[M+FA-H]-" ,
+                                #                    "[M+H]+" ,
+                                #                    "[M-H2O+H]+",
+                                #                    "[M+NH4]+"
+                                #) ,
+                                cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+  msdev.wyq <- MSdev_get_Stat(msdev.wyq,QC_RSD = 0.3)
+  MSdev_save(msdev.wyq)
+  MSdev_export(msdev.wyq,candi = F)
+  ### STAT
+  {
+
+      proj.dir <- msdev.wyq@projectInfo$projectDir
+      data.se <- get_MSdev_DEP_se(msdev.wyq,from = "metabolite")
+      data.replace <- readxl::read_excel("d:/2024_06_04-Wangyongqiang/Statistic/Metabolites2.xlsx",sheet = 2)
+      rowData(data.se)$label <- data.replace$name[match(rownames(data.se),
+                                                       data.replace$feature_id)]
+      data.se$condition <- data.se$group <- data.se$condition%>%
+        gsub(pattern = "_",replacement = "")
+
+
+      data.se  <- data.se[,!data.se$sample.type=="Blank"]
+
+
+
+
+      p.pca <- DEP_plot_PCA(data.se)
+      export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 5,height = 5)
+
+
+      ### Sample_P
+      data.se.Sample_P <- DEP_normalization(data.se)
+      data.se.Sample_P <- data.se.Sample_P[,data.se.Sample_P$sample.type== "Sample"]
+      data.diff <- DEP_test_diff(data.se.Sample_P)
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 7,append = T)
+
+      data.diff <- DEP_test_diff(data.se.Sample_P)
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff ,
+                       paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 7,append = T)
+      table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+      xlsx.write.list(table.diff,
+                      paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+      )
+
+      data.diff <- DEP_test_diff(data.se.Sample_P)
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+      rowData(data.diff)$kegg.id <- rowData(data.diff)$kegg_id
+      diff.path <- DEP_pathway_enrich(data.diff,
+                                      contrast = "all")
+      p.diff.path <- lapply(diff.path,
+                            plotPathwayEnrichment)%>%
+        ggplot_sum_patchwork()+
+        plot_layout(ncol = 2)
+      export_graph2pdf(p.diff.path , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 15,append = T)
+      xlsx.write.list(diff.path,
+                      paste0(proj.dir,"/Statistic/Pathway.enrich.xlsx"))
+
+
+      data.diff$sample.label <- data.diff$ID
+      fid <- table.diff$KOF_vs_KOCON%>%
+        dplyr::filter(significant)%>%
+        dplyr::pull(protein)
+      data.plot <- data.diff[fid,]
+      rda <- rowData(data.plot)
+      cda <- colData(data.plot)
+      hm <- assay(data.plot)%>%
+        t%>%scale()%>%t
+
+      ComplexHeatmap::Heatmap(
+        hm,name = "Z score",
+        show_row_names = F,
+        show_column_names = F,
+        cluster_columns = F,
+        column_split = cda$group)
+      export::graph2pdf(file = "d:/temp/heatmap.pdf",
+                        width = 10,height = 10)
+
+    }
+
+
+
+
+}
+
+# Wed Jun 12 13:50:53 2024 LJW------------------------------
+{
+  msdev.ljw <- MSdev("d:/LJW_MS data20240611/rawdata/",
+                     experimentInfo =MS_Experiment[10] )
+  #msdev.ljw <- load_as_var("d:/2024_06_04-Wangyongqiang/MSdev_2024_06_07.Rdata")
+  msdev.ljw <- MSdev_msConvert(msdev.ljw)
+  msdev.ljw <- MSdev_checkSampleInfo(msdev.ljw)
+  msdev.ljw <- MSdev_xcmsProcessing(msdev.ljw)
+  msdev.ljw <- MSdev_annotation(msdev.ljw,
+                                expand_adduct= T,
+                                cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+  msdev.ljw <- MSdev_get_Stat(msdev.ljw,QC_RSD = 0.3)
+  MSdev_save(msdev.ljw)
+  MSdev_export(msdev.ljw,candi = F)
+  ### STAT
+  {
+
+    proj.dir <- msdev.ljw@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(msdev.ljw,from = "metabolite")
+
+
+    data.se  <- data.se[,!data.se$sample.type=="Blank"]
+
+
+
+
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 5,height = 5)
+
+
+    ### Sample_P
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.se.Sample_P <- data.se.Sample_P[,data.se.Sample_P$sample.type== "Sample"]
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 7,append = T)
+
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff ,
+                     paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 7,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+    rowData(data.diff)$kegg.id <- rowData(data.diff)$kegg_id
+    diff.path <- DEP_pathway_enrich(data.diff,
+                                    contrast = "all")
+    p.diff.path <- lapply(diff.path,
+                          plotPathwayEnrichment)%>%
+      ggplot_sum_patchwork()+
+      plot_layout(ncol = 2)
+    export_graph2pdf(p.diff.path , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 15,append = T)
+    xlsx.write.list(diff.path,
+                    paste0(proj.dir,"/Statistic/Pathway.enrich.xlsx"))
+    p.hm <- DEP.plot.heatmap(data.diff)
+    export_graph2pdf(draw(p.hm) ,
+                     paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 15,append = T)
+
+  }
+
+
+
+
+}

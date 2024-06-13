@@ -13,11 +13,9 @@ MSIP_shiny_start <- function(object){
     shinyApp(ui = MSIP_shiny_ui(),
              server = MSIP_shiny_server(object),
              options = list(host = "0.0.0.0",
-                            launch.browser = T,
-                            port = 6548))
-
-
-  }
+                            #port = 6548,
+                            launch.browser = T))
+    }
 
 }
 

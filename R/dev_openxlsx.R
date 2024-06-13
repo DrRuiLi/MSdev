@@ -75,7 +75,7 @@ xlsx.write.list <- function(df.list ,file){
     sheet.name <- names(df.list)[i]
     sheet.name <- gsub(x = sheet.name,pattern = "[:;/]",replacement = "_")
     openxlsx::addWorksheet(wb,sheetName = sheet.name)
-    openxlsx::writeData(wb ,sheet = i, x = df.list[[i]])
+    openxlsx::writeData(wb ,sheet = i, x = df.list[[i]],na.string =NA)
 
 
   }

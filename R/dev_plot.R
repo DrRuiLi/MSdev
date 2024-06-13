@@ -217,6 +217,7 @@ ggplot_km <- function(km.km,legend_tile = "group",
 
 colramp<- function(breaks = c(0,0.5,1),
                    colors = c("white","#F7844F","#B20C26"),
+                   na.col = "#AAAAAA",
                    ...){
 
   circlize::colorRamp2(breaks =breaks,

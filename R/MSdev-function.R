@@ -1677,7 +1677,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
     rda <- rowData(feature.se)%>%
       as.data.frame()%>%
       dplyr::select(feature_id,mzmed,rtmed,compound_id, adduct,mz_ref,rt_ref,score,qc_rsd,sample_rsd,peakMaxo,
-                    candidate,candidate.adduct,candidate.mz,candidate.score)
+                    candidate.id,candidate.adduct,candidate.mz,score.ms2)
 
     ### retrieve data
     cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
@@ -1740,7 +1740,8 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
     }
     rda.filter <- rda%>%
       as.data.frame()%>%
-      dplyr::filter(qc_rsd < QC_RSD,!is.na(compound_id))%>%
+      dplyr::filter(#qc_rsd < QC_RSD,
+                    !is.na(compound_id))%>%
       dplyr::group_by(inchikey)%>%
       dplyr::slice_max(.uniqueFeatures(score,peakMaxo))%>%
       ungroup()

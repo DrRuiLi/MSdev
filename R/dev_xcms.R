@@ -790,6 +790,7 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
     xcms.fda$is_labeled <- is_labeled
     colnames(xcms.ratio.to.seed) <- paste0("Ratio_to_seed_",colnames(xcms.ratio.to.seed))
     xcms.fda <- cbind(xcms.fda,xcms.ratio.to.seed)
+    xcms.fda[,colnames(xcms.ratio.to.seed)] <- xcms.ratio.to.seed
     #xcms.fda$ratio_to_seed_label <- iso.stat$labeled.mean
     #xcms.fda$ratio_to_seed_unlabel <- iso.stat$unlabeled.mean
     xcms.fda -> featureDefinitions(xcms.xcms)

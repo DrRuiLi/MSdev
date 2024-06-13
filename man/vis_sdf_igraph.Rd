@@ -4,12 +4,18 @@
 \alias{vis_sdf_igraph}
 \title{vis_sdf_igraph}
 \usage{
-vis_sdf_igraph(sdf.igraph, show.label = T, highlight = NULL)
+vis_sdf_igraph(
+  sdf.igraph,
+  show.id = F,
+  prob.border = NULL,
+  prob.fill = NULL,
+  highlight = NULL
+)
 }
 \arguments{
 \item{sdf.igraph}{igraph}
 
-\item{show.label}{logic}
+\item{show.id}{logic}
 
 \item{highlight}{vector}
 }

@@ -127,6 +127,9 @@ open_script <- function(){
   rstudioapi::documentOpen("./Script/Test_Script.R")
 }
 
+open_MSIP <- function(){
+  rstudioapi::documentOpen("c:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/main_workflow.R")
+}
 
 
 #' split_df

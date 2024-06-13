@@ -760,6 +760,13 @@ CFM_data_get_igraph <- function(object){
       ig.trans <- get_CFM_data_trans_igraph(object)
       for (i in 1:nrow(fragment.data)) {
         this.frag <- fragment.data$fragment_id[i]
+        if(i==1){
+          ele <- get_atom_from_igraph(fragment.igraph[[1]])
+          maps <- diag(nrow = length(ele))
+          rownames(maps)<-colnames(maps)<-ele
+          fragment.atom.map[[i]] <- maps
+          next
+        }
         this.path <- shortest_paths(ig.trans,
                                     1,this.frag,
                                     output = "epath")
@@ -956,6 +963,11 @@ CFM_spectra_data_int_weight <- function(sp.data,iso.count){
 CFM_spectra_data_remove_natural <-function(sp.data,
                                            natural.ratio,
                                            if.map){
+
+  ###
+  {
+    if (sum(sp.data$sp.id=="combined_sp")==0) return(sp.data)
+  }
 
 
   ### calculate intensity from natrual
