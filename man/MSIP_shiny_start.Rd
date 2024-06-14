@@ -7,7 +7,7 @@
 MSIP_shiny_start(object)
 }
 \arguments{
-\item{iso.msip.list}{from msip}
+\item{object}{MSIP obj}
 }
 \description{
 Title

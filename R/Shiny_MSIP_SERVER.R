@@ -19,8 +19,6 @@ MSIP_shiny_server <- function(object){
       iso.msip.list <- reactiveVal( object@statData$MSIP$isotopologues_data)
       iso.msip <- reactiveVal( object@statData$MSIP$isotopologues_data[[1]])
       msip.core.data <- reactiveVal()
-      iso.count.selected <- reactiveVal()
-      sample.selected <- reactiveVal()
 
 
 
@@ -71,14 +69,14 @@ MSIP_shiny_server <- function(object){
         )
         iso.msip( iso.msip.list()[[fid.selected()]])
         all.iso.count <- names(iso.msip()$MSIP_result)
-        iso.count.selected(all.iso.count[1])
+
         updateSelectInput(inputId = "select_iso_count",
                           choices = all.iso.count,
-                          selected = iso.count.selected())
-        sample.selected(all.sample[1])
+                          selected = all.iso.count[1])
+        #sample.selected(all.sample[1])
         updateSelectInput(inputId = "select_sample",
                           choices = all.sample,
-                          selected = sample.selected())
+                          selected = all.sample[1])
         #mol.ig.show.label(F)
       })
 
@@ -98,8 +96,8 @@ MSIP_shiny_server <- function(object){
 
       output$compound_info <- renderText(
         shiny_isotopologues_info(iso_msip = iso.msip(),
-                                 sample = sample.selected(),
-                                 iso_count =  iso.count.selected())
+                                 sample = input$select_sample,
+                                 iso_count =  input$select_iso_count)
       )
 
 
@@ -343,8 +341,8 @@ MSIP_shiny_server <- function(object){
 
         iso.msip.list(shiny_update_iso_msip_list(
           iso.msip.list =iso.msip.list(),feature_id = fid.selected(),
-          sample = sample.selected(),
-          iso_count =  iso.count.selected(),
+          sample =input$select_sample,
+          iso_count =  input$select_iso_count,
           msip.core.data  = x
         ))
 
@@ -373,6 +371,12 @@ MSIP_shiny_Acq_server <- function(object){
   rt.range <- range(rtime(object@xcmsData$PositiveMS1),
                     rtime(object@xcmsData$NegativeMS1))
   col.sample.source <- make_group_color(object@sampleInfo$sample.source,palette = "npg")
+  xcms.chrom.data <- object@xcmsData[c("Positive_Chromatograms",
+                                        "Negative_Chromatograms")]
+  message_with_time("onDiskData_retrieve...")
+  xcms.chrom.data <- lapply(xcms.chrom.data,
+                            onDiskData_retrieve  )
+  message_with_time("Done")
   function(input, output, session) {
 
 
@@ -445,12 +449,12 @@ MSIP_shiny_Acq_server <- function(object){
 
       ### get chrom
       {
-        cdf <- featureDefinitions(object@xcmsData[[paste0(input$select_polarity,"_Chromatograms")]])
+        cdf <- featureDefinitions(xcms.chrom.data[[paste0(input$select_polarity,"_Chromatograms")]])
         id <- match(feature_id(),cdf$feature_id)
         if (is.na(id)){
           xchrom(NA)
         }else{
-          xchrom(object@xcmsData[[paste0(input$select_polarity,"_Chromatograms")]][
+          xchrom(xcms.chrom.data[[paste0(input$select_polarity,"_Chromatograms")]][
             id,
           ])
         }

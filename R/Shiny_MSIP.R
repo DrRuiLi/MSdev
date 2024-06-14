@@ -1,6 +1,6 @@
 #' Title
 #'
-#' @param iso.msip.list from msip
+#' @param object MSIP obj
 #'
 #' @return NULL
 #' @export
@@ -20,6 +20,13 @@ MSIP_shiny_start <- function(object){
 }
 
 
+#' MSIP_shiny_Acq
+#'
+#' @param object MSIP obj
+#'
+#' @return NULL
+#' @export
+#' @import  shiny
 MSIP_shiny_Acq <- function(object){
 
 
