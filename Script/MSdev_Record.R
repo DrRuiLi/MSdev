@@ -582,7 +582,7 @@
 {
   msdev.ljw <- MSdev("d:/LJW_MS data20240611/rawdata/",
                      experimentInfo =MS_Experiment[10] )
-  #msdev.ljw <- load_as_var("d:/2024_06_04-Wangyongqiang/MSdev_2024_06_07.Rdata")
+  msdev.ljw <- load_as_var("d:/LJW_MS data20240611/MSdev_2024_06_12.Rdata")
   msdev.ljw <- MSdev_msConvert(msdev.ljw)
   msdev.ljw <- MSdev_checkSampleInfo(msdev.ljw)
   msdev.ljw <- MSdev_xcmsProcessing(msdev.ljw)
@@ -649,9 +649,63 @@
                      paste0(proj.dir,"/Statistic/Figures.pdf"),
                      width = 10,height = 15,append = T)
 
+
+
+    ### Heatmap
+    data.selected <- lapply(1:3,function(x){
+      x.df <- readxl::read_excel("d:/LJW_MS data20240611/Statistic/LJW.Labeled.xlsx",
+                         sheet = x)
+      x.df%>%
+        dplyr::mutate(show = as.logical(show))%>%
+        dplyr::filter(show)%>%
+        dplyr::pull(protein)
+    })%>%
+      unlist()%>%
+      unique()
+
+    data.se <- data.se[data.selected,]
+    rda <- rowData(data.se)
+    heatmap.matrix <- assay(data.se)%>%t%>%scale%>%t
+
+    Heatmap(heatmap.matrix,
+            name = "Z score",
+            column_split = data.se$condition,
+            cluster_column_slices = F,
+            cluster_columns = F,
+            show_row_dend = F,
+            row_names_side = "left",
+            row_labels = rda$label)->p.hm
+
+    export_graph2pdf(draw(p.hm,padding = unit(c(1,8,1,1),"cm")) ,
+                     paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 15,height = 15,append = F)
+
+
+
   }
 
 
+
+
+}
+
+
+
+
+
+# Sat Jun 15 13:06:45 2024 CHB------------------------------
+{
+  msdev.CHB <- MSdev("d:/2024_06_13-Lirui/Data/" )
+  #msdev.CHB <- load_as_var("d:/CHB_MS data20240611/MSdev_2024_06_12.Rdata")
+  msdev.CHB <- MSdev_msConvert(msdev.CHB)
+  msdev.CHB <- MSdev_checkSampleInfo(msdev.CHB)
+  msdev.CHB <- MSdev_xcmsProcessing(msdev.CHB)
+  msdev.CHB <- MSdev_annotation(msdev.CHB,
+                                expand_adduct= T,
+                                cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+  msdev.CHB <- MSdev_get_Stat(msdev.CHB,QC_RSD = 0.3)
+  MSdev_save(msdev.CHB)
+  MSdev_export(msdev.CHB,candi = F)
 
 
 }

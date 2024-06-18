@@ -1997,3 +1997,49 @@ xcms.fdf <- xcms.fdf[,!id]
 
 xcms.fdf -> featureDefinitions(xcms.xcms)
 xcms.xcms -> msdev.Threegroup@xcmsData$PositiveMS1
+
+# Sat Jun 15 14:49:55 2024 ------------------------------
+# Load necessary library
+library(nloptr)
+
+# Example data (I_i: observed isotopomer intensities, f_ij: contribution matrix)
+I <- c(0.60, 0.10, 0.20, 0.10)
+f <- matrix(c(1, 1, 0, 0,
+              0, 1, 0, 1,
+              1, 0, 1, 0,
+              0, 0, 1, 1), nrow = 4, byrow = TRUE)
+
+# Regularization parameter
+lambda_reg <- 0.01
+
+# Objective function to minimize (residuals + regularization)
+objective_function <- function(p, I, f, lambda_reg) {
+  pred <- f %*% p
+  residuals <- I - pred
+  reg_term <- lambda_reg * sum(p^2)
+  sum(residuals^2) + reg_term
+}
+
+# Initial guess for probabilities (e.g., uniform distribution)
+p0 <- rep(0.5, ncol(f))
+
+# Constraints: probabilities should be between 0 and 1
+lower_bounds <- rep(0, ncol(f))
+upper_bounds <- rep(1, ncol(f))
+
+# Perform optimization using nloptr's auglag (augmented Lagrangian) method
+result <- nloptr::auglag(
+  x0 = p0,
+  fn = function(p) objective_function(p, I, f, lambda_reg),
+  lower = lower_bounds,
+  upper = upper_bounds,
+  #local_opts = list(algorithm = "NLOPT_LD_LBFGS")
+)
+
+# Estimated labeling probabilities
+p_estimated <- result$par
+print("Estimated Labeling Probabilities:")
+print(p_estimated)
+
+
+

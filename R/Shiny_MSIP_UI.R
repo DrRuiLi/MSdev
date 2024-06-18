@@ -150,6 +150,7 @@ MSIP_shiny_ui <- function() {
 MSIP_shiny_Acq_ui <- function() {
 
   fluidPage(
+    title = "MSIP Acq vis",
     verbatimTextOutput(outputId = "test_info"),
     column(
       width = 4,

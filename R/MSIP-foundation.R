@@ -558,7 +558,11 @@ get_iso_from_C_prob <- function(iso.form.map){
     return(x)
   })
 
-  apply(c.prob.m,1,sum)*length(iso.form.map$iso.form[[1]])
+  x <- apply(c.prob.m,1,sum)
+  if (all(x==0)) {
+    return(x)
+  }
+  x/sum(x)*length(iso.form.map$iso.form[[1]])
 }
 
 
