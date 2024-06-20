@@ -386,6 +386,8 @@ merge_frag_group_map <- function(fg.map){
     }
 
   }
+
+
   ### return
   {
     frag.c.matrix <- frag.c.matrix[order(rownames(frag.c.matrix)),,drop = F]
@@ -429,6 +431,7 @@ get_iso_form_prob_GLPK <- function(iso.form.map){
   iso.form.map$Rglpk <- lp.result
   return(iso.form.map)
 }
+
 
 
 .get_isotopologues_label_fraction <- function(sp.iso,

@@ -177,6 +177,10 @@ object.size.mb <- function(x){
   format(object.size(x),"MB")
 }
 
+size_of <- function(x){
+  object.size.mb(x)
+}
+
 unlist_to_df <- function(x,name_to = "name",value_to = "value"){
   x.df <- data.frame(
     rep(names(x),times =
@@ -185,4 +189,19 @@ unlist_to_df <- function(x,name_to = "name",value_to = "value"){
   )
   colnames(x.df) <- c(name_to,value_to)
   x.df
+}
+
+
+make_vector <- function(x = NA ,name = NULL){
+
+  if (length(x)==length(name)) {
+    names(x)<-name
+  }
+  if (length(x)==1&length(name)) {
+    x <- rep(x,length(name))
+    names(x)<-name
+  }
+
+  return(x)
+
 }

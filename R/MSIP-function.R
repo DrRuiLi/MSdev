@@ -584,6 +584,74 @@ MSIP_get_isotopologues_label_fraction <- function(object,
 }
 
 
+
+MSIP_solve_isotopologues <- function(object,
+                                     ppm = 20,
+                                     BPPARAM = SerialParam(progressbar = T)){
+
+  .f <- function(x.iso.cfm,ppm = ppm,selected.source ){
+    #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[68]]
+    cfmd <- x.iso.cfm$CFM_annotation
+    if (is.null(cfmd)) return(x.iso.cfm)
+    all.iso.count <- stringr::str_extract(names(x.iso.cfm$Spectra),"[:digit:]+")%>%
+      as.numeric()%>%na.omit()
+    msip_result <-list()
+    natural.ratio.matrix <- get_iso_natural_ratio(
+      formula = x.iso.cfm$compound_info$formula,
+      iso_ele = "[13]C",
+      ratio_matrix = x.iso.cfm$compound_info$ratio_matrix)
+    x.iso.cfm$compound_info$ms2_count
+    msip_result <- list()
+    for (i.iso in all.iso.count) {
+
+      # message(i.iso)
+      if (i.iso==0) {
+        next
+      }
+      this.sp <-x.iso.cfm$Spectra[[paste0("M",i.iso)]]
+      lengths(this.sp)
+      for (i.sample in intersect(selected.source,names(this.sp))) {
+        #message(i.sample,i.iso)
+        this.sp.iso <-this.sp[[i.sample]]
+        this.natural.ratio <- natural.ratio.matrix[paste0("M",i.iso),
+                             paste0("Ratio_to_seed_",i.sample)]
+        msip.core <- get_MSIPCoreData(sp.iso = sp.iso,
+                                      cfmd = cfmd,
+                                      iso_count = i.iso,
+                                      ppm = ppm)
+        msip.core <- MSIPCore_correct_natural(msip.core,
+                                 cfmd = cfmd,
+                                 natural.ratio = this.natural.ratio)
+
+        msip.core <- MSIPCore_solve(msip.core)
+
+        msip_result[[paste0("M",i.iso)]][[i.sample]] <- msip.core
+      }
+
+
+
+    }
+    x.iso.cfm$MSIP_result <-msip_result
+
+    return(x.iso.cfm)
+
+  }
+
+  sample.tracer <- .get_MSIP_tracer(object)
+  selected.source <- names(sample.tracer)[!is.na(sample.tracer)]
+  #object@statData$MSIP$isotopologues_data
+  isotopologues_data <- bplapply(
+    object@statData$MSIP$isotopologues_data[67:68],
+    .f,
+    BPPARAM = BPPARAM,
+    ppm = ppm,
+    selected.source=selected.source)
+  #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[1]]
+  object@statData$MSIP$isotopologues_data <- isotopologues_data
+  object
+}
+
+
 .get_MSIP_tracer <- function(object){
 
   x <- object@sampleInfo%>%

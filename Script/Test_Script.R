@@ -1191,53 +1191,7 @@ b <- t(b)
 b <- b[order(rownames(b)),]
 
 
-get_iso_prob <- function(fc, ifc){
-
-  ifc.prob <- fc[ifc]
-  #ifc.prob[2:4] <- c(0.2,0.4,0.6)
-  cv <- ifc.prob[which(ifc.prob>0&ifc.prob<1) ]
-  cs <- ifc.prob[which(ifc.prob==0|ifc.prob==1) ]
-  if (!length(cv)) {
-    iso.p <- 1
-    names(iso.p) <- paste0("M",sum(cv))
-    return(iso.p)
-  }
-
-  cvpm <- matrix(rep(cv,2^length(cv)),ncol = length(cv),byrow = T)
-  cvm <- expand.grid( rep(list(0:1),length(cv)))
-  cvpm <- 1-cvpm-cvm
-  cvpm[cvpm<0] <- -cvpm[cvpm<0]
-  cv.p <- apply(cvpm,1,prod)
-  cv.n <- apply(cvm,1,sum)
-  iso.p <- sapply(split(cv.p,cv.n),sum)
-  names(iso.p)<-paste0("M",as.numeric(names(iso.p))+sum(cs))
-  iso.p
-}
-
 # Wed Apr 10 17:49:08 2024 ------------------------------
-
-get_iso_prob <- function(fc, ifc){
-
-  ifc.prob <- fc[ifc]
-  #ifc.prob[2:4] <- c(0.2,0.4,0.6)
-  cv <- ifc.prob[which(ifc.prob>0&ifc.prob<1) ]
-  cs <- ifc.prob[which(ifc.prob==0|ifc.prob==1) ]
-  if (!length(cv)) {
-    iso.p <- 1
-    names(iso.p) <- paste0("M",sum(cs))
-    return(iso.p)
-  }
-
-  cvpm <- matrix(rep(cv,2^length(cv)),ncol = length(cv),byrow = T)
-  cvm <- expand.grid( rep(list(0:1),length(cv)))
-  cvpm <- 1-cvpm-cvm
-  cvpm[cvpm<0] <- -cvpm[cvpm<0]
-  cv.p <- apply(cvpm,1,prod)
-  cv.n <- apply(cvm,1,sum)
-  iso.p <- sapply(split(cv.p,cv.n),sum)
-  names(iso.p)<-paste0("M",as.numeric(names(iso.p))+sum(cs))
-  iso.p
-}
 
 
 for (fg.id in rownames(frag.c.matrix)) {
@@ -1269,28 +1223,6 @@ b[is.na(b)] <- 0
 
 
 # Wed Apr 10 18:15:03 2024 ------------------------------
-get_iso_prob <- function(fc, ifc){
-
-  ifc.prob <- fc[ifc]
-  #ifc.prob[2:4] <- c(0.2,0.4,0.6)
-  cv <- ifc.prob[which(ifc.prob>0&ifc.prob<1) ]
-  cs <- ifc.prob[which(ifc.prob==0|ifc.prob==1) ]
-  if (!length(cv)) {
-    iso.p <- 1
-    names(iso.p) <- paste0("M",sum(cs))
-    return(iso.p)
-  }
-
-  cvpm <- matrix(rep(cv,2^length(cv)),ncol = length(cv),byrow = T)
-  cvm <- expand.grid( rep(list(0:1),length(cv)))
-  cvpm <- 1-cvpm-cvm
-  cvpm[cvpm<0] <- -cvpm[cvpm<0]
-  cv.p <- apply(cvpm,1,prod)
-  cv.n <- apply(cvm,1,sum)
-  iso.p <- sapply(split(cv.p,cv.n),sum)
-  names(iso.p)<-paste0("M",as.numeric(names(iso.p))+sum(cs))
-  iso.p
-}
 
 iso.form.maps <- lapply(seq_along(iso.form),
        function(if.id){
@@ -2040,6 +1972,79 @@ result <- nloptr::auglag(
 p_estimated <- result$par
 print("Estimated Labeling Probabilities:")
 print(p_estimated)
+
+
+
+# Tue Jun 18 16:07:59 2024 MSIP class------------------------------
+
+a <- get_iso_form_map(b.frag.map)
+
+iso.form <- combn(colnames(frag.c.matrix),
+                  frag.max.iso,simplify = F)
+
+frag.max.iso <- 10
+a <- paste0( "combn(",
+  vector2str(colnames(frag.c.matrix)),",",
+  frag.max.iso,",","simplify = F)"
+  )
+a <- str2expression(a)
+x <- eval(a)
+object.size.mb(x)
+
+a <- onDiskData_retrieve(a)
+
+fg.map <- new("MSIPFragmentMap")
+fg.map@fragment.atom.matrix <- b.frag.map$frag.c.matrix
+fg.map@fragment.ratio.matrix <- b.frag.map$frag.iso.matrix
+fg.map@fragment.intensity <- b.frag.map$frag.int
+
+
+if.map <- new("MSIPIsoformMap")
+
+
+
+x <- matrix(
+  sample(c(rep(0,10),1),9999*999,replace = T)
+  ,nrow = 9999,ncol = 999
+)
+x <- a[["if.map"]][["iso.form.map"]]
+object.size.mb(x)
+y <- Matrix::Matrix(x,sparse = T)
+size_of(y)
+z <- as.single(x)
+size_of(z)
+
+system.time(get_iso_form_map(a$fg.map))
+
+
+# Wed Jun 19 15:17:42 2024 ------------------------------
+sp.iso <- iso.data$Spectra$M9$U
+cfmd <- iso.data$CFM_annotation
+
+
+
+# Wed Jun 19 19:42:15 2024 ------------------------------
+iso.data.list <- msdev.purity@statData$MSIP$isotopologues_data
+iso.data <- iso.data.list$FT10205_Positive
+iso.data.demo <- iso.data$MSIP_result$M3$U
+
+MSIPCoreData <- get_MSIPCoreData(sp.iso = iso.data$Spectra$M3$U,
+                                 cfmd = iso.data$CFM_annotation,
+                                 iso_count = 3,ppm = 10)
+MSIPCoreData  <- MSIPCore_correct_natural(MSIPCoreData,
+                                          cfmd = iso.data$CFM_annotation,
+                                          0.3)
+
+
+
+
+
+heatmap_MSIPFragmentMap(MSIPCoreData@FG_map)
+
+msdev.purity <- MSIP_solve_isotopologues(msdev.purity,
+                                         BPPARAM = SnowParam(workers = 6,
+                                                             progressbar = T))
+
 
 
 

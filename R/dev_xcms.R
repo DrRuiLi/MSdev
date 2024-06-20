@@ -865,6 +865,7 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
 
   ### calc adduct and filter range
   cpdbt <- compounds(cpdb, columns = CompoundDb::compoundVariables(cpdb,includeId =T))
+  cpdbt <- dplyr::filter(cpdbt,lipidclass=="VAE")
   if ("has_sp"%in% colnames(cpdbt))  cpdbt <- cpdbt[cpdbt$has_sp>0,]
   cpdbt$formula <- MSCC::chemform_formate(cpdbt$formula)
 

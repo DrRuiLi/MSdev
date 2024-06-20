@@ -622,7 +622,7 @@ plot_CFM_annotated_Spectra <- function(cfmd){
 #' @param sp Spectra
 #' @param cfmd cfmd_data
 #' @param isotope "[13]C"
-#' @param iso.count num
+#' @param iso_count num
 #' @param ppm 20
 #'
 #' @return null
@@ -632,7 +632,7 @@ plot_CFM_annotated_Spectra <- function(cfmd){
 CFM_annotate_isotopologues <- function(sp,
                                  cfmd,
                                  isotope = "[13]C",
-                                 iso.count = 0 ,
+                                 iso_count = 0 ,
                                  ppm = 20){
 
   if (!"fragment_group"%in% colnames(cfmd@peak_assignment)) {
@@ -650,13 +650,13 @@ CFM_annotate_isotopologues <- function(sp,
     dplyr::mutate(mz = 0)
 
 
-  iso.mz.diff <- (0:iso.count)*chemform_mz("[13]CC-1")
+  iso.mz.diff <- (0:iso_count)*chemform_mz("[13]CC-1")
   mz.labeled.m <- matrixSub(cfm.peaks.data$mz,-iso.mz.diff)%>%
-    `colnames<-`(paste0("M",0:iso.count))%>%
+    `colnames<-`(paste0("M",0:iso_count))%>%
     as.data.frame()%>%
     dplyr::mutate(fragment_group=cfm.peaks.data$fragment_group)%>%
     dplyr::distinct(M0,.keep_all = T)%>%
-    tidyr::pivot_longer(paste0("M",0:iso.count),names_to = "iso",values_to = "mz")
+    tidyr::pivot_longer(paste0("M",0:iso_count),names_to = "iso",values_to = "mz")
 
 
 
@@ -888,7 +888,7 @@ heatmap_atom_iso_prob <- function(x){
 }
 
 
-CFM_spectra_data_int_weight <- function(sp.data,iso.count){
+CFM_spectra_data_int_weight <- function(sp.data,iso_count){
 
 
 
@@ -897,8 +897,8 @@ CFM_spectra_data_int_weight <- function(sp.data,iso.count){
     fg.idx <- split(1:nrow(sp.data),sp.data$fragment_group)
     if (!length(fg.idx))  return(sp.data)
     frag.iso.matrix <- matrix(
-      nrow = length(fg.idx),ncol = iso.count+1,
-      dimnames = list(names(fg.idx),paste0("M",0:iso.count)))
+      nrow = length(fg.idx),ncol = iso_count+1,
+      dimnames = list(names(fg.idx),paste0("M",0:iso_count)))
     frag.int.sum <- c()
     for (i.fg in seq_along(fg.idx)) {
       x.df <- sp.data[fg.idx[[i.fg]],]
@@ -911,10 +911,10 @@ CFM_spectra_data_int_weight <- function(sp.data,iso.count){
         tibble::column_to_rownames("sp.id")%>%
         dplyr::select(dplyr::starts_with("M"))%>%
         as.matrix()
-      to.add <- setdiff(paste0("M",0:iso.count),colnames(x.int))
+      to.add <- setdiff(paste0("M",0:iso_count),colnames(x.int))
       x.int <- cbind(matrix(0,nrow(x.int),length(to.add),
                             dimnames = list(NULL,to.add)),x.int)
-      x.int <- x.int[,paste0("M",0:iso.count),drop =F]
+      x.int <- x.int[,paste0("M",0:iso_count),drop =F]
       x.int[is.na(x.int)] <- 0
       if (ncol(x.int)==1) {
         x.ratio <- x.int
@@ -986,8 +986,8 @@ CFM_spectra_data_remove_natural <-function(sp.data,
     suffix <- paste0("_M",rep(0:max.iso,length(int_sum)))
     int_sum <- rep(int_sum,each = max.iso+1)
     names(int_sum) <- paste0(names(int_sum) , suffix)
-    natural.distribution <- apply(if.map$iso.form.map,1,
-                                sum)/ncol(if.map$iso.form.map)
+    natural.distribution <- apply(if.map@isoform.map,1,
+                                sum)/ncol(if.map@isoform.map)
     natural.int <- int_sum[names(natural.distribution)]*natural.distribution*natural.ratio
 
   }
