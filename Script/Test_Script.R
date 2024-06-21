@@ -2042,9 +2042,9 @@ MSIPCoreData  <- MSIPCore_correct_natural(MSIPCoreData,
 heatmap_MSIPFragmentMap(MSIPCoreData@FG_map)
 
 msdev.purity <- MSIP_solve_isotopologues(msdev.purity,
-                                         BPPARAM = SnowParam(workers = 6,
+                                         BPPARAM = SerialParam(#workers = 6,
                                                              progressbar = T))
 
-
+object <- MSIP_drop_isotopologues_tempdata(msdev.purity)
 
 

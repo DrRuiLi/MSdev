@@ -3,7 +3,8 @@ MSIP_shiny_server <- function(object){
 
 
   all.sample <- names(na.omit(.get_MSIP_tracer(object)))
-  iso.msip.list.statistic <- object@statData$MSIP$isotopologues_data
+  iso.data.list.statistic <- object@statData$MSIP$isotopologues_data
+
   function(input, output, session) {
 
     output$test_info <- renderPrint({
@@ -16,8 +17,8 @@ MSIP_shiny_server <- function(object){
     ### reactiveval
     {
       fid.selected <- reactiveVal()
-      iso.msip.list <- reactiveVal( object@statData$MSIP$isotopologues_data)
-      iso.msip <- reactiveVal( object@statData$MSIP$isotopologues_data[[1]])
+      iso.data.list <- reactiveVal( object@statData$MSIP$isotopologues_data)
+      iso.data <- reactiveVal( object@statData$MSIP$isotopologues_data[[1]])
       msip.core.data <- reactiveVal()
 
 
@@ -57,7 +58,7 @@ MSIP_shiny_server <- function(object){
     ### metabolite table
     {
       output$metabolite_table <- renderDT({
-        get_iso_cfm_compound_info(iso.msip.list.statistic)%>%
+        get_iso_cfm_compound_info(iso.data.list.statistic)%>%
           datatable( selection = list(
             mode = 'single', selected =1
           ))})
@@ -65,19 +66,17 @@ MSIP_shiny_server <- function(object){
 
       observeEvent(input$metabolite_table_rows_selected,{
         fid.selected(
-          names(iso.msip.list())[input$metabolite_table_rows_selected]
+          names(iso.data.list())[input$metabolite_table_rows_selected]
         )
-        iso.msip( iso.msip.list()[[fid.selected()]])
-        all.iso.count <- names(iso.msip()$MSIP_result)
+        iso.data( iso.data.list()[[fid.selected()]])
+        all.iso.count <- names(iso.data()$MSIP_result)
 
         updateSelectInput(inputId = "select_iso_count",
                           choices = all.iso.count,
                           selected = all.iso.count[1])
-        #sample.selected(all.sample[1])
         updateSelectInput(inputId = "select_sample",
                           choices = all.sample,
                           selected = all.sample[1])
-        #mol.ig.show.label(F)
       })
 
 
@@ -95,19 +94,19 @@ MSIP_shiny_server <- function(object){
 
 
       output$compound_info <- renderText(
-        shiny_isotopologues_info(iso_msip = iso.msip(),
+        shiny_isotopologues_info(iso_data = iso.data(),
                                  sample = input$select_sample,
                                  iso_count =  input$select_iso_count)
       )
 
 
       observeEvent(
-        {iso.msip()
+        { iso.data()
           input$select_sample
           input$select_iso_count
         },
         {
-          iso.sp.data(shiny_get_sp_data(iso_msip = iso.msip(),
+          iso.sp.data(shiny_get_sp_data(iso_data =  iso.data(),
                                         sample = input$select_sample,
                                         iso_count =  input$select_iso_count))
           sp.x.clicked(NULL)
@@ -116,12 +115,11 @@ MSIP_shiny_server <- function(object){
             shiny_get_fg(sp.data = iso.sp.data(),
                          x = sp.x.clicked()))
           msip.core.data(
-            iso.msip()$MSIP_result[[input$select_iso_count]][[input$select_sample]]
+            iso.data()$MSIP_result[[input$select_iso_count]][[input$select_sample]]
             )
+          ###
           mol.atom.c.prob({
-            shiny_get_C_prob(iso.msip(),
-                             input$select_iso_count,
-                             input$select_sample)
+            shiny_get_C_prob(msip.core.data())
           })
         })
 
@@ -136,7 +134,7 @@ MSIP_shiny_server <- function(object){
       output$plotly_ms2_sp <-  renderPlotly({
 
 
-        shiny_plotly_iso_msip_spectra(iso.sp.data())
+        shiny_plotly_iso_data_spectra(iso.sp.data())
 
       })
 
@@ -156,19 +154,6 @@ MSIP_shiny_server <- function(object){
       })
 
 
-      #input$select_iso_count
-      #observe({
-      #  sample.selected(input$select_sample)
-      #  iso.count.selected(input$select_iso_count)
-      #  iso.sp.data(shiny_get_sp_data(iso_msip = iso.msip(),
-      #                                sample = sample.selected(),
-      #                                iso_count =  iso.count.selected()))
-      #  fragment_group_selected(shiny_get_fg(sp.data = iso.sp.data(),
-      #                           x = event_data("plotly_click",
-      #                                          source = "plotly_ms2_sp",
-      #                                          priority  = "event")$x))
-      #  })
-#
 
 
 
@@ -176,26 +161,26 @@ MSIP_shiny_server <- function(object){
 
     ### atom prob
     {
-      observeEvent(iso.msip(),{
-        mol.ig(shiny_get_fg_ig(iso_msip =iso.msip(),
+      observeEvent(iso.data(),{
+        mol.ig(shiny_get_fg_ig(iso_data =iso.data(),
                                fid = 1  ))
       })
 
       observeEvent(fragment_group_selected(),{
-        pf.id <- shiny_get_fid(iso_msip = iso.msip(),
+        possible.fragment.id <- shiny_get_fid(iso_data  = iso.data(),
                       fg = fragment_group_selected())
-        selected <- ifelse(length(pf.id),pf.id[1], character(0))
+        selected <- ifelse(length(possible.fragment.id),possible.fragment.id[1], character(0))
         updateSelectInput(inputId = "select_fragment_id",
-                          label = paste0(length(pf.id)," Possible fragment structure"),
-                          choices = pf.id,
+                          label = paste0(length(possible.fragment.id)," Possible fragment structure"),
+                          choices = possible.fragment.id,
                           selected =selected )
 
       })
 
       observeEvent(input$select_fragment_id,{
-        frag.ig(shiny_get_fg_ig(iso_msip =iso.msip(),
+        frag.ig(shiny_get_fg_ig(iso_data  =iso.data(),
                                 fid = input$select_fragment_id  ))
-        atom_map <- shiny_get_atom_map(iso.msip(),
+        atom_map <- shiny_get_atom_map(iso.data(),
                                        input$select_fragment_id ,
                                        prob = T)
         mol.atom.map(atom_map[[1]])
@@ -206,6 +191,7 @@ MSIP_shiny_server <- function(object){
 
       output$mol_graph_atom_prob <- renderVisNetwork(
         {
+          message_with_time("Visnet molecular")
 #
          #shiny_vis_ig(ig = mol.ig() ,
                       #prob.border = mol.atom.map(),
@@ -228,6 +214,8 @@ MSIP_shiny_server <- function(object){
       )
 
       output$atom_prob_table <- renderTable({
+
+        message_with_time("atom_prob_table")
         if (!length(mol.atom.c.prob())|all(is.na(mol.atom.c.prob()))){
           tb <- NULL
         }else{
@@ -245,6 +233,7 @@ MSIP_shiny_server <- function(object){
     {
       output$mol_graph_atom_map <- renderVisNetwork(
         {
+          message_with_time("mol_graph_atom_map")
 
           vis_sdf_igraph(mol.ig(),
                          show.id = input$show_atom_id,
@@ -254,14 +243,16 @@ MSIP_shiny_server <- function(object){
       )
 
       output$frag_formula <- renderText({
+        message_with_time("frag_formula")
         shiny_get_frag_formula(
-          iso_msip = iso.msip(),
+          iso_data = iso.data(),
           fid =input$select_fragment_id)
       })
 
 
       output$frag_graph <- renderVisNetwork(
         {
+          message_with_time("frag_graph")
           vis_sdf_igraph(frag.ig(),
                          show.id = input$show_atom_id,
                        prob.border  = frag.atom.map() )
@@ -276,26 +267,25 @@ MSIP_shiny_server <- function(object){
 
       fg.include <- reactiveVal()
       observeEvent(msip.core.data(),{
+
+        message_with_time("observeEvent269")
         fg.include( shiny_get_fg_include(msip.core.data()) )
+
       })
 
 
 
       output$heatmap_fg_map <- renderPlot({
 
-        fg.map <- msip.core.data()[["fg.map"]]
-
-        if (all(is.na(fg.map))) {
-          plot.new()
-          title("no data")
-        }else
-          heatmap.fg.map(fg.map )
+        message_with_time("heatmap_fg_map")
+        shiny_heatmap_fgmap(msip.core.data())
 
       })
 
 
       output$include_fragment_group <- renderDT({
 
+        message_with_time("include_fragment_group")
         shiny_DT_fg_include(msip.core.data())%>%
           datatable(escape = F,
                     #rownames = F,
@@ -319,6 +309,7 @@ MSIP_shiny_server <- function(object){
 
       observeEvent(input$include_fragment_group_cell_clicked,{
 
+        message_with_time("observeEvent316")
         if (length(input$include_fragment_group_cell_clicked$row )) {
 
 
@@ -335,18 +326,19 @@ MSIP_shiny_server <- function(object){
 
       observeEvent(input$Re_calc_button,{
 
+        message_with_time("observeEvent333")
         x <- shiny_update_msip_core_data(msip.core.data(),fg.include())
-        x <- .re_calculate_isotopologues_label_fraction(x)
+        x <- MSIPCore_solve(x)
 
 
-        iso.msip.list(shiny_update_iso_msip_list(
-          iso.msip.list =iso.msip.list(),feature_id = fid.selected(),
+        iso.data.list(shiny_update_iso_data_list(
+          iso.data.list =iso.data.list(),feature_id = fid.selected(),
           sample =input$select_sample,
           iso_count =  input$select_iso_count,
           msip.core.data  = x
         ))
 
-        iso.msip( iso.msip.list()[[fid.selected()]])
+        iso.data( iso.data.list()[[fid.selected()]])
 
       })
 

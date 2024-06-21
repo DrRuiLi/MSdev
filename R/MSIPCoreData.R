@@ -11,6 +11,12 @@ setMethod(f = "show",signature = "MSIPCoreData",
             show(object@FG_map)
 })
 
+
+setMethod(f = "isEmpty",signature = "MSIPCoreData",
+          definition = function(object){
+            isEmpty(object@FG_map)
+          })
+
 #### MSIPFragmentMap
 setClass(Class = "MSIPFragmentMap",
          slots = list(

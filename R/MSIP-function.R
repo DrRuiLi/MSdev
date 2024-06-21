@@ -589,8 +589,9 @@ MSIP_solve_isotopologues <- function(object,
                                      ppm = 20,
                                      BPPARAM = SerialParam(progressbar = T)){
 
-  .f <- function(x.iso.cfm,ppm = ppm,selected.source ){
-    #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[68]]
+  .f <- function(x.iso.cfm,
+                 ppm = ppm,selected.source ){
+    #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[1]]
     cfmd <- x.iso.cfm$CFM_annotation
     if (is.null(cfmd)) return(x.iso.cfm)
     all.iso.count <- stringr::str_extract(names(x.iso.cfm$Spectra),"[:digit:]+")%>%
@@ -615,7 +616,7 @@ MSIP_solve_isotopologues <- function(object,
         this.sp.iso <-this.sp[[i.sample]]
         this.natural.ratio <- natural.ratio.matrix[paste0("M",i.iso),
                              paste0("Ratio_to_seed_",i.sample)]
-        msip.core <- get_MSIPCoreData(sp.iso = sp.iso,
+        msip.core <- get_MSIPCoreData(sp.iso = this.sp.iso,
                                       cfmd = cfmd,
                                       iso_count = i.iso,
                                       ppm = ppm)
@@ -641,7 +642,7 @@ MSIP_solve_isotopologues <- function(object,
   selected.source <- names(sample.tracer)[!is.na(sample.tracer)]
   #object@statData$MSIP$isotopologues_data
   isotopologues_data <- bplapply(
-    object@statData$MSIP$isotopologues_data[67:68],
+    object@statData$MSIP$isotopologues_data,
     .f,
     BPPARAM = BPPARAM,
     ppm = ppm,
@@ -651,7 +652,29 @@ MSIP_solve_isotopologues <- function(object,
   object
 }
 
+MSIP_drop_isotopologues_tempdata <- function(object){
 
+  isotopologues_data <- object@statData$MSIP$isotopologues_data
+  for (i_fid in names(isotopologues_data)) {
+
+    this.iso.data <-isotopologues_data[[i_fid]]
+    for (i_iso_count in names(this.iso.data$MSIP_result)) {
+      this.sample.data <-this.iso.data$MSIP_result[[i_iso_count]]
+      for (i_sample in names(this.sample.data)) {
+        this.msip.core.data <- this.sample.data[[i_sample]]
+        this.msip.core.data <- MSIPCore_drop(this.msip.core.data)
+        this.msip.core.data -> this.sample.data[[i_sample]]
+      }
+      this.sample.data -> this.iso.data$MSIP_result[[i_iso_count]]
+
+    }
+    this.iso.data -> isotopologues_data[[i_fid]]
+
+  }
+  isotopologues_data -> object@statData$MSIP$isotopologues_data
+  return(object)
+
+}
 .get_MSIP_tracer <- function(object){
 
   x <- object@sampleInfo%>%

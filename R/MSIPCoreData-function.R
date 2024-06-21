@@ -46,8 +46,10 @@ MSIPCore_correct_natural <- function(MSIPCoreData,
 
 MSIPCore_solve <- function(MSIPCoreData){
 
-  MSIPFragmentMap_reduced <- MSIPFragmentMap_reduce_fragment(MSIPCoreData@FG_map)
-
+  MSIPFragmentMap_reduced <- MSIPFragmentMap_include_fragment(MSIPCoreData@FG_map        )
+  MSIPFragmentMap_reduced <- MSIPFragmentMap_reduce_fragment(MSIPFragmentMap_reduced)
+  if (isEmpty(MSIPFragmentMap_reduced))
+    return(MSIPCoreData)
   if (is.null(MSIPCoreData@solve$MSIPIsoformMap))
     MSIPCoreData@solve$MSIPIsoformMap <- get_MSIPIsoformMap(MSIPCoreData)
 
@@ -55,12 +57,20 @@ MSIPCore_solve <- function(MSIPCoreData){
   MSIPIsoformMap <- MSIPIsoformMap_set_split(MSIPIsoformMap,
                                        MSIPFragmentMap_reduced)
   MSIPIsoformMap <- MSIPIsoformMap_set_solve_GLPK(MSIPIsoformMap)
+
+  MSIPCoreData@solve$MSIPIsoformMap <- MSIPIsoformMap
   MSIPCoreData@solve$Atom_prob <- get_atom_prob_from_MSIPIsoformMap(MSIPIsoformMap)
 
   return(MSIPCoreData)
 }
 
+MSIPCore_drop <- function(MSIPCoreData){
 
+  solve <- MSIPCoreData@solve
+  solve <- solve["Atom_prob"]
+  solve -> MSIPCoreData@solve
+  return(MSIPCoreData)
+}
 
 get_MSIPFragmentMap <- function(sp.frag.data,
                                 cfmd,
@@ -245,6 +255,18 @@ MSIPFragmentMap_reduce_fragment <- function(MSIPFragmentMap){
   return(MSIPFragmentMap)
 }
 
+MSIPFragmentMap_include_fragment <- function(MSIPFragmentMap){
+
+  frag.include <- MSIPFragmentMap@fragment.include
+  frag.include <- frag.include[frag.include]
+  frag.include <- names(frag.include)
+
+  MSIPFragmentMap@fragment.atom.matrix <- MSIPFragmentMap@fragment.atom.matrix[frag.include,,drop = F]
+  MSIPFragmentMap@fragment.ratio.matrix <- MSIPFragmentMap@fragment.ratio.matrix[frag.include,,drop = F]
+  MSIPFragmentMap@fragment.intensity <- MSIPFragmentMap@fragment.intensity[frag.include]
+  MSIPFragmentMap@fragment.include <-  MSIPFragmentMap@fragment.include[frag.include]
+  return(MSIPFragmentMap)
+}
 
 MSIPFragmentMap_merge_duplicate <- function(MSIPFragmentMap){
 
