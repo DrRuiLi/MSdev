@@ -2034,7 +2034,8 @@ MSIPCoreData <- get_MSIPCoreData(sp.iso = iso.data$Spectra$M3$U,
 MSIPCoreData  <- MSIPCore_correct_natural(MSIPCoreData,
                                           cfmd = iso.data$CFM_annotation,
                                           0.3)
-
+ MSIPFragmentMap_filter_fragment(
+  MSIPCoreData@FG_map,int_thresh = 1e5)
 
 
 
@@ -2047,4 +2048,266 @@ msdev.purity <- MSIP_solve_isotopologues(msdev.purity,
 
 object <- MSIP_drop_isotopologues_tempdata(msdev.purity)
 
+
+# Mon Jun 24 21:06:01 2024 ------------------------------
+iso.data <- msdev.purity@statData$MSIP$isotopologues_data
+glu.iso.data<-iso.data[[11]]
+msip.core.data.glu <- glu.iso.data$MSIP_result$M2$U
+save(msip.core.data.glu ,file = "temp.rda")
+
+load("temp.rda")
+a <- MSIPCore_solve(msip.core.data.glu)
+
+heatmap_MSIPFragmentMap(msip.core.data.glu@FG_map)
+
+# Tue Jun 25 09:57:10 2024 MSIP core solve------------------------------
+load("temp.rda")
+
+msip.core <- MSIPCore_solve(msip.core.data.glu)
+msip.core@solve$Atom_prob
+MSIPIsoformMap <- msip.core@solve$MSIPIsoformMap
+
+# Tue Jun 25 14:22:13 2024 quadprog from ChatGPT------------------------------
+# Load necessary library
+library(quadprog)
+
+# Example data (I_i: observed isotopomer intensities, f_ij: contribution matrix)
+I <- c(0.60, 0.10, 0.20) # 3 fragments
+f <- matrix(c(1, 1, 0, 0,
+              0, 1, 0, 1,
+              1, 0, 1, 0), nrow = 3, byrow = TRUE) # 4 atoms
+
+# Number of atoms
+n_atoms <- ncol(f)
+
+# Construct the matrices for the quadratic programming problem
+Dmat <- t(f) %*% f
+dvec <- t(f) %*% I
+
+# Constraints: probabilities should be between 0 and 1
+Amat <- cbind(diag(n_atoms), -diag(n_atoms))
+bvec <- c(rep(0, n_atoms), rep(-1, n_atoms))
+
+# Solve the quadratic programming problem
+qp_result <- solve.QP(Dmat, dvec, Amat, bvec, meq = 0)
+
+# Estimated labeling probabilities
+p_estimated <- qp_result$solution
+print("Estimated Labeling Probabilities:")
+print(p_estimated)
+
+{
+  # Load necessary library
+  library(quadprog)
+
+  # Example data (I_i: observed isotopomer intensities, f_ij: contribution matrix)
+  I <- c(0.60, 0.10, 0.20) # 3 fragments
+  f <- matrix(c(1, 1, 0, 0,
+                0, 1, 0, 1,
+                1, 0, 1, 0), nrow = 3, byrow = TRUE) # 4 atoms
+
+  # Number of atoms
+  n_atoms <- ncol(f)
+
+  # Construct the matrices for the quadratic programming problem
+  Dmat <- t(f) %*% f
+
+  # Regularization term to make Dmat positive definite
+  epsilon <- 1e-6
+  Dmat <- Dmat + epsilon * diag(n_atoms)
+
+  dvec <- t(f) %*% I
+
+  # Constraints: probabilities should be between 0 and 1
+  Amat <- cbind(diag(n_atoms), -diag(n_atoms))
+  bvec <- c(rep(0, n_atoms), rep(-1, n_atoms))
+
+  # Solve the quadratic programming problem
+  qp_result <- solve.QP(Dmat, dvec, Amat, bvec, meq = 0)
+
+  # Estimated labeling probabilities
+  p_estimated <- qp_result$solution
+  print("Estimated Labeling Probabilities:")
+  print(p_estimated)
+
+}
+
+x <- p_estimated
+
+
+1/2 * t(x)%*%Dmat %*% x + t(dvec)%*%x
+{
+
+  # Load necessary library
+  library(quadprog)
+
+  # Example data (I_i: observed isotopomer intensities, f_ij: contribution matrix)
+  I <- MSIPIsoformMap@solve$isoform.set.ratio # 3 fragments
+  f <- MSIPIsoformMap@solve$isoform.set.map # 4 atoms
+
+  # Define weights based on fragment reliability (higher intensity = higher weight)
+  weights <- make_vector(1,names(I)) # Example weights
+
+  # Incorporate weights into the contribution matrix and observed intensities
+  W <- diag(weights)
+  f_weighted <- W %*% f
+  I_weighted <- W %*% I
+
+  # Number of atoms
+  n_atoms <- ncol(f_weighted)
+
+  # Construct the matrices for the quadratic programming problem
+  Dmat <- t(f_weighted) %*% f_weighted
+
+  # Regularization term to make Dmat positive definite
+  epsilon <- 1e-6
+  Dmat <- Dmat + epsilon * diag(n_atoms)
+
+  dvec <- t(f_weighted) %*% I_weighted
+
+  # Constraints: probabilities should be between 0 and 1
+  Amat <- cbind(diag(n_atoms), -diag(n_atoms))
+  bvec <- c(rep(0, n_atoms), rep(-1, n_atoms))
+
+  # Solve the quadratic programming problem
+  qp_result <- solve.QP(Dmat, dvec, Amat, bvec, meq = 0)
+
+  # Estimated labeling probabilities
+  p_estimated <- qp_result$solution
+  print("Estimated Labeling Probabilities:")
+  print(p_estimated)
+
+}
+
+
+x <- p_estimated
+1/2 * t(x)%*%Dmat %*% x + t(dvec)%*%x
+
+pred <- f%*%x
+x.df <- data.frame(a=I,b=round(pred,2))
+
+### applied to local data
+{
+
+  # Load necessary library
+  library(quadprog)
+
+  # Example data (I_i: observed isotopomer intensities, f_ij: contribution matrix)
+  I <- MSIPIsoformMap@solve$isoform.set.ratio # 3 fragments
+  f <- MSIPIsoformMap@solve$isoform.set.map # 4 atoms
+
+  # Define weights based on fragment reliability (higher intensity = higher weight)
+  int <- MSIPIsoformMap@solve$isoform.set.intensity # Example weights
+  weights <- normalize_max_min(int)
+  # Incorporate weights into the contribution matrix and observed intensities
+  W <- diag(weights)
+  f_weighted <- W %*% f
+  I_weighted <- W %*% I
+
+  # Number of atoms
+  n_atoms <- ncol(f_weighted)
+
+  # Construct the matrices for the quadratic programming problem
+  Dmat <- t(f_weighted) %*% f_weighted
+
+  # Regularization term to make Dmat positive definite
+  epsilon <- 1e-6
+  Dmat <- Dmat + epsilon * diag(n_atoms)
+
+  dvec <- t(f_weighted) %*% I_weighted
+
+  # Constraints: probabilities should be between 0 and 1
+  Amat <- cbind(diag(n_atoms), -diag(n_atoms))
+  bvec <- c(rep(0, n_atoms), rep(-1, n_atoms))
+
+  # Solve the quadratic programming problem
+  qp_result <- solve.QP(Dmat, dvec, Amat, bvec, meq = 0)
+
+  # Estimated labeling probabilities
+  p_estimated <- qp_result$solution
+  round(p_estimated,2)
+  print("Estimated Labeling Probabilities:")
+  print(p_estimated)
+
+  ratio.pred <- f%*%p_estimated
+  ratio.df <- data.frame(
+    val =round(I,4)  ,
+    pred = round(ratio.pred,4),
+    int = log10(int)
+  )
+}
+
+# Tue Jun 25 19:51:39 2024 MSIP QP------------------------------
+iso.data <- msdev.purity@statData$MSIP$isotopologues_data[[11]]
+msip.core <- iso.data$MSIP_result$M2$U
+msip.core <- MSIPCore_solve(msip.core,int_thresh = 0)
+msip.core@solve$Atom_prob
+
+sp <- iso.data$Spectra$M2$U
+Heatmap(compareSpectra(sp),
+        column_split = collisionEnergy(sp),
+        row_split  = collisionEnergy(sp))
+
+# Tue Jun 25 20:47:17 2024 shiny------------------------------
+{
+  library(shiny)
+  library(shinybusy)
+  library(shinyjs)
+
+  ui <- fluidPage(
+    useShinyjs(),  # Initialize shinyjs
+
+    # Add busy spinner
+    add_busy_spinner(spin = "fading-circle"),
+
+    # Your main UI components
+    actionButton("run", "Run Long Process")
+  )
+
+  server <- function(input, output, session) {
+    observeEvent(input$run, {
+      shinyjs::disable("run")  # Disable the button
+
+      # Simulate a long-running process
+      Sys.sleep(5)
+
+      shinyjs::enable("run")  # Enable the button
+    })
+  }
+
+  shinyApp(ui, server)
+
+}
+
+{
+  library(shiny)
+  library(shinybusy)
+
+  ui <- fluidPage(
+    # Add your main UI components
+    textInput("text", "Text input"),
+    numericInput("num", "Numeric input", value = 1),
+    actionButton("run", "Run Long Process")
+  )
+
+  server <- function(input, output, session) {
+    observeEvent(input$run, {
+      shinybusy::show_modal_spinner()  # Show the loading spinner and block the UI
+
+      # Simulate a long-running process
+      Sys.sleep(5)
+
+      shinybusy::remove_modal_spinner()  # Hide the loading spinner and unblock the UI
+    })
+  }
+
+  shinyApp(ui, server)
+
+}
+
+# Tue Jun 25 21:12:58 2024 MSIP solve------------------------------
+iso.data <- msdev.purity@statData$MSIP$isotopologues_data[[37]]
+msip.core <- iso.data$MSIP_result$M3$U
+
+MSIPCore_solve(msip.core)
 

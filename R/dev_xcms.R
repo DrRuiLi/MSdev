@@ -803,6 +803,13 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
 }
 
 
+get_xcms_isotopologues_report <- function(xcms.xcms){
+
+
+
+}
+
+
 get_xcms_iso_fraction <- function(xcms.xcms,
                                   iso_ele = "[13]C"){
 
@@ -865,7 +872,7 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
 
   ### calc adduct and filter range
   cpdbt <- compounds(cpdb, columns = CompoundDb::compoundVariables(cpdb,includeId =T))
-  cpdbt <- dplyr::filter(cpdbt,lipidclass=="VAE")
+  #cpdbt <- dplyr::filter(cpdbt,lipidclass=="VAE")
   if ("has_sp"%in% colnames(cpdbt))  cpdbt <- cpdbt[cpdbt$has_sp>0,]
   cpdbt$formula <- MSCC::chemform_formate(cpdbt$formula)
 

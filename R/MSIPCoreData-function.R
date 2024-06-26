@@ -44,20 +44,21 @@ MSIPCore_correct_natural <- function(MSIPCoreData,
 }
 
 
-MSIPCore_solve <- function(MSIPCoreData){
+MSIPCore_solve <- function(MSIPCoreData,int_thresh = 1e3){
 
   MSIPFragmentMap_reduced <- MSIPFragmentMap_include_fragment(MSIPCoreData@FG_map        )
-  MSIPFragmentMap_reduced <- MSIPFragmentMap_reduce_fragment(MSIPFragmentMap_reduced)
+  #MSIPFragmentMap_reduced <- MSIPFragmentMap_reduce_fragment(MSIPFragmentMap_reduced)
+  #MSIPFragmentMap_reduced <- MSIPFragmentMap_filter_fragment(MSIPFragmentMap_reduced,int_thresh = int_thresh)
+
   if (isEmpty(MSIPFragmentMap_reduced))
     return(MSIPCoreData)
-  if (is.null(MSIPCoreData@solve$MSIPIsoformMap))
-    MSIPCoreData@solve$MSIPIsoformMap <- get_MSIPIsoformMap(MSIPCoreData)
-
-  MSIPIsoformMap <- MSIPCoreData@solve$MSIPIsoformMap
+  MSIPCoreData.temp <- MSIPCoreData
+  MSIPCoreData.temp@FG_map <- MSIPFragmentMap_reduced
+  MSIPIsoformMap <- get_MSIPIsoformMap(MSIPCoreData.temp)
   MSIPIsoformMap <- MSIPIsoformMap_set_split(MSIPIsoformMap,
                                        MSIPFragmentMap_reduced)
-  MSIPIsoformMap <- MSIPIsoformMap_set_solve_GLPK(MSIPIsoformMap)
-
+  #MSIPIsoformMap <- MSIPIsoformMap_set_solve_GLPK(MSIPIsoformMap)
+  MSIPIsoformMap <- MSIPIsoformMap_set_solve_QP(MSIPIsoformMap)
   MSIPCoreData@solve$MSIPIsoformMap <- MSIPIsoformMap
   MSIPCoreData@solve$Atom_prob <- get_atom_prob_from_MSIPIsoformMap(MSIPIsoformMap)
 
@@ -218,10 +219,19 @@ get_MSIPIsoformMap <- function(MSIPCoreData){
 
   }
 
+  ### iso form intensity
+  {
+    iso.form.intensity <- MSIPCoreData@FG_map@fragment.intensity[gsub(x = names(iso.form.ratio),
+                                                                          pattern = "_M.",replacement = "")]
+    names(iso.form.intensity) <- names(iso.form.ratio)
+  }
+
+
 
   MSIPIsoformMap@isoform.defination <-iso.form
   MSIPIsoformMap@isoform.map <-iso.form.map
   MSIPIsoformMap@isoform.ratio <-iso.form.ratio
+  MSIPIsoformMap@isoform.intensity <-iso.form.intensity
   return(MSIPIsoformMap)
 
 }
@@ -258,6 +268,21 @@ MSIPFragmentMap_reduce_fragment <- function(MSIPFragmentMap){
 MSIPFragmentMap_include_fragment <- function(MSIPFragmentMap){
 
   frag.include <- MSIPFragmentMap@fragment.include
+  frag.include <- frag.include[frag.include]
+  frag.include <- names(frag.include)
+
+  MSIPFragmentMap@fragment.atom.matrix <- MSIPFragmentMap@fragment.atom.matrix[frag.include,,drop = F]
+  MSIPFragmentMap@fragment.ratio.matrix <- MSIPFragmentMap@fragment.ratio.matrix[frag.include,,drop = F]
+  MSIPFragmentMap@fragment.intensity <- MSIPFragmentMap@fragment.intensity[frag.include]
+  MSIPFragmentMap@fragment.include <-  MSIPFragmentMap@fragment.include[frag.include]
+  return(MSIPFragmentMap)
+}
+
+MSIPFragmentMap_filter_fragment <- function(MSIPFragmentMap,
+                                            int_thresh = 1E3){
+
+  frag.int <- MSIPFragmentMap@fragment.intensity
+  frag.include <- frag.int>int_thresh
   frag.include <- frag.include[frag.include]
   frag.include <- names(frag.include)
 
@@ -333,6 +358,7 @@ MSIPFragmentMap_merge_complementary <- function(MSIPFragmentMap){
     z.comple <- which(z.comple,arr.ind = T)
     z.split <- lapply(1:nrow(z),function(x){
       x.c <- z.comple[z.comple[,1] == x,2]
+      x.c <- unname(x.c)
       sort( c(x,x.c))
     })
     z.split <- unique(z.split)
@@ -439,8 +465,52 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap){
   #open_plot_win(h1+h2,10,5)
 }
 
+heatmap_MSIPIsoformMap <- function(MSIPIsoformMap){
 
-MSIPIsoformMap_set_split <- function(MSIPIsoformMap,MSIPFragmentMap_reduced){
+  iso.form.set.map <- MSIPIsoformMap@isoform.map
+  iso.form.prob <- MSIPIsoformMap@isoform.probability
+  iso.form.ratio <- MSIPIsoformMap@isoform.ratio
+  iso.form.ratio <- iso.form.ratio[rownames(iso.form.set.map)]
+  top.anno <- HeatmapAnnotation(
+      ifp = iso.form.prob,
+      col = list(ifp = colramp(c(0,0.00000001,max(iso.form.prob)),
+                               c("grey","white","#0095D4"))),
+      annotation_label  = list(ifp = "iso form probability"),
+      show_annotation_name = F,
+      which = "c"
+    )
+
+
+  Heatmap(iso.form.set.map,
+
+          border = T,
+          border_gp = gpar(col = "#808080"),
+          row_split = str_extract(rownames(iso.form.set.map),".*(?=_M)"),
+          row_title = NULL,
+
+          cluster_rows = F,
+          show_column_names = F,
+          show_column_dend = T,
+          show_row_names = T,
+          row_names_side  = "l",
+          column_title = "Iso form set",
+          column_title_gp = gpar(fontsize = 30),
+          cluster_columns = T,
+          top_annotation = top.anno,
+          left_annotation = HeatmapAnnotation(
+            Ratio = iso.form.ratio,
+            col = list(Ratio = colramp(c(0,0.0000001,0.5,1),
+                                       c("grey","white","#F7844F","#B20C26"))),
+            which = "row",
+            show_annotation_name = F,
+            width  = unit(20,"inch")),
+          show_heatmap_legend = F,
+          col = colramp(colors = c("white","white","black")))
+}
+
+
+MSIPIsoformMap_set_split <- function(MSIPIsoformMap,
+                                     MSIPFragmentMap_reduced){
 
 
   if (isEmpty(MSIPIsoformMap))
@@ -455,14 +525,29 @@ MSIPIsoformMap_set_split <- function(MSIPIsoformMap,MSIPFragmentMap_reduced){
       return(z)
     })
     iso.form.ratio <- unlist(iso.form.ratio)
+  }
+
+
+  ### iso form intensity
+  {
+    iso.form.intensity <- MSIPFragmentMap_reduced@fragment.intensity[gsub(x = names(iso.form.ratio),
+         pattern = "_M.",replacement = "")]
+    names(iso.form.intensity) <- names(iso.form.ratio)
+  }
+
+  ### iso form map
+  {
 
     iso.form.map <-MSIPIsoformMap@isoform.map
     to.add <- matrix(0,
-                     nrow = length(setdiff(names(iso.form.ratio),rownames(iso.form.map))),
+                     nrow = length(setdiff(names(iso.form.ratio),
+                                           rownames(iso.form.map))),
                      ncol = ncol(iso.form.map),
-                     dimnames = list(rowname = setdiff(names(iso.form.ratio),rownames(iso.form.map))))
+                     dimnames = list(rowname = setdiff(names(iso.form.ratio),
+                                                       rownames(iso.form.map))))
     iso.form.map <- rbind(iso.form.map,to.add)
     iso.form.map <- iso.form.map[names(iso.form.ratio), ,drop = F]
+
   }
 
   ### iso form set
@@ -476,9 +561,10 @@ MSIPIsoformMap_set_split <- function(MSIPIsoformMap,MSIPFragmentMap_reduced){
   }
 
 
-  MSIPIsoformMap@solve$isoform.set.ratio <- iso.form.ratio
   MSIPIsoformMap@solve$isoform.set <- iso.form.split
   MSIPIsoformMap@solve$isoform.set.map <- iso.form.set.map
+  MSIPIsoformMap@solve$isoform.set.ratio <- iso.form.ratio
+  MSIPIsoformMap@solve$isoform.set.intensity<- iso.form.intensity
 
   return(MSIPIsoformMap)
 }
@@ -492,7 +578,7 @@ MSIPIsoformMap_set_solve_GLPK <- function(MSIPIsoformMap){
   {
   mat <- MSIPIsoformMap@solve$isoform.set.map
   obj <- rep(1,ncol(mat))
-  dir <- rep("==",nrow(mat))
+  dir <- rep(">=",nrow(mat))
   rhs <- MSIPIsoformMap@solve$isoform.set.ratio
 
   lp.result <- Rglpk::Rglpk_solve_LP(obj = obj,mat = mat,
@@ -502,8 +588,12 @@ MSIPIsoformMap_set_solve_GLPK <- function(MSIPIsoformMap){
                                                    upper = list(ind = 1:ncol(mat),
                                                                 val = rep(1,ncol(mat)))),
                                      types = rep("C",ncol(mat)),
-                                     dir = dir,rhs = rhs,max = F)
+                                     dir = dir,
+                                     rhs = rhs,
+                                     max = F)
   lp.result$status
+  lp.result$solution
+
   }
 
   ### assign set to isoform
@@ -520,6 +610,79 @@ MSIPIsoformMap_set_solve_GLPK <- function(MSIPIsoformMap){
   }
   MSIPIsoformMap@solve$isoform.set.prob <- lp.result$solution
   MSIPIsoformMap@solve$Rglpk <- lp.result
+  MSIPIsoformMap@isoform.probability <- isoform.prob
+  return(MSIPIsoformMap)
+}
+
+MSIPIsoformMap_set_solve_QP <- function(MSIPIsoformMap){
+
+  if (isEmpty(MSIPIsoformMap))
+    return(MSIPIsoformMap)
+
+  ###  Quadratic Programming
+  {
+
+    # Load necessary library
+
+    # Example data (I_i: observed isotopomer intensities, f_ij: contribution matrix)
+    I <- MSIPIsoformMap@solve$isoform.set.ratio # 3 fragments
+    f <- MSIPIsoformMap@solve$isoform.set.map # 4 atoms
+
+    # Define weights based on fragment reliability (higher intensity = higher weight)
+    int <- MSIPIsoformMap@solve$isoform.set.intensity # Example weights
+    weights <- log10(int)/10
+    # Incorporate weights into the contribution matrix and observed intensities
+    W <- diag(weights)
+    f_weighted <- W %*% f
+    I_weighted <- W %*% I
+
+    # Number of atoms
+    n_atoms <- ncol(f_weighted)
+
+    # Construct the matrices for the quadratic programming problem
+    Dmat <- t(f_weighted) %*% f_weighted
+
+    # Regularization term to make Dmat positive definite
+    epsilon <- 1e-6
+    Dmat <- Dmat + epsilon * diag(n_atoms)
+
+    dvec <- t(f_weighted) %*% I_weighted
+
+    # Constraints: probabilities should be between 0 and 1
+    Amat <- cbind(diag(n_atoms), -diag(n_atoms))
+    bvec <- c(rep(0, n_atoms), rep(-1, n_atoms))
+
+    # Solve the quadratic programming problem
+    qp_result <- quadprog::solve.QP(Dmat, dvec, Amat, bvec, meq = 0)
+
+    # Estimated labeling probabilities
+    p_estimated <- qp_result$solution
+    round(p_estimated,2)
+
+
+    ratio.pred <- f%*%p_estimated
+    ratio.df <- data.frame(
+      val =round(I,4)  ,
+      pred = round(ratio.pred,4),
+      int = log10(int)
+    )
+    }
+
+
+  ### assign set to isoform
+  {
+    isoform.set.prob <- p_estimated
+    isoform.set <- MSIPIsoformMap@solve$isoform.set
+    isoform.prob <- mapply(x = isoform.set.prob ,
+                           y = isoform.set,function(x,y){
+                             make_vector(x/length(y),num2str(y,10))
+                           },SIMPLIFY = F)
+    isoform.prob <- unlist(isoform.prob)
+    isoform.prob <- isoform.prob[order(names(isoform.prob))]
+    isoform.prob <- unname(isoform.prob)
+  }
+  MSIPIsoformMap@solve$isoform.set.prob <- isoform.set.prob
+  MSIPIsoformMap@solve$solve.QP <- qp_result
   MSIPIsoformMap@isoform.probability <- isoform.prob
   return(MSIPIsoformMap)
 }

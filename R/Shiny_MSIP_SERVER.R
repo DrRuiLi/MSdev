@@ -59,7 +59,8 @@ MSIP_shiny_server <- function(object){
     {
       output$metabolite_table <- renderDT({
         get_iso_cfm_compound_info(iso.data.list.statistic)%>%
-          datatable( selection = list(
+          datatable(options = list(columns =list(orderable = F)),
+                    selection = list(
             mode = 'single', selected =1
           ))})
 
@@ -327,10 +328,14 @@ MSIP_shiny_server <- function(object){
       observeEvent(input$Re_calc_button,{
 
         message_with_time("observeEvent333")
+        shinybusy::show_modal_spinner()
+
         x <- shiny_update_msip_core_data(msip.core.data(),fg.include())
+        message_with_time("Re-solve")
         x <- MSIPCore_solve(x)
 
 
+        message_with_time("update result")
         iso.data.list(shiny_update_iso_data_list(
           iso.data.list =iso.data.list(),feature_id = fid.selected(),
           sample =input$select_sample,
@@ -339,6 +344,7 @@ MSIP_shiny_server <- function(object){
         ))
 
         iso.data( iso.data.list()[[fid.selected()]])
+        shinybusy::remove_modal_spinner()
 
       })
 

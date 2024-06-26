@@ -297,7 +297,7 @@ vis_sdf_igraph <- function(sdf.igraph ,
   ### map prob to color and hight
   {
 
-
+    ele <-  get_atom_from_igraph(sdf.igraph)
   #prob.fill <- prob.border <- runif(10,0,1)%>%`names<-`(sample(get_atom_from_igraph(sdf.igraph),10))
     if (is.numeric(highlight)|is.logical(highlight)) highlight <- ele[highlight]
     prob.border[highlight] <- 1

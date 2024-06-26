@@ -53,6 +53,7 @@ setClass(Class = "MSIPIsoformMap",
            "isoform.map" = "matrix",
            "isoform.ratio" = "numeric",
            "isoform.probability" = "numeric",
+           "isoform.intensity" = "numeric",
            "solve" = "list"
          ))
 
