@@ -9,6 +9,7 @@ xcms_get_feature_isotopologues(
   iso_ele = "[13]C",
   max_label = 10,
   ppm = 5,
+  rt.tol = 5,
   net.degree.ratio = 0.5
 )
 }

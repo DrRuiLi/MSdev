@@ -2,18 +2,32 @@
 % Please edit documentation in R/StatisticFunction.R
 \name{analyzePathwayGlobalTest}
 \alias{analyzePathwayGlobalTest}
+\alias{analyzePathwayHyperTest}
 \title{analyzePathwayGlobalTest}
 \usage{
 analyzePathwayGlobalTest(pathway.matrix, pathway.group)
+
+analyzePathwayHyperTest(kegg.id)
 }
 \arguments{
 \item{pathway.matrix}{should be a matrix, sample as rowname, kegg id as colname}
 
 \item{pathway.group}{should be a vector with length same as nrow(pathway.matrix), indicate group of sample}
+
+\item{kegg.id}{kegg.id}
 }
 \value{
 global.test.result
+
+DF
 }
 \description{
 pathway enrichment by global test
 }
+\section{Functions}{
+\itemize{
+\item \code{analyzePathwayGlobalTest()}: analyzePathwayGlobalTest
+
+\item \code{analyzePathwayHyperTest()}: analyzePathwayHypertest
+
+}}

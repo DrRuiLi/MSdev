@@ -495,7 +495,7 @@ plot_Spectra<- function(sp,label.top = 10){
     scale_color_manual(values = c(`FALSE` = "grey",`TRUE` = "#80B1D3"))+
     scale_alpha_manual(values = c(`FALSE` = 0,`TRUE` =1))+
     scale_y_continuous(expand = expansion(0,0),
-                       #limits = c(0,ymax.abs*1.1),
+                       limits = c(0,ymax.abs*1.1),
                        labels = scales::scientific)+
     labs(x = "Mz",y = "Intensity")+
     theme_classic()+
@@ -561,7 +561,7 @@ plot_Spectra_CE<-function(sp){
                  show.legend = F)+
     geom_point(aes(x = x, y = yend ,col = collisionEnergy),
                show.legend = F,size = 0.5)+
-    ggrepel::geom_text_repel(aes(x = x, y = yend ,
+    geom_text(aes(x = x, y = yend ,
                                  label = format(mz,digit = 4,nsmall = 4)),
                              size =2,
                              col = "#00000088",

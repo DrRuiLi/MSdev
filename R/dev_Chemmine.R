@@ -229,6 +229,8 @@ get_atom_from_igraph <- function(ig,ele = "all"){
 
 #' add_sdf_igraph_highlight
 #'
+#' @describeIn sdf_igraph add_sdf_igraph_highlight
+#'
 #' @param sdf.igraph igraph
 #' @param highlight vector
 #'
@@ -718,3 +720,6 @@ get_isopattern_score <- function(formula,
   ip.score <- ip.score[as.numeric(formula.f)]
   return(ip.score)
 }
+
+
+

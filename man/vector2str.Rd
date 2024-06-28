@@ -4,7 +4,7 @@
 \alias{vector2str}
 \title{vector2str}
 \usage{
-vector2str(v)
+vector2str(v, verbose = F)
 }
 \arguments{
 \item{v}{vector}

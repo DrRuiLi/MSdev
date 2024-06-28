@@ -631,6 +631,7 @@ MSIPIsoformMap_set_solve_QP <- function(MSIPIsoformMap){
     # Define weights based on fragment reliability (higher intensity = higher weight)
     int <- MSIPIsoformMap@solve$isoform.set.intensity # Example weights
     weights <- log10(int)/10
+    weights <- weights^4
     # Incorporate weights into the contribution matrix and observed intensities
     W <- diag(weights)
     f_weighted <- W %*% f
@@ -715,3 +716,16 @@ get_atom_prob_from_MSIPIsoformMap <- function(MSIPIsoformMap){
   x/sum(x)*iso_count
 
 }
+
+
+
+MSIPCore_vis_isoform <- function(MSIPCoreData,cfmd,id,...){
+
+  ig <- get_cfm_data_sdf_igraph(cfmd)
+  atom.to.show <- MSIPCoreData@solve$MSIPIsoformMap@isoform.defination[[id]]
+  message(names(MSIPCoreData@solve$MSIPIsoformMap@isoform.defination)[id])
+  vis_sdf_igraph(ig,highlight = atom.to.show,...)
+
+}
+
+

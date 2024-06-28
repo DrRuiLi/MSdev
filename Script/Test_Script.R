@@ -2311,3 +2311,208 @@ msip.core <- iso.data$MSIP_result$M3$U
 
 MSIPCore_solve(msip.core)
 
+
+# Fri Jun 28 15:06:50 2024 ------------------------------
+{
+  library(quadprog)
+  library(rgl)
+  library(plot3D)
+
+
+  # Define the problem parameters
+  Dmat <- matrix(c(1, 0, 0, 0, 1, 0, 0, 0, 1), nrow = 3) # Q matrix
+  dvec <- c(-2, -5, -3) # c vector
+
+  # Amat should be defined with each constraint in columns
+  Amat <- matrix(c(-1, 0, 0, 0, -1, 0, 0, 0, -1, 1, 2, 1),
+                 nrow = 3, byrow = TRUE)
+  #Amat <- t(Amat) # Transpose to match dimensions
+
+  bvec <- c(0, 0, 0, 4) # b vector
+  # Solve the quadratic programming problem
+  solution <- solve.QP(Dmat, dvec, Amat, bvec)
+  x_optimal <- solution$solution
+
+  # Create a grid of points
+  x <- seq(-1, 3, length.out = 30)
+  y <- seq(-1, 3, length.out = 30)
+  z <- seq(-1, 3, length.out = 30)
+  grid <- expand.grid(x = x, y = y, z = z)
+
+  # Define the objective function
+  objective_function <- function(x, y, z) {
+    x^2 + y^2 + z^2 - 2 * x - 5 * y - 3 * z
+  }
+  grid$w <- with(grid, objective_function(x, y, z))
+
+  # Define the constraints
+  constraint1 <- function(x, y) { (4 - x - 2 * y) }
+  constraint2 <- function(x, z) { (4 - x - z) }
+
+  # Create a grid of points
+  x <- seq(-1, 3, length.out = 30)
+  y <- seq(-1, 3, length.out = 30)
+  z <- seq(-1, 3, length.out = 30)
+  grid <- expand.grid(x = x, y = y, z = z)
+
+  # Define the objective function
+  objective_function <- function(x, y, z) {
+    x^2 + y^2 + z^2 - 2 * x - 5 * y - 3 * z
+  }
+  grid$w <- with(grid, objective_function(x, y, z))
+
+  # Define the constraints as planes for visualization
+  constraint1 <- function(x, y) { (4 - x - 2 * y) }
+  constraint2 <- function(x, z) { (4 - x - z) }
+
+  # Plot with plotly
+  p <- plot_ly(grid, x = ~x, y = ~y, z = ~z, color = ~w, colors = colorRamp(c("blue", "red"))) %>%
+    add_markers(size = 1) %>%
+    add_trace(x = c(-1, 3), y = c(-1, 3), z = c(-1, 3), type = "mesh3d", color = "green", opacity = 0.3) %>%
+    layout(scene = list(
+      xaxis = list(title = "x"),
+      yaxis = list(title = "y"),
+      zaxis = list(title = "z"),
+      title = "3D Quadratic Programming Solution",
+      annotations = list(
+        list(
+          x = x_optimal[1],
+          y = x_optimal[2],
+          z = x_optimal[3],
+          text = "Optimal Point",
+          showarrow = TRUE,
+          arrowhead = 2
+        )
+      )
+    ))
+
+  # Show the plot
+  p
+
+}
+{
+
+  # Define the problem parameters
+  Dmat <- matrix(c(1, 0, 0, 0, 1, 0, 0, 0, 1), nrow = 3) # Q matrix
+  dvec <- c(-2, -5, -3) # c vector
+
+  # Amat should be defined with each constraint in columns
+  Amat <- matrix(c(-1, 0, 0, 0, -1, 0, 0, 0, -1, 1, 2, 1), nrow = 3, byrow = TRUE)
+  #Amat <- t(Amat) # Transpose to match dimensions
+
+  bvec <- c(0, 0, 0, 4) # b vector
+
+  # Solve the quadratic programming problem
+  solution <- solve.QP(Dmat, dvec, Amat, bvec)
+  x_optimal <- solution$solution
+
+  # Create a grid of points
+  x <- seq(-1, 3, length.out = 30)
+  y <- seq(-1, 3, length.out = 30)
+  z <- seq(-1, 3, length.out = 30)
+  grid <- expand.grid(x = x, y = y, z = z)
+
+  # Define the objective function
+  objective_function <- function(x, y, z) {
+    x^2 + y^2 + z^2 - 2 * x - 5 * y - 3 * z
+  }
+  grid$w <- with(grid, objective_function(x, y, z))
+
+  # Define the constraints as planes for visualization
+  constraint1 <- function(x, y) { (4 - x - 2 * y) }
+  constraint2 <- function(x, z) { (4 - x - z) }
+
+  # Surface plot for the objective function
+  surface_plot <- plot_ly(
+    x = x, y = y, z = outer(x, y, function(x, y) objective_function(x, y, z=0)),
+    colors = colorRamp(c("blue", "red")), type = "surface"
+  )
+
+  # Add constraints
+  surface_plot <- surface_plot %>%
+    add_trace(
+      type = "mesh3d",
+      x = c(-1, 3), y = c(-1, 3), z = constraint1(x, y),
+      opacity = 0.3, color = "green"
+    ) %>%
+    add_trace(
+      type = "mesh3d",
+      x = c(-1, 3), z = c(-1, 3), y = constraint2(x, z),
+      opacity = 0.3, color = "green"
+    )
+
+  # Create a grid of points
+  x <- seq(-1, 3, length.out = 30)
+  y <- seq(-1, 3, length.out = 30)
+  z <- seq(-1, 3, length.out = 30)
+  grid <- expand.grid(x = x, y = y, z = z)
+
+  # Define the objective function
+  objective_function <- function(x, y, z) {
+    x^2 + y^2 + z^2 - 2 * x - 5 * y - 3 * z
+  }
+  grid$w <- with(grid, objective_function(x, y, z))
+
+  # Define the constraints as planes for visualization
+  constraint1 <- function(x, y) { 4 - x - 2 * y }
+  constraint2 <- function(x, z) { 4 - x - z }
+
+  # Surface plot for the objective function
+
+  x_optimal <- c(2,0,-5)
+
+
+}
+
+
+{
+  surface_plot <- plot_ly(
+    x = x, y = y, z = outer(x, y, function(x, y)
+      objective_function(x, y, z=0)),
+    colors = colorRamp(c("#0086C6", "#E75049")), type = "surface"
+  )
+
+  # Plot the constraint surfaces
+  surface_plot <- surface_plot %>%
+    add_surface(
+      x = x, y = y, z = outer(x, y, constraint1),
+      showscale = FALSE, opacity = 0.5, color = I("#43998A")
+    ) %>%
+    add_surface(
+      x = x, y = z, z = outer(x, z, constraint2),
+      showscale = FALSE, opacity = 0.5, color = I("#E75049")
+    )
+
+  # Add optimal solution point
+  plot <- surface_plot %>%
+    add_markers(
+      x = x_optimal[1], y = x_optimal[2], z = x_optimal[3],
+      marker = list(color = "yellow", size = 10)
+    ) %>%
+    layout(
+      scene = list(
+        xaxis = list(title = " ",tickfont = list(color = "white")),
+        yaxis = list(title = " ",tickfont = list(color = "white")),
+        zaxis = list(title = " ",tickfont = list(color = "white")),
+        title = "3D Quadratic Programming Solution",
+        annotations = list(
+          list(
+            x = x_optimal[1],
+            y = x_optimal[2],
+            z = x_optimal[3],
+            text = "Optimal Point",
+            font =  list(color = "white",
+                         size = 20),
+            showarrow = TRUE,
+            arrowhead = 2
+          )
+        )
+      )
+    )
+
+  # Show the plot
+  #surface_plot
+
+  # Show the plot
+  open_visNet(plot)
+}

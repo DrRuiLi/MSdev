@@ -31,9 +31,33 @@ CFM_get_param_config <- function(adduct = c("[M+H]+","[M-H]-"),
   paste0(param_file,config_file)
 }
 
+
+
+
+
+
+
+setClass("CFM_data",
+         slots = list(
+           peak_assignment = "data.frame",
+           fragment_define = "data.frame",
+           fragment_transition = "data.frame",
+           fragment_igraph = "list",
+           fragment_sdf = "SDFset",
+           fragment_atom_map = "list"
+         ))
+
+
+setMethod("show",signature ="CFM_data",definition =
+            function(object){
+              message("CFM_data with ",nrow(object@fragment_define)," fragment")
+            } )
+
+
 #' CFM predict
 #' @description
-#' see CFM doc
+#' see CFM
+#' @describeIn CFM predict
 #' @param smiles_or_inchi_or_file smiles
 #' @param prob_thresh prob
 #' @param param_adduct adduct
@@ -85,6 +109,7 @@ CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([
 }
 
 #' CFM_annotate
+#' @describeIn CFM anntate
 #'
 #' @param smiles_or_inchi smiles
 #' @param spectrum_file spectra
@@ -95,6 +120,7 @@ CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([
 #' @param output_file file path
 #'
 #' @return cfm data
+#'
 #' @import crayon stringr magrittr
 #' @export
 #'
@@ -143,6 +169,7 @@ CFM_annotate<- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
 
 
 #' CFM_annotate_by_fraggen
+#' @describeIn CFM fraggen and annotate
 #' @description
 #' this function generate CFM_data by CFM_fraggen,
 #' not rely on Spectra input
@@ -160,6 +187,7 @@ CFM_annotate<- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
 #' @param param_adduct adduct
 #' @param output_file NULL
 #'
+#'
 #' @return CFM_data
 #' @export
 #'
@@ -173,6 +201,7 @@ CFM_annotate_by_fraggen <- function(
     param_adduct = "[M+H]+",
     output_file = NULL,...){
 
+  .Deprecated("CFM_annotate_by_predict")
   cfm.fragen <- CFM_fraggen(smiles_or_inchi,
                             max_depth = max_depth,
                             param_adduct = param_adduct)
@@ -202,6 +231,8 @@ CFM_annotate_by_fraggen <- function(
 
 
 #' CFM_annotate_by_predict
+#'
+#' @describeIn CFM predict and annotate
 #' @description
 #' [CFM_predict] and then [CFM_annotate]
 #'
@@ -228,6 +259,8 @@ CFM_annotate_by_predict <- function(
 
 }
 
+
+#' @describeIn CFM fraggen
 CFM_fraggen <- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
                         max_depth = 2,
                         param_adduct = "[M+H]+",
@@ -403,7 +436,7 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
 }
 
 #' read_CFM_predict_result
-#'
+#' @describeIn CFM read_CFM_predict_result
 #' @param result_path path
 #'
 #' @return list of cfm data
@@ -611,6 +644,7 @@ plot_CFM_annotated_Spectra <- function(cfmd){
   fragment.define <- cfmd@fragment_define
 
   get_CFM_data_Spectra(cfmd)%>%
+    combineSpectra()%>%
     plot_Spectra()
 
 }
@@ -618,6 +652,7 @@ plot_CFM_annotated_Spectra <- function(cfmd){
 
 
 #' CFM_annotate_isotopologues
+#' @describeIn MSIP CFM_annotate_isotopologues
 #'
 #' @param sp Spectra
 #' @param cfmd cfmd_data
@@ -679,29 +714,9 @@ CFM_annotate_isotopologues <- function(sp,
 }
 
 
-
-
-
-setClass("CFM_data",
-         slots = list(
-           peak_assignment = "data.frame",
-           fragment_define = "data.frame",
-           fragment_transition = "data.frame",
-           fragment_igraph = "list",
-           fragment_sdf = "SDFset",
-           fragment_atom_map = "list"
-         ))
-
-
-setMethod("show",signature ="CFM_data",definition =
-            function(object){
-              message("CFM_data with ",nrow(object@fragment_define)," fragment")
-            } )
-
-
 #' CFM_data_get_igraph
-#' get cfm igraph and atom map
 #'
+#' @describeIn CFM_data CFM_data_get_igraph
 #' @param object cfmd
 #'
 #' @return cfmd
@@ -820,7 +835,9 @@ get_CFM_data_trans_igraph <- function(object){
 
 
 
-#' Title
+#' cfm_data_get_fragment_group
+#'
+#' @describeIn CFM_data cfm_data_get_fragment_group
 #'
 #' @param cfm_data cfmd
 #' @param ppm 10

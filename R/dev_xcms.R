@@ -634,67 +634,30 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
                                            iso_ele = "[13]C",
                                            max_label = 10,
                                            ppm = 5,
-                                           net.degree.ratio= 0.5){
+                                           rt.tol = 5,
+                                           net.degree.ratio = 0.5){
 
-  ### calc mz diff within group
-  {
 
-    xcms.fdf <- featureDefinitions(xcms.xcms)%>%
-      as.data.frame()
-    net.df <- expand.grid(from = 1:nrow(xcms.fdf), to = 1:nrow(xcms.fdf))
-    fdf.connect <- net.df%>%
-      dplyr::mutate(from.fid = xcms.fdf$feature_id[from],
-                    from.rt = xcms.fdf$rtmed[from],
-                    from.mz = xcms.fdf$mzmed[from],
-                    to.fid = xcms.fdf$feature_id[to],
-                    to.rt = xcms.fdf$rtmed[to],
-                    to.mz = xcms.fdf$mzmed[to],
-                    mz.diff = to.mz - from.mz,### not abs, with direction
-                    rt.diff = abs(from.rt-to.rt))%>%
-      dplyr::filter(rt.diff < 5)
 
-    #isotope <- "[13]C"
-    iso.chemform <- paste0(iso_ele,1,
-                             str_extract(string = iso_ele,pattern = "[[:alpha:]]+"),-1)
-    iso.count <- -max_label:max_label
-    iso.mz <- chemform_mz(iso.chemform,0)*iso.count
-
-    fdf.connect <- fdf.connect%>%
-      rowwise()%>%
-      dplyr::mutate(closest.iso.count = iso.count[which.min(abs(iso.mz-mz.diff))])%>%
-      dplyr::mutate(closest.iso.mz = iso.mz[match(closest.iso.count,iso.count)],
-                    mz.error = abs(mz.diff-closest.iso.mz),
-                    is.iso = mz.error/mean(from.mz,to.mz) < ppm*1e-6)%>%
-      dplyr::ungroup()
-
-    fdf.iso.connect <- fdf.connect%>%
-      dplyr::filter(is.iso,closest.iso.count != 0)%>%
-      dplyr::group_by(from,closest.iso.count)%>%
-      dplyr::slice_min(mz.error)%>%
-      dplyr::ungroup()%>%
-      dplyr::group_by(to,closest.iso.count)%>%
-      dplyr::slice_min(mz.error)%>%
-      dplyr::ungroup()%>%
-      dplyr::group_by(from,closest.iso.count)%>%
-      dplyr::slice_min(mz.error)%>%
-      dplyr::ungroup()%>%
-      dplyr::mutate(from = from.fid,to = to.fid)
-
-  }
-
+  fdf.iso.connect <- get_xcms_feature_iso_connection(xcms.xcms,iso_ele,max_label,
+                                                     ppm,rt.tol )
 
 
   ### assign isotope
   {
 
-    iso.colname <- paste0(str_extract(string = iso_ele,pattern = "[[:alpha:]]+"),
-                          str_extract(string = iso_ele,pattern = "[[:digit:]]+"))
-    xcms.fdf[,paste0(iso.colname,"_seed")] <- NA
-    xcms.fdf[,paste0(iso.colname,"_count")] <- NA
+    xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+      as.data.frame()
+    xcms.fdf[,paste0("iso_seed")] <- NA
+    xcms.fdf[,paste0("iso_count")] <- NA
     fdf.iso.igraph <- igraph::graph_from_data_frame(fdf.iso.connect)
+    #fdf.iso.igraph <- igraph_filter_vertex(fdf.iso.igraph,degree(fdf.iso.igraph)>2)
     node.group <- igraph::components(fdf.iso.igraph)$membership
     xcms.fdf <- as.data.frame(xcms.fdf)
     rownames(xcms.fdf) <-xcms.fdf$feature_id
+    message( length(unique(na.omit(node.group)))," iso-group"  )
+    message( (length(node.group))," iso-features"  )
+
     for (i in seq_along(unique(node.group))) {
 
       #message(i)
@@ -707,9 +670,10 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
       #visNetwork::visIgraph(this.igraph)
       this.iso.assign <- get_iso_net_assign(this.igraph,net.degree.ratio = net.degree.ratio)
       xcms.fdf[names(this.iso.assign$iso.seed),
-               paste0(iso.colname,"_seed")] <- this.iso.assign$iso.seed
+              "iso_seed"] <- this.iso.assign$iso.seed
       xcms.fdf[names(this.iso.assign$iso.count),
-               paste0(iso.colname,"_count")] <- this.iso.assign$iso.count
+               "iso_count"] <- this.iso.assign$iso.count
+      xcms.fdf[this.nodes,"iso_connection_group"] <- i
       this.fdf <- xcms.fdf[this.nodes,]
 
 
@@ -727,16 +691,77 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
 
     xcms.fdf.temp <- featureDefinitions(xcms.xcms)
     rownames(xcms.fdf) <- xcms.fdf$feature_id
-    xcms.fdf.temp[,paste0(iso.colname,"_seed")] <- xcms.fdf[rownames(xcms.fdf.temp),paste0(iso.colname,"_seed")]
-    xcms.fdf.temp[,paste0(iso.colname,"_count")] <- xcms.fdf[rownames(xcms.fdf.temp),paste0(iso.colname,"_count")]
+    xcms.fdf.temp[,"iso_seed"] <- xcms.fdf[rownames(xcms.fdf.temp),"iso_seed"]
+    xcms.fdf.temp[,"iso_count"] <- xcms.fdf[rownames(xcms.fdf.temp),"iso_count"]
+    xcms.fdf.temp[,"iso_connection_group"] <- xcms.fdf[rownames(xcms.fdf.temp),"iso_connection_group"]
     xcms.fdf.temp -> featureDefinitions(xcms.xcms)
     message("Get ",
-            sum(!is.na(xcms.fdf.temp[,paste0(iso.colname,"_count")])),
+            sum(!is.na(xcms.fdf.temp[,"iso_count"])),
             " isotopologues")
 
   }
 
   return(xcms.xcms)
+
+}
+
+get_xcms_feature_iso_connection <- function(xcms.xcms,
+                                            iso_ele,
+                                            max_label = 10,
+                                            ppm = 10,
+                                            rt.tol = 5){
+
+
+  {
+
+    xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+      as.data.frame()
+    net.df <- expand.grid(from = 1:nrow(xcms.fdf),
+                          to = 1:nrow(xcms.fdf))
+    fdf.connect <- net.df%>%
+      dplyr::mutate(from.fid = xcms.fdf$feature_id[from],
+                    from.rt = xcms.fdf$rtmed[from],
+                    from.mz = xcms.fdf$mzmed[from],
+                    to.fid = xcms.fdf$feature_id[to],
+                    to.rt = xcms.fdf$rtmed[to],
+                    to.mz = xcms.fdf$mzmed[to],
+                    mz.diff = to.mz - from.mz,### not abs, with direction
+                    rt.diff = abs(from.rt-to.rt))%>%
+      dplyr::filter(rt.diff < rt.tol)
+
+    #isotope <- "[13]C"
+    iso.chemform <- paste0(iso_ele,1,
+                           str_extract(string = iso_ele,pattern = "[[:alpha:]]+"),-1)
+    iso.count <- -max_label:max_label
+    iso.mz <- chemform_mz(iso.chemform,0)*iso.count
+
+    closest.iso.count <- sapply(fdf.connect$mz.diff, function(x){
+      iso.count[which.min(abs(iso.mz-x))]
+    } )
+    fdf.connect <- fdf.connect%>%
+      #rowwise()%>%
+      dplyr::mutate(closest.iso.count = closest.iso.count)%>%
+      dplyr::mutate(closest.iso.mz = iso.mz[match(closest.iso.count,iso.count)],
+                    mz.error = abs(mz.diff-closest.iso.mz),
+                    is.iso = mz.error/(from.mz+to.mz)*2 < ppm*1e-6)%>%
+      dplyr::ungroup()
+
+    fdf.iso.connect <- fdf.connect%>%
+      dplyr::filter(is.iso,closest.iso.count != 0)%>%
+      dplyr::group_by(from,closest.iso.count)%>%
+      dplyr::slice_min(mz.error)%>%
+      dplyr::ungroup()%>%
+      dplyr::group_by(to,closest.iso.count)%>%
+      dplyr::slice_min(mz.error)%>%
+      dplyr::ungroup()%>%
+      dplyr::group_by(from,closest.iso.count)%>%
+      dplyr::slice_min(mz.error)%>%
+      dplyr::ungroup()%>%
+      dplyr::mutate(from = from.fid,to = to.fid)
+
+  }
+
+  return(fdf.iso.connect)
 
 }
 
@@ -765,7 +790,7 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
   ###calc iso ratio to seed
   {
 
-    xcms.ratio.to.seed <- get_xcms_iso_fraction(xcms.xcms ,iso_ele )
+    xcms.ratio.to.seed <- get_xcms_iso_fraction(xcms.xcms  )
     xcms.ratio.to.seed <- apply(xcms.ratio.to.seed ,1,
                function(x){  mean_f(x , f = xcms.se$sample.source,na.rm=T)})%>%
       t
@@ -789,10 +814,7 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
     xcms.fda <- featureDefinitions(xcms.xcms)
     xcms.fda$is_labeled <- is_labeled
     colnames(xcms.ratio.to.seed) <- paste0("Ratio_to_seed_",colnames(xcms.ratio.to.seed))
-    xcms.fda <- cbind(xcms.fda,xcms.ratio.to.seed)
     xcms.fda[,colnames(xcms.ratio.to.seed)] <- xcms.ratio.to.seed
-    #xcms.fda$ratio_to_seed_label <- iso.stat$labeled.mean
-    #xcms.fda$ratio_to_seed_unlabel <- iso.stat$unlabeled.mean
     xcms.fda -> featureDefinitions(xcms.xcms)
     message("Get ",
             sum(xcms.fda$is_labeled ),
@@ -810,20 +832,15 @@ get_xcms_isotopologues_report <- function(xcms.xcms){
 }
 
 
-get_xcms_iso_fraction <- function(xcms.xcms,
-                                  iso_ele = "[13]C"){
+get_xcms_iso_fraction <- function(xcms.xcms){
 
 
   ### feature data
   {
     xcms.se <- quantify(xcms.xcms,method="max",value = "maxo",missing = 1)
     xcms.se <- xcms.se[,xcms.se$sample.type=="Sample"]
-    iso.colname <- paste0(str_extract(string = iso_ele,pattern = "[[:alpha:]]+"),
-                          str_extract(string = iso_ele,pattern = "[[:digit:]]+"))
-    xcms.rda <- rowData(xcms.se)%>%
+     xcms.rda <- rowData(xcms.se)%>%
       as.data.frame()
-    xcms.rda$iso_seed <- xcms.rda[,paste0(iso.colname,"_seed")]
-    xcms.rda$iso_count <- xcms.rda[,paste0(iso.colname,"_count")]
     xcms.val <- assay(xcms.se)
   }
 
@@ -1323,6 +1340,16 @@ plot_xcms_features_distribution <-
 
 
   }
+
+
+xcms_remove_feature_var <- function(xcms.xcms,var){
+
+  xcms.fdf<- featureDefinitions(xcms.xcms)
+  var.selected <- setdiff(colnames(xcms.fdf),var)
+  xcms.fdf <- xcms.fdf[,var.selected]
+  xcms.fdf -> featureDefinitions(xcms.xcms)
+  return(xcms.xcms)
+}
 
 
 #' @title plot_xcms_feature_chromatogram

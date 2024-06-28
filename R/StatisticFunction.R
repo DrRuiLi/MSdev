@@ -54,6 +54,7 @@ analyzeANOVA <- function(anova.matrix , anova.group){
 }
 
 #' @title analyzePathwayGlobalTest
+#' @describeIn stat-pathway analyzePathwayGlobalTest
 #' @description pathway enrichment by global test
 #' @param pathway.matrix should be a matrix, sample as rowname, kegg id as colname
 #' @param pathway.group should be a vector with length same as nrow(pathway.matrix), indicate group of sample
@@ -108,6 +109,7 @@ analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group ){
 }
 
 #' @title analyzePathwayHypertest
+#' @describeIn stat-pathway analyzePathwayHypertest
 #'
 #' @param kegg.id kegg.id
 #'
@@ -572,12 +574,7 @@ plot_cor_density <- function(x,y,xlab = "x",ylab = "y"){
     scale_y_continuous(expand = c(0,0))+
     theme_void()->p.y
 
-  p.cor %>%
-    insert_xaxis_grob(p.x)%>%
-    insert_yaxis_grob(p.y)%>%
-    ggdraw() ->p
 
-  p
 
 }
 
