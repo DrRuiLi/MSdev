@@ -444,10 +444,10 @@ vis_sdf_igraph_compare <- function(sdf.igraph1,
   #V(sdf.igraph2)$x <- V(sdf.igraph2)$x+hw2/1.5
   hw1 <- max(range(V(sdf.igraph1)$x))
   hw2 <- min(range(V(sdf.igraph2)$x))
-  V(sdf.igraph1)$x <- -1-hw1+V(sdf.igraph1)$x
-  V(sdf.igraph2)$x <- 1-hw2+V(sdf.igraph2)$x
-  V(sdf.igraph1)$y <- V(sdf.igraph1)$y
-  V(sdf.igraph2)$y <- V(sdf.igraph2)$y
+  V(sdf.igraph1)$x <- (-1-hw1+V(sdf.igraph1)$x)
+  V(sdf.igraph2)$x <- (1-hw2+V(sdf.igraph2)$x)
+  V(sdf.igraph1)$y <- (V(sdf.igraph1)$y)
+  V(sdf.igraph2)$y <- (V(sdf.igraph2)$y)
   V(sdf.igraph1)$name <- paste0(V(sdf.igraph1)$name,"_1")
   V(sdf.igraph2)$name <- paste0(V(sdf.igraph2)$name,"_2")
   V(sdf.igraph1)$id <- paste0(V(sdf.igraph1)$id,"_1")
@@ -463,6 +463,7 @@ vis_sdf_igraph_compare <- function(sdf.igraph1,
     vdata(sdf.igraph1),
     vdata(sdf.igraph2)
   )
+  nodes$size <- 20
   edges <- rbind(
     edata(sdf.igraph1),
     edata(sdf.igraph2)
@@ -471,7 +472,7 @@ vis_sdf_igraph_compare <- function(sdf.igraph1,
                                       vertices = nodes)
   vi <- vis_sdf_igraph(new.igraph,show.id = show.id,highlight = atom.hl)%>%
     visIgraphLayout(type ="full" )%>%
-    visOptions(width = "150%")
+    visOptions(width = "200%")
   #vi$x$nodes$y <- normalize_max_min(vi$x$nodes$y)
   return(vi)
 }

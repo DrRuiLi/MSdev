@@ -1,5 +1,6 @@
 
-get_iso_cfm_compound_info <- function(iso.list){
+get_iso_cfm_compound_info <- function(iso.list,
+                                      vars =c("name","mz","rt","formula","adduct")){
 
   compound_info <-  lapply(iso.list, function(x){
     x$compound_info[c("name","compound_id","mz","rt","formula","smiles","score","adduct","polarity")]
@@ -8,7 +9,7 @@ get_iso_cfm_compound_info <- function(iso.list){
     dplyr::mutate(mz = format(mz,digits = 4),
                   rt =  format(rt,digits = 2),
                   score =format(score,digits = 2) )%>%
-    dplyr::select(name,mz,rt,formula,adduct)
+    dplyr::select(vars)
 
   return(compound_info)
 
@@ -406,10 +407,10 @@ shiny_format_acq <- function(acq.list.table,acq.selected ){
                   ms1_purity = round(ms1_purity,2),
                   selected_to_acq = acq.selected[feature_id] ,
                   selected_to_acq = as.HTML.checkbox.checked(selected_to_acq),
-                  group_label = paste0(C13_seed,": ",str_short(name,50),", ",adduct),
-                  isotope = paste0("M",C13_count)
+                  group_label = paste0(iso_seed,": ",str_short(name,50),", ",adduct),
+                  isotope = paste0("M",iso_count)
                   )%>%
-    dplyr::filter(!is.na(C13_seed),!is.na(compound_id),!is.infinite(C13_count))%>%
+    dplyr::filter(!is.na(iso_seed),!is.na(compound_id),!is.infinite(iso_count))%>%
     dplyr::select(feature_id,mz,rt,isotope,ms1_purity,selected_to_acq,group_label)
   return(tb)
 

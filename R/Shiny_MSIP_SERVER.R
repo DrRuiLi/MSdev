@@ -58,6 +58,7 @@ MSIP_shiny_server <- function(object){
     ### metabolite table
     {
       output$metabolite_table <- renderDT({
+
         get_iso_cfm_compound_info(iso.data.list.statistic)%>%
           datatable(options = list(columns =list(orderable = F)),
                     selection = list(
@@ -390,6 +391,7 @@ MSIP_shiny_Acq_server <- function(object){
       )
       clicked_row <- reactiveVal(NA)
 
+      xchrom.selected.polarity <- reactiveVal()
       xchrom <- reactiveVal()
       feature_id <- reactiveVal()
       ratio_matrix <- reactiveVal()
@@ -399,6 +401,8 @@ MSIP_shiny_Acq_server <- function(object){
     }
 
     observeEvent(input$select_polarity,{
+
+      message_with_time("observeEvent 402")
       acq.list.table(shiny_format_acq(
         acq.list[[input$select_polarity]],
         acq.selected()[[input$select_polarity]]
@@ -411,9 +415,13 @@ MSIP_shiny_Acq_server <- function(object){
                    [[input$select_polarity]]    )
       purity_matrix(object@statData$MSIP$isotopologues_matrix$ms1_purity
                    [[input$select_polarity]]    )
+
+      xchrom.selected.polarity(xcms.chrom.data[[paste0(input$select_polarity,"_Chromatograms")]])
     })
 
     observeEvent(input$feature_tab_cell_clicked,{
+
+      message_with_time("observeEvent 419")
       if (length(input$feature_tab_cell_clicked$col )) {
         if (input$feature_tab_cell_clicked$col== 6) {
           x <- acq.selected()
@@ -441,26 +449,32 @@ MSIP_shiny_Acq_server <- function(object){
 
     observeEvent(input$feature_tab_rows_selected,{
 
+      message_with_time("observeEvent 452")
+
       feature_id(
         acq.list.table()$feature_id[input$feature_tab_rows_selected]
       )
 
       ### get chrom
       {
-        cdf <- featureDefinitions(xcms.chrom.data[[paste0(input$select_polarity,"_Chromatograms")]])
+        cdf <- featureDefinitions(xchrom.selected.polarity())
+        pdf <- pData(xchrom.selected.polarity())
         id <- match(feature_id(),cdf$feature_id)
         if (is.na(id)){
           xchrom(NA)
         }else{
-          xchrom(xcms.chrom.data[[paste0(input$select_polarity,"_Chromatograms")]][
-            id,
-          ])
+          xchrom(xchrom.selected.polarity()[id, pdf$sample.type != "Blank" ])
         }
       }
+      message_with_time("observeEvent 452 done")
 
     })
 
     output$feature_tab <- renderDT({
+
+
+      message_with_time("feature_tab")
+
       acq.list.table()%>%
         datatable(escape = F,
                   extensions = c('RowGroup',"Scroller"),
@@ -480,6 +494,7 @@ MSIP_shiny_Acq_server <- function(object){
                                  scroller = TRUE))
     })
     output$feature_chrom <- renderPlotly({
+      message_with_time("feature_chrom")
 
       if (!all(is.na(xchrom()))) {
         shiny_plotly_chrom(xchrom(),col.map = col.sample.source,rtr = rt.range  )
@@ -488,11 +503,13 @@ MSIP_shiny_Acq_server <- function(object){
 
     })
     output$p1 <- renderPlotly({
+      message_with_time("p1")
       if (!all(is.na(xchrom())))
       shiny_plotly_feature_int(xchrom(),col.map = col.sample.source)
 
     })
     output$p2 <- renderPlotly({
+      message_with_time("p2")
       if (!all(is.na(xchrom())))
       shiny_plotly_feature_ratio(xchrom(),
                                  col.map = col.sample.source,
@@ -500,12 +517,14 @@ MSIP_shiny_Acq_server <- function(object){
 
     })
     output$p3 <- renderPlotly({
+      message_with_time("p3")
       if (!all(is.na(xchrom())))
         shiny_plotly_feature_purity(xchrom(),
                                    col.map = col.sample.source,
                                      ms1_purity = purity_matrix()[feature_id(),] )
     })
     output$p4 <- renderPlotly({
+      message_with_time("p4")
 
     })
     output$test_info <- renderPrint({
@@ -517,6 +536,7 @@ MSIP_shiny_Acq_server <- function(object){
 
 
     observeEvent(input$save_button,{
+      message_with_time("observeEvent 535")
 
       object@statData$MSIP$isotopologues_table$Positive$selected_to_acq <-
         acq.selected()$Positive[object@statData$MSIP$isotopologues_table$Positive$feature_id]
@@ -526,6 +546,7 @@ MSIP_shiny_Acq_server <- function(object){
     })
 
     observeEvent(input$quit_button,{
+      message_with_time("observeEvent 545")
       #object@statData$iso.acq.list$Positive$selected_to_acq <-
       #  selected()$Positive
       #object@statData$iso.acq.list$Negative$selected_to_acq <-

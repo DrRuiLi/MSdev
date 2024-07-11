@@ -1027,3 +1027,12 @@ CFM_spectra_data_remove_natural <-function(sp.data,
 
 
 }
+
+
+get_CFM_data_MSIPFragmentMap<- function(cfmd){
+
+  cfmd.sp <- get_CFM_data_Spectra(cfmd)
+  cfmd.msip.core <- get_MSIPCoreData(cfmd.sp,cfmd,0)
+  cfmd.fg.map <- cfmd.msip.core@FG_map
+  MSIPFragmentMap_reduce_fragment(cfmd.fg.map)
+}

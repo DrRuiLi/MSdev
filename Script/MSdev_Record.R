@@ -769,3 +769,20 @@
 
 
 
+
+# Tue Jul  9 15:08:14 2024 CHB------------------------------
+{
+  msdev.CHB <- MSdev("d:/2024_07_08-Lirui/Data/" )
+  #msdev.CHB <- load_as_var("d:/CHB_MS data20240611/MSdev_2024_06_12.Rdata")
+  msdev.CHB <- MSdev_msConvert(msdev.CHB)
+  msdev.CHB <- MSdev_checkSampleInfo(msdev.CHB)
+  msdev.CHB <- MSdev_xcmsProcessing(msdev.CHB)
+  msdev.CHB <- MSdev_annotation(msdev.CHB,
+                                expand_adduct= T,
+                                cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+  msdev.CHB <- MSdev_get_Stat(msdev.CHB,QC_RSD = 0.3)
+  MSdev_save(msdev.CHB)
+  MSdev_export(msdev.CHB,candi = F)
+
+
+}

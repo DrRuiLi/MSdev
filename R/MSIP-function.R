@@ -40,7 +40,7 @@ MSIP_get_isotopologues_table <- function(object,
 
 
 
-  object@statData$MSIP <- list()
+  #object@statData$MSIP <- list()
   for (i in 0:1) {
 
     pol <- ifelse(i==0,"Negative","Positive")
@@ -60,6 +60,7 @@ MSIP_get_isotopologues_table <- function(object,
                                              split_source  = T,
                                              selected.sample = sample.idx)
         xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+        xcms.purity.matrix <- xcms.purity.matrix[,pData(xcms.xcms)$sample.type!="Blank"]
         xcms.purity.matrix -> object@statData$MSIP$isotopologues_matrix$ms1_purity[[pol]]
       }
 
@@ -93,7 +94,7 @@ MSIP_get_isotopologues_table <- function(object,
     {
 
       xcms.fdf.iso <- xcms.fdf%>%
-        dplyr::mutate(is_seed = feature_id%in% C13_seed)
+        dplyr::mutate(is_seed = feature_id%in% iso_seed)
       xcms.fdf.iso[!xcms.fdf.iso$is_seed,
                    c("compound_id","name","adduct","score",
                      "mz_ref","rt_ref","formula","smiles")] <- NA
@@ -104,19 +105,19 @@ MSIP_get_isotopologues_table <- function(object,
       }
       xcms.fdf.selected <- xcms.fdf.iso%>%
         ### filter not assigned iso
-        #dplyr::filter(!is.na(C13_seed))%>%
-        dplyr::group_by(C13_seed)%>%
+        #dplyr::filter(!is.na(iso_seed))%>%
+        dplyr::group_by(iso_seed)%>%
         dplyr::mutate(
-          is_isotopologues = !is.na(C13_seed)&any(!is.na(compound_id)),
+          is_isotopologues = !is.na(iso_seed)&any(!is.na(compound_id)),
           formula_max_iso_count = get_formula_ele_count(formula))%>%
         dplyr::mutate(
           formula_max_iso_count = na.unique(formula_max_iso_count),
-          C13_seed = case_when(C13_count > formula_max_iso_count~ NA,
-                               T~C13_seed),
-          C13_count = case_when(C13_count > formula_max_iso_count~ NA,
-                               T~C13_count))%>%
+          iso_seed = case_when(iso_count > formula_max_iso_count~ NA,
+                               T~iso_seed),
+          iso_count = case_when(iso_count > formula_max_iso_count~ NA,
+                               T~iso_count))%>%
         dplyr::ungroup()%>%
-        dplyr::group_by(C13_seed)%>%
+        dplyr::group_by(iso_seed)%>%
         dplyr::mutate(
           compound_id = na.unique(compound_id),
           name = na.unique(name),
@@ -143,14 +144,14 @@ MSIP_get_isotopologues_table <- function(object,
           ))%>%
         dplyr::ungroup()%>%
         dplyr::arrange(#-int_mean_nontracer,
-          C13_seed,
-          C13_count)%>%
-        dplyr::select("feature_id","mzmed","rtmed","rtmin","rtmax","peakMaxo","polarity",
-                      "score","C13_seed","C13_count","ms2_id",
-                      "is_seed","is_isotopologues","is_labeled","compound_id","adduct",
-                      "name","formula","smiles","int_mean_tracer", "int_mean_nontracer",
-                      grep(pattern = "Ratio_to_seed",colnames(xcms.fdf),value = T),
-                      "ms1_purity","selected_to_acq")
+          iso_seed,
+          iso_count)%>%
+        dplyr::select(any_of(c("feature_id","mzmed","rtmed","rtmin","rtmax","peakMaxo","polarity",
+                             "score","iso_seed","iso_count","ms2_id",
+                             "is_seed","is_isotopologues","is_labeled","compound_id","adduct",
+                             "name","formula","smiles","int_mean_tracer", "int_mean_nontracer",
+                             "ms1_purity","selected_to_acq")),
+                      grep(pattern = "Ratio_to_seed",colnames(xcms.fdf),value = T))
     }
 
 
@@ -239,7 +240,7 @@ MSIP_get_isotopologues_data <- function(object,
   #cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
 
   ### Requirement in xcms features
-  ### C13_seed
+  ### iso_seed
   for (i in 0:1) {
 
     pol <- ifelse(i==0,"Negative","Positive")
@@ -258,7 +259,7 @@ MSIP_get_isotopologues_data <- function(object,
                     rep(any(is_labeled) ,n()))%>%
       dplyr::ungroup()
     seed.id <- unique(iso.table$iso_seed)
-    match(xcms.fdf$C13_seed[which((lengths(xcms.fdf$ms2_id)>0)&!is.na(xcms.fdf$C13_seed))],
+    match(xcms.fdf$iso_seed[which((lengths(xcms.fdf$ms2_id)>0)&!is.na(xcms.fdf$iso_seed))],
           seed.id)
     for (i_seed_id in seq_along(seed.id)) {
       #message(i_seed_id)
@@ -433,7 +434,7 @@ get_MSdev_iso_acq_list <- function(object){
         is_seed  ~ rtmed,
         T ~ NA
       ))%>%
-      dplyr::group_by(C13_seed)%>%
+      dplyr::group_by(iso_seed)%>%
       dplyr::filter(n()>1&any(is_seed))%>%
       dplyr::mutate(rtmed = na.omit(rtmed),
                     rtmin = rtmed - 10,
@@ -452,33 +453,33 @@ get_iso_net_assign <- function(iso.ig,net.degree.ratio = 0.6){
   iso.fdf <- vdata(iso.ig)
   dis.con <-  as_adjacency_matrix(iso.ig,sparse	 =F ,type = "upper")
   dis.mw <-  distances(iso.ig,mode = "out",
-                       weights = edata(iso.ig)$closest.iso.count)
+                       weights = edata(iso.ig)$closest.iso_count)
   if (nrow(iso.fdf)<=2) {
     cl <- rep(1,nrow(iso.fdf))
   }else
     cl <- fpc::pamk(dis.con,krange = 1:(nrow(iso.fdf)-1))$pamobject$clustering
   iso.seed <- rep(NA,nrow(iso.fdf))
   names(iso.seed)<-iso.fdf$name
-  iso.count<- iso.seed
+  iso_count<- iso.seed
   for (i.cl in unique(cl)) {
     this.igraph.sub <- igraph_filter_vertex(iso.ig,cl==i.cl)
 
     igraph::distances(this.igraph.sub,mode = "out",
-                      weights = edge.attributes(this.igraph.sub)$closest.iso.count )
+                      weights = edge.attributes(this.igraph.sub)$closest.iso_count )
     to.delete <- degree(this.igraph.sub)<(length(V(this.igraph.sub))-1)*2*net.degree.ratio
     this.igraph.sub <-delete.vertices(this.igraph.sub,to.delete )
     #visNetwork::visIgraph(this.igraph.sub)
     this.dis <- igraph::distances(this.igraph.sub,mode = "out",
-                                  weights = edge.attributes(this.igraph.sub)$closest.iso.count )
+                                  weights = edge.attributes(this.igraph.sub)$closest.iso_count )
     this.dis[this.dis<0] <- 0
     dis.sum <- apply(this.dis,1,sum)
     seed.fid <- names(which.max(dis.sum))
     dis.to.seed <- this.dis[names(which.max(dis.sum)),]
     iso.seed[names(dis.to.seed)] <- seed.fid
-    iso.count[names(dis.to.seed)] <- dis.to.seed
+    iso_count[names(dis.to.seed)] <- dis.to.seed
   }
 
-  x <- list(iso.seed=iso.seed,iso.count=iso.count)
+  x <- list(iso.seed=iso.seed,iso_count=iso_count)
   return(x)
 
 }
@@ -523,67 +524,6 @@ get_isotopologues_Spectra_process <- function(iso.list){
 
 
 
-MSIP_get_isotopologues_label_fraction <- function(object,
-                                                  ppm = 20,
-                                                  BPPARAM = SerialParam(progressbar = T)){
-
-  .f <- function(x.iso.cfm,ppm = ppm,selected.source ){
-    #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[2]]
-    cfmd <- x.iso.cfm$CFM_annotation
-    all.iso.count <- stringr::str_extract(names(x.iso.cfm$Spectra),"[:digit:]+")%>%
-      as.numeric()%>%na.omit()
-    msip_result <-list()
-    natural.ratio.matrix <- get_iso_natural_ratio(
-      formula = x.iso.cfm$compound_info$formula,
-      iso_ele = "[13]C",
-      ratio_matrix = x.iso.cfm$compound_info$ratio_matrix)
-    x.iso.cfm$compound_info$ms2_count
-    msip_result <- list()
-    for (i.iso in all.iso.count) {
-
-     # message(i.iso)
-      if (i.iso==0) {
-        next
-      }
-      this.sp <-x.iso.cfm$Spectra[[paste0("M",i.iso)]]
-      lengths(this.sp)
-      for (i.sample in intersect(selected.source,names(this.sp))) {
-        #message(i.sample,i.iso)
-        x <- .get_isotopologues_label_fraction(
-          sp.iso = this.sp[[i.sample]],
-          cfmd = cfmd,
-          ppm = ppm,
-          iso.count = i.iso,
-          natural.ratio = natural.ratio.matrix[paste0("M",i.iso),
-                                               paste0("Ratio_to_seed_",i.sample)]
-        )
-        msip_result[[paste0("M",i.iso)]][[i.sample]] <- x
-      }
-
-
-
-    }
-    x.iso.cfm$MSIP_result <-msip_result
-
-    return(x.iso.cfm)
-
-  }
-
-  sample.tracer <- .get_MSIP_tracer(object)
-  selected.source <- names(sample.tracer)[!is.na(sample.tracer)]
-  #object@statData$MSIP$isotopologues_data
-  isotopologues_data <- bplapply(
-    object@statData$MSIP$isotopologues_data,
-           .f,
-           BPPARAM = BPPARAM,
-    ppm = ppm,
-    selected.source=selected.source)
-  #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[1]]
-  object@statData$MSIP$isotopologues_data <- isotopologues_data
-  object
-}
-
-
 
 MSIP_solve_isotopologues <- function(object,
                                      ppm = 20,
@@ -594,7 +534,7 @@ MSIP_solve_isotopologues <- function(object,
     #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[1]]
     cfmd <- x.iso.cfm$CFM_annotation
     if (is.null(cfmd)) return(x.iso.cfm)
-    all.iso.count <- stringr::str_extract(names(x.iso.cfm$Spectra),"[:digit:]+")%>%
+    all.iso_count <- stringr::str_extract(names(x.iso.cfm$Spectra),"[:digit:]+")%>%
       as.numeric()%>%na.omit()
     msip_result <-list()
     natural.ratio.matrix <- get_iso_natural_ratio(
@@ -603,7 +543,7 @@ MSIP_solve_isotopologues <- function(object,
       ratio_matrix = x.iso.cfm$compound_info$ratio_matrix)
     x.iso.cfm$compound_info$ms2_count
     msip_result <- list()
-    for (i.iso in all.iso.count) {
+    for (i.iso in all.iso_count) {
 
       # message(i.iso)
       if (i.iso==0) {
@@ -708,4 +648,35 @@ get_iso_natural_ratio <- function(formula, iso_ele, ratio_matrix  ){
 
 }
 
+
+
+MSIP_build_compoundDB <- function(cpdb = CompDb("C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb"),
+                                  compound_id,
+                                  db_path){
+
+  #db_path <- tempfile()
+  cpt <- CompoundDb::compounds(cpdb,
+                               compoundVariables(cpdb,
+                                                 includeId = T))
+  cpsp <- CompoundDb::Spectra(cpdb)
+  cpt <- cpt[cpt$compound_id %in% compound_id,,drop = F]
+  cpsp <- cpsp[cpsp$compound_id %in% compound_id]
+
+  cpdb_new <- CompoundDb::emptyCompDb(db_path)
+  cpdb_new <- insertCompound(cpdb_new,cpt)
+  cpdb_new <- insertSpectra(cpdb_new,cpsp,
+                            columns = setdiff(spectraVariables(cpsp),
+                                              "synonym"))
+
+  cpdb_new <- CompDb(db_path)
+  return(cpdb_new)
+}
+
+MSIP_update_compoundDB_from_interest_list <- function(){
+
+  roi <- readxl::read_excel("C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/MSIP.interest.list.xlsx")
+  MSIP_build_compoundDB(compound_id = roi$compound_id,
+                        db_path = "c:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/MSDB.ROI.sqlite")
+
+}
 

@@ -44,14 +44,19 @@ MSIPCore_correct_natural <- function(MSIPCoreData,
 }
 
 
-MSIPCore_solve <- function(MSIPCoreData,int_thresh = 1e3){
+MSIPCore_solve <- function(MSIPCoreData,
+                           max_prob_map = F,
+                           int_thresh = 1e3){
 
-  MSIPFragmentMap_reduced <- MSIPFragmentMap_include_fragment(MSIPCoreData@FG_map        )
+  MSIPFragmentMap_reduced <- MSIPFragmentMap_include_fragment(MSIPCoreData@FG_map)
   #MSIPFragmentMap_reduced <- MSIPFragmentMap_reduce_fragment(MSIPFragmentMap_reduced)
   #MSIPFragmentMap_reduced <- MSIPFragmentMap_filter_fragment(MSIPFragmentMap_reduced,int_thresh = int_thresh)
 
   if (isEmpty(MSIPFragmentMap_reduced))
     return(MSIPCoreData)
+  if (max_prob_map) {
+
+  }
   MSIPCoreData.temp <- MSIPCoreData
   MSIPCoreData.temp@FG_map <- MSIPFragmentMap_reduced
   MSIPIsoformMap <- get_MSIPIsoformMap(MSIPCoreData.temp)
@@ -75,8 +80,7 @@ MSIPCore_drop <- function(MSIPCoreData){
 
 get_MSIPFragmentMap <- function(sp.frag.data,
                                 cfmd,
-                                iso_count,
-                                atom_prob = F){
+                                iso_count){
 
   ### frag group to label fraction
   {
@@ -139,29 +143,31 @@ get_MSIPFragmentMap <- function(sp.frag.data,
 
   ### return
   {
-    if (atom_prob) {
+    #if (atom_prob) {
+#
+    #}else{
+    #  frag.atom.matrix.max <- apply(frag.atom.matrix,1,function(x){
+    #    x.sum <- sum(x)
+    #    x.new <- rep(0,length(x))
+    #    x.new[tail(order(x),x.sum)] <- 1
+    #    x.new
+    #  })%>%t
+    #  colnames(frag.atom.matrix.max) <- colnames(frag.atom.matrix)
+    #  frag.atom.matrix <- frag.atom.matrix.max
+    #}
 
-    }else{
-      frag.atom.matrix.max <- apply(frag.atom.matrix,1,function(x){
-        x.sum <- sum(x)
-        x.new <- rep(0,length(x))
-        x.new[tail(order(x),x.sum)] <- 1
-        x.new
-      })%>%t
-      colnames(frag.atom.matrix.max) <- colnames(frag.atom.matrix)
-      frag.atom.matrix <- frag.atom.matrix.max
-    }
+    fg.map <- new("MSIPFragmentMap")
+    fg.map@fragment.atom.matrix <- frag.atom.matrix
+    fg.map@fragment.ratio.matrix <- frag.ratio.matrix
+    fg.map@fragment.intensity <- frag.int.sum
+    fg.map@fragment.include <- make_vector(T, names(frag.int.sum))
+
+    return(fg.map)
 
   }
 
 
-  fg.map <- new("MSIPFragmentMap")
-  fg.map@fragment.atom.matrix <- frag.atom.matrix
-  fg.map@fragment.ratio.matrix <- frag.ratio.matrix
-  fg.map@fragment.intensity <- frag.int.sum
-  fg.map@fragment.include <- make_vector(T, names(frag.int.sum))
 
-  return(fg.map)
 
 }
 
@@ -391,6 +397,14 @@ MSIPFragmentMap_merge_complementary <- function(MSIPFragmentMap){
 
 
 
+#' heatmap_MSIPFragmentMap
+#' @describeIn MSIPCore heatmap fragment map
+#'
+#' @param MSIPFragmentMap MSIPFragmentMap
+#'
+#' @return heatmap
+#' @export
+#' @import ComplexHeatmap grid
 heatmap_MSIPFragmentMap <- function(MSIPFragmentMap){
 
   ### size
@@ -427,7 +441,7 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap){
                                 cell_fun = function(j, i, x, y, width, height,color, fill){
                                   grid.rect(x = x, y = y, width = width, height = height,
                                             gp = grid::gpar(col = "grey", fill = NA))
-                                  grid.circle(x = x, y = y, r = min(width,height)/3,
+                                  grid.circle(x = x, y = y, r = min(width,height),
                                               gp = grid::gpar(fill = color, col = color))
                                 },
                                 row_names_side  = "left",

@@ -1,4 +1,4 @@
-get_frag_group_map <- function(sp.frag.data,cfmd,iso.count,atom_prob = F){
+get_frag_group_map <- function(sp.frag.data,cfmd,iso_count,atom_prob = F){
 
   ### frag group to label fraction
   {
@@ -7,8 +7,8 @@ get_frag_group_map <- function(sp.frag.data,cfmd,iso.count,atom_prob = F){
     if (nrow(sp.frag.data)==0) return(NA)
     fg.idx <- split(1:nrow(sp.frag.data),sp.frag.data$fragment_group)
     frag.iso.matrix <- matrix(
-      nrow = length(fg.idx),ncol = iso.count+1,
-      dimnames = list(names(fg.idx),paste0("M",0:iso.count)))
+      nrow = length(fg.idx),ncol = iso_count+1,
+      dimnames = list(names(fg.idx),paste0("M",0:iso_count)))
     frag.int.sum <- c()
     for (i.fg in seq_along(fg.idx)) {
       x.df <- sp.frag.data[fg.idx[[i.fg]],]
@@ -21,10 +21,10 @@ get_frag_group_map <- function(sp.frag.data,cfmd,iso.count,atom_prob = F){
         tibble::column_to_rownames("sp.id")%>%
         dplyr::select(dplyr::starts_with("M"))%>%
         as.matrix()
-      to.add <- setdiff(paste0("M",0:iso.count),colnames(x.int))
+      to.add <- setdiff(paste0("M",0:iso_count),colnames(x.int))
       x.int <- cbind(matrix(0,nrow(x.int),length(to.add),
                             dimnames = list(NULL,to.add)),x.int)
-      x.int <- x.int[,paste0("M",0:iso.count),drop =F]
+      x.int <- x.int[,paste0("M",0:iso_count),drop =F]
       x.int[is.na(x.int)] <- 0
       x.weight <- rowSums(x.int)
       x.int <- t(apply(x.int,1,function(z) z/sum(z)))
@@ -87,15 +87,15 @@ get_frag_group_map <- function(sp.frag.data,cfmd,iso.count,atom_prob = F){
 get_iso_form_map_old <- function(fg.map,atom_prob = T ){
 
   #load("temp.rda")
-  #iso.count <- 5
+  #iso_count <- 5
   frag.c.matrix <- fg.map$frag.c.matrix
   frag.iso.matrix <-fg.map$frag.iso.matrix
   frag.max.iso <- ncol(frag.iso.matrix)-1
 
   ### all possible iso form
   iso.form <- combn(colnames(frag.c.matrix),frag.max.iso,simplify = F)
-  #iso.form.iso.count.matrix <- matrix(NA,nrow(frag.c.matrix),length(iso.form))
-  #iso.form.prob.matrix <- iso.form.iso.count.matrix
+  #iso.form.iso_count.matrix <- matrix(NA,nrow(frag.c.matrix),length(iso.form))
+  #iso.form.prob.matrix <- iso.form.iso_count.matrix
 
 
   ### iso form map to iso ratio
@@ -107,13 +107,13 @@ get_iso_form_map_old <- function(fg.map,atom_prob = T ){
       this.c <- frag.c.matrix[i.fg,]
       this.iso <- frag.iso.matrix[i.fg,]
       this.possible.c <- names(this.c[this.c!=0])
-      this.iso.count <- sapply(iso.form,function(x){sum(x %in% this.possible.c)})
-      #iso.form.iso.count.matrix[i.fg,] <- this.iso.count
-      #iso.form.prob.matrix[i.fg,] <- this.iso[paste0("M",this.iso.count)]
+      this.iso_count <- sapply(iso.form,function(x){sum(x %in% this.possible.c)})
+      #iso.form.iso_count.matrix[i.fg,] <- this.iso_count
+      #iso.form.prob.matrix[i.fg,] <- this.iso[paste0("M",this.iso_count)]
 
       this.iso.form.map <- lapply(0:(ncol(frag.iso.matrix)-1),function(x){
-        z <-rep(0,length(this.iso.count))
-        z[this.iso.count==x] <- 1
+        z <-rep(0,length(this.iso_count))
+        z[this.iso_count==x] <- 1
         z
       })%>%do.call("rbind",.)
       rownames(this.iso.form.map) <-paste0(rownames(frag.c.matrix)[i.fg],
@@ -437,7 +437,7 @@ get_iso_form_prob_GLPK <- function(iso.form.map){
 .get_isotopologues_label_fraction <- function(sp.iso,
                                               cfmd,
                                               ppm = 10,
-                                              iso.count,
+                                              iso_count,
                                               natural.ratio){
 
   sp.iso <- Spectra_filter_noise(sp.iso)
@@ -447,20 +447,20 @@ get_iso_form_prob_GLPK <- function(iso.form.map){
   sp.frag.data <- CFM_annotate_isotopologues(sp.iso,
                                              cfmd  = cfmd,
                                              ppm = ppm,
-                                             iso.count = iso.count)
-  sp.frag.data <- CFM_spectra_data_int_weight(sp.frag.data,iso.count)
-  fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso.count = iso.count)
+                                             iso_count = iso_count)
+  sp.frag.data <- CFM_spectra_data_int_weight(sp.frag.data,iso_count)
+  fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso_count = iso_count)
   if.map <- get_iso_form_map(fg.map)
   ### adjust nature
   sp.frag.data <- CFM_spectra_data_remove_natural(sp.frag.data,natural.ratio,if.map)
-  fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso.count = iso.count)
+  fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso_count = iso_count)
   ### merge fragment
   fgn.map <- merge_frag_group_map(fg.map)
 
   ### calc by if-set
   if.map <- get_iso_form_set_map(if.map ,fgn.map)
   if.map <- get_iso_form_prob_GLPK(if.map)
-  c.prob <- get_iso_from_C_prob(if.map, cfmd,iso.count)
+  c.prob <- get_iso_from_C_prob(if.map, cfmd,iso_count)
 
   #heatmap.fg.map(fg.map)
   #heatmap.ifs.map(if.map)
