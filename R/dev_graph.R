@@ -99,3 +99,12 @@ open_visNet <- function(x){
 }
 
 
+igraph_node_path_to_edge_path <- function(graph, node_path) {
+  edge_paths <- lapply(node_path, function(path) {
+    edges <- unlist(lapply(seq_along(path)[-length(path)], function(i) {
+      E(graph, path = c(path[i], path[i + 1]))
+    }))
+    return(edges)
+  })
+  return(edge_paths)
+}

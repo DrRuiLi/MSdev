@@ -38,7 +38,7 @@ get_frag_group_map <- function(sp.frag.data,cfmd,iso_count,atom_prob = F){
 
   ### frag group to C atom prob
   {
-    c_ele <- get_atom_from_igraph(get_cfm_data_sdf_igraph(cfmd),"C")
+    c_ele <- get_sdf_igraph_atom(get_cfm_data_sdf_igraph(cfmd),"C")
     frag.c.matrix <- matrix(ncol = length(c_ele),
                             nrow = length(fg.idx),
                             dimnames = list(names(fg.idx),
@@ -48,7 +48,7 @@ get_frag_group_map <- function(sp.frag.data,cfmd,iso_count,atom_prob = F){
       this.frag.group <- names(fg.idx)[i.fg]
       this.frags <- cfmd@fragment_define[cfmd@fragment_define$fragment_group==this.frag.group,]
       this.frag.ratio <-frag.iso.matrix[i.fg,]
-      this.frag.atom <- get_cfm_data_fg_atom_map(cfmd,this.frag.group)
+      this.frag.atom <- get_cfm_data_fragment_group_atom_map(cfmd,this.frag.group)
       this.frag.c <- this.frag.atom[c_ele]
       #this.iso.expectation <- sum(str_extract_num(names(this.frag.ratio))*this.frag.ratio)
       #this.frag.c <- this.frag.c*this.iso.expectation/sum(this.frag.c)

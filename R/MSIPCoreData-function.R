@@ -120,7 +120,7 @@ get_MSIPFragmentMap <- function(sp.frag.data,
 
   ### frag group to C atom prob
   {
-    c_ele <- get_atom_from_igraph(get_cfm_data_sdf_igraph(cfmd),"C")
+    c_ele <- get_sdf_igraph_atom(get_cfm_data_sdf_igraph(cfmd),"C")
     frag.atom.matrix <- matrix(ncol = length(c_ele),
                             nrow = length(fg.idx),
                             dimnames = list(names(fg.idx),
@@ -130,7 +130,7 @@ get_MSIPFragmentMap <- function(sp.frag.data,
       this.frag.group <- names(fg.idx)[i.fg]
       this.frags <- cfmd@fragment_define[cfmd@fragment_define$fragment_group==this.frag.group,]
       this.frag.ratio <-frag.ratio.matrix[i.fg,]
-      this.frag.atom <- get_cfm_data_fg_atom_map(cfmd,this.frag.group)
+      this.frag.atom <- get_cfm_data_fragment_group_atom_map(cfmd,this.frag.group)
       this.frag.c <- this.frag.atom[c_ele]
       #this.iso.expectation <- sum(str_extract_num(names(this.frag.ratio))*this.frag.ratio)
       #this.frag.c <- this.frag.c*this.iso.expectation/sum(this.frag.c)
@@ -228,7 +228,7 @@ get_MSIPIsoformMap <- function(MSIPCoreData){
   ### iso form intensity
   {
     iso.form.intensity <- MSIPCoreData@FG_map@fragment.intensity[gsub(x = names(iso.form.ratio),
-                                                                          pattern = "_M.",replacement = "")]
+                                                                          pattern = "_M.*",replacement = "")]
     names(iso.form.intensity) <- names(iso.form.ratio)
   }
 
@@ -545,7 +545,7 @@ MSIPIsoformMap_set_split <- function(MSIPIsoformMap,
   ### iso form intensity
   {
     iso.form.intensity <- MSIPFragmentMap_reduced@fragment.intensity[gsub(x = names(iso.form.ratio),
-         pattern = "_M.",replacement = "")]
+         pattern = "_M.*",replacement = "")]
     names(iso.form.intensity) <- names(iso.form.ratio)
   }
 

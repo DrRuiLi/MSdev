@@ -245,11 +245,137 @@ get_cfm_data_sdf_igraph(cfmd)%>%
 
 vis_cfm_data_atom_map(cfmd,100)%>%
   open_visNet()
-#错误: BiocParallel errors
-#1 remote errors, element index: 34
-#34 unevaluated and other errors
-#first remote error:
-#  Error in quadprog::solve.QP(Dmat, dvec, Amat, bvec, meq = 0): 外接函数调用时不能有NA/NaN/Inf(arg1)
 
+
+CFM_data_get_igraph()
+
+
+smiles2sdf("C1=NC2=C(N1)N=CN=C2N")%>%
+  plot
+
+vis_smiles("C1=NC2=C(N1)N=CN=C2N")%>%
+  open_visNet()
+
+cfmd <- CFM_annotate_by_predict("C1=NC2=C(N1)N=CN=C2N")
+cfmd <- cfm_data_get_fragment_group(cfmd)
+cfmd <- CFM_data_get_igraph(cfmd)
+
+
+vis_cfm_data_atom_map(cfmd ,59,show.id = T)%>%
+  open_visNet()
+
+vis_cfm_data_fragment(cfmd,3)%>%
+  open_visNet()
+
+get_cfm_data_fragment_group_atom_map(cfmd,"2")
+
+### debug for fragment59
+
+
+# Sat Jul 13 14:22:20 2024 adenine------------------------------
+smiles <- "C1=NC2=C(N1)N=CN=C2N"
+sdf <- get_smiles_sdf(smiles)
+{
+  sdf.igraph <- get_sdf_igraph(sdf)[[1]]
+
+  sdf.igraph%>%
+    sdf_igraph_add_border_color(value = 0.99)%>%
+    sdf_igraph_add_background_color(value = 0.8)%>%
+    vis_sdf_igraph()%>%
+    open_visNet()
+
+}
+
+{
+  sdf.igraph1 <- sdf.igraph%>%
+    sdf_igraph_add_background_color(0.8)
+  sdf.igraph2 <- sdf.igraph%>%
+    sdf_igraph_add_border_color(0.6)
+  sdf_igraph_merge(sdf.igraph1,
+                   sdf.igraph2)%>%
+    vis_sdf_igraph()%>%
+    open_visNet()
+
+}
+
+
+cfmd <- CFM_data_get_igraph(cfmd)
+atom.map <- get_atom_map(sdf.parent ,sdf.product ,ig.parent ,ig.product )
+vis_sdf_igraph(ig.parent,T)%>%open_visNet()
+vis_sdf_igraph(ig.product,T)%>%open_visNet()
+
+apply(atom.map,2,sum)
+
+vis_cfm_data_trans_map(cfmd,32 ,show_id = T)%>%
+  visOptions(width = "150%")%>%
+  open_visNet()
+
+cfmd <- CFM_annotate_by_predict()
+
+
+trans.maps <- sapply(1:115,get_CFM_data_trans_map,cfmd = cfmd)
+
+atoms <- sapply(trans.maps,function(x){
+ sum( colSums(x)==0)
+})
+
+
+which(atoms>0)
+
+# Sat Jul 13 20:14:51 2024 CFM map for NAD------------------------------
+smiles <- "NC(=O)C1=C[N+](=CC=C1)[C@@H]1O[C@H](COP([O-])(=O)OP(O)(=O)OC[C@H]2O[C@H]([C@H](O)[C@@H]2O)N2C=NC3=C2N=CN=C3N)[C@@H](O)[C@H]1O"
+cfmd <- CFM_annotate_by_predict(smiles)
+cfmd <- cfm_data_get_fragment_group(cfmd)
+cfmd <- CFM_data_get_igraph(cfmd)
+
+trans.maps <- sapply(1:10,
+                     get_CFM_data_trans_map,
+                     cfmd = cfmd)
+
+vis_cfm_data_trans_map(cfmd,1)%>%
+  open_visNet()
+
+
+
+
+# Sat Jul 13 21:19:20 2024 adenine ------------------------------
+smiles <- "C1=NC2=C(N1)N=CN=C2N"
+cfmd <- CFM_annotate_by_predict(smiles)
+cfmd <- CFM_data_get_igraph(cfmd)
+cfmd <- cfm_data_get_fragment_group(cfmd)
+cfmd.trans <- check_CFM_data_trans_map(cfmd)
+
+vis_cfm_data_trans_map(cfmd,1,show_id = F)%>%
+  open_visNet()
+
+debug(get_atom_map)
+get_CFM_data_trans_map(cfmd,1)
+
+
+# Sun Jul 14 15:12:51 2024 Glu------------------------------
+{
+  smiles <- "C(C1C(C(C(C(O1)O)O)O)O)O"
+  cfmd <- CFM_annotate_by_predict(smiles)
+  cfmd <- CFM_data_get_igraph(cfmd)
+  cfmd <- cfm_data_get_fragment_group(cfmd)
+  cfmd.trans <- check_CFM_data_trans_map(cfmd)
+
+  vis_cfm_data_trans_map(object,90,show_id = F)%>%
+    open_visNet()
+
+  debug(get_atom_map)
+  a <- get_CFM_data_trans_map(object,5)
+
+  rowSums(a)
+  colSums(a)
+
+  a <- CFM_data_get_atom_map(cfmd,BPPARAM = SnowParam(workers = 4,
+                                                      progressbar = T))
+
+  vis_cfm_data_fragment_atom_map(a,"Fragment204")%>%
+    open_visNet()
+  vis_cfm_data_trans_map(a,70,show_id = F)%>%
+    open_visNet()
+}
 
 

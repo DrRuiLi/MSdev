@@ -326,7 +326,7 @@ shiny_vis_ig <- function(ig,
   ### add color
   {
 
-    atom <- get_atom_from_igraph(ig)
+    atom <- get_sdf_igraph_atom(ig)
     prob.border <- prob.border[atom]
     names(prob.border) <- atom
     prob.border[is.na(prob.border)] <- 0
@@ -592,7 +592,7 @@ shiny_plotly_feature_purity <- function(xchrom,
 
 shiny_get_C_prob <- function(msip.core.data){
 
- # ele <- get_atom_from_igraph(
+ # ele <- get_sdf_igraph_atom(
  #   get_cfm_data_sdf_igraph(iso_data$CFM_annotation),"C")
  # x <- iso_data$MSIP_result[[iso_count]][[sample]]
  # if (all(is.na(x))|all(is.null(x))) {

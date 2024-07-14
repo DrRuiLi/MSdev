@@ -4,16 +4,16 @@
 \alias{vis_smiles}
 \title{vis_smiles}
 \usage{
-vis_smiles(smiles, show.formula = T, show.label = T, highlight = NULL)
+vis_smiles(smiles, show.formula = T, show_id = T, highlight = NULL)
 }
 \arguments{
 \item{smiles}{smiles}
 
 \item{show.formula}{logic}
 
-\item{show.label}{logic}
-
 \item{highlight}{v}
+
+\item{show.label}{logic}
 }
 \value{
 vis

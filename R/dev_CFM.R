@@ -754,54 +754,98 @@ CFM_data_get_igraph <- function(object){
   }
 
 
+
+
+  ### save to object
+  {
+
+    fragment.data -> object@fragment_define
+    object@fragment_igraph <- fragment.igraph
+    object@fragment_sdf <- fragment.sdf
+  }
+
+  return(object)
+}
+
+
+CFM_data_get_atom_map <- function(object,
+                                  BPPARAM = SerialParam()){
+
+
+  ### trans.map
+  {
+    object <- cfmd
+    fragment.trans <- object@fragment_transition
+    trans.maps <- bplapply(1:nrow(fragment.trans),
+                           get_CFM_data_trans_map,cfmd = object,
+                           BPPARAM = BPPARAM)
+    names(trans.maps) <- paste0(fragment.trans$from,fragment.trans$to)
+    trans.maps.stat <- check_CFM_data_trans_map(object,trans.maps)
+    fragment.trans[,colnames(trans.maps.stat)] <- trans.maps.stat
+
+    object@fragment_transition <- fragment.trans
+  }
+
+  ### filter involid trans
+  {
+    object <- CFM_data_remove_trans(object,
+                               which(!fragment.trans$volid))
+  }
+
+
   ### atom map
   {
-    fragment.trans <- object@fragment_transition
-    ### map for trans
-    trans.atom.map <- as.list(rep(NA,nrow(fragment.trans)))
     fragment.atom.map <-list()
-    .trace.atom.map <- function(i.trans){
-      ig.parent <- fragment.igraph[[fragment.trans$from[i.trans]]]
-      ig.product <- fragment.igraph[[fragment.trans$to[i.trans]]]
-      sdf.parent <- fragment.sdf[[fragment.trans$from[i.trans]]]
-      sdf.product <- fragment.sdf[[fragment.trans$to[i.trans]]]
-      atom.map <- get_atom_map(sdf.parent ,sdf.product ,ig.parent ,ig.product )
-      atom.map
-    }
+    fragment.trans <- object@fragment_transition%>%
+      dplyr::mutate(id =  paste0(from,to))
+    fragment.data <- object@fragment_define
+    fragment.data$ratio <- NA
+    fragment.igraph <- object@fragment_igraph
     if (nrow(fragment.trans)) {
-
-
-      ### map for frag
       ig.trans <- get_CFM_data_trans_igraph(object)
       for (i in 1:nrow(fragment.data)) {
         this.frag <- fragment.data$fragment_id[i]
         if(i==1){
-          ele <- get_atom_from_igraph(fragment.igraph[[1]])
+          ele <- get_sdf_igraph_atom(fragment.igraph[[1]])
           maps <- diag(nrow = length(ele))
           rownames(maps)<-colnames(maps)<-ele
           fragment.atom.map[[i]] <- maps
           next
         }
-        this.path <- shortest_paths(ig.trans,
-                                    1,this.frag,
-                                    output = "epath")
-        ep <- this.path$epath[[1]]
-        if (!length(ep)==0) {
-          trans.idx <- match(ep,E(ig.trans))
-          maps <- lapply(trans.idx,function(x){
-            if (all(is.na(trans.atom.map[[x]]))) {
-              return( .trace.atom.map(x))
-            }
-            return(trans.atom.map[[x]])
-          })
-          trans.atom.map[trans.idx] <- maps
 
-          while(length(maps)>1){
-            maps[[2]] <- maps[[1]]%*% maps[[2]]
-            maps[[1]] <-NULL
-          }
-          fragment.atom.map[[i]] <- maps[[1]]
+        ### find path
+        {
+          this.path <- all_simple_paths(ig.trans,from = 1,to = this.frag,
+                                        mode = "out",cutoff = 3)
+
+          #message_with_time(i," ",length(this.path))
+          this.epath <- igraph_node_path_to_edge_path(ig.trans,
+                                                      this.path)
+          this.epath.len <- lengths(this.epath)
+          this.path.score <- sapply(this.epath,function(idx.path){
+            r <- fragment.trans$ratio[idx.path]
+            prod(r)
+          })
+          id.max.r <- which((this.path.score==max(this.path.score)))
+          trans.idx <- this.epath[[id.max.r[which.min(this.epath.len[id.max.r])]]]
         }
+
+        ### prod maps
+        {
+          if (!length(trans.idx)==0) {
+
+            maps <- trans.maps[fragment.trans$id[trans.idx]]
+            #trans.atom.map[trans.idx] <- maps
+
+            while(length(maps)>1){
+              maps[[2]] <- maps[[1]]%*% maps[[2]]
+              maps[[1]] <-NULL
+            }
+            fragment.atom.map[[i]] <- maps[[1]]
+          }
+        }
+
+        fragment.data$ratio[i] <-  max(this.path.score)
 
       }
       names(fragment.atom.map) <-fragment.data$fragment_id
@@ -811,19 +855,103 @@ CFM_data_get_igraph <- function(object){
   }
 
 
-  ### save to object
-  {
 
-    fragment.data -> object@fragment_define
-    object@fragment_igraph <- fragment.igraph
-    object@fragment_sdf <- fragment.sdf
-    object@fragment_atom_map <- fragment.atom.map
-  }
+  object@fragment_atom_map <- fragment.atom.map
+  object@fragment_define <- fragment.data
 
   return(object)
+
 }
 
 
+CFM_data_remove_trans <- function(object,id){
+
+  fragment.trans <-object@fragment_transition[-id,]
+  trans.ig <- graph_from_data_frame(fragment.trans)
+  dis.to.fragment1 <- distances(trans.ig,mode  = "out",
+                                v = object@fragment_define$fragment_id[1])
+  to.remove <- colnames(dis.to.fragment1)[which(is.infinite(dis.to.fragment1))]
+
+  ### remove
+  {
+    #object <- cfmd
+    object@peak_assignment <-object@peak_assignment %>%
+      dplyr::filter(!fragment_id%in% to.remove)
+
+    object@fragment_define <-object@fragment_define %>%
+      dplyr::filter(!fragment_id%in% to.remove)
+
+    object@fragment_transition <-fragment.trans %>%
+      dplyr::filter(!(from%in% to.remove|to %in% to.remove))
+
+    object@fragment_igraph <-object@fragment_igraph[
+      !names(object@fragment_igraph)%in%to.remove]
+
+    object@fragment_sdf <-object@fragment_sdf[
+      !cid(object@fragment_sdf)%in%to.remove]
+
+    object@fragment_atom_map <-object@fragment_atom_map[
+        !names(object@fragment_atom_map)%in%to.remove]
+
+  }
+
+  return(object)
+
+}
+
+
+get_CFM_data_trans_map <- function(cfmd,trans_id){
+
+  #message("trans: ",trans_id)
+  fragment.trans <- cfmd@fragment_transition
+  fragment.igraph <- cfmd@fragment_igraph
+  fragment.sdf <- cfmd@fragment_sdf
+  ig.parent <- fragment.igraph[[fragment.trans$from[trans_id]]]
+  ig.product <- fragment.igraph[[fragment.trans$to[trans_id]]]
+  sdf.parent <- fragment.sdf[[fragment.trans$from[trans_id]]]
+  sdf.product <- fragment.sdf[[fragment.trans$to[trans_id]]]
+
+  maps <- get_atom_map(sdf.parent ,sdf.product ,ig.parent ,ig.product )
+  return(maps)
+}
+
+
+check_CFM_data_trans_map <- function(cfmd,trans.maps =NULL){
+
+  if (is.null(trans.maps)) {
+    trans.maps <- sapply(1:nrow(cfmd@fragment_transition),
+                         get_CFM_data_trans_map,cfmd = cfmd)
+  }
+  #x <- trans.maps[[30]]
+  n_atoms <-sapply(trans.maps,function(x){
+    ncol(x)
+  })
+  n_atoms_compose_map <- sapply(trans.maps,function(x){
+
+    sum(rowSums(x)==1)
+  })
+  n_atoms_certain_map <- sapply(trans.maps,function(x){
+    max.prob <- apply(x,2,max)
+    sum( max.prob == 1 )
+  })
+  n_atoms_noncertain_map <- sapply(trans.maps,function(x){
+    max.prob <- apply(x,2,max)
+    sum( max.prob <1&max.prob>0 )
+  })
+  n_atoms_non_map <- sapply(trans.maps,function(x){
+    max.prob <- apply(x,2,max)
+    sum( max.prob==0 )
+  })
+
+  map.stat <- data.frame(n_atoms,
+                  n_atoms_compose_map,
+                  n_atoms_certain_map,
+                  n_atoms_noncertain_map,
+                  n_atoms_non_map)%>%
+    dplyr::mutate(volid = n_atoms_non_map ==0,
+                  ratio = n_atoms_compose_map/n_atoms )
+  return(map.stat)
+}
 
 get_CFM_data_trans_igraph <- function(object){
 
@@ -856,11 +984,11 @@ cfm_data_get_fragment_group <- function(cfm_data,ppm = 10){
 }
 
 
-get_cfm_data_fg_atom_map <- function(cfm_data,frag.group){
+get_cfm_data_fragment_group_atom_map <- function(cfm_data,frag.group){
 
   frag.idx <- which(cfm_data@fragment_define$fragment_group == frag.group)
   if (1%in%frag.idx) {
-    ele <- get_atom_from_igraph(get_cfm_data_sdf_igraph(cfm_data))
+    ele <- get_sdf_igraph_atom(get_cfm_data_sdf_igraph(cfm_data))
     frag.atoms.prob <- rep(1,length(ele))
     names(frag.atoms.prob) <- ele
   }else{
@@ -869,7 +997,7 @@ get_cfm_data_fg_atom_map <- function(cfm_data,frag.group){
     frag.maps <- cfm_data@fragment_atom_map[frag.idx]
     frag.maps <- frag.maps[!sapply(frag.maps,is.null)]
     if (!length(frag.maps)) {
-      ele <- get_atom_from_igraph(get_cfm_data_sdf_igraph(cfm_data))
+      ele <- get_sdf_igraph_atom(get_cfm_data_sdf_igraph(cfm_data))
       frag.atoms.prob <- rep(1,length(ele))
       names(frag.atoms.prob) <- ele
     }else{

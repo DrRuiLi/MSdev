@@ -110,7 +110,7 @@ str_format_len <- function(str,to = "max"){
     nc.max <- max(nc)
     to.add <- sapply(nc.max-nc,
                      function(x){
-                       paste0(rep(" ",x),collapse = "")
+                       paste0(rep("  ",x),collapse = "")
                      })
     str1 <- paste0(str,to.add)
   }
