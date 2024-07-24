@@ -175,6 +175,31 @@ get_MSIPIsoformMap <- function(MSIPCoreData){
 
 
 
+
+  ### filter
+  {
+    if (!is.null(MSIPCoreData@solve$MSIPIsoformMap)) {
+      MSIPIsoformMap <- MSIPCoreData@solve$MSIPIsoformMap
+      frag.ratio.matrix <- MSIPCoreData@FG_map@fragment.ratio.matrix
+      iso.form.ratio <- lapply(rownames(frag.ratio.matrix),function(fg.id){
+        z <- frag.ratio.matrix[fg.id,]
+        names(z) <- paste0(fg.id,"_",names(z))
+        return(z)
+      })
+      iso.form.ratio <- unlist(iso.form.ratio)
+      iso.form.intensity <- MSIPCoreData@FG_map@fragment.intensity[gsub(x = names(iso.form.ratio),
+                                                                        pattern = "_M.*",replacement = "")]
+      names(iso.form.intensity) <- names(iso.form.ratio)
+
+      MSIPIsoformMap@isoform.map <- MSIPIsoformMap@isoform.map[names(iso.form.ratio),,drop = F]
+      MSIPIsoformMap@isoform.ratio <- MSIPIsoformMap@isoform.ratio[names(iso.form.ratio)]
+      MSIPIsoformMap@isoform.intensity <- iso.form.intensity
+      return(MSIPIsoformMap)
+
+    }
+
+  }
+
   ### required info
   {
 
@@ -195,16 +220,18 @@ get_MSIPIsoformMap <- function(MSIPCoreData){
   }
   ### iso form map to iso ratio
   {
-    iso.form.maps <- lapply(seq_along(iso.form),
+    iso.form.maps <- bplapply(seq_along(iso.form),
                             function(if.id){
+                              #message_with_time(if.id)
                               lapply(rownames(frag.atom.matrix),function(fg.id){
 
-                                get_iso_prob(frag.atom.matrix[fg.id,],
+                                get_iso_prob_chatgpt(frag.atom.matrix[fg.id,],
                                              iso.form[[ if.id ]])
                               })->mp
                               names(mp) <- rownames(frag.atom.matrix)
                               unlist(mp)
-                            })
+                            },BPPARAM = SerialParam(progressbar = F))
+
     iso.form.map <- t(do.call(bind_rows,iso.form.maps))
     iso.form.map <- iso.form.map[order(rownames(iso.form.map)),,drop = F]
     iso.form.map[is.na(iso.form.map)] <- 0

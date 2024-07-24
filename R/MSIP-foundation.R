@@ -306,6 +306,40 @@ get_iso_prob <- function(fc, ifc){
   iso.p
 }
 
+get_iso_prob_chatgpt <- function(fc, ifc){
+
+  probs <- fc[ifc]
+
+  {
+    # Initialize a probability mass function (PMF) array for the sum
+    pmf <- rep(0, length(probs) + 1)
+    pmf[1] <- 1  # PMF for the sum starting with 0 probability
+
+    # Function to perform convolution of current PMF with a new Bernoulli trial
+    convolve_pmf <- function(pmf, p) {
+      new_pmf <- rep(0, length(pmf) + 1)
+      for (i in seq_along(pmf)) {
+        new_pmf[i] <- new_pmf[i] + pmf[i] * (1 - p)
+        new_pmf[i + 1] <- new_pmf[i + 1] + pmf[i] * p
+      }
+      return(new_pmf)
+    }
+
+    # Convolve the PMF with each probability
+    for (p in probs) {
+      pmf <- convolve_pmf(pmf, p)
+    }
+
+    # Print the resulting PMF
+    names(pmf) <- paste0("M",0:(length(pmf) - 1))
+    pmf
+
+  }
+
+
+}
+
+
 
 merge_frag_group_map <- function(fg.map){
 

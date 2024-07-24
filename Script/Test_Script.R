@@ -378,4 +378,156 @@ get_CFM_data_trans_map(cfmd,1)
     open_visNet()
 }
 
+# Mon Jul 15 11:30:58 2024 ------------------------------
+{
+  iso.data <- msdev.purity@statData$MSIP$isotopologues_data
+  a <- sapply(iso.data,function(x){
+    nrow(x$CFM_annotation@fragment_transition)
+  })
+  sapply(a,function(x){
+    sum(is.na(x))
+  })/ lengths(a)
+
+  which(lengths(a)==0)%>%names()%>%
+    vector2str()%>%cat()
+}
+
+
+a <- distances(ig.trans,1,mode = "out")
+
+# Tue Jul 16 20:37:11 2024 ------------------------------
+chemform_adduct("C6[13]C0H12O5",adduct = "[M-H]-")%>%format(digit=10)
+
+
+# Wed Jul 17 14:16:47 2024 CP_DB for CFM_data------------------------------
+cpdbt <- MSdb::get_CompoundDB_Compound()
+cpdbt <- cpdbt[1:5,]%>%
+  DataFrame()
+cfmds <- sapply(cpdbt$smiles,CFM_annotate_by_predict)
+cpdbt$cfmd <- unname(cfmds)
+
+cpdb.new <- insertCompound(cpdb.new,cpdbt,
+                           addColumns   = T)
+
+b <- compounds(cpdb.new)
+compoundVariables(cpdb.new)
+
+
+
+get_CFM_data_from_smiles(smiles = iso.data$FT11035_Positive $compound_info$smiles,
+                         temp_dir = "d:/ttttmp")
+
+msdev.purity <- MSIP_get_isotopologues_CFM_annotation(msdev.purity,
+                                                      BPPARAM = SerialParam(progressbar = T))
+
+
+file.name <- rep(letters,10)%>%paste0(collapse = "")
+
+saveRDS(a,file = file.name)
+
+
+cpdbt <- MSdb::get_CompoundDB_Compound()
+
+cpdbt$smiles%>%
+  sapply(nchar)->a
+
+get_CFM_data_from_smiles(smiles = iso.data$FT00684_Negative$compound_info$smiles,
+                         temp_dir = "d:/ttttmp")
+# Fri Jul 19 16:21:44 2024 ------------------------------
+{
+  # Define the probabilities
+  probs <- sample(seq(0,1,0.1),30,replace = T)
+
+
+}
+
+
+
+system.time(get_iso_prob_chatgpt(fc,ifc)[1:7])
+system.time(get_iso_prob(fc,ifc)[1:7])
+# Fri Jul 19 18:28:25 2024 ------------------------------
+iso.data <- msdev.purity@statData$MSIP$isotopologues_data
+x <- iso.data$FT11035_Positive
+sapply(iso.data,function(x){
+
+  n_c <- chemform_parse(x$compound_info$formula)[,"C"]
+  n_iso <- x$Spectra%>%names%>%str_isotope2_num()%>%max
+  message_with_time(x$compound_info$compound_id)
+  choose(n_c,n_iso)
+
+  #x$compound_info$compound_id
+}) ->a
+
+
+
+# Wed Jul 24 11:06:13 2024 MSIP Solve------------------------------
+a <- MSIP_solve_test(msdev.purity,
+                     BPPARAM = SnowParam(workers = 6,
+                                         progressbar = T))
+
+
+
+
+
+# Wed Jul 24 15:09:44 2024 ------------------------------
+{
+
+  my_long_running_function <- function(data) {
+    Sys.sleep(40)  # Simulating a function that takes 40 seconds to complete
+    return(paste("Result for", data))
+  }
+
+  library(BiocParallel)
+  library(parallel)
+
+  # Example large list-like data
+  input_list <- list(
+    element1 = "data1",
+    element2 = "data2",
+    element3 = "data3"
+    # Add more elements as needed...
+  )
+
+  # Initialize BiocParallel with SnowParam
+  bp_param <- SnowParam(workers = 2, timeout = 30)  # Set timeout to 30 seconds
+
+  # Wrapper function to handle timeout
+  timeout_wrapper <- function(data) {
+    result <- tryCatch({
+      my_long_running_function(data)
+    }, error = function(e) {
+      message("Timeout or error occurred for", data, ":", e$message)
+      return("Timeout or error occurred")
+    })
+    return(result)
+  }
+
+  # Use BiocParallel's bplapply to apply the timeout wrapper function
+  timeout_results <- bplapply(input_list, timeout_wrapper, BPPARAM = bp_param)
+
+  # Print the results
+  print(timeout_results)
+
+}
+
+
+rm(a)
+a <- R.utils::withTimeout(my_long_running_function(1) ,
+                     timeout = 3,
+                     onTimeout = "silent")
+
+my_long_running_function <- function(data) {
+  Sys.sleep(data)  # Simulating a function that takes 40 seconds to complete
+  return(paste("Result for", data))
+}
+
+a <- bplapply(1:10,
+         BPPARAM = SerialParam(progressbar = T),
+         FUN = function(i){
+           R.utils::withTimeout(my_long_running_function(i) ,
+                       timeout = 3,
+                       onTimeout = "silent")
+})
+
+
 

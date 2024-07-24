@@ -194,12 +194,9 @@ MSIP_shiny_server <- function(object){
       output$mol_graph_atom_prob <- renderVisNetwork(
         {
           message_with_time("Visnet molecular")
-#
-         #shiny_vis_ig(ig = mol.ig() ,
-                      #prob.border = mol.atom.map(),
-         #             prob.fill =mol.atom.c.prob())
-         vis_sdf_igraph(mol.ig(),
-                        show.id = input$show_atom_id,
+
+          shiny_vis_sdf_igraph(mol.ig(),
+                          show_id = input$show_atom_id,
                         prob.fill=mol.atom.c.prob())
         }
       )
@@ -237,8 +234,8 @@ MSIP_shiny_server <- function(object){
         {
           message_with_time("mol_graph_atom_map")
 
-          vis_sdf_igraph(mol.ig(),
-                         show.id = input$show_atom_id,
+          shiny_vis_sdf_igraph(mol.ig(),
+                         show_id = input$show_atom_id,
                          prob.border =  mol.atom.map(),
                          prob.fill=mol.atom.c.prob())
         }
@@ -255,8 +252,8 @@ MSIP_shiny_server <- function(object){
       output$frag_graph <- renderVisNetwork(
         {
           message_with_time("frag_graph")
-          vis_sdf_igraph(frag.ig(),
-                         show.id = input$show_atom_id,
+          shiny_vis_sdf_igraph(frag.ig(),
+                         show_id = input$show_atom_id,
                        prob.border  = frag.atom.map() )
         }
       )

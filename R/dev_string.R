@@ -143,3 +143,21 @@ str_search_files <- function(str,file_path = paste0(getwd(),"/R")){
 
 
 }
+
+
+str_isotope2_num <- function(str,to = NULL){
+  if (is.null(to)) {
+    to <- ifelse(is.character(str),"numeric","character")
+  }
+  if (class(str) == to)
+    return(str)
+  if (to == "numeric") {
+    str <- stringr::str_extract(str,"[:digit:]+")%>%
+      as.numeric()
+  }
+  if (to == "character") {
+    str <- paste0("M",str)
+  }
+
+  return(str)
+}

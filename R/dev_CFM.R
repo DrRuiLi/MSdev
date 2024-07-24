@@ -96,14 +96,14 @@ CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([
 
         ))->cmd
 
-  message("Make Command to docker: ")
-  message(crayon::red(cmd)%>%crayon::reset() )
+  #message("Make Command to docker: ")
+  #message(crayon::red(cmd)%>%crayon::reset() )
   shell(cmd)
   if (is.null(output_file_or_dir)) {
     cfm.result <- read_CFM_predict_result(out.file)
     return(invisible(cfm.result))
   }else{
-    message("Result export to: \n",crayon::red(output_file_or_dir))
+    #message("Result export to: \n",crayon::red(output_file_or_dir))
     return(invisible(out.file))
   }
 }
@@ -156,8 +156,8 @@ CFM_annotate<- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
           basename(out.file)
         ))->cmd
   cmd
-  message("Make Command to docker: ")
-  message(crayon::red(cmd)%>%crayon::reset() )
+  #message("Make Command to docker: ")
+  #message(crayon::red(cmd)%>%crayon::reset() )
   shell(cmd)
   if (is.null(output_file)) {
     return(invisible(read_CFM_annotate_result(out.file)))
@@ -282,13 +282,13 @@ CFM_fraggen <- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
 
       ))->cmd
 
-  message("Make Command to docker: ")
-  message(crayon::red(cmd)%>%crayon::reset() )
+  #message("Make Command to docker: ")
+  #message(crayon::red(cmd)%>%crayon::reset() )
   shell(cmd)
   if (is.null(output_file_or_dir)) {
     return(invisible(read_CFM_fraggen_result(out.file)))
   }else{
-    message("Result export to: \n",crayon::red(output_file_or_dir))
+    #message("Result export to: \n",crayon::red(output_file_or_dir))
     return(invisible(out.file))
   }
 
@@ -774,7 +774,8 @@ CFM_data_get_atom_map <- function(object,
 
   ### trans.map
   {
-    object <- cfmd
+    #object <- cfmd
+    message_with_time("trans map")
     fragment.trans <- object@fragment_transition
     trans.maps <- bplapply(1:nrow(fragment.trans),
                            get_CFM_data_trans_map,cfmd = object,
@@ -788,53 +789,66 @@ CFM_data_get_atom_map <- function(object,
 
   ### filter involid trans
   {
-    object <- CFM_data_remove_trans(object,
-                               which(!fragment.trans$volid))
+    object_bak <- object
+    object <- CFM_data_remove_trans(object)
+
   }
 
 
   ### atom map
   {
+    #message_with_time("atom map")
     fragment.atom.map <-list()
     fragment.trans <- object@fragment_transition%>%
-      dplyr::mutate(id =  paste0(from,to))
+      dplyr::mutate(id =  paste0(from,to),
+                    weight = n_atoms - n_atoms_compose_map)
     fragment.data <- object@fragment_define
     fragment.data$ratio <- NA
     fragment.igraph <- object@fragment_igraph
     if (nrow(fragment.trans)) {
-      ig.trans <- get_CFM_data_trans_igraph(object)
+      ig.trans <- graph_from_data_frame(fragment.trans)
       for (i in 1:nrow(fragment.data)) {
         this.frag <- fragment.data$fragment_id[i]
+        fragment.atom.map[[i]] <- NA
         if(i==1){
           ele <- get_sdf_igraph_atom(fragment.igraph[[1]])
           maps <- diag(nrow = length(ele))
           rownames(maps)<-colnames(maps)<-ele
           fragment.atom.map[[i]] <- maps
+          fragment.data$ratio[i] <-  1
           next
         }
 
         ### find path
         {
-          this.path <- all_simple_paths(ig.trans,from = 1,to = this.frag,
-                                        mode = "out",cutoff = 3)
-
-          #message_with_time(i," ",length(this.path))
-          this.epath <- igraph_node_path_to_edge_path(ig.trans,
-                                                      this.path)
-          this.epath.len <- lengths(this.epath)
-          this.path.score <- sapply(this.epath,function(idx.path){
+          #this.path <- all_simple_paths(ig.trans,from = 1,to = this.frag,
+          #                              mode = "out",
+          #                              cutoff = distances(ig.trans,1,this.frag,mode = "out")+5)
+          this.path <- shortest_paths(ig.trans,from = 1,to = this.frag,
+                                      mode = "out",output  = "vpath")$vpath
+          #this.path.len <- lengths(this.path)
+          #this.path <- this.path[this.path.len<min(this.path.len)+5]
+          message_with_time(i," ",length(this.path))
+          this.epath <- sapply(this.path,function(path){
+            epath <- paste0(names(path),names(path)[-1])
+            epath[1:length(epath)-1]
+          })
+          #this.epath.len <- lengths(this.epath)
+          this.path.score <- sapply(this.epath,function(epath){
+            idx.path <- match(epath,fragment.trans$id)
             r <- fragment.trans$ratio[idx.path]
             prod(r)
           })
-          id.max.r <- which((this.path.score==max(this.path.score)))
-          trans.idx <- this.epath[[id.max.r[which.min(this.epath.len[id.max.r])]]]
+          #id.max.r <- which((this.path.score==max(this.path.score)))
+          #trans.idx <- this.epath[[id.max.r[which.min(this.epath.len[id.max.r])]]]
+          trans.idx <- this.epath
         }
 
         ### prod maps
         {
           if (!length(trans.idx)==0) {
 
-            maps <- trans.maps[fragment.trans$id[trans.idx]]
+            maps <- trans.maps[trans.idx]
             #trans.atom.map[trans.idx] <- maps
 
             while(length(maps)>1){
@@ -864,36 +878,52 @@ CFM_data_get_atom_map <- function(object,
 }
 
 
-CFM_data_remove_trans <- function(object,id){
+CFM_data_remove_trans <- function(object){
 
-  fragment.trans <-object@fragment_transition[-id,]
-  trans.ig <- graph_from_data_frame(fragment.trans)
-  dis.to.fragment1 <- distances(trans.ig,mode  = "out",
-                                v = object@fragment_define$fragment_id[1])
-  to.remove <- colnames(dis.to.fragment1)[which(is.infinite(dis.to.fragment1))]
 
-  ### remove
-  {
-    #object <- cfmd
-    object@peak_assignment <-object@peak_assignment %>%
-      dplyr::filter(!fragment_id%in% to.remove)
+  .f <- function(object){
+    fragment.trans <-object@fragment_transition
+    fragment.trans <-fragment.trans[fragment.trans$volid,]
 
-    object@fragment_define <-object@fragment_define %>%
-      dplyr::filter(!fragment_id%in% to.remove)
+    trans.ig <- graph_from_data_frame(fragment.trans)
+    dis.to.fragment1 <- distances(trans.ig,mode  = "out",
+                                  v = object@fragment_define$fragment_id[1])
+    reachable <- colnames(dis.to.fragment1)[!is.infinite(dis.to.fragment1)]
+    to.remove <- setdiff(object@fragment_define$fragment_id,reachable)
+    ### remove
+    {
+      #object <- cfmd
+      object@peak_assignment <-object@peak_assignment %>%
+        dplyr::filter(!fragment_id%in% to.remove)
 
-    object@fragment_transition <-fragment.trans %>%
-      dplyr::filter(!(from%in% to.remove|to %in% to.remove))
+      object@fragment_define <-object@fragment_define %>%
+        dplyr::filter(!fragment_id%in% to.remove)
 
-    object@fragment_igraph <-object@fragment_igraph[
-      !names(object@fragment_igraph)%in%to.remove]
+      object@fragment_transition <-fragment.trans %>%
+        dplyr::filter(!(from%in% to.remove|to %in% to.remove))
 
-    object@fragment_sdf <-object@fragment_sdf[
-      !cid(object@fragment_sdf)%in%to.remove]
+      object@fragment_igraph <-object@fragment_igraph[
+        !names(object@fragment_igraph)%in%to.remove]
 
-    object@fragment_atom_map <-object@fragment_atom_map[
+      object@fragment_sdf <-object@fragment_sdf[
+        !cid(object@fragment_sdf)%in%to.remove]
+
+      object@fragment_atom_map <-object@fragment_atom_map[
         !names(object@fragment_atom_map)%in%to.remove]
 
+    }
+
+    return(object)
   }
+
+  ### iteration
+  i <- 1
+  object<- .f(object)
+  while(any(is.infinite(distances(get_CFM_data_trans_igraph(object),1,mode = "out")))&i<=5){
+    object <- .f(object)
+  }
+  if (i==5)
+    warning("CFM_data_remove_trans abnormal")
 
   return(object)
 
@@ -1164,3 +1194,44 @@ get_CFM_data_MSIPFragmentMap<- function(cfmd){
   cfmd.fg.map <- cfmd.msip.core@FG_map
   MSIPFragmentMap_reduce_fragment(cfmd.fg.map)
 }
+
+
+
+get_CFM_data_from_smiles <- function(smiles = "NCC(O)=O",
+                                     compound_id = "temp_id",
+                                     ppm = 5,
+                                     adduct = "[M+H]+",
+                                     check_temp = T,
+                                     temp_dir = tempdir(),
+                                     ...){
+  if(check_temp){
+    temp_file <- paste0(temp_dir,"/",compound_id,"_",adduct,".rds")
+    if(file.exists(temp_file)){
+      message_with_time("loading from temp:",temp_file)
+      cfmd <- readRDS(temp_file)
+      return(cfmd)
+    }
+  }
+  message_with_time("CFM_annotate_by_predict")
+  cfmd <- CFM_annotate_by_predict(smiles_or_inchi = smiles,
+                                  ppm_mass_tol = ppm,
+                                  abs_mass_tol = 0.005,
+                                  param_adduct = adduct )
+  cfmd <- cfm_data_get_fragment_group(cfmd)
+  cfmd <- CFM_data_get_igraph(cfmd)
+  message_with_time("CFM_data_get_atom_map")
+  cfmd <- CFM_data_get_atom_map(cfmd)
+  message_with_time("Done")
+  if(check_temp){
+    dir.create(temp_dir,showWarnings = F,recursive = T)
+    temp_file <- paste0(temp_dir,"/",compound_id,"_",adduct,".rds")
+    saveRDS(cfmd,file = temp_file)
+  }
+  return(cfmd)
+
+
+
+
+}
+
+

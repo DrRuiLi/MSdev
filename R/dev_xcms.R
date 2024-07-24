@@ -671,8 +671,8 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
       this.iso.assign <- get_iso_net_assign(this.igraph,net.degree.ratio = net.degree.ratio)
       xcms.fdf[names(this.iso.assign$iso.seed),
               "iso_seed"] <- this.iso.assign$iso.seed
-      xcms.fdf[names(this.iso.assign$iso.count),
-               "iso_count"] <- this.iso.assign$iso.count
+      xcms.fdf[names(this.iso.assign$iso_count),
+               "iso_count"] <- this.iso.assign$iso_count
       xcms.fdf[this.nodes,"iso_connection_group"] <- i
       this.fdf <- xcms.fdf[this.nodes,]
 

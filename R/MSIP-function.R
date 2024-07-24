@@ -249,8 +249,6 @@ MSIP_get_isotopologues_data <- function(object,
     xcms.fdf <- featureDefinitions(xcms.xcms)
     iso.table <- object@statData$MSIP$isotopologues_table[[pol]]
     iso.table$ms2_id <-xcms.fdf$ms2_id[match(iso.table$feature_id,xcms.fdf$feature_id  )]
-    iso.table[,"iso_seed"] <- iso.table[,paste0(trans_iso_ele(iso_ele),"_seed")]
-    iso.table[,"iso_count"] <- iso.table[,paste0(trans_iso_ele(iso_ele),"_count")]
     iso.table <- iso.table%>%
       dplyr::mutate(ms2_count = lengths(ms2_id))%>%
       dplyr::group_by(iso_seed)%>%
@@ -284,9 +282,12 @@ MSIP_get_isotopologues_data <- function(object,
       ### Spectra split
       {
         this.sp <-  lapply(this.fdf$ms2_id,function(x) sp.ms2[x])
+        #message(i_seed_id," ",lengths(this.fdf$ms2_id))
         #this.sp <- lapply(this.sp,combineSpectra_groupby_ce)
         names(this.sp) <- paste0("M", this.fdf$iso_count[ match(names(this.sp),
                                                                 this.fdf$feature_id)])
+        this.sp <- this.sp[lengths(this.sp)!=0]
+        if (!length(this.sp)) next
         this.sp <- lapply(this.sp , function(x) split(x,x$sample.source))
         sp_count<-lapply(this.sp,function(y){
           y.l <- lengths(y)
@@ -377,7 +378,7 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
 
 
   ff <- function(x){
-      #x <- msdev.combine@statData$MSIP$isotopologues_data[["FT7476_Negative"]]
+    #x <- msdev.purity@statData$MSIP$isotopologues_data[["FT06121_Negative"]]
     ### combine sp of seed to cfm-annotate
     {
       ### process M0 Spectra
@@ -393,34 +394,36 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
         seed.sp.c <- Spectra_fill_3CE(seed.sp.c)
       }
       CFM_result <- NA
-      try.return <- try(
-        CFM_result <- CFM_annotate_by_predict(smiles_or_inchi = x$compound_info$smiles,
-                                   #spectrum_file = seed.sp.c,
-                                   ppm_mass_tol = ppm,
-                                   abs_mass_tol = 0.005,
-                                   param_adduct = switch(as.character(x$compound_info$polarity),
-                                                         "0"="[M-H]-",
-                                                         "1"="[M+H]+") )
-      )
+      try.return <- try({
+
+        CFM_result <- get_CFM_data_from_smiles(
+          smiles = x$compound_info$smiles,
+          compound_id = x$compound_info$compound_id,
+          ppm =  ppm,
+          adduct = switch(as.character(x$compound_info$polarity),
+                                     "0"="[M-H]-",
+                                     "1"="[M+H]+"),
+          check_temp =T,
+          temp_dir = paste0(object@projectInfo$CompoundDB_path,"_cfmd"))
+
+      })
       if (class(CFM_result) !="CFM_data") return(x)
     }
 
-    CFM_result <- cfm_data_get_fragment_group(CFM_result)
-    CFM_result <- CFM_data_get_igraph(CFM_result)
     x$CFM_annotation <-CFM_result
     return(x)
   }
 
 
-
-
-  iso.cfm <- bplapply(object@statData$MSIP$isotopologues_data,
+   iso.cfm <- bplapply(object@statData$MSIP$isotopologues_data,
                       ff,
                       BPPARAM = BPPARAM )
   annotated <- sapply(iso.cfm,function(x) "CFM_annotation" %in% names(x))
   object@statData$MSIP$isotopologues_data <- iso.cfm[annotated]
   object
 }
+
+
 
 get_MSdev_iso_acq_list <- function(object){
 
@@ -453,7 +456,7 @@ get_iso_net_assign <- function(iso.ig,net.degree.ratio = 0.6){
   iso.fdf <- vdata(iso.ig)
   dis.con <-  as_adjacency_matrix(iso.ig,sparse	 =F ,type = "upper")
   dis.mw <-  distances(iso.ig,mode = "out",
-                       weights = edata(iso.ig)$closest.iso_count)
+                       weights = edata(iso.ig)$closest.iso.count)
   if (nrow(iso.fdf)<=2) {
     cl <- rep(1,nrow(iso.fdf))
   }else
@@ -465,12 +468,12 @@ get_iso_net_assign <- function(iso.ig,net.degree.ratio = 0.6){
     this.igraph.sub <- igraph_filter_vertex(iso.ig,cl==i.cl)
 
     igraph::distances(this.igraph.sub,mode = "out",
-                      weights = edge.attributes(this.igraph.sub)$closest.iso_count )
+                      weights = edge.attributes(this.igraph.sub)$closest.iso.count )
     to.delete <- degree(this.igraph.sub)<(length(V(this.igraph.sub))-1)*2*net.degree.ratio
     this.igraph.sub <-delete.vertices(this.igraph.sub,to.delete )
     #visNetwork::visIgraph(this.igraph.sub)
     this.dis <- igraph::distances(this.igraph.sub,mode = "out",
-                                  weights = edge.attributes(this.igraph.sub)$closest.iso_count )
+                                  weights = edge.attributes(this.igraph.sub)$closest.iso.count )
     this.dis[this.dis<0] <- 0
     dis.sum <- apply(this.dis,1,sum)
     seed.fid <- names(which.max(dis.sum))
@@ -529,9 +532,15 @@ MSIP_solve_isotopologues <- function(object,
                                      ppm = 20,
                                      BPPARAM = SerialParam(progressbar = T)){
 
+  sample.tracer <- .get_MSIP_tracer(object)
+  selected.source <- names(sample.tracer)[!is.na(sample.tracer)]
+
+
+  process.assign <- MSIP_solve_computation_evaluate(object,T)
+
   .f <- function(x.iso.cfm,
                  ppm = ppm,selected.source ){
-    #x.iso.cfm <- object@statData$MSIP$isotopologues_data[[1]]
+    #x.iso.cfm <- msdev.purity@statData$MSIP$isotopologues_data[[36]]
     cfmd <- x.iso.cfm$CFM_annotation
     if (is.null(cfmd)) return(x.iso.cfm)
     all.iso_count <- stringr::str_extract(names(x.iso.cfm$Spectra),"[:digit:]+")%>%
@@ -545,14 +554,15 @@ MSIP_solve_isotopologues <- function(object,
     msip_result <- list()
     for (i.iso in all.iso_count) {
 
-      # message(i.iso)
+      # message_with_time(i.iso)
       if (i.iso==0) {
         next
       }
       this.sp <-x.iso.cfm$Spectra[[paste0("M",i.iso)]]
       lengths(this.sp)
       for (i.sample in intersect(selected.source,names(this.sp))) {
-        #message(i.sample,i.iso)
+        message_with_time(i.sample,"_",i.iso)
+        start_time <- Sys.time()
         this.sp.iso <-this.sp[[i.sample]]
         this.natural.ratio <- natural.ratio.matrix[paste0("M",i.iso),
                              paste0("Ratio_to_seed_",i.sample)]
@@ -565,6 +575,9 @@ MSIP_solve_isotopologues <- function(object,
                                  natural.ratio = this.natural.ratio)
 
         msip.core <- MSIPCore_solve(msip.core)
+        time_consume <- Sys.time()-start_time
+        message_with_time("total of ",length(msip.core@solve$MSIPIsoformMap@isoform.defination)," isoforms, time consume: ",
+                          format(time_consume,digits = 4))
 
         msip_result[[paste0("M",i.iso)]][[i.sample]] <- msip.core
       }
@@ -578,8 +591,6 @@ MSIP_solve_isotopologues <- function(object,
 
   }
 
-  sample.tracer <- .get_MSIP_tracer(object)
-  selected.source <- names(sample.tracer)[!is.na(sample.tracer)]
   #object@statData$MSIP$isotopologues_data
   isotopologues_data <- bplapply(
     object@statData$MSIP$isotopologues_data,
@@ -591,6 +602,69 @@ MSIP_solve_isotopologues <- function(object,
   object@statData$MSIP$isotopologues_data <- isotopologues_data
   object
 }
+
+MSIP_solve_isotopologues2 <- function(object,
+                            ppm = 20,
+                            timeout = 60,
+                            BPPARAM = SerialParam(progressbar = T)){
+
+
+  process.info <- MSIP_solve_computation_evaluate(object,F)
+
+
+  .f <- function(i){
+
+    message_with_time(i)
+    start_time <- Sys.time()
+    this.fid <- process.info$feature_id[i]
+    this.iso.count <- process.info$iso_count[i]
+    this.sample<- process.info$samples[i]
+    this.natural.ratio <- process.info$natural.ratio[i]
+    this.iso.data <- iso.data[[this.fid]]
+    this.cfmd <- this.iso.data$CFM_annotation
+    this.sp.iso <-this.iso.data$Spectra[[str_isotope2_num(this.iso.count)]][[this.sample]]
+    if(!length(this.sp.iso)) return(NULL)
+    msip.core <- get_MSIPCoreData(sp.iso = this.sp.iso,
+                                  cfmd = this.cfmd,
+                                  iso_count = this.iso.count,
+                                  ppm = ppm)
+    msip.core <- MSIPCore_correct_natural(msip.core,
+                                          cfmd = this.cfmd,
+                                          natural.ratio = this.natural.ratio)
+
+    msip.core <- MSIPCore_solve(msip.core)
+    time_consume <- Sys.time()-start_time
+    message_with_time("total of ",length(msip.core@solve$MSIPIsoformMap@isoform.defination)," isoforms, time consume: ",
+                      format(time_consume,digits = 4))
+
+    return(msip.core)
+
+
+  }
+
+  iso.data <- object@statData$MSIP$isotopologues_data
+  msip.result.list <- bplapply(1:nrow(process.info),
+                               FUN = function(i){
+                                 R.utils::withTimeout(.f(i),
+                                                      timeout = timeout,onTimeout = "silent")
+                               },
+                 BPPARAM =BPPARAM)
+  for (i in 1:nrow(process.info)) {
+    this.fid <- process.info$feature_id[i]
+    this.iso.count <- process.info$iso_count[i]%>%str_isotope2_num()
+    this.sample<- process.info$samples[i]
+    if (i < length(msip.result.list)) {
+      iso.data[[this.fid]]$MSIP_result[[this.iso.count]][[this.sample]] <-
+        msip.result.list[[i]]
+    }
+  }
+
+  iso.data -> object@statData$MSIP$isotopologues_data
+  return(object)
+
+
+}
+
 
 MSIP_drop_isotopologues_tempdata <- function(object){
 
@@ -618,6 +692,7 @@ MSIP_drop_isotopologues_tempdata <- function(object){
 .get_MSIP_tracer <- function(object){
 
   x <- object@sampleInfo%>%
+    dplyr::filter(!sample.type %in% c("Blank"))%>%
     dplyr::select(sample.source,isotope_tracer)%>%
     dplyr::distinct()%>%
     dplyr::pull(isotope_tracer,name = sample.source)
@@ -631,9 +706,11 @@ MSIP_drop_isotopologues_tempdata <- function(object){
 
 get_iso_natural_ratio <- function(formula, iso_ele, ratio_matrix  ){
 
+  thresh = min(ratio_matrix)
+  if (thresh < 1e-5)  thresh<- 1e-3
   iso_pattern <- chemform_isotopes_pattern_enviPat(
     formula,
-    thresh = min(ratio_matrix))%>%
+    thresh = thresh)%>%
     dplyr::filter(grepl(iso_ele,isotope_element,fixed = T)|isotope_element=="")%>%
     dplyr::mutate(iso_count = sub(pattern = iso_ele,
                                   x = isotope_element,
@@ -680,3 +757,66 @@ MSIP_update_compoundDB_from_interest_list <- function(){
 
 }
 
+
+
+MSIP_solve_computation_evaluate <- function(object, show_message = T){
+
+  iso.data <- object@statData$MSIP$isotopologues_data
+  iso_ele <- get_MSdev_iso_ele(object)
+  target_ele <- str_extract(string  = iso_ele,pattern = "[:alpha:]")
+  all.sample <- .get_MSIP_tracer(object)
+  traced.sample <- names(na.omit(all.sample))
+
+
+  comp.eval.list <- list()
+  for (i in seq_along(iso.data)) {
+
+    cfmd <- iso.data[[i]]$CFM_annotation
+    cfmd.ig <- get_cfm_data_sdf_igraph(cfmd)
+    this.atom <- get_sdf_igraph_atom(cfmd.ig,ele = target_ele)
+    this.ele.count <-length(this.atom)
+    iso_count <- names(iso.data[[i]]$Spectra)%>%
+      str_isotope2_num()%>%
+      setdiff(0)
+
+
+    natural.ratio.matrix <- get_iso_natural_ratio(
+      formula = iso.data[[i]]$compound_info$formula,
+      iso_ele = iso_ele,
+      ratio_matrix = iso.data[[i]]$compound_info$ratio_matrix)
+
+    comp.eval <- expand.grid(
+      feature_id = names(iso.data)[i],
+      iso_count = iso_count,
+      target_ele_count =this.ele.count,
+      samples = traced.sample,
+      stringsAsFactors =F
+    )%>%
+      dplyr::mutate(iso_form = choose(target_ele_count ,iso_count ))%>%
+      dplyr::rowwise()%>%
+      dplyr::mutate(natural.ratio =
+                      natural.ratio.matrix[str_isotope2_num(iso_count),
+                                         paste0("Ratio_to_seed_",samples)])
+
+  if (show_message) {
+
+    message(names(iso.data)[i],", Total ",this.ele.count," ", target_ele)
+    mes <- paste0("M",comp.eval$iso_count,", isoforms: ",
+                  comp.eval$iso_form)%>%
+      paste0(collapse = "\n")
+    message(mes)
+    message("")
+  }
+
+
+
+
+    comp.eval.list[[i]] <-comp.eval
+
+  }
+
+  comp.eval <- do.call(rbind,comp.eval.list)
+
+  return(invisible( comp.eval ))
+
+}

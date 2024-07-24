@@ -73,6 +73,8 @@ colorMix <- function(...){
 
 }
 
+
+#' @export
 message_with_time <- function(...){
 
   message(format(Sys.time(),digits = 0)," ",...)

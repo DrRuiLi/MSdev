@@ -363,6 +363,19 @@ shiny_vis_ig <- function(ig,
 
 }
 
+
+shiny_vis_sdf_igraph <- function(ig,
+                                 show_id = F,
+                                 prob.border= NA,
+                                 prob.fill =NA){
+  ig%>%
+    sdf_igraph_add_background_color(value = prob.fill)%>%
+    sdf_igraph_add_border_color(prob.border)%>%
+    sdf_igraph_show_id(show_id)%>%
+    vis_sdf_igraph()
+
+}
+
 shiny_change_ig_label <- function(ig,
                                   id = F
                                   ){
