@@ -46,33 +46,33 @@ setMethod(f = "isEmpty",signature = "MSIPFragmentMap",
   nrow(object@fragment.atom.matrix)==0
 })
 
-#### MSIPIsoformMap
-setClass(Class = "MSIPIsoformMap",
+#### MSIPIsotopomerMap
+setClass(Class = "MSIPIsotopomerMap",
          slots = list(
-           "isoform.defination" = "list",
-           "isoform.map" = "matrix",
-           "isoform.ratio" = "numeric",
-           "isoform.probability" = "numeric",
-           "isoform.intensity" = "numeric",
+           "isotopomer.defination" = "list",
+           "isotopomer.map" = "matrix",
+           "isotopomer.ratio" = "numeric",
+           "isotopomer.probability" = "numeric",
+           "isotopomer.intensity" = "numeric",
            "solve" = "list"
          ))
 
 
 setMethod(f = "show",
-          "MSIPIsoformMap",definition = function(object){
+          "MSIPIsotopomerMap",definition = function(object){
 
             x <- paste0("Map of ",
-                        yellow(length(object@isoform.defination)),
+                        yellow(length(object@isotopomer.defination)),
                         " iso-forms, ",
-                        yellow(nrow(object@isoform.map)),
+                        yellow(nrow(object@isotopomer.map)),
                         " labeled fragment")
             message(x)
 
           })
 
 
-setMethod(f = "isEmpty",signature = "MSIPIsoformMap",
+setMethod(f = "isEmpty",signature = "MSIPIsotopomerMap",
           definition = function(object){
-            length(object@isoform.defination)==0
+            length(object@isotopomer.defination)==0
           })
 

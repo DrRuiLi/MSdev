@@ -1608,6 +1608,7 @@ MSdev_annotation <- function(object,
                                                      workers = 6,progressbar = T
                                                    ))
     xcms.xcms <- xcms_get_feature_annotation(xcms.xcms,
+                                             cpdb,
                                              ...)
     xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
 

@@ -33,15 +33,15 @@ MSIP_shiny_ui <- function() {
           selectInput(
             inputId = "select_sample",
             label = "Sample",
-            choices = "U"
+            choices = "Glu"
           )
         ),
         column(
           3,
           selectInput(
             inputId = "select_iso_count",
-            label = "Iso count",
-            choices = paste0("M", 1:5)
+            label = "Isotopologue",
+            choices = paste0("M0")
           )
         ),
         column(
@@ -57,7 +57,19 @@ MSIP_shiny_ui <- function() {
             outputId = "compound_info"
           )
         )),
-        plotlyOutput(outputId = "plotly_ms2_sp", height = "300px")
+        fluidRow(
+          column(width = 10,
+            plotlyOutput(outputId = "plotly_ms2_sp")
+          ),
+          column(width = 1,
+            plotlyOutput(outputId = "plotly_natural_ratio"),
+            style = "padding:0px; margin:0px; background-color: #FFFFFF"
+          ),
+          column(width = 1,
+                 plotlyOutput(outputId = "plotly_fragment_iso_distribution"),
+                 style = "padding:0px; margin:0px; background-color: #FFFFFF"
+          )
+        )
       ),
       navbarPage(
         title = NULL,
@@ -111,24 +123,32 @@ MSIP_shiny_ui <- function() {
         tabPanel(
           "Fragment map",
           fluidRow(
-            column(
-              3,
-              actionButton(
-                inputId = "Re_calc_button",
-                label = "Re calculate"),
-              DTOutput(
-                outputId = "include_fragment_group"
-              )
+            fluidRow(
+              column(width = 5,
+                     sliderInput(inputId = "int_thresh",
+                                 label = "Intensity threshold (log10)",
+                                 ticks  = F,
+                                 min = 0,max = 10,value = 3 )
+                     ),
+              column(width = 5,
+                     sliderInput(inputId = "certainty_thresh",
+                                 label = "Certainty threshold",
+                                 ticks  = F,
+                                 min = 0,max = 1,value = 0.8)),
+              column(width = 2,
+                     actionButton(
+                       inputId = "Re_calc_button",
+                       label = "Re calculate")
+                     )
             ),
-            column(
-              9,
+              #DTOutput(
+              #  outputId = "include_fragment_group"
+              #)
               plotOutput(
                   outputId = "heatmap_fg_map",
                   height = "500px",
                   width = "800px"
                 )
-
-            )
             )
           )
       )

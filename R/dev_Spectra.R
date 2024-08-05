@@ -386,7 +386,7 @@ get_Spectra_transition <- function(sp){
 
   sp <- filterSpectra_below_PrecursorMz(sp)
   sp.data <- get_Spectra_data(sp)%>%
-    dplyr::mutate(groupMz(mz))%>%
+    dplyr::mutate(groupMz(mz,return.type = "data.frame"))%>%
     dplyr::group_by(mz.group )%>%
     dplyr::mutate(mz.group.max = max(intensity),
                   mz.group.n = n())%>%
@@ -601,22 +601,23 @@ plot_Spectra_product_CE_curve <- function(sp){
                   yend = yend + ystep,
                   cex = as.numeric(collisionEnergy),
                   collisionEnergy= factor(collisionEnergy))%>%
-    dplyr::mutate(groupMz(mz))%>%
+    dplyr::mutate(groupMz(mz,return.type = "data.frame"))%>%
     dplyr::group_by(mz.group)%>%
     dplyr::mutate( highlight = length(unique(collisionEnergy)) >
                      length(levels(collisionEnergy))*0.5,
                    hx = min(x),
                    hxend = max(x),
                    hy = min(y),
-                   hyend =max(y))%>%
+                   hyend =max(y),
+                   mz.center = sprintf("%.4f",mz.center)
+                   )%>%
     dplyr::ungroup()%>%
     dplyr::filter(highlight)
 
-  ggplot(sp.data,aes(x = cex , y = intensity ,col = mz.group))+
+  ggplot(sp.data,aes(x = cex , y = intensity ,col = mz.center))+
     geom_point()+
     geom_smooth(formula = y~x,method = "loess")+
-    scale_color_manual(values = randomcoloR::distinctColorPalette(30),
-                       labels = sprintf("%.4f",unique(sp.data$mz)))+
+    scale_color_random()+
     labs(x = "Collision Energy",y = "Intensity normalized to Precursor",
          col = "Product mz")+
     guides(col = guide_legend(ncol = 3))+
@@ -944,7 +945,7 @@ get_Spectra_adduct_expand <- function(sp,
 
 }
 
-get_Spectra_MEM_backend <- function(sp){
+Spectra_set_MEM_backend <- function(sp){
 
   if(class(sp@backend)=="MsBackendCompDb"){
     sp$centroided <-T

@@ -783,7 +783,7 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
   ### feature data
   {
 
-    xcms.se <- quantify(xcms.xcms,missing = 1,method="max",value = "maxo")
+    xcms.se <- get_xcms_quantify_MSIP(xcms.xcms)
     xcms.se <- xcms.se[,xcms.se$sample.type=="Sample"]
   }
 
@@ -837,7 +837,7 @@ get_xcms_iso_fraction <- function(xcms.xcms){
 
   ### feature data
   {
-    xcms.se <- quantify(xcms.xcms,method="max",value = "maxo",missing = 1)
+    xcms.se <- get_xcms_quantify_MSIP(xcms.xcms)
     xcms.se <- xcms.se[,xcms.se$sample.type=="Sample"]
      xcms.rda <- rowData(xcms.se)%>%
       as.data.frame()
@@ -944,7 +944,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
   ### load spectra database
   {
     Spectra_database <- Spectra(cpdb)
-    Spectra_database <- get_Spectra_MEM_backend(Spectra_database)
+    Spectra_database <- Spectra_set_MEM_backend(Spectra_database)
     Spectra_database <- filterPolarity(Spectra_database,
                                        unique(polarity(xcms.xcms)))
 
@@ -964,7 +964,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
         filterSpectra_below_PrecursorMz()%>%
         normalizeSpectra(norm_to = "max")%>%
         filterSpectraIntensity(ratio = 0.05)%>%
-        get_Spectra_MEM_backend()%>%
+        Spectra_set_MEM_backend()%>%
         applyProcessing()
       #if ("from_iso" %in% spectraVariables(sp.ms2)) {
       #  sp.ms2 <- sp.ms2[!sp.ms2$from_iso]
@@ -1068,7 +1068,7 @@ xcms_get_feature_isopattern_score <- function(xcms.xcms,
 
   ### data to calc isopattern
   {
-    xcms.se <- quantify(xcms.xcms,missing = 1,method="max",value = "maxo")
+    xcms.se <- get_xcms_quantify_MSIP(xcms.xcms)
     xcms.se <- xcms.se[,is.na(xcms.se$isotope_tracer)]
     xcms.se <- xcms.se[,!xcms.se$sample.type%in% "Blank"]
   }
@@ -1133,6 +1133,8 @@ get_xcms_feature_all_candidate <- function(xcms.xcms){
 }
 
 xcms_get_feature_annotation <- function(xcms.xcms,
+                                        cpdb,
+                                        cpdb.keys = c("name","formula","smiles"),
                                         ...){
 
 
@@ -1144,6 +1146,8 @@ xcms_get_feature_annotation <- function(xcms.xcms,
   xcms.fdf$rt_ref <- NA
   for (i in 1:nrow(xcms.fdf)) {
 
+
+   # message_with_time(i)
     this.mz <- xcms.fdf$mzmed[i]
     candi.compound_id <- xcms.fdf$candidate.id[[i]]
     candi.mz <- xcms.fdf$candidate.mz[[i]]
@@ -1166,10 +1170,19 @@ xcms_get_feature_annotation <- function(xcms.xcms,
     xcms.fdf$adduct[i] <- candi.adduct[selected]
     xcms.fdf$score[i] <- score[selected]
     xcms.fdf$mz_ref[i] <- candi.mz[selected]
-    #xcms.fdf$rt_ref[i] <- candi.msdbid[selected]
 
   }
 
+
+  ### Comp info
+  {
+
+    dbinfo <- get_CompDb_info(cpdb,
+                              xcms.fdf$compound_id,
+                              keys = cpdb.keys)
+    xcms.fdf[,colnames(dbinfo)] <- dbinfo
+
+  }
 
 
   featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
@@ -2330,4 +2343,12 @@ cbind_Chromatograms <- function(...){
   xchrom@featureData <- chrom.featureData
   xchrom@.processHistory <- chrom.processHistory
   return(xchrom)
+}
+
+
+
+get_xcms_quantify_MSIP <- function(xcms.xcms){
+
+  quantify(xcms.xcms,missing = 1,method="max",value = "intb")
+
 }

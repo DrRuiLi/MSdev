@@ -666,7 +666,7 @@ plot_CFM_annotated_Spectra <- function(cfmd){
 #'
 CFM_annotate_isotopologues <- function(sp,
                                  cfmd,
-                                 isotope = "[13]C",
+                                 iso_ele = "[13]C",
                                  iso_count = 0 ,
                                  ppm = 20){
 
@@ -684,19 +684,21 @@ CFM_annotate_isotopologues <- function(sp,
     cfm.peaks.data <-  cfmd@peak_assignment%>%
     dplyr::mutate(mz = 0)
 
-
-  iso.mz.diff <- (0:iso_count)*chemform_mz("[13]CC-1")
+  diff.formula <- paste0(iso_ele,get_ele_uniso(iso_ele),"-1")
+  iso.mz.diff <- (0:iso_count)*chemform_mz(diff.formula)
   mz.labeled.m <- matrixSub(cfm.peaks.data$mz,-iso.mz.diff)%>%
     `colnames<-`(paste0("M",0:iso_count))%>%
     as.data.frame()%>%
     dplyr::mutate(fragment_group=cfm.peaks.data$fragment_group)%>%
     dplyr::distinct(M0,.keep_all = T)%>%
-    tidyr::pivot_longer(paste0("M",0:iso_count),names_to = "iso",values_to = "mz")
+    tidyr::pivot_longer(paste0("M",0:iso_count),
+                        names_to = "iso_count",
+                        values_to = "mz")
 
 
 
   sp.data <- get_Spectra_data(sp,var = "collisionEnergy")%>%
-    dplyr::mutate(fragment_group = NA,iso=NA)
+    dplyr::mutate(fragment_group = NA,iso_count=NA)
   if (nrow(sp.data)) {
 
 
@@ -705,7 +707,7 @@ CFM_annotate_isotopologues <- function(sp,
                                 mz2 = mz.labeled.m$mz,
                                 mz.ppm = ppm),
                   fragment_group = mz.labeled.m$fragment_group[idx],
-                   iso = mz.labeled.m$iso[idx])%>%
+                  iso_count = mz.labeled.m$iso_count[idx])%>%
     dplyr::select(-idx)
   }
 
@@ -1135,6 +1137,80 @@ CFM_spectra_data_int_weight <- function(sp.data,iso_count){
   return(sp.data.weighted)
 }
 
+CFM_spectra_data_merge <- function(sp.data,iso_count){
+
+
+
+  ### weighted intensity matrix
+  {
+    fg.idx <- split(1:nrow(sp.data),sp.data$fragment_group)
+    if (!length(fg.idx))  return(sp.data)
+    frag.iso.matrix <- matrix(
+      nrow = length(fg.idx),ncol = iso_count+1,
+      dimnames = list(names(fg.idx),paste0("M",0:iso_count)))
+    frag.int.sum <- c()
+    for (i.fg in seq_along(fg.idx)) {
+      x.df <- sp.data[fg.idx[[i.fg]],]
+      x.int <- x.df%>%
+        dplyr::select(-mz,-collisionEnergy)%>%
+        tidyr::pivot_wider(names_from ="iso_count",
+                           id_cols = "sp.id",
+                           values_from = "intensity",
+                           values_fn = sum)%>%
+        tibble::column_to_rownames("sp.id")%>%
+        dplyr::select(dplyr::starts_with("M"))%>%
+        as.matrix()
+      to.add <- setdiff(paste0("M",0:iso_count),colnames(x.int))
+      x.int <- cbind(matrix(0,nrow(x.int),length(to.add),
+                            dimnames = list(NULL,to.add)),x.int)
+      x.int <- x.int[,paste0("M",0:iso_count),drop =F]
+      x.int[is.na(x.int)] <- 0
+      if (ncol(x.int)==1) {
+        x.ratio <- x.int
+        x.ratio[,1] <- 1
+      }else{
+        x.ratio <- t(apply(x.int,1,function(z) z/sum(z)))
+      }
+      x.weight <- rowSums(x.int)
+      x.int.weighted <- apply(x.int,2,weighted.mean,w = x.weight)
+      x.ratio.weighted <- apply(x.ratio,2,weighted.mean,w = x.weight)
+      frag.iso.matrix[i.fg,] <- x.int.weighted
+      frag.int.sum[i.fg] <- sum(x.int.weighted)
+    }
+    names(frag.int.sum) <- names(fg.idx)
+
+  }
+
+
+  ### merge
+  {
+    sp.mz <- sp.data%>%
+      dplyr::filter(!is.na(fragment_group))%>%
+      dplyr::mutate(fg.iso = paste0(fragment_group,iso_count))
+
+    iso.peak.data <- frag.iso.matrix%>%
+      as.data.frame()%>%
+      rownames_to_column("fragment_group")%>%
+      tidyr::pivot_longer(starts_with("M"),
+                          names_to = "iso_count",
+                          values_to = "intensity")%>%
+      dplyr::mutate(sp.id= "combined_sp",
+                    fg.iso = paste0(fragment_group,iso_count),
+                    mz = sp.mz$mz[match(fg.iso,sp.mz$fg.iso)],
+                    merged = T )%>%
+      dplyr::filter(!is.na(mz))
+
+    sp.data$merged <- F
+    sp.data.weighted <- bind_rows(
+        sp.data,
+      iso.peak.data )%>%
+      dplyr::select(-fg.iso)
+
+
+  }
+  return(sp.data.weighted)
+}
+
 CFM_spectra_data_remove_natural <-function(sp.data,
                                            natural.ratio,
                                            if.map){
@@ -1192,7 +1268,9 @@ get_CFM_data_MSIPFragmentMap<- function(cfmd){
   cfmd.sp <- get_CFM_data_Spectra(cfmd)
   cfmd.msip.core <- get_MSIPCoreData(cfmd.sp,cfmd,0)
   cfmd.fg.map <- cfmd.msip.core@FG_map
-  MSIPFragmentMap_reduce_fragment(cfmd.fg.map)
+  #MSIPFragmentMap_reduce_fragment(cfmd.fg.map)
+
+  cfmd.fg.map
 }
 
 
@@ -1233,5 +1311,61 @@ get_CFM_data_from_smiles <- function(smiles = "NCC(O)=O",
 
 
 }
+
+
+
+
+shiny_vis_cfmd <- function(cfmd){
+
+
+  .ui <- function(){
+    fluidPage(
+      column(width = 6,
+             plotOutput(outputId = "heatmap_atom_map",height  = "800px")),
+      column(width = 6,
+             selectInput(inputId = "fg_id",choices = sort(unique(cfmd@fragment_define$fragment_group)),
+                         label = "Fragment group",selected = cfmd@fragment_define$fragment_group[1]),
+             selectInput(inputId = "fragment",label = "fragment",
+                         choices = sort(unique(cfmd@fragment_define$fragment_id)),
+                         selected = cfmd@fragment_define$fragment_id[1] ),
+             visNetworkOutput(outputId = "atom_map",height  = "800px"))
+    )
+
+  }
+
+  .server <- function(){
+    function(input, output, session) {
+
+      output$heatmap_atom_map <- renderPlot({
+        get_CFM_data_MSIPFragmentMap(cfmd)%>%
+          heatmap_MSIPFragmentMap()
+      })
+
+      output$atom_map <- renderVisNetwork({
+        vis_cfm_data_fragment_atom_map(cfmd ,input$fragment)
+      })
+
+      observeEvent(input$fg_id,{
+        x <- cfmd@fragment_define%>%
+          dplyr::filter(fragment_group == input$fg_id)
+        updateSelectInput(inputId = "fragment",choices = x$fragment_id)
+      })
+
+    }
+  }
+
+  ### Start Shiny APP
+  {
+    shinyApp(ui = .ui(),
+             server = .server(),
+             options = list(host = "0.0.0.0",
+                            #port = 6548,
+                            launch.browser = T))
+  }
+
+
+}
+
+
 
 

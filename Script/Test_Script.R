@@ -464,11 +464,6 @@ sapply(iso.data,function(x){
 a <- MSIP_solve_test(msdev.purity,
                      BPPARAM = SnowParam(workers = 6,
                                          progressbar = T))
-
-
-
-
-
 # Wed Jul 24 15:09:44 2024 ------------------------------
 {
 
@@ -530,4 +525,465 @@ a <- bplapply(1:10,
 })
 
 
+# Wed Jul 24 20:08:40 2024 vis------------------------------
+cfmd <- msdev.purity@statData$MSIP$isotopologues_data$FT00210_Negative$CFM_annotation
+
+get_cfm_data_sdf_igraph(cfmd)%>%
+  vis_sdf_igraph() %>%
+  htmlwidgets::onRender("
+    function(el, x) {
+      var container = document.getElementById(el.id);
+      container.style.border = '2px solid black';  // Add border
+      container.style.padding = '10px';  // Optional: Add padding
+      container.style.margin = '0 auto';
+      container.style.display = 'block';
+    }
+  ")%>%
+  open_visNet()
+
+
+# Thu Jul 25 13:49:01 2024 ------------------------------
+{
+  library(devtools)
+  load_all()
+  msdev.purity <- load_as_var("C:/Users/91879/OneDrive/Code/R/data/MSIP_data/240601_ThreeGroup/MSdev_2024_07_19.Rdata")
+  process.info <- MSIP_solve_computation_evaluate(msdev.purity)
+
+}
+
+# Fri Jul 26 14:57:41 2024 ------------------------------
+{
+  msdev.purity <- load_as_var("C:/Users/91879/OneDrive/Code/R/data/MSIP_data/240601_ThreeGroup/MSdev_2024_07_19.Rdata")
+  iso.data <- msdev.purity@statData$MSIP$isotopologues_data$FT12300_Positive
+  msip.core <- iso.data$MSIP_result$M4$U
+  heatmap_MSIPFragmentMap(msip.core@FG_map)
+  sp.data <- shiny_get_sp_data(iso.data,sample = "U","M4")
+  shiny_plotly_iso_data_spectra(sp.data)%>%
+    open_visNet()
+
+  heatmap_MSIPIsoformMap(msip.core@solve$MSIPIsoformMap)
+
+}
+
+# Sat Jul 27 16:03:41 2024 MSIP solve------------------------------
+{
+  library(nloptr)
+  library(pracma)
+
+  find_all_solutions <- function(Q, c, A, b, lb, ub, x0 = NULL) {
+    # Ensure x0 is provided, if not set to a reasonable default
+    if (is.null(x0)) {
+      x0 <- rep(0.5, ncol(A))
+    }
+
+    # Define the objective function
+    objective_function <- function(x) {
+      0.5 * sum(x * (Q %*% x)) + sum(c * x)
+    }
+
+    # Define the gradient of the objective function
+    gradient_function <- function(x) {
+      Q %*% x + c
+    }
+
+    # Define the equality constraint function
+    constraint_function <- function(x) {
+      A %*% x - b
+    }
+
+    # Define the constraint gradient function
+    constraint_gradient <- function(x) {
+      A
+    }
+
+    # Solve the quadratic programming problem
+    result <- nloptr(
+      x0 = x0,
+      eval_f = objective_function,
+      eval_grad_f = gradient_function,
+      lb = lb,
+      ub = ub,
+      eval_g_eq = constraint_function,
+      eval_jac_g_eq = constraint_gradient,
+      opts = list(
+        algorithm = "NLOPT_LD_AUGLAG_EQ",
+        xtol_rel = 1.0e-8,
+        print_level = 2,
+        local_opts = list(
+          algorithm = "NLOPT_LD_SLSQP",
+          xtol_rel = 1.0e-8
+        )
+      )
+    )
+
+    # Find the particular solution
+    x_p <- result$solution
+
+    # Compute the null space of A
+    null_space_A <- null(A)
+
+    # Define a function to get general solutions
+    get_general_solution <- function(z) {
+      x_p + null_space_A %*% z
+    }
+
+    return(list(
+      particular_solution = x_p,
+      null_space_basis = null_space_A,
+      get_general_solution = get_general_solution
+    ))
+  }
+
+  # Define matrices and vectors for the problem
+  Q <- matrix(c(2, 0, 0,
+                0, 2, 0,
+                0, 0, 2), nrow = 3, byrow = TRUE)
+  c <- c(-2, -5, -3)
+  A <- matrix(c(1, 1, 0,
+                0, 1, 1), nrow = 2, byrow = TRUE)
+  b <- c(1, 2)
+  lb <- c(0, 0, 0)
+  ub <- c(1, 1, 1)
+
+  # Find all solutions
+  solutions <- find_all_solutions(Q, c, A, b, lb, ub)
+
+  # Example usage: Compute some specific general solutions
+  # The null space dimension
+  null_dim <- ncol(solutions$null_space_basis)
+
+  # Define free variable vectors based on null space dimension
+  z1 <- rep(1, null_dim)  # Example vector in the null space dimension
+  z2 <- rep(0, null_dim)  # Another example vector
+
+  x1 <- solutions$get_general_solution(z1)
+  x2 <- solutions$get_general_solution(z2)
+
+  print("Particular Solution:")
+  print(solutions$particular_solution)
+
+  print("Null Space Basis:")
+  print(solutions$null_space_basis)
+
+  print("General Solution with z1:")
+  print(x1)
+
+  print("General Solution with z2:")
+  print(x2)
+
+}
+# Sat Jul 27 19:10:34 2024 ------------------------------
+{
+  object <- msdev.purity
+  iso.data <- object@statData$MSIP$isotopologues_data
+  iso_ele <- get_MSdev_iso_ele(object)
+  target_ele <-get_ele_uniso(iso_ele)
+  all.sample <- .get_MSIP_tracer(object)
+  traced.sample <- names(na.omit(all.sample))
+
+
+  comp.eval.list <- list()
+  for (i in seq_along(iso.data)) {
+
+    cfmd <- iso.data[[i]]$CFM_annotation
+    cfmd.ig <- get_cfm_data_sdf_igraph(cfmd)
+    this.atom <- get_sdf_igraph_atom(cfmd.ig,ele = target_ele)
+    this.ele.count <-length(this.atom)
+    iso_count <- names(iso.data[[i]]$Spectra)%>%
+      str_isotope2_num()%>%
+      setdiff(0)
+
+
+
+    ms2_count.matrix <- iso.data[[i]]$compound_info$ms2_count
+
+    for (j in 1:nrow(comp.eval)) {
+      msip.core <- iso.data[[i]][["MSIP_result"]][[str_isotope2_num(comp.eval$iso_count[j])]][[
+        comp.eval$samples[j]]]
+      if (is.null(msip.core)) {
+        next
+      }
+
+      isoform.map <- (msip.core@solve$MSIPIsoformMap@isoform.map)
+      mes <- paste0("constraints: ",nrow(isoform.map),", variables: ",
+                    ncol((isoform.map)))%>%
+        paste0(collapse = "\n")
+      message(mes)
+      message("")
+    }
+
+
+
+
+
+    comp.eval.list[[i]] <-comp.eval
+
+  }
+
+  comp.eval <- do.call(rbind,comp.eval.list)
+
+  return(invisible( comp.eval ))
+
+}
+
+{
+
+  compound.df <- get_MSIP_compound_info(msdev.purity@statData$MSIP$isotopologues_data)
+  iso.data <- msdev.purity@statData$MSIP$isotopologues_data[[10]]
+  natural.ratio <- 0.8
+  cfmd <- iso.data$CFM_annotation
+  sp.iso <-iso.data$Spectra$M1$Con
+  plotSpec(sp.iso)
+  ppm = 10
+  iso_count <- 1
+
+  sp.raw.data <- get_Spectra_data(sp.iso)
+  sp.data <- CFM_annotate_isotopologues(sp.iso,
+                                        cfmd  = cfmd,
+                                        ppm = ppm,
+                                        iso_count = iso_count)
+
+
+  msip.core <- get_MSIPCoreData(sp.iso = sp.iso,
+                                cfmd = cfmd,
+                                iso_count = iso_count,
+                                ppm = ppm)
+  msip.core <- MSIPCore_solve(msip.core,int_thresh = 10^3.68)
+  #msip.core
+  heatmap_MSIPFragmentMap(msip.core@FG_map)
+  heatmap_MSIPIsotopomerMap(msip.core@solve$MSIPIsotopomerMap)
+  im <- msip.core@solve$MSIPIsotopomerMap
+  plot(lengths(im@solve$isoform.set)/length(im@isoform.defination),
+       im@solve$isoform.set.prob,
+       xlim = c(0,max( im@solve$isoform.set.prob)*1.2),
+       ylim = c(0,max( im@solve$isoform.set.prob)*1.2))
+  abline(a=0,b=1)
+
+
+
+}
+
+# Tue Jul 30 10:10:21 2024 ------------------------------
+msdev.gout.biomarkers <- MSdev("d:/2024.07.29.Gout.biomarkers/Result/")
+msdev.gout.biomarkers <- MSdev_msConvert(msdev.gout.biomarkers)
+msdev.gout.biomarkers <- MSdev_checkSampleInfo(msdev.gout.biomarkers)
+
+sp <- Spectra(
+  msdev.gout.biomarkers@sampleInfo$msData.files)
+sp.ms2 <- filterMsLevel(sp,2)
+sp.data <- spectraData(sp.ms2)%>%
+  as.data.frame()
+
+prm.file <- "c:/Users/91879/OneDrive/Code/R/Projecct/2023.09.11.Gout.SWY/Figure/biomarkers.to.PRM.xlsx"
+prm.list <- rbind( readxl::read_excel(prm.file,sheet = 1),
+                   readxl::read_excel(prm.file,sheet = 2))
+umz <- unique(precursorMz(sp.ms2))
+na.idx <- match_mz(umz, prm.list$mz)%>%is.na()
+umz[na.idx]
+
+sp.ms2 <- Spectra_set_MEM_backend(sp.ms2)
+
+sp.ms2.list  <- split(sp.ms2,precursorMz(sp.ms2))
+
+
+sp.ms2.list[[6]]%>%
+  combineSpectra_groupby_ce()%>%
+  plotSpec()
+
+
+sp.ms2.list[[2]]%>%
+  plot_Spectra_product_CE_curve()
+
+{
+this.sp <- sp.ms2.list[[3]]
+df <- data.frame(rt = rtime(this.sp),
+           int = (this.sp$totIonCurrent),
+           ce = collisionEnergy(this.sp))
+ggplot(df,aes(x = rt,y=int,col = factor(ce)))+
+  geom_point()
+
+rt.max <- df$rt[which.max(df$int)]
+this.sp <- this.sp%>%
+  filterRt(c(rt.max-5,rt.max+5))
+plot_Spectra_product_CE_curve(this.sp)+
+  scale_y_log10()
+
+  }
+
+# Tue Jul 30 15:35:18 2024 ------------------------------
+
+idx <- match_mz(precursorMz(sp.ms2),prm.list$mz  )
+sp.ms2$id <- idx
+sp.ms2.list  <- split(sp.ms2,sp.ms2$id )
+trans.list <-list()
+for (i in 1:nrow(prm.list)) {
+
+  this.sp <- sp.ms2.list[[i]]
+  df <- data.frame(rt = rtime(this.sp),
+                   int = (this.sp$totIonCurrent),
+                   ce = collisionEnergy(this.sp))
+  p1 <-ggplot(df,aes(x = rt,y=int,col = factor(ce)))+
+    geom_point()+
+    scale_color_npg()+
+    labs(x = "Retention time",y = "Intensity", col = "CE")
+
+  rt.max <- df$rt[which.max(df$int)]
+  this.sp <- this.sp%>%
+    filterRt(c(rt.max-5,rt.max+5))
+  p2 <- plot_Spectra_product_CE_curve(this.sp)+
+    #scale_y_log10()+
+    guides(col = guide_legend(ncol= 1))
+  p2
+  p3 <- this.sp%>%
+    combineSpectra_groupby_ce(minProp = 0.2)%>%
+    plot_Spectra_CE()
+  p3
+  p.merged <- p1/p2/p3+plot_annotation(title = paste0(
+    "Compound: ",prm.list$Compound_name[i],"\n",
+    "mz = ",format(prm.list$mz[i],digit = 4)," ; ",
+    "rt = ",format(prm.list$rt[i],digit = 2)
+  ))
+  #p.merged
+  #export_graph2pdf(p.merged,file_path = "a.pdf",
+  #              width = 7,height = 10,append = T)
+  message(i)
+   trans.df <- get_Spectra_transition(this.sp)%>%
+     dplyr::mutate(fid = prm.list$name[i],
+                   compund = prm.list$Compound_name[i])
+
+   trans.list[[i]] <-trans.df
+}
+
+trans.df.merged <-  do.call(rbind, trans.list)
+write.xlsx(trans.df.merged,file.dir = "b.xlsx")
+
+
+# Wed Jul 31 19:09:09 2024 ------------------------------
+qe.list <- list()
+for (i in 1:2) {
+
+  fdf <- msdev.purity@statData$MSIP$isotopologues_table[[i]]
+  fdf.m1 <- fdf%>%
+    dplyr::filter(int_mean_nontracer>1e5,
+                  ms1_purity > 0.8,
+                  !is.na(iso_seed),
+                  !is.na(compound_id),
+                  iso_count %in% c(0,1))%>%
+    dplyr::group_by(iso_seed)%>%
+    dplyr::filter(all(c(0,1) %in%iso_count ))
+
+  qe.list[[i]] <- QE_list_2feature_def(fdf.m1)
+
+
+}
+
+
+write.xlsx(qe.list , file.dir = "inclusion.list.xlsx")
+
+
+
+
+
+shiny_plotly_natural_ratio(0.123456789)%>%
+  open_visNet()
+
+
+# Fri Aug  2 15:25:08 2024 ------------------------------
+iso.data <- msdev.purity@statData$MSIP$isotopologues_data[[9]]
+
+m1.idx <- 1
+for (i in 1:63) {
+
+
+  iso.data <- msdev.purity@statData$MSIP$isotopologues_data[[i]]
+  if ("M1"%in%names(iso.data$MSIP_result)) {
+    m1.idx <- c(m1.idx,i)
+  }
+}
+m1.idx <- unique(m1.idx)
+
+i=3
+{
+
+  iso.data <- msdev.purity@statData$MSIP$isotopologues_data[[m1.idx[i]]]
+  message_with_time(iso.data$compound_info$name)
+  natural.ratio <- 0.8
+  cfmd <- iso.data$CFM_annotation
+  sp.iso <-iso.data$Spectra$M1$Con
+  plotSpec(sp.iso)
+  ppm = 5
+  iso_count <- 1
+
+  sp.raw.data <- get_Spectra_data(sp.iso)
+  sp.data <- CFM_annotate_isotopologues(sp.iso,
+                                        cfmd  = cfmd,
+                                        ppm = ppm,
+                                        iso_count = iso_count)
+
+
+  msip.core <- get_MSIPCoreData(sp.iso = sp.iso,
+                                cfmd = cfmd,
+                                iso_count = iso_count,
+                                ppm = ppm)
+  msip.core <- MSIPCore_solve(msip.core,
+                              int_thresh = 10^3.6,
+                              certainty_thresh = 0.8)
+  #msip.core
+  heatmap_MSIPFragmentMap(msip.core@FG_map)
+  #heatmap_MSIPIsotopomerMap(msip.core@solve$MSIPIsotopomerMap)
+  im <- msip.core@solve$MSIPIsotopomerMap
+
+  df <- data.frame(
+    natural.prob =lengths(im@solve$isotopomer.set)/length(im@isotopomer.defination),
+    predict.prob = im@solve$isotopomer.set.prob
+  )
+
+  ggplot(df)+
+    geom_point(aes(x = natural.prob,y = predict.prob),
+               color ="#C43E1C",size = 5)+
+    geom_abline(slope = 1,intercept = 0)+
+    labs(title = iso.data$compound_info$name)+
+    xlim(c(0,1))+
+    ylim(c(0,1))+
+    theme_bw()->p
+  p
+
+
+
+}
+open_plot_win(p)
+
+
+# Fri Aug  2 16:27:54 2024 ------------------------------
+{
+
+  load_all()
+  df <- data.frame(intensity = 10^runif(200,1,8))%>%
+    dplyr::mutate(weight = .intensity_weight(intensity))
+
+
+  ggplot(df)+
+    geom_point(aes(x = log10(intensity),y=weight))
+
+}
+
+
+# Sat Aug  3 19:45:47 2024 ------------------------------
+cfmd <- CFM_annotate_by_predict("N[C@@H](CCC(O)=O)C(O)=O",param_adduct = "[M-H]-")
+cfmd <- CFM_data_get_igraph(cfmd)%>%
+  cfm_data_get_fragment_group()%>%
+  CFM_data_get_atom_map()
+
+{
+  load_all()
+  shiny_vis_cfmd(cfmd)
+
+  }
+
+
+
+a <- msip.core@FG_map
+b <- a %>%
+  MSIPFragmentMap_filter_intensity()%>%
+  MSIPFragmentMap_filter_certainty()
 

@@ -1,7 +1,8 @@
 
-get_iso_cfm_compound_info <- function(iso.list,
+get_MSIP_compound_info <- function(object,
                                       vars =c("name","mz","rt","formula","adduct")){
 
+  iso.list <- object@statData$MSIP$isotopologues_data
   compound_info <-  lapply(iso.list, function(x){
     x$compound_info[c("name","compound_id","mz","rt","formula","smiles","score","adduct","polarity")]
     })%>%
@@ -172,7 +173,7 @@ shiny_get_sp_data <- function(iso_data,
                       y = -100* intensity/max(intensity))
     )
 
-    sp.data <- rbind(sp.m0.frag.data,sp.iso.frag.data)%>%
+    sp.data <- bind_rows(sp.m0.frag.data,sp.iso.frag.data)%>%
       dplyr::mutate(annotated = !is.na(fragment_group),
                     collisionEnergy = as.character(collisionEnergy),
                     collisionEnergy = case_when(annotated~paste0("CE=",collisionEnergy),
@@ -686,5 +687,82 @@ shiny_heatmap_fgmap <- function(msip.core.data){
     heatmap_MSIPFragmentMap(fg.map )
 
   }
+
+}
+
+
+shiny_plotly_natural_ratio <- function(natural.ratio = 0.6 ){
+
+  df <- data.frame(
+    name = c("labeled","natural"),
+    value =c(1-natural.ratio,natural.ratio)
+  )%>%
+    dplyr::mutate(y = cumsum(value)-0.1,
+                  label = paste0(name,"\n",
+                                 format(value*100,digits = 2),"%"),
+                  label = case_when(value < 0.1~"",
+                                    T~label))
+
+  plot_ly(df)%>%
+    add_bars(x = I(1), y = ~value,color = ~name,textposition = 'inside',
+             colors = c(c("natrual" = "#eeeeee","labeled" = "#AA3310")),
+             marker = list(line = list(color = 'grey', width = 3)))%>%
+    add_text(x = I(1), y = ~y,text = ~label)%>%
+    layout(barmode = "stack",
+           title  = "Nature",
+           xaxis = list(
+             title = "",
+             showgrid = FALSE,
+             zeroline = FALSE,
+             showline = FALSE,
+             showticklabels = FALSE
+           ),
+           yaxis = list(
+             title = "",
+             showgrid = FALSE,
+             zeroline = FALSE,
+             showline = FALSE,
+             showticklabels = FALSE
+           ),
+           plot_bgcolor = 'rgba(0,0,0,0)',
+           paper_bgcolor = 'rgba(0,0,0,0)',
+           margin = list(l = 0, r = 0, b = 0, t = 0, pad = 0),
+           showlegend = FALSE)%>%
+    config(displayModeBar = FALSE)
+
+}
+
+
+shiny_plotly_iso_distribution <- function(){
+
+  df <- data.frame(
+    name = c("M0","M1","M2","M3"),
+    value =c(0.4,0.2,0.1,0.3)
+  )
+
+  plot_ly(df)%>%
+    add_bars(x = I(1), y = ~value,color = ~name,
+             marker = list(line = list(color = 'grey', width = 3)))%>%
+    layout(barmode = "stack",
+           title  = "Nature",
+           xaxis = list(
+             title = "",
+             showgrid = FALSE,
+             zeroline = FALSE,
+             showline = FALSE,
+             showticklabels = FALSE
+           ),
+           yaxis = list(
+             title = "",
+             showgrid = FALSE,
+             zeroline = FALSE,
+             showline = FALSE,
+             showticklabels = FALSE
+           ),
+           plot_bgcolor = 'rgba(0,0,0,0)',
+           paper_bgcolor = 'rgba(0,0,0,0)',
+           margin = list(l = 0, r = 0, b = 0, t = 0, pad = 0),
+           showlegend = FALSE)%>%
+    config(displayModeBar = FALSE)
 
 }

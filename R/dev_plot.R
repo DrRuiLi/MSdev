@@ -243,3 +243,14 @@ make_group_color <- function(x,palette = "random",verbose=F){
   names(col)<-x
   return(col)
 }
+
+
+scale_color_random <- function(...) {
+  ggplot2::discrete_scale("colour", "random", function(n) randomcoloR::distinctColorPalette(n), ...)
+}
+
+
+
+scale_fill_random <- function(...) {
+  ggplot2::discrete_scale("fill", "random", function(n) randomcoloR::distinctColorPalette(n), ...)
+}

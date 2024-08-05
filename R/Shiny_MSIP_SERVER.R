@@ -2,16 +2,14 @@ MSIP_shiny_server <- function(object){
 
 
 
-  all.sample <- names(na.omit(.get_MSIP_tracer(object)))
-  iso.data.list.statistic <- object@statData$MSIP$isotopologues_data
+  #all.sample <- names(na.omit(.get_MSIP_tracer(object)))
+
+  ### for renderDT, to avoid fresh
+  object.temp <- object
 
   function(input, output, session) {
 
-    output$test_info <- renderPrint({
-
-
-
-    })
+    output$test_info <- renderPrint({})
 
 
     ### reactiveval
@@ -59,7 +57,8 @@ MSIP_shiny_server <- function(object){
     {
       output$metabolite_table <- renderDT({
 
-        get_iso_cfm_compound_info(iso.data.list.statistic)%>%
+        message_with_time("metabolite_table")
+        get_MSIP_compound_info(object.temp)%>%
           datatable(options = list(columns =list(orderable = F)),
                     selection = list(
             mode = 'single', selected =1
@@ -67,15 +66,19 @@ MSIP_shiny_server <- function(object){
 
 
       observeEvent(input$metabolite_table_rows_selected,{
+        message_with_time("metabolite_table_rows_selected")
         fid.selected(
           names(iso.data.list())[input$metabolite_table_rows_selected]
         )
         iso.data( iso.data.list()[[fid.selected()]])
-        all.iso.count <- names(iso.data()$MSIP_result)
 
+
+        all.iso.count <- names(iso.data()$MSIP_result)
         updateSelectInput(inputId = "select_iso_count",
                           choices = all.iso.count,
                           selected = all.iso.count[1])
+
+        all.sample <- names(iso.data()$MSIP_result[[input$select_iso_count]])
         updateSelectInput(inputId = "select_sample",
                           choices = all.sample,
                           selected = all.sample[1])
@@ -85,22 +88,19 @@ MSIP_shiny_server <- function(object){
 
     }
 
-    ### selectInput, iso.count and sample
+    ### selectInput, iso_count and sample
     {
 
-      observeEvent(input$metabolite_table_rows_selected,{
-
-
-
-      })
-
-
       output$compound_info <- renderText(
+
         shiny_isotopologues_info(iso_data = iso.data(),
                                  sample = input$select_sample,
                                  iso_count =  input$select_iso_count)
       )
 
+
+
+      natural.ratio <- reactiveVal(0)
 
       observeEvent(
         { iso.data()
@@ -108,9 +108,14 @@ MSIP_shiny_server <- function(object){
           input$select_iso_count
         },
         {
+          message_with_time("shiny_get_sp_data")
           iso.sp.data(shiny_get_sp_data(iso_data =  iso.data(),
                                         sample = input$select_sample,
                                         iso_count =  input$select_iso_count))
+
+          natural.ratio(
+            iso.data()[["compound_info"]][["natural_matrix"]][[input$select_iso_count, input$select_sample]]
+          )
           sp.x.clicked(NULL)
           #message("input$select_sample")
           fragment_group_selected(
@@ -135,6 +140,7 @@ MSIP_shiny_server <- function(object){
 
       output$plotly_ms2_sp <-  renderPlotly({
 
+        message_with_time("plotly_ms2_sp")
 
         shiny_plotly_iso_data_spectra(iso.sp.data())
 
@@ -145,17 +151,33 @@ MSIP_shiny_server <- function(object){
                    source = "plotly_ms2_sp",
                    priority  = "event")},
         {
+          message_with_time("plotly_click")
           sp.x.clicked(event_data(
             "plotly_click",
             source = "plotly_ms2_sp",
             priority  = "event")$x) })
+
       observeEvent(sp.x.clicked(),{
+        message_with_time("sp.x.clicked")
         fragment_group_selected(
           shiny_get_fg(sp.data = iso.sp.data(),
                        x = sp.x.clicked()))
       })
 
 
+      output$plotly_natural_ratio <-  renderPlotly({
+        message_with_time("plotly_natural_ratio")
+
+        shiny_plotly_natural_ratio(natural.ratio())
+
+      })
+
+      output$plotly_fragment_iso_distribution <-  renderPlotly({
+        message_with_time("plotly_fragment_iso_distribution")
+
+        shiny_plotly_iso_distribution()
+
+      })
 
 
 
@@ -164,6 +186,7 @@ MSIP_shiny_server <- function(object){
     ### atom prob
     {
       observeEvent(iso.data(),{
+        message_with_time("shiny_get_fg_ig")
         mol.ig(shiny_get_fg_ig(iso_data =iso.data(),
                                fid = 1  ))
       })
@@ -180,6 +203,7 @@ MSIP_shiny_server <- function(object){
       })
 
       observeEvent(input$select_fragment_id,{
+        message_with_time("select_fragment_id")
         frag.ig(shiny_get_fg_ig(iso_data  =iso.data(),
                                 fid = input$select_fragment_id  ))
         atom_map <- shiny_get_atom_map(iso.data(),
@@ -261,7 +285,7 @@ MSIP_shiny_server <- function(object){
 
     }
 
-    ### fg map
+    ### fg map and re-calc
     {
 
       fg.include <- reactiveVal()
@@ -282,55 +306,60 @@ MSIP_shiny_server <- function(object){
       })
 
 
-      output$include_fragment_group <- renderDT({
+      if(F){
+        output$include_fragment_group <- renderDT({
 
-        message_with_time("include_fragment_group")
-        shiny_DT_fg_include(msip.core.data())%>%
-          datatable(escape = F,
-                    #rownames = F,
-                    colnames = " ",
-                    selection = "none",
-                    extensions = c("Scroller"),
-                    options = list(
-                      columnDefs = list(
-                        list(width = "100px",
-                             targets = 0:1)
-                      ),
-                      info = F,
-                      autoWidth = F,
-                      ordering = F,
-                      searching= F,
-                      deferRender = TRUE,
-                      scrollY = 500,
-                      scroller = T))
+          message_with_time("include_fragment_group")
+          shiny_DT_fg_include(msip.core.data())%>%
+            datatable(escape = F,
+                      #rownames = F,
+                      colnames = " ",
+                      selection = "none",
+                      extensions = c("Scroller"),
+                      options = list(
+                        columnDefs = list(
+                          list(width = "100px",
+                               targets = 0:1)
+                        ),
+                        info = F,
+                        autoWidth = F,
+                        ordering = F,
+                        searching= F,
+                        deferRender = TRUE,
+                        scrollY = 500,
+                        scroller = T))
 
-      })
+        })
 
-      observeEvent(input$include_fragment_group_cell_clicked,{
+        observeEvent(input$include_fragment_group_cell_clicked,{
 
-        message_with_time("observeEvent316")
-        if (length(input$include_fragment_group_cell_clicked$row )) {
+          message_with_time("observeEvent316")
+          if (length(input$include_fragment_group_cell_clicked$row )) {
 
 
-          fg.include(shiny_update_fg_include(frag.include = fg.include(),
-                                    input$include_fragment_group_cell_clicked$row))
-          #print(x)
-          x <- shiny_update_msip_core_data(msip.core.data(),fg.include())
-          x <- shiny_DT_fg_include(x)
-          dataTableProxy("include_fragment_group")%>%
-            replaceData(x,resetPaging = F,clearSelection ="none" )
-        }
+            fg.include(shiny_update_fg_include(frag.include = fg.include(),
+                                               input$include_fragment_group_cell_clicked$row))
+            #print(x)
+            x <- shiny_update_msip_core_data(msip.core.data(),fg.include())
+            x <- shiny_DT_fg_include(x)
+            dataTableProxy("include_fragment_group")%>%
+              replaceData(x,resetPaging = F,clearSelection ="none" )
+          }
 
-      })
+        })
+      }
+
 
       observeEvent(input$Re_calc_button,{
 
         message_with_time("observeEvent333")
         shinybusy::show_modal_spinner()
 
-        x <- shiny_update_msip_core_data(msip.core.data(),fg.include())
+        x <- shiny_update_msip_core_data(msip.core.data(),
+                                         fg.include())
         message_with_time("Re-solve")
-        x <- MSIPCore_solve(x)
+        x <- MSIPCore_solve(x,int_thresh = input$int_thresh,
+                            certainty_thresh = input$certainty_thresh)
 
 
         message_with_time("update result")
