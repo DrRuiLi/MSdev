@@ -18,13 +18,25 @@ get_MSIP_compound_info <- function(object,
 
 
 
-shiny_plotly_iso_data_spectra <- function(sp.data){
+shiny_plotly_iso_data_spectra <- function(sp.data,
+                                          show.rawdata = T){
 
   ### if
   {
     if (all(is.na(sp.data))) {
       p <- shiny_plotly_empty(source = "plotly_ms2_sp")
       return(p)
+    }
+
+    if (show.rawdata) {
+      sp.data <- sp.data
+
+    }else{
+      sp.data <- sp.data %>%
+        dplyr::filter(merged)%>%
+        dplyr::group_by(sp.id)%>%
+        dplyr::mutate(y = 100*y/max(abs(y)))%>%
+        dplyr::ungroup()
     }
   }
 
@@ -37,28 +49,30 @@ shiny_plotly_iso_data_spectra <- function(sp.data){
     ymin <- min((sp.data$y))*1.2
 
     p <- sp.data%>%
+      dplyr::mutate(annotated = case_when(merged~T,
+                                               T~F))%>%
       plot_ly(source = "plotly_ms2_sp")%>%
       highlight_key(~fragment_group
                     )%>%
       add_segments(x = ~x , xend = ~x,
                    y = I(0),yend = ~y,
                    alpha = 0.5,
-                   colors = c(" "= "#BBBBBB",
-                              "CE=NA"="#4DBBD5FF",
+                   colors = c("FALSE"= "#BBBBBB",
+                              "TRUE"="#FF7F0E",
                               "CE=10"="#4DBBD5FF",
                               "CE=20" ="#FF7F0E",
                               "CE=40" ="#E64B35FF" ),
                    showlegend = F,
-                   color = ~ collisionEnergy)%>%
+                   color = ~ merged)%>%
       dplyr::filter(annotated)%>%
       add_markers(x = ~x,
                   y = ~y,
-                  colors = c(" "= "#BBBBBB",
-                             "CE=NA"="#4DBBD5FF",
+                  colors = c("FALSE"= "#BBBBBB",
+                             "TRUE"="#FF7F0E",
                              "CE=10"="#4DBBD5FF",
                              "CE=20" ="#FF7F0E",
                              "CE=40" ="#E64B35FF"),
-                  color = ~ collisionEnergy,
+                  color = ~ merged,
                   text = ~ hover_label,
                   #hovertemplate = "%{text}<extra></extra>",
                   hoverinfo = "text",
@@ -74,6 +88,9 @@ shiny_plotly_iso_data_spectra <- function(sp.data){
                           title = "mz",
                           showgrid = T),
              yaxis = list(showgrid = T,
+                          tickformat = ifelse(show.rawdata,
+                                              ".1e",
+                                              "0"),
                           range = c(-ymax,ymax),
                           title = "Relative intensity"))%>%
       event_register("plotly_click")
@@ -147,14 +164,14 @@ shiny_get_sp_data <- function(iso_data,
   {
     sp.m0 <-iso_data$Spectra$M0%>%
       unname()%>%
-      do.call(c,.)%>%
-      combineSpectra_groupby_ce(minProp = 0.01)%>%
-      applyProcessing()
+      do.call(c,.)
 
     sp.m0.frag.data <- CFM_annotate_isotopologues(sp.m0,
                                                   cfmd  = iso_data$CFM_annotation,
                                                   ppm = 10,
                                                   iso_count = 0)
+    sp.m0.frag.data <- CFM_spectra_data_merge(sp.m0.frag.data,0)
+
     if (!nrow(iso_data$MSIP_result[[iso_count]][[sample]]@Spectra_data)){
       sp.iso.frag.data<- sp.m0.frag.data[0,]
       }else{
@@ -164,13 +181,13 @@ shiny_get_sp_data <- function(iso_data,
     }
 
     sp.m0.frag.data <- sp.m0.frag.data%>%
-      dplyr::mutate(sp.id=1,x = mz,
-                    y = 100*intensity/max(intensity))
+      dplyr::mutate(sp.id="M0",x = mz,
+                    y =intensity)
     suppressWarnings(
       sp.iso.frag.data <- sp.iso.frag.data%>%
-        dplyr::mutate(sp.id=2,
+        dplyr::mutate(sp.id="Mn",
                       x = mz,
-                      y = -100* intensity/max(intensity))
+                      y = -intensity)
     )
 
     sp.data <- bind_rows(sp.m0.frag.data,sp.iso.frag.data)%>%
@@ -198,6 +215,16 @@ shiny_plotly_empty <- function(...){
     layout(xaxis = list(range = c(0,100)),
            yaxis = list(range = c(-100,100)))
 }
+
+shiny_plotly_void <- function(...){
+  plot_ly(...)%>%
+    add_markers(x = 0,y = 0,color = I("transparent"))%>%
+    layout(xaxis = list(range = c(0,100),
+                        showline = FALSE, showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+           yaxis = list(range = c(-100,100),
+                        showline = FALSE, showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+}
+
 
 shiny_get_fg <- function(sp.data,
                          x){
@@ -693,6 +720,9 @@ shiny_heatmap_fgmap <- function(msip.core.data){
 
 shiny_plotly_natural_ratio <- function(natural.ratio = 0.6 ){
 
+
+  natural.ratio <- ifelse(natural.ratio>1,1,natural.ratio)
+
   df <- data.frame(
     name = c("labeled","natural"),
     value =c(1-natural.ratio,natural.ratio)
@@ -704,27 +734,13 @@ shiny_plotly_natural_ratio <- function(natural.ratio = 0.6 ){
                                     T~label))
 
   plot_ly(df)%>%
-    add_bars(x = I(1), y = ~value,color = ~name,textposition = 'inside',
-             colors = c(c("natrual" = "#eeeeee","labeled" = "#AA3310")),
-             marker = list(line = list(color = 'grey', width = 3)))%>%
-    add_text(x = I(1), y = ~y,text = ~label)%>%
-    layout(barmode = "stack",
-           title  = "Nature",
-           xaxis = list(
-             title = "",
-             showgrid = FALSE,
-             zeroline = FALSE,
-             showline = FALSE,
-             showticklabels = FALSE
-           ),
-           yaxis = list(
-             title = "",
-             showgrid = FALSE,
-             zeroline = FALSE,
-             showline = FALSE,
-             showticklabels = FALSE
-           ),
-           plot_bgcolor = 'rgba(0,0,0,0)',
+    add_pie(label  = ~name, value  = ~value,
+            textinfo = 'label+percent',
+            marker = list(colors =c("labeled" = "#AA3310","natural" = "#eeeeee"))
+          )%>%
+    #open_visNet()
+   # add_text(x = I(1), y = ~y,text = ~label)%>%
+    layout(plot_bgcolor = 'rgba(0,0,0,0)',
            paper_bgcolor = 'rgba(0,0,0,0)',
            margin = list(l = 0, r = 0, b = 0, t = 0, pad = 0),
            showlegend = FALSE)%>%
@@ -733,36 +749,53 @@ shiny_plotly_natural_ratio <- function(natural.ratio = 0.6 ){
 }
 
 
-shiny_plotly_iso_distribution <- function(){
+shiny_get_frag_iso_distribution<- function(msip.core,fg.id){
+
+
+  if (is.null(msip.core)) return(NULL)
+  msip.fgmap <- msip.core@FG_map
+
+  if (is.null(msip.fgmap)|isEmpty(msip.fgmap)) return(NULL)
+
+  fgm <- msip.fgmap@fragment.ratio.matrix
+  if (!fg.id%in% rownames(fgm)) return(NULL)
+
+  iso.dis <- fgm[fg.id,]
+  return(iso.dis)
+}
+
+
+
+shiny_plotly_iso_distribution <- function(frag.iso.distribution){
+
+  #frag.iso.distribution <- make_vector(runif(5),paste0("M",0:4))
+  if ( is.null(frag.iso.distribution)) {
+    return(shiny_plotly_void())
+  }
 
   df <- data.frame(
-    name = c("M0","M1","M2","M3"),
-    value =c(0.4,0.2,0.1,0.3)
-  )
+    name = names(frag.iso.distribution),
+    value = frag.iso.distribution
+  )%>%
+    dplyr::mutate(iso_count = str_isotope2_num(name),
+                  iso_count = normalize_max_min(iso_count),
+                  name = factor(name),
+                  col = colramp()(iso_count),
+                  col = substr(col,1,7),
+                  col = case_when(iso_count==0~"#eeeeee",
+                                  T~col))
+
 
   plot_ly(df)%>%
-    add_bars(x = I(1), y = ~value,color = ~name,
-             marker = list(line = list(color = 'grey', width = 3)))%>%
-    layout(barmode = "stack",
-           title  = "Nature",
-           xaxis = list(
-             title = "",
-             showgrid = FALSE,
-             zeroline = FALSE,
-             showline = FALSE,
-             showticklabels = FALSE
-           ),
-           yaxis = list(
-             title = "",
-             showgrid = FALSE,
-             zeroline = FALSE,
-             showline = FALSE,
-             showticklabels = FALSE
-           ),
-           plot_bgcolor = 'rgba(0,0,0,0)',
+    dplyr::arrange(name)%>%
+    add_pie(label = ~name,value = ~value,
+            textinfo = 'label+percent',sort = F,
+            marker = list(colors = ~I(col)))%>%
+    layout(plot_bgcolor = 'rgba(0,0,0,0)',
            paper_bgcolor = 'rgba(0,0,0,0)',
            margin = list(l = 0, r = 0, b = 0, t = 0, pad = 0),
            showlegend = FALSE)%>%
     config(displayModeBar = FALSE)
 
 }
+

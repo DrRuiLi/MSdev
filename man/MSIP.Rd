@@ -7,7 +7,7 @@
 CFM_annotate_isotopologues(
   sp,
   cfmd,
-  isotope = "[13]C",
+  iso_ele = "[13]C",
   iso_count = 0,
   ppm = 20
 )
@@ -17,11 +17,11 @@ CFM_annotate_isotopologues(
 
 \item{cfmd}{cfmd_data}
 
-\item{isotope}{"\link{13}C"}
-
 \item{iso_count}{num}
 
 \item{ppm}{20}
+
+\item{isotope}{"\link{13}C"}
 }
 \value{
 null

@@ -2,7 +2,7 @@
 % Please edit documentation in R/MSIP-function.R
 \name{MSIP_get_isotopologues_data}
 \alias{MSIP_get_isotopologues_data}
-\title{get_MSdev_isotopologues}
+\title{MSIP_get_isotopologues_data}
 \usage{
 MSIP_get_isotopologues_data(object, iso_ele = get_MSdev_iso_ele(object))
 }

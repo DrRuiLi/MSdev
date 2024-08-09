@@ -54,6 +54,8 @@ MSIPCore_solve <- function(MSIPCoreData,
   #MSIPFragmentMap_reduced <- MSIPFragmentMap_reduce_fragment(MSIPFragmentMap_reduced)
   MSIPFragmentMap_temp <- MSIPFragmentMap_filter_intensity(MSIPCoreData@FG_map,int_thresh = int_thresh)
   MSIPFragmentMap_temp <- MSIPFragmentMap_filter_certainty(MSIPFragmentMap_temp,certainty_thresh = certainty_thresh)
+  MSIPCoreData@FG_map <- MSIPFragmentMap_temp
+
   MSIPFragmentMap_reduced <- MSIPFragmentMap_include_fragment(MSIPFragmentMap_temp)
 
   if (isEmpty(MSIPFragmentMap_reduced))
@@ -68,7 +70,6 @@ MSIPCore_solve <- function(MSIPCoreData,
                                        MSIPFragmentMap_reduced)
   #MSIPIsotopomerMap <- MSIPIsotopomerMap_set_solve_GLPK(MSIPIsotopomerMap)
   MSIPIsotopomerMap <- MSIPIsotopomerMap_set_solve_QP(MSIPIsotopomerMap)
-  MSIPCoreData@FG_map <- MSIPFragmentMap_temp
   MSIPCoreData@solve$MSIPIsotopomerMap <- MSIPIsotopomerMap
   MSIPCoreData@solve$Atom_prob <- get_atom_prob_from_MSIPIsotopomerMap(MSIPIsotopomerMap)
 
@@ -186,19 +187,19 @@ get_MSIPIsotopomerMap <- function(MSIPCoreData){
     if (!is.null(MSIPCoreData@solve$MSIPIsotopomerMap)) {
       MSIPIsotopomerMap <- MSIPCoreData@solve$MSIPIsotopomerMap
       frag.ratio.matrix <- MSIPCoreData@FG_map@fragment.ratio.matrix
-      iso.form.ratio <- lapply(rownames(frag.ratio.matrix),function(fg.id){
+      isotopomer.ratio <- lapply(rownames(frag.ratio.matrix),function(fg.id){
         z <- frag.ratio.matrix[fg.id,]
         names(z) <- paste0(fg.id,"_",names(z))
         return(z)
       })
-      iso.form.ratio <- unlist(iso.form.ratio)
-      iso.form.intensity <- MSIPCoreData@FG_map@fragment.intensity[gsub(x = names(iso.form.ratio),
+      isotopomer.ratio <- unlist(isotopomer.ratio)
+      isotopomer.intensity <- MSIPCoreData@FG_map@fragment.intensity[gsub(x = names(isotopomer.ratio),
                                                                         pattern = "_M.*",replacement = "")]
-      names(iso.form.intensity) <- names(iso.form.ratio)
+      names(isotopomer.intensity) <- names(isotopomer.ratio)
 
-      MSIPIsotopomerMap@isotopomer.map <- MSIPIsotopomerMap@isotopomer.map[names(iso.form.ratio),,drop = F]
-      MSIPIsotopomerMap@isotopomer.ratio <- MSIPIsotopomerMap@isotopomer.ratio[names(iso.form.ratio)]
-      MSIPIsotopomerMap@isotopomer.intensity <- iso.form.intensity
+      #MSIPIsotopomerMap@isotopomer.map <- MSIPIsotopomerMap@isotopomer.map[names(isotopomer.ratio),,drop = F]
+      #MSIPIsotopomerMap@isotopomer.ratio <- MSIPIsotopomerMap@isotopomer.ratio[names(isotopomer.ratio)]
+      #MSIPIsotopomerMap@isotopomer.intensity <- isotopomer.intensity
       return(MSIPIsotopomerMap)
 
     }
@@ -220,56 +221,56 @@ get_MSIPIsotopomerMap <- function(MSIPCoreData){
   ### all possible iso form
   {
     if.combn <- choose(ncol(frag.atom.matrix),frag.max.iso)
-    iso.form <- combn(colnames(frag.atom.matrix),frag.max.iso,simplify = F)
-    names(iso.form) <- paste0("isotopomer_",num2str(1:length(iso.form)))
+    isotopomer <- combn(colnames(frag.atom.matrix),frag.max.iso,simplify = F)
+    names(isotopomer) <- paste0("isotopomer_",num2str(1:length(isotopomer)))
   }
   ### iso form map to iso ratio
   {
-    iso.form.maps <- bplapply(seq_along(iso.form),
+    isotopomer.maps <- bplapply(seq_along(isotopomer),
                             function(if.id){
                               #message_with_time(if.id)
                               lapply(rownames(frag.atom.matrix),function(fg.id){
 
                                 get_iso_prob_chatgpt(frag.atom.matrix[fg.id,],
-                                             iso.form[[ if.id ]])
+                                             isotopomer[[ if.id ]])
                               })->mp
                               names(mp) <- rownames(frag.atom.matrix)
                               unlist(mp)
                             },BPPARAM = SerialParam(progressbar = F))
 
-    iso.form.map <- t(do.call(bind_rows,iso.form.maps))
-    iso.form.map <- iso.form.map[order(rownames(iso.form.map)),,drop = F]
-    iso.form.map[is.na(iso.form.map)] <- 0
-    rownames(iso.form.map) <- sub(pattern = ".",x = rownames(iso.form.map),
+    isotopomer.map <- t(do.call(bind_rows,isotopomer.maps))
+    isotopomer.map <- isotopomer.map[order(rownames(isotopomer.map)),,drop = F]
+    isotopomer.map[is.na(isotopomer.map)] <- 0
+    rownames(isotopomer.map) <- sub(pattern = ".",x = rownames(isotopomer.map),
                                   replacement = "_",fixed = T)
-    colnames(iso.form.map) <- names(iso.form)
+    colnames(isotopomer.map) <- names(isotopomer)
   }
 
   ### iso form ratio
   {
 
-    iso.form.ratio <- lapply(rownames(frag.ratio.matrix),function(fg.id){
+    isotopomer.ratio <- lapply(rownames(frag.ratio.matrix),function(fg.id){
       z <- frag.ratio.matrix[fg.id,]
       names(z) <- paste0(fg.id,"_",names(z))
       return(z)
     })
-    iso.form.ratio <- unlist(iso.form.ratio)
+    isotopomer.ratio <- unlist(isotopomer.ratio)
 
   }
 
   ### iso form intensity
   {
-    iso.form.intensity <- MSIPCoreData@FG_map@fragment.intensity[gsub(x = names(iso.form.ratio),
+    isotopomer.intensity <- MSIPCoreData@FG_map@fragment.intensity[gsub(x = names(isotopomer.ratio),
                                                                           pattern = "_M.*",replacement = "")]
-    names(iso.form.intensity) <- names(iso.form.ratio)
+    names(isotopomer.intensity) <- names(isotopomer.ratio)
   }
 
 
 
-  MSIPIsotopomerMap@isotopomer.defination <-iso.form
-  MSIPIsotopomerMap@isotopomer.map <-iso.form.map
-  MSIPIsotopomerMap@isotopomer.ratio <-iso.form.ratio
-  MSIPIsotopomerMap@isotopomer.intensity <-iso.form.intensity
+  MSIPIsotopomerMap@isotopomer.defination <-isotopomer
+  MSIPIsotopomerMap@isotopomer.map <-isotopomer.map
+  MSIPIsotopomerMap@isotopomer.ratio <-isotopomer.ratio
+  MSIPIsotopomerMap@isotopomer.intensity <-isotopomer.intensity
   return(MSIPIsotopomerMap)
 
 }
@@ -346,7 +347,7 @@ get_MSIPFragmentMap_certainty <- function(MSIPFragmentMap){
   frag.certainty <- apply(frag.matrix,1,function(x){
     sum(x==1)/sum(x)
   })
-
+  frag.certainty[rowSums(frag.matrix)==0] <- 0
   return(frag.certainty)
 }
 
@@ -534,13 +535,13 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap){
 
 heatmap_MSIPIsotopomerMap <- function(MSIPIsotopomerMap){
 
-  iso.form.set.map <- MSIPIsotopomerMap@isotopomer.map
-  iso.form.prob <- MSIPIsotopomerMap@isotopomer.probability
-  iso.form.ratio <- MSIPIsotopomerMap@isotopomer.ratio
-  iso.form.ratio <- iso.form.ratio[rownames(iso.form.set.map)]
+  isotopomer.set.map <- MSIPIsotopomerMap@isotopomer.map
+  isotopomer.prob <- MSIPIsotopomerMap@isotopomer.probability
+  isotopomer.ratio <- MSIPIsotopomerMap@isotopomer.ratio
+  isotopomer.ratio <- isotopomer.ratio[rownames(isotopomer.set.map)]
   top.anno <- HeatmapAnnotation(
-      ifp = iso.form.prob,
-      col = list(ifp = colramp(c(0,0.00000001,max(iso.form.prob)),
+      ifp = isotopomer.prob,
+      col = list(ifp = colramp(c(0,0.00000001,max(isotopomer.prob)),
                                c("grey","white","#0095D4"))),
       annotation_label  = list(ifp = "iso form probability"),
       show_annotation_name = F,
@@ -548,11 +549,11 @@ heatmap_MSIPIsotopomerMap <- function(MSIPIsotopomerMap){
     )
 
 
-  Heatmap(iso.form.set.map,
+  Heatmap(isotopomer.set.map,
 
           border = T,
           border_gp = gpar(col = "#808080"),
-          row_split = str_extract(rownames(iso.form.set.map),".*(?=_M)"),
+          row_split = str_extract(rownames(isotopomer.set.map),".*(?=_M)"),
           row_title = NULL,
 
           cluster_rows = F,
@@ -565,7 +566,7 @@ heatmap_MSIPIsotopomerMap <- function(MSIPIsotopomerMap){
           cluster_columns = T,
           top_annotation = top.anno,
           left_annotation = HeatmapAnnotation(
-            Ratio = iso.form.ratio,
+            Ratio = isotopomer.ratio,
             col = list(Ratio = colramp(c(0,0.0000001,0.5,1),
                                        c("grey","white","#F7844F","#B20C26"))),
             which = "row",
@@ -586,52 +587,52 @@ MSIPIsotopomerMap_set_split <- function(MSIPIsotopomerMap,
   ### iso form ratio
   {
     frag.ratio.matrix <- MSIPFragmentMap_reduced@fragment.ratio.matrix
-    iso.form.ratio <- lapply(rownames(frag.ratio.matrix),function(fg.id){
+    isotopomer.ratio <- lapply(rownames(frag.ratio.matrix),function(fg.id){
       z <- frag.ratio.matrix[fg.id,]
       names(z) <- paste0(fg.id,"_",names(z))
       return(z)
     })
-    iso.form.ratio <- unlist(iso.form.ratio)
+    isotopomer.ratio <- unlist(isotopomer.ratio)
   }
 
 
   ### iso form intensity
   {
-    iso.form.intensity <- MSIPFragmentMap_reduced@fragment.intensity[gsub(x = names(iso.form.ratio),
+    isotopomer.intensity <- MSIPFragmentMap_reduced@fragment.intensity[gsub(x = names(isotopomer.ratio),
          pattern = "_M.*",replacement = "")]
-    names(iso.form.intensity) <- names(iso.form.ratio)
+    names(isotopomer.intensity) <- names(isotopomer.ratio)
   }
 
   ### iso form map
   {
 
-    iso.form.map <-MSIPIsotopomerMap@isotopomer.map
+    isotopomer.map <-MSIPIsotopomerMap@isotopomer.map
     to.add <- matrix(0,
-                     nrow = length(setdiff(names(iso.form.ratio),
-                                           rownames(iso.form.map))),
-                     ncol = ncol(iso.form.map),
-                     dimnames = list(rowname = setdiff(names(iso.form.ratio),
-                                                       rownames(iso.form.map))))
-    iso.form.map <- rbind(iso.form.map,to.add)
-    iso.form.map <- iso.form.map[names(iso.form.ratio), ,drop = F]
+                     nrow = length(setdiff(names(isotopomer.ratio),
+                                           rownames(isotopomer.map))),
+                     ncol = ncol(isotopomer.map),
+                     dimnames = list(rowname = setdiff(names(isotopomer.ratio),
+                                                       rownames(isotopomer.map))))
+    isotopomer.map <- rbind(isotopomer.map,to.add)
+    isotopomer.map <- isotopomer.map[names(isotopomer.ratio), ,drop = F]
 
   }
 
   ### iso form set
   {
-    iso.form.split <- apply(iso.form.map, 2, function(x){paste0(x,collapse = ";")})
-    iso.form.split <-  split(seq_along(MSIPIsotopomerMap@isotopomer.defination),iso.form.split)
-    names(iso.form.split) <- paste0("isotopomer_set_",num2str(seq_along(iso.form.split)))
-    iso.form.set.map <- sapply(iso.form.split ,
-                               function(x){ iso.form.map[,x[1]] },
+    isotopomer.split <- apply(isotopomer.map, 2, function(x){paste0(x,collapse = ";")})
+    isotopomer.split <-  split(seq_along(MSIPIsotopomerMap@isotopomer.defination),isotopomer.split)
+    names(isotopomer.split) <- paste0("isotopomer_set_",num2str(seq_along(isotopomer.split)))
+    isotopomer.set.map <- sapply(isotopomer.split ,
+                               function(x){ isotopomer.map[,x[1]] },
                                USE.NAMES=F)
   }
 
 
-  MSIPIsotopomerMap@solve$isotopomer.set <- iso.form.split
-  MSIPIsotopomerMap@solve$isotopomer.set.map <- iso.form.set.map
-  MSIPIsotopomerMap@solve$isotopomer.set.ratio <- iso.form.ratio
-  MSIPIsotopomerMap@solve$isotopomer.set.intensity<- iso.form.intensity
+  MSIPIsotopomerMap@solve$isotopomer.set <- isotopomer.split
+  MSIPIsotopomerMap@solve$isotopomer.set.map <- isotopomer.set.map
+  MSIPIsotopomerMap@solve$isotopomer.set.ratio <- isotopomer.ratio
+  MSIPIsotopomerMap@solve$isotopomer.set.intensity<- isotopomer.intensity
 
   return(MSIPIsotopomerMap)
 }
@@ -801,5 +802,35 @@ MSIPCore_vis_isotopomer <- function(MSIPCoreData,cfmd,id,...){
   vis_sdf_igraph(ig,highlight = atom.to.show,...)
 
 }
+
+
+plotly_MSIPCore_pred_nature_prob  <- function(MSIPCoreData){
+
+  im <- MSIPCoreData@solve$MSIPIsotopomerMap
+
+  df <- data.frame(
+    natural.prob =lengths(im@solve$isotopomer.set)/length(im@isotopomer.defination),
+    predict.prob = im@solve$isotopomer.set.prob
+  )
+
+
+  p <- plot_ly(df)%>%
+    add_markers(x = ~natural.prob,y = ~predict.prob,size = I(100))%>%
+    add_lines(x = c(0,1),y= c(0,1),color = I("grey"))%>%
+    layout(
+           plot_bgcolor = 'rgba(0,0,0,0)',
+           paper_bgcolor = 'rgba(0,0,0,0)',
+           margin = list(l = 0, r = 0, b = 0, t = 0, pad = 0),
+           showlegend = FALSE)%>%
+    config(displayModeBar = FALSE)
+
+  #open_visNet(p)
+  p
+
+
+
+
+}
+
 
 

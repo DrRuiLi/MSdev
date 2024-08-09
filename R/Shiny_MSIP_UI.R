@@ -12,8 +12,7 @@ MSIP_shiny_ui <- function() {
         h4("1. Click Metablolite table to select a metabolite\n"),
         h4("2. Select isotope label count\n"),
         h4("3. Click colored peaks to select annotated fragment group\n"),
-        h4(
-          "4. Select a fragment to view its atom map to molecule, notice there are possibly multiple fragment for one peak(fragment group)\n"
+        h4("4. Select a fragment to view its atom map to molecule, notice there are possibly multiple fragment for one peak(fragment group)\n"
         ),
         h4(
           "5. Molecule Structure show the labeled probability of atom in their filled color, and probability of maping to fragment atom in their border color"
@@ -47,8 +46,8 @@ MSIP_shiny_ui <- function() {
         column(
           3,
           checkboxInput(
-            inputId = "spectra_show_noise",
-            label = "show noise"
+            inputId = "spectra_show_rawdata",
+            label = "show raw data"
           )
         ),
         column(
@@ -61,13 +60,10 @@ MSIP_shiny_ui <- function() {
           column(width = 10,
             plotlyOutput(outputId = "plotly_ms2_sp")
           ),
-          column(width = 1,
-            plotlyOutput(outputId = "plotly_natural_ratio"),
+          column(width = 2,
+            plotlyOutput(outputId = "plotly_natural_ratio",height  = "200px"),
+            plotlyOutput(outputId = "plotly_fragment_iso_distribution",height  = "200px"),
             style = "padding:0px; margin:0px; background-color: #FFFFFF"
-          ),
-          column(width = 1,
-                 plotlyOutput(outputId = "plotly_fragment_iso_distribution"),
-                 style = "padding:0px; margin:0px; background-color: #FFFFFF"
           )
         )
       ),
@@ -127,13 +123,13 @@ MSIP_shiny_ui <- function() {
               column(width = 5,
                      sliderInput(inputId = "int_thresh",
                                  label = "Intensity threshold (log10)",
-                                 ticks  = F,
+                                 ticks  = F,step = 0.01,
                                  min = 0,max = 10,value = 3 )
                      ),
               column(width = 5,
                      sliderInput(inputId = "certainty_thresh",
                                  label = "Certainty threshold",
-                                 ticks  = F,
+                                 ticks  = F,step = 0.01,
                                  min = 0,max = 1,value = 0.8)),
               column(width = 2,
                      actionButton(
@@ -150,7 +146,17 @@ MSIP_shiny_ui <- function() {
                   width = "800px"
                 )
             )
+          ),
+        tabPanel(
+          title = "Natural distribution",
+          fluidRow(
+            plotlyOutput(
+              outputId = "pred_nat_prob"
+            )
           )
+
+
+        )
       )
     )
 
@@ -212,7 +218,7 @@ MSIP_shiny_Acq_ui <- function() {
           plotlyOutput(outputId = "p4", height  = "300px")
         ))
       )
-    ),
+    )
 
 
   )

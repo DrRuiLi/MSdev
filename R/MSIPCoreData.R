@@ -63,7 +63,7 @@ setMethod(f = "show",
 
             x <- paste0("Map of ",
                         yellow(length(object@isotopomer.defination)),
-                        " iso-forms, ",
+                        " isotopomers, ",
                         yellow(nrow(object@isotopomer.map)),
                         " labeled fragment")
             message(x)

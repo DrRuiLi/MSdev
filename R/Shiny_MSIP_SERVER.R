@@ -1,9 +1,6 @@
 MSIP_shiny_server <- function(object){
 
 
-
-  #all.sample <- names(na.omit(.get_MSIP_tracer(object)))
-
   ### for renderDT, to avoid fresh
   object.temp <- object
 
@@ -142,7 +139,8 @@ MSIP_shiny_server <- function(object){
 
         message_with_time("plotly_ms2_sp")
 
-        shiny_plotly_iso_data_spectra(iso.sp.data())
+        shiny_plotly_iso_data_spectra(iso.sp.data(),
+                                      show.rawdata = input$spectra_show_rawdata)
 
       })
 
@@ -173,9 +171,11 @@ MSIP_shiny_server <- function(object){
       })
 
       output$plotly_fragment_iso_distribution <-  renderPlotly({
-        message_with_time("plotly_fragment_iso_distribution")
-
-        shiny_plotly_iso_distribution()
+        message_with_time("shiny_get_frag_iso_distribution")
+        frag.iso.dis <- shiny_get_frag_iso_distribution(msip.core.data(),
+                                                        fragment_group_selected())
+        message_with_time("shiny_plotly_iso_distribution")
+        shiny_plotly_iso_distribution(frag.iso.dis)
 
       })
 
@@ -355,19 +355,21 @@ MSIP_shiny_server <- function(object){
         message_with_time("observeEvent333")
         shinybusy::show_modal_spinner()
 
-        x <- shiny_update_msip_core_data(msip.core.data(),
-                                         fg.include())
-        message_with_time("Re-solve")
-        x <- MSIPCore_solve(x,int_thresh = input$int_thresh,
-                            certainty_thresh = input$certainty_thresh)
+        #x <- shiny_update_msip_core_data(msip.core.data(),
+        #                                 fg.include())
+        message_with_time("ReSolve")
+        msip.core.data(MSIPCore_solve(msip.core.data(),
+                                      int_thresh = 10^input$int_thresh,
+                            certainty_thresh = input$certainty_thresh))
 
 
-        message_with_time("update result")
+        message_with_time("update_result")
         iso.data.list(shiny_update_iso_data_list(
-          iso.data.list =iso.data.list(),feature_id = fid.selected(),
+          iso.data.list =iso.data.list(),
+          feature_id = fid.selected(),
           sample =input$select_sample,
           iso_count =  input$select_iso_count,
-          msip.core.data  = x
+          msip.core.data  = msip.core.data()
         ))
 
         iso.data( iso.data.list()[[fid.selected()]])
@@ -377,6 +379,18 @@ MSIP_shiny_server <- function(object){
 
     }
 
+
+    ### predict and natural prob
+    {
+      output$pred_nat_prob <- renderPlotly({
+
+        message_with_time("pred_nat_prob")
+        plotly_MSIPCore_pred_nature_prob(msip.core.data())
+
+
+      })
+
+    }
 
 
 

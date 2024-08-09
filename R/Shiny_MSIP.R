@@ -29,8 +29,6 @@ MSIP_shiny_start <- function(object){
 #' @import  shiny
 MSIP_shiny_Acq <- function(object){
 
-
-
   ### Start Shiny APP
   {
     shinyApp(ui = MSIP_shiny_Acq_ui(),

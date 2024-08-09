@@ -763,7 +763,7 @@ get_cfm_data_sdf_igraph(cfmd)%>%
 
 }
 
-# Tue Jul 30 10:10:21 2024 ------------------------------
+# Tue Jul 30 10:10:21 2024 SWY biomarkers------------------------------
 msdev.gout.biomarkers <- MSdev("d:/2024.07.29.Gout.biomarkers/Result/")
 msdev.gout.biomarkers <- MSdev_msConvert(msdev.gout.biomarkers)
 msdev.gout.biomarkers <- MSdev_checkSampleInfo(msdev.gout.biomarkers)
@@ -902,7 +902,7 @@ for (i in 1:63) {
 }
 m1.idx <- unique(m1.idx)
 
-i=3
+i=6
 {
 
   iso.data <- msdev.purity@statData$MSIP$isotopologues_data[[m1.idx[i]]]
@@ -986,4 +986,93 @@ a <- msip.core@FG_map
 b <- a %>%
   MSIPFragmentMap_filter_intensity()%>%
   MSIPFragmentMap_filter_certainty()
+
+# Tue Aug  6 16:07:14 2024 ------------------------------
+i=9
+{
+
+  iso.data <- msdev.purity@statData$MSIP$isotopologues_data[[i]]
+  message_with_time(iso.data$compound_info$name)
+  natural.ratio <- 0.8
+  cfmd <- iso.data$CFM_annotation
+  sp.iso <-iso.data$Spectra$M1$Con
+  plotSpec(sp.iso)
+  ppm = 5
+  iso_count <- 1
+
+  sp.raw.data <- get_Spectra_data(sp.iso)
+  sp.data <- CFM_annotate_isotopologues(sp.iso,
+                                        cfmd  = cfmd,
+                                        ppm = ppm,
+                                        iso_count = iso_count)
+
+
+  msip.core <- get_MSIPCoreData(sp.iso = sp.iso,
+                                cfmd = cfmd,
+                                iso_count = iso_count,
+                                ppm = ppm)
+  msip.core <- MSIPCore_solve(msip.core,
+                              int_thresh = 10^6,
+                              certainty_thresh = 0.5)
+
+  #msip.core
+  heatmap_MSIPFragmentMap(msip.core@FG_map)
+  #heatmap_MSIPIsotopomerMap(msip.core@solve$MSIPIsotopomerMap)
+  im <- msip.core@solve$MSIPIsotopomerMap
+
+  df <- data.frame(
+    natural.prob =lengths(im@solve$isotopomer.set)/length(im@isotopomer.defination),
+    predict.prob = im@solve$isotopomer.set.prob
+  )
+
+  ggplot(df)+
+    geom_point(aes(x = natural.prob,y = predict.prob),
+               color ="#C43E1C",size = 5)+
+    geom_abline(slope = 1,intercept = 0)+
+    labs(title = iso.data$compound_info$name)+
+    xlim(c(0,1))+
+    ylim(c(0,1))+
+    theme_bw()->p
+  p
+
+
+
+}
+
+
+
+# Fri Aug  9 14:04:43 2024 shiny spectra update------------------------------
+
+
+iso.data <- msdev.purity@statData$MSIP$isotopologues_data[[8]]
+
+shiny_get_sp_data(iso.data,"U","M2")%>%
+  shiny_plotly_iso_data_spectra(show.rawdata = F)%>%
+  open_visNet()
+
+
+
+iso_data <- iso.data
+sample <- "U"
+iso_count = "M1"
+
+
+
+sp.m0.frag.data <- CFM_annotate_isotopologues(sp.m0,
+                                              cfmd  = iso_data$CFM_annotation,
+                                              ppm = 10,
+                                              iso_count = 0)
+
+sp.frag.data <- CFM_spectra_data_merge(sp.frag.data,iso_count)
+
+
+shiny_plotly_iso_distribution()%>%
+  open_visNet()
+
+
+plot_ly(x=1,y=1) %>%
+  layout(
+    xaxis = list(showline = FALSE, showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+    yaxis = list(showline = FALSE, showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE)
+  )%>%open_visNet()
 

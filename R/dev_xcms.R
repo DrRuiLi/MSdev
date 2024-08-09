@@ -403,6 +403,9 @@ XChromatograms_rt_unit <- function(xchroms,unit_to = "s"){
 
   }
 
+  pda <- pData(xchroms)
+  fda <- fData(xchroms)
+
   xchroms.trans <- bplapply(1:length(xchroms),FUN = f,
                               xchroms = xchroms,
                               unit.mulit = unit.mulit,
@@ -412,6 +415,9 @@ XChromatograms_rt_unit <- function(xchroms,unit_to = "s"){
                                     nrow = dim(xchroms)[1],byrow = T)
 
   message( "rtime value ", round(rtime.max,0), " change to ", round(max(rtime(xchroms.trans[1,1])),0))
+
+  pda -> pData(xchroms.trans)
+  fda -> fData(xchroms.trans)
 
   return(xchroms.trans)
 

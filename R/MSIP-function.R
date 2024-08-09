@@ -561,13 +561,20 @@ MSIP_solve_isotopologues <- function(object,
                                   cfmd = this.cfmd,
                                   iso_count = this.iso.count,
                                   ppm = ppm)
-    msip.core <- MSIPCore_correct_natural(msip.core,
-                                          cfmd = this.cfmd,
-                                          natural.ratio = this.natural.ratio)
+    #msip.core <- MSIPCore_correct_natural(msip.core,
+    #                                      cfmd = this.cfmd,
+    #                                      natural.ratio = this.natural.ratio)
 
     msip.core <- MSIPCore_solve(msip.core)
     time_consume <- Sys.time()-start_time
-    message_with_time("total of ",length(msip.core@solve$MSIPIsoformMap@isoform.defination)," isoforms, time consume: ",
+    MSIPIsoformMap <- msip.core@solve$MSIPIsoformMap
+    if (is.null(MSIPIsoformMap )){
+      n_isotopomers <- 0
+    }else{
+      n_isotopomers <- length(MSIPIsoformMap@isoform.defination)
+    }
+
+    message_with_time("total of ",n_isotopomers," isotopomers, time consume: ",
                       format(time_consume,digits = 4))
 
     return(msip.core)
