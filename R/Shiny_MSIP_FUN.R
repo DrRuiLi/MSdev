@@ -222,7 +222,12 @@ shiny_plotly_void <- function(...){
     layout(xaxis = list(range = c(0,100),
                         showline = FALSE, showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
            yaxis = list(range = c(-100,100),
-                        showline = FALSE, showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+                        showline = FALSE, showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))%>%
+    layout(plot_bgcolor = 'rgba(0,0,0,0)',
+           paper_bgcolor = 'rgba(0,0,0,0)',
+           margin = list(l = 0, r = 0, b = 0, t = 0, pad = 0),
+           showlegend = FALSE)%>%
+    config(displayModeBar = FALSE)
 }
 
 
