@@ -565,7 +565,7 @@ MSIP_solve_isotopologues <- function(object,
     #                                      cfmd = this.cfmd,
     #                                      natural.ratio = this.natural.ratio)
 
-    msip.core <- MSIPCore_solve(msip.core)
+    msip.core <- MSIPCore_solve(msip.core,int_thresh = 3.8,certainty_thresh = 0.8)
     time_consume <- Sys.time()-start_time
     MSIPIsoformMap <- msip.core@solve$MSIPIsoformMap
     if (is.null(MSIPIsoformMap )){
@@ -765,5 +765,17 @@ MSIP_solve_computation_evaluate <- function(object, show_message = F){
   comp.eval <- do.call(rbind,comp.eval.list)
 
   return(invisible( comp.eval ))
+
+}
+
+
+
+
+MSIP_from_Spectra <- function(object){
+
+
+  sp.ms2 <- onDiskData_retrieve(object@spectra$MS2_Spectra)
+
+
 
 }

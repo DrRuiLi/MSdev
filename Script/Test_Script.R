@@ -1076,3 +1076,16 @@ plot_ly(x=1,y=1) %>%
     yaxis = list(showline = FALSE, showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE)
   )%>%open_visNet()
 
+
+# Sat Aug 10 19:17:52 2024 ------------------------------
+ggplot(a.df)+
+  geom_point(aes(x = rtime , y = precursorMz))
+
+
+plot_ly(a.df)%>%
+  add_markers(x = ~rtime , y = ~precursorMz )%>%
+  open_visNet()
+
+
+
+
