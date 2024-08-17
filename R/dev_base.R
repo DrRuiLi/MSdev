@@ -207,3 +207,13 @@ make_vector <- function(x = NA ,name = NULL){
   return(x)
 
 }
+
+
+match_path <- function(p1,p2){
+
+  p1 <- normalizePath(p1,mustWork = F)
+  p2 <- normalizePath(p2,mustWork = F)
+  match(p1,p2)
+
+
+}

@@ -697,10 +697,10 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
 
     xcms.fdf.temp <- featureDefinitions(xcms.xcms)
     rownames(xcms.fdf) <- xcms.fdf$feature_id
-    xcms.fdf.temp[,"iso_seed"] <- xcms.fdf[rownames(xcms.fdf.temp),"iso_seed"]
-    xcms.fdf.temp[,"iso_count"] <- xcms.fdf[rownames(xcms.fdf.temp),"iso_count"]
-    xcms.fdf.temp[,"iso_connection_group"] <- xcms.fdf[rownames(xcms.fdf.temp),"iso_connection_group"]
-    xcms.fdf.temp -> featureDefinitions(xcms.xcms)
+    xcms.fdf.temp[,"iso_seed"] <- xcms.fdf[xcms.fdf.temp$feature_id,"iso_seed"]
+    xcms.fdf.temp[,"iso_count"] <- xcms.fdf[xcms.fdf.temp$feature_id,"iso_count"]
+    xcms.fdf.temp[,"iso_connection_group"] <- xcms.fdf[xcms.fdf.temp$feature_id,"iso_connection_group"]
+    xcms.fdf.temp -> xcms.xcms@msFeatureData$featureDefinitions
     message("Get ",
             sum(!is.na(xcms.fdf.temp[,"iso_count"])),
             " isotopologues")
@@ -2356,5 +2356,75 @@ cbind_Chromatograms <- function(...){
 get_xcms_quantify_MSIP <- function(xcms.xcms){
 
   quantify(xcms.xcms,missing = 1,method="max",value = "intb")
+
+}
+
+
+
+
+xcms_from_ms2_spectra <- function(sp.ms2 ,
+                                  sample.info,
+                                  ppm = 10,
+                                  peak_width = 60){
+
+
+  ### assign
+  {
+    sample.info <- sample.info%>%
+      dplyr::mutate(sample = as.numeric(factor(msData.files)))
+
+    sp.peaks.df <- data.frame(
+      mz = precursorMz(sp.ms2),
+      rt = rtime(sp.ms2),
+      sample.files = dataOrigin(sp.ms2),
+      into = sp.ms2$totIonCurrent
+    )%>%
+      dplyr::mutate(sample = match_path(sample.files,
+                                        sample.info$msData.files),
+                    sample = sample.info$sample[sample])
+
+    sp.peaks.matrix <- sp.peaks.df%>%
+      dplyr::mutate(mzmin = mz,
+                    mzmax = mz,
+                    rtmin = rt-peak_width/2,
+                    rtmax = rt+peak_width/2)%>%
+      dplyr::select(any_of(c("mz","mzmin","mzmax",
+                             "rt","rtmin","rtmax",
+                             "into","intb","maxo",
+                             "sn","sample")))%>%
+      as.matrix()
+    sp.peaks.data <- sp.peaks.df%>%
+      dplyr::mutate(ms_level = 1,
+                    ms_level = as.integer(ms_level),
+                    is_filled = F)%>%
+      S4Vectors::DataFrame()
+
+    ion_df <- do_groupChromPeaks_density(sp.peaks.df,
+                                         bw = peak_width,
+                                         sampleGroups = sample.info$sample.source,
+                                         binSize = 0.001,
+                                         ppm = ppm)
+
+    ion_table <-ion_df %>%
+      dplyr::mutate(feature_id = paste0("FTS",num2str(1:n())),
+                    .before = mzmed)
+
+  }
+
+
+  ### simulate xcms class
+  {
+
+    MsFeatureData <- new("MsFeatureData",
+                         chromPeaks = sp.peaks.matrix,
+                         chromPeakData = sp.peaks.data,
+                         featureDefinitions =  S4Vectors::DataFrame(ion_table))
+
+    XCMSnExp <- new("XCMSnExp")
+    XCMSnExp@msFeatureData <- MsFeatureData
+  }
+
+
+  return(XCMSnExp)
 
 }

@@ -1089,3 +1089,98 @@ plot_ly(a.df)%>%
 
 
 
+
+# Mon Aug 12 23:44:20 2024 ------------------------------
+sp.df <- spectraData(sp.ms2)%>%
+  as.data.frame()%>%
+  dplyr::distinct(polarity,precursorMz)
+
+
+object <- msdev.M1
+ppm = 5
+
+
+sp.ms2 <- onDiskData_retrieve(object@spectra$MS2_Spectra)
+
+sp.pol <- filterPolarity(sp.ms2,1)
+sample.info.pol <- object@sampleInfo%>%
+  dplyr::filter(polarity == 1)%>%
+  dplyr::mutate(sample = as.numeric(factor(msData.files)))
+
+{
+  sp.peaks.df <- data.frame(
+    mz = precursorMz(sp.pol),
+    rt = rtime(sp.pol),
+    sample.files = dataOrigin(sp.pol),
+    into = sp.pol$totIonCurrent
+  )%>%
+    dplyr::mutate(sample = match_path(sample.files,
+                                      sample.info.pol$msData.files),
+                  sample = sample.info.pol$sample[sample])
+
+  sp.peaks.matrix <- sp.peaks.df%>%
+    dplyr::mutate(mzmin = mz,
+                  mzmax = mz,
+                  rtmin = rt-30,
+                  rtmax = rt+30)%>%
+    dplyr::select(any_of(c("mz","mzmin","mzmax",
+                           "rt","rtmin","rtmax",
+                           "into","intb","maxo",
+                           "sn","sample")))%>%
+    as.matrix()
+  sp.peaks.data <- sp.peaks.df%>%
+    dplyr::mutate(ms_level = 1,
+                  ms_level = as.integer(ms_level),
+                  is_filled = F)%>%
+    S4Vectors::DataFrame()
+
+  ion_df <- do_groupChromPeaks_density(sp.peaks.df,
+                                       bw = 30,
+                                       sampleGroups = sample.info.pol$sample.source,
+                                       binSize = 0.001,
+                                       ppm = ppm)
+
+  ion_table <-ion_df %>%
+    dplyr::mutate(feature_id = paste0("FTS",num2str(1:n())),
+                  .before = mzmed)
+
+  }
+
+MsFeatureData <- new("MsFeatureData",
+                     chromPeaks = sp.peaks.matrix,
+                     chromPeakData = sp.peaks.data,
+                     featureDefinitions =  S4Vectors::DataFrame(ion_table))
+XCMSnExp <- new("XCMSnExp")
+XCMSnExp@msFeatureData <- MsFeatureData
+
+
+b <- featureDefinitions(a)%>%
+  as.data.frame()
+edit_df_in_excel(b)
+
+
+
+plot_ly(b)%>%
+  add_markers(x = ~mzmed,
+              y = ~rtmed,
+              color = ~iso_seed)%>%
+  open_visNet()
+
+
+
+xcms.xcms <- xcms_from_ms2_spectra(sp.pol,
+                           sample.info,ppm = 5,
+                           peak_width = 30
+                           )
+a <- xcms_get_feature_isotopologues(xcms.xcms,
+                                    ppm = 10,
+                                    max_label = 5,
+                                    rt.tol = 30)
+nrow(featureDefinitions(a))
+
+
+chemform_adduct("C5[13]C1H12O5",adduct = "[M+H]+")%>%format(digit=10)
+
+chemform_adduct("C3[13]C2H10N2O3",adduct = "[M+H]+")%>%format(digit=10)
+
+

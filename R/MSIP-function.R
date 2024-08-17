@@ -232,7 +232,7 @@ MSIP_get_isotopologues_data <- function(object,
 
   sp.ms2 <- onDiskData_retrieve(object@spectra$MS2_Spectra)
   sp.ms2$sample.source <- object@sampleInfo$sample.source[
-    match(sampleNames(sp.ms2),basename(object@sampleInfo$msData.files))]
+    match_path(dataOrigin(sp.ms2),object@sampleInfo$msData.files)]
   #cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
 
   ### Requirement in xcms features
@@ -338,7 +338,7 @@ MSIP_get_isotopologues_data <- function(object,
       {
         if ( length(this.list$Spectra$M0)==0 ) next
         if (is.na(this.list$compound_info$formula)) next
-        if (length(this.list$Spectra)<=1) next
+        if (length(this.list$Spectra)<1) next
 
         object@statData$MSIP$isotopologues_data[[paste0(seed.id[i_seed_id],"_",pol)]]$compound_info <- this.list$compound_info
         object@statData$MSIP$isotopologues_data[[paste0(seed.id[i_seed_id],"_",pol)]]$Spectra <- this.list$Spectra
@@ -455,6 +455,13 @@ get_MSdev_iso_acq_list <- function(object){
 
   }
   return(acq.list)
+}
+
+
+MSIP_export_isotopologues_table <- function(object){
+
+  isotopologues_list <- object@statData$MSIP$isotopologues_table
+
 }
 
 
@@ -644,7 +651,7 @@ MSIP_drop_isotopologues_tempdata <- function(object){
 
 
 
-get_iso_natural_ratio <- function(formula, iso_ele, ratio_matrix  ){
+get_iso_natural_ratio <- function(formula, iso_ele, ratio_matrix ){
 
   thresh = min(ratio_matrix)
   if (thresh < 1e-5)  thresh<- 1e-3
@@ -771,10 +778,32 @@ MSIP_solve_computation_evaluate <- function(object, show_message = F){
 
 
 
-MSIP_from_Spectra <- function(object){
+MSIP_from_Spectra <- function(object,
+                              ppm = 5,
+                              peak_width = 30){
 
 
   sp.ms2 <- onDiskData_retrieve(object@spectra$MS2_Spectra)
+  polarity.index <- c("0" = "Negative",
+                      "1" = "Positive")
+  for (i in 0:1) {
+    polarity.index[i]
+    sp.pol <- filterPolarity(sp.ms2,i)
+    sample.info.pol <- object@sampleInfo%>%
+      dplyr::filter(polarity == i)
+
+    xcms.pol <- xcms_from_ms2_spectra(sp.pol,
+                                      sample.info = sample.info.pol,
+                                      ppm = ppm,peak_width =peak_width )
+    xcms.pol <- xcms_get_feature_isotopologues(xcms.pol,
+                                               iso_ele = get_MSdev_iso_ele(object),
+                                               ppm = ppm,
+                                               rt.tol = peak_width)
+
+
+
+
+  }
 
 
 

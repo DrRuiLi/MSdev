@@ -1604,8 +1604,9 @@ MSdev_annotation <- function(object,
     message_with_time("Calculate isopattern score...")
     xcms.xcms <- xcms_get_feature_isopattern_score(xcms.xcms,
                                                    ppm = 10,
-                                                   BPPARAM = SnowParam(
-                                                     workers = 6,progressbar = T
+                                                   BPPARAM = SerialParam(
+                                                     #workers = 6,
+                                                     progressbar = T
                                                    ))
     xcms.xcms <- xcms_get_feature_annotation(xcms.xcms,
                                              cpdb,
