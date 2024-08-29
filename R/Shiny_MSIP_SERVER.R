@@ -70,20 +70,36 @@ MSIP_shiny_server <- function(object){
         iso.data( iso.data.list()[[fid.selected()]])
 
 
-        all.iso.count <- names(iso.data()$MSIP_result)
+        ms2.count <- iso.data()$compound_info$ms2_count
+
+
+        all.iso.count <- setdiff(rownames(ms2.count),"M0")
+        all.iso.count <- levels(groupStringFactor(all.iso.count))
         updateSelectInput(inputId = "select_iso_count",
                           choices = all.iso.count,
                           selected = all.iso.count[1])
 
-        all.sample <- names(iso.data()$MSIP_result[[input$select_iso_count]])
+        all.sample <- colnames(ms2.count)
+        all.sample <- levels(groupStringFactor(all.sample))
         updateSelectInput(inputId = "select_sample",
                           choices = all.sample,
                           selected = all.sample[1])
+
+
+
+        iso.sp.data(shiny_get_sp_data(iso_data =  iso.data(),
+                                      sample = input$select_sample,
+                                      iso_count =  input$select_iso_count))
+        fragment_group_selected(
+          shiny_get_fg(sp.data = iso.sp.data(),
+                       x = sp.x.clicked()))
       })
 
 
 
     }
+
+
 
     ### selectInput, iso_count and sample
     {
@@ -110,11 +126,15 @@ MSIP_shiny_server <- function(object){
                                         sample = input$select_sample,
                                         iso_count =  input$select_iso_count))
 
+          natural.matrix <- iso.data()[["compound_info"]][["natural_matrix"]]
           natural.ratio(
-            iso.data()[["compound_info"]][["natural_matrix"]][[input$select_iso_count, input$select_sample]]
+            get_matrix_value_fill_with_NA(natural.matrix,
+                                          input$select_iso_count, input$select_sample)
+
           )
           sp.x.clicked(NULL)
           #message("input$select_sample")
+          message_with_time("shiny_get_fg")
           fragment_group_selected(
             shiny_get_fg(sp.data = iso.sp.data(),
                          x = sp.x.clicked()))
@@ -160,6 +180,8 @@ MSIP_shiny_server <- function(object){
         fragment_group_selected(
           shiny_get_fg(sp.data = iso.sp.data(),
                        x = sp.x.clicked()))
+
+        message_with_time(fragment_group_selected())
       })
 
 
@@ -185,13 +207,18 @@ MSIP_shiny_server <- function(object){
 
     ### atom prob
     {
-      observeEvent(iso.data(),{
-        message_with_time("shiny_get_fg_ig")
-        mol.ig(shiny_get_fg_ig(iso_data =iso.data(),
-                               fid = 1  ))
+      observeEvent({
+        iso.data()
+        fragment_group_selected()
+      },{
+        message_with_time("shiny_get_mol_ig :",fragment_group_selected())
+        mol.ig(shiny_get_fg_ig(iso_data = iso.data(),
+                               fg = fragment_group_selected(),
+                               fid = "seed" ))
       })
 
       observeEvent(fragment_group_selected(),{
+        message_with_time("shiny_get_fid")
         possible.fragment.id <- shiny_get_fid(iso_data  = iso.data(),
                       fg = fragment_group_selected())
         selected <- ifelse(length(possible.fragment.id),possible.fragment.id[1], character(0))
@@ -205,8 +232,10 @@ MSIP_shiny_server <- function(object){
       observeEvent(input$select_fragment_id,{
         message_with_time("select_fragment_id")
         frag.ig(shiny_get_fg_ig(iso_data  =iso.data(),
+                                fg = fragment_group_selected(),
                                 fid = input$select_fragment_id  ))
         atom_map <- shiny_get_atom_map(iso.data(),
+                                       fg = fragment_group_selected(),
                                        input$select_fragment_id ,
                                        prob = T)
         mol.atom.map(atom_map[[1]])
@@ -217,7 +246,7 @@ MSIP_shiny_server <- function(object){
 
       output$mol_graph_atom_prob <- renderVisNetwork(
         {
-          message_with_time("Visnet molecular")
+          message_with_time("mol_graph_atom_prob")
 
           shiny_vis_sdf_igraph(mol.ig(),
                           show_id = input$show_atom_id,
@@ -269,6 +298,7 @@ MSIP_shiny_server <- function(object){
         message_with_time("frag_formula")
         shiny_get_frag_formula(
           iso_data = iso.data(),
+          fg = fragment_group_selected(),
           fid =input$select_fragment_id)
       })
 

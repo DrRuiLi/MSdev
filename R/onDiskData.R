@@ -33,3 +33,12 @@ onDiskData_retrieve <- function(object){
   }
 }
 
+onDiskData_update <- function(object,data){
+
+  if (class(object)=="onDiskData") {
+    object <- onDiskData(data,path = object@path)
+    return(object)
+  }else{
+    return(object)
+  }
+}

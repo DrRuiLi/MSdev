@@ -217,3 +217,73 @@ match_path <- function(p1,p2){
 
 
 }
+
+
+get_matrix_value_fill_with_NA <- function(mat,
+                                          rownames_vec = rownames(mat),
+                                          colnames_vec = colnames(mat),
+                                          drop = T) {
+  # Initialize a matrix to store the results
+  result_matrix <- matrix(NA, nrow = length(rownames_vec), ncol = length(colnames_vec))
+
+  # Set row and column names of the result matrix
+  rownames(result_matrix) <- rownames_vec
+  colnames(result_matrix) <- colnames_vec
+
+  # Loop through each combination of row and column names
+  for (i in seq_along(rownames_vec)) {
+    for (j in seq_along(colnames_vec)) {
+      rowname <- rownames_vec[i]
+      colname <- colnames_vec[j]
+
+      # Check if both rowname and colname exist in the matrix
+      if (rowname %in% rownames(mat) && colname %in% colnames(mat)) {
+        result_matrix[i, j] <- mat[rowname, colname]
+      } else {
+        result_matrix[i, j] <- NA
+      }
+    }
+  }
+
+  if (drop&length(result_matrix)==1) {
+    result_matrix <- as.vector(result_matrix)
+  }
+
+  return(result_matrix)
+}
+
+
+mean_matrix <- function(mat1,mat2){
+
+  rn <- unique(c(rownames(mat1),rownames(mat2)))%>%
+    groupStringFactor()%>%levels()
+  cn <- unique(c(colnames(mat1),colnames(mat2)))%>%
+    groupStringFactor()%>%levels()
+  m1 <- get_matrix_value_fill_with_NA(mat1,rn,cn)
+  m2 <- get_matrix_value_fill_with_NA(mat2,rn,cn)
+  combined_array <- array(c(m1, m2), dim = c(nrow(m1), ncol(m2), 2))
+  mean_matrix <- apply(combined_array, c(1, 2),
+                       function(x) mean(x, na.rm = TRUE))
+  dimnames(mean_matrix) <- dimnames(m1)
+  return(mean_matrix)
+}
+
+sum_matrix <- function(mat1,mat2){
+
+  rn <- unique(c(rownames(mat1),rownames(mat2)))%>%
+    groupStringFactor()%>%levels()
+  cn <- unique(c(colnames(mat1),colnames(mat2)))%>%
+    groupStringFactor()%>%levels()
+  m1 <- get_matrix_value_fill_with_NA(mat1,rn,cn)
+  m2 <- get_matrix_value_fill_with_NA(mat2,rn,cn)
+  combined_array <- array(c(m1, m2), dim = c(nrow(m1), ncol(m2), 2))
+  sum_matrix <- apply(combined_array, c(1, 2),
+                       function(x) sum(x, na.rm = TRUE))
+  dimnames(sum_matrix) <- dimnames(m1)
+  return(sum_matrix)
+}
+
+
+setMethod("isEmpty","NULL",definition = function(object){
+  return(T)
+})

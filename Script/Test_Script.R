@@ -1184,5 +1184,267 @@ chemform_adduct("C5[13]C1H12O5",adduct = "[M+H]+")%>%format(digit=10)
 chemform_adduct("C3[13]C2H10N2O3",adduct = "[M+H]+")%>%format(digit=10)
 
 
+# Sat Aug 17 11:55:31 2024 ------------------------------
+iso.list <- msdev.M1@statData$MSIP$isotopologues_data
+iso.data <- iso.list[[68]]
+
+
+
+
+
+
+
+# Mon Aug 19 12:15:25 2024 ------------------------------
+
+fp <- "c:/Users/91879/OneDrive/Code/R/data/MSIP_data/240601_ThreeGroup/Negative_Chromatograms.rds"
+chrom.neg <- readRDS(fp)
+chrom.neg <- onDiskData(chrom.neg,fp)
+object@xcmsData$Negative_Chromatograms <- chrom.neg
+
+
+MSdev_save(object)
+
+
+
+# Mon Aug 19 16:12:47 2024 PRM pos+neg------------------------------
+sample.info <- msdev.STD@sampleInfo
+prm.both.file <- sample.info%>%
+  dplyr::filter(sample.info$ExpTime>"2024-08-15")%>%
+  dplyr::pull(msData.files)
+
+prm.both.xcms <- readMSData(prm.both.file,mode = "onDisk")
+prm.both.fdata <- get_xcms_scan_Stat(prm.both.xcms)%>%
+  dplyr::filter(msLevel==2)
+hist(log10(prm.both.fdata$totIonCurrent))
+#edit_df_in_excel(prm.both.fdata)
+
+table(prm.both.fdata$precursorMZ)
+prm.both.fdata <- prm.both.fdata%>%
+  dplyr::mutate(polarity = c("1"="pos",
+                             "0"="neg")[as.character(polarity)])%>%
+  dplyr::select()
+
+
+ggplot(prm.both.fdata) +
+  geom_point(aes(x = retentionTime ,
+                 y = precursorMZ,
+                 col = polarity))
+
+
+plotSpec(a[100])
+# Mon Aug 19 18:44:52 2024 add param record to msip solve------------------------------
+iso.list <- msdev.M1@statData$MSIP$isotopologues_data
+
+
+msip.core <- iso.list$FT13758_Positive$MSIP_result$M1$Con
+
+a <- MSIPCore_solve(msip.core)
+
+
+sp <- msdev.M1@spectra$MS2_Spectra%>%
+  onDiskData_retrieve()
+
+size_of(sp)
+sp.list <- split(sp,(sp$sp_id))
+
+size_of(sp.list)
+
+# Wed Aug 21 13:36:41 2024 ------------------------------
+iso.list <- msdev.M1@statData$MSIP$isotopologues_data
+
+a <- get_MSIP_compound_info(msdev.M1,vars = c("all"))%>%
+  dplyr::arrange(compound_id)
+
+p <- heatmap_MSIPFragmentMap(MSIPCoreData1@FG_map)
+open_plot_win(p,8,5)
+
+
+object <- msdev.M1
+MSIP_merge()
+
+
+msip.core <- MSIPCore_solve(
+  MSIPCoreData,
+  int_thresh = 10^4,
+  certainty_thresh = 0.99
+)
+
+msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set%>%
+  lengths()
+msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob
+
+heatmap_MSIPFragmentMap(msip.core@FG_map)
+
+# Thu Aug 22 09:54:45 2024 ------------------------------
+###  working on MSIPCore_merge
+msip.core.merge.data <- list(MSIPCoreData1,MSIPCoreData2)
+save(msip.core.merge.data,
+     file = "msip.core.merge.rda")
+# Fri Aug 23 13:13:45 2024 ------------------------------
+load("msip.core.merge.rda")
+MSIPCoreData1 <- msip.core.merge.data[[1]]
+MSIPCoreData2 <- msip.core.merge.data[[2]]
+
+MSIPCore_merge()
+
+MSIPCoreData <- MSIPCore_merge(MSIPCoreData1,
+                               MSIPCoreData2)
+MSIPCoreData <- MSIPCore_solve(MSIPCoreData,
+                               int_thresh = 10^4,
+                               certainty_thresh = 0.8
+                                 )
+
+
+MSIPCoreData <- msdev.M1@statData$MSIP$isotopologues_data$FT13478_Positive$MSIP_result$M1$Con
+
+heatmap_MSIPFragmentMap(MSIPCoreData@FG_map)
+
+
+sp.df <- spectraData(sp.ms2)%>%
+  as.data.frame()
+sp.df <- sp.df%>%
+  dplyr::filter(grepl(pattern = "STD",dataOrigin),
+                sample.source=="STD")%>%
+  dplyr::mutate(groupMz(precursorMz,return.type = "data.frame"))
+
+
+sp.file<- sp.df$dataOrigin%>%unique()
+
+p.list <- list()
+for (i in seq_along(sp.file)) {
+
+  sp.file[[i]]
+  this.sp.df <- sp.df%>%
+    dplyr::filter(dataOrigin%in% sp.file[[i]])
+
+  p <- this.sp.df%>%
+    ggplot()+
+    geom_point(aes(x = rtime,
+                  y = precursorMz))+
+    labs(title = basename(sp.file[[i]]))
+  p.list[[i]] <- p
+
+}
+
+
+gp <- ggplot_sum_patchwork(p.list)
+
+open_plot_win(gp,20,20)
+# Sat Aug 24 15:09:14 2024 ------------------------------
+
+
+msip.core <- msdev.M1@statData[[
+  "MSIP"]][[
+  "isotopologues_data"]][[
+    "FT02170_Negative"]][[
+      "MSIP_result"]][["M1"]][["STD"]]
+msip.core <- msdev.M1@statData$MSIP$
+    isotopologues_data$HMDB0000902_merged$MSIP_result$M1$Con
+
+msip.core@solve <- list()
+msip.core <- MSIPCore_solve(msip.core,
+                            int_thresh = 10^3.8,
+                            certainty_thresh = 0.8)
+#heatmap_MSIPFragmentMap(msip.core@FG_map)
+
+plotly_MSIPCore_pred_nature_prob(msip.core)%>%
+  ggplotly()
+
+cp.table <- get_MSIP_compound_info(msdev.M1)
+
+cp.vars <- lapply(iso.list,FUN = function(x){
+  names(x$compound_info)
+})
+
+
+cp.vars.df <- do.call(rbind,cp.vars)
+
+
+# Sat Aug 24 22:24:50 2024 ------------------------------
+iso.list <- msdev.M1@statData$MSIP$isotopologues_data
+iso.data <- iso.list$FT01159_Negative
+
+a <- shiny_get_sp_data(iso.data,"Con","M0")
+
+mz_values <- mz(spectrum)[[1]]
+intensity_values <- intensity(spectrum)[[1]]
+
+
+# Define a noise region, e.g., between m/z 1000 and 1100
+noise_region <- intensity_values
+
+# Calculate RMS noise
+rms_noise <- sd(noise_region)
+
+# Calculate peak-to-peak noise
+peak_to_peak_noise <- max(noise_region) - min(noise_region)
+
+# Average noise level
+average_noise <- mean(noise_region)
+
+# Output the results
+cat("RMS Noise:", rms_noise, "\n")
+cat("Peak-to-Peak Noise:", peak_to_peak_noise, "\n")
+cat("Average Noise Level:", average_noise, "\n")
+
+plotly_Spectra(spectrum)
+
+
+spm <- msdev.M1@xcmsData$NegativeMS1[[1]]
+estimateNoise(spm)
+spm->spectrum
+mz_values <- mz(spectrum)
+intensity_values <- intensity(spectrum)
+
+# Choose a noise region (m/z range where you expect no peaks)
+noise_region <- intensity_values[mz_values >= 500 & mz_values <= 600]
+
+# Calculate basic noise statistics
+rms_noise <- sd(noise_region)
+mean_noise <- mean(noise_region)
+
+cat("RMS Noise:", rms_noise, "\n")
+cat("Mean Noise:", mean_noise, "\n")
+
+
+
+
+hist(log10(intensity(sp)[[1]]))
+
+
+plotly_Spectra(sp)
+
+
+
+
+
+shiny_get_sp_data(iso.data,"Con","M1")%>%
+  shiny_plotly_iso_data_spectra()
+
+
+
+iso.list <- msdev.M1@statData$MSIP$isotopologues_data
+is.merged <- sapply(iso.list,function(x){
+  x$compound_info$merged
+})
+msdev.M1@statData$MSIP$isotopologues_data <- iso.list[!is.merged]
+
+
+iso.list[[211]]$MSIP_result$M0$Con@FG_map@fragment.atom.matrix
+
+
+# Mon Aug 26 20:41:09 2024 ------------------------------
+df <- data.frame(
+  raw = 1.1^(1:200)
+)%>%
+  dplyr::mutate(weight = .intensity_weight(raw))
+
+ggplot(df)+
+  geom_point(aes(x = raw, y = weight))+
+  scale_x_log10()+
+  labs(x = "intensity",
+       title = "Fragment weight curve")->p
+open_plot_win(p)
+
 
 

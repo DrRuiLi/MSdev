@@ -1840,29 +1840,34 @@ get_MSdev_DEP_se <- function(object,
 }
 
 
-MSdev_update_xcms_pdata <- function(object){
+MSdev_update_xcms_pdata <- function(object,
+                                    XCMSnExp = T,
+                                    XChromatograms = F){
 
 
   sample_info <- object@sampleInfo
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
     ###XCMSnExp
-    {
+    if(XCMSnExp){
       xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
       xcms.pdata <- Biobase::pData(xcms.xcms)%>%
-        dplyr::mutate(sample_info[match(msData.files,sample_info$msData.files),  ])
+        dplyr::mutate(sample_info[match(msData.files,
+                                        sample_info$msData.files),  ])
       xcms.pdata -> Biobase::pData(xcms.xcms)
       xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
     }
 
     ###XChromatograms
-    {
+    if(XChromatograms){
       xcms.chrom <- object@xcmsData[[paste0(pol,"_Chromatograms")]]
       if (is.null(xcms.chrom)) next
-      xcms.pdata <- Biobase::pData(xcms.chrom)%>%
+      xcms.chrom.data <- onDiskData_retrieve(xcms.chrom)
+      xcms.pdata <- Biobase::pData(xcms.chrom.data)%>%
         dplyr::mutate(sample_info[match(msData.files,
                                         sample_info$msData.files),  ])
-      xcms.pdata -> Biobase::pData(xcms.chrom)
+      xcms.pdata -> Biobase::pData(xcms.chrom.data)
+      xcms.chrom <- onDiskData_update(xcms.chrom,xcms.chrom.data )
       xcms.chrom -> object@xcmsData[[paste0(pol,"_Chromatograms")]]
     }
   }

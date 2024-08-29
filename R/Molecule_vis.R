@@ -167,6 +167,7 @@ sdf_igraph_add_background_color <- function(sdf.igraph,
 
 sdf_igraph_show_id <- function(sdf.igraph,show_id){
 
+  message_with_time(show_id)
   if (show_id) {
     vdata(sdf.igraph)$label <-   vdata(sdf.igraph)$id%>%
       str_format_len()

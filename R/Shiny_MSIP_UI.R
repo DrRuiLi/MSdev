@@ -40,7 +40,7 @@ MSIP_shiny_ui <- function() {
           selectInput(
             inputId = "select_iso_count",
             label = "Isotopologue",
-            choices = paste0("M0")
+            choices = paste0("M1")
           )
         ),
         column(

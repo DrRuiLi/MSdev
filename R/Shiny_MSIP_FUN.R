@@ -2,15 +2,25 @@
 get_MSIP_compound_info <- function(object,
                                       vars =c("name","mz","rt","formula","adduct")){
 
+  avalible.vars <- c("name","compound_id","mz","rt","formula","smiles","score","adduct","polarity","merged")
+
+  if ("all" %in% vars) {
+    vars <- avalible.vars
+    }
   iso.list <- object@statData$MSIP$isotopologues_data
+
+  suppressWarnings(
   compound_info <-  lapply(iso.list, function(x){
-    x$compound_info[c("name","compound_id","mz","rt","formula","smiles","score","adduct","polarity")]
+    y <- x$compound_info[avalible.vars]
+    names(y) <- avalible.vars
+    y
     })%>%
-    data.table::rbindlist()%>%
+    data.table::rbindlist(fill = T)%>%
     dplyr::mutate(mz = format(mz,digits = 4),
                   rt =  format(rt,digits = 2),
                   score =format(score,digits = 2) )%>%
-    dplyr::select(vars)
+    dplyr::select(all_of(vars))
+  )
 
   return(compound_info)
 
@@ -160,8 +170,9 @@ shiny_get_sp_data <- function(iso_data,
     #message(iso_count)
   }
 
-  ### sp data
-  {
+
+  ### SP M0
+  if (F)  {
     sp.m0 <-iso_data$Spectra$M0%>%
       unname()%>%
       do.call(c,.)
@@ -172,36 +183,59 @@ shiny_get_sp_data <- function(iso_data,
                                                   iso_count = 0)
     sp.m0.frag.data <- CFM_spectra_data_merge(sp.m0.frag.data,0)
 
-    if (!nrow(iso_data$MSIP_result[[iso_count]][[sample]]@Spectra_data)){
-      sp.iso.frag.data<- sp.m0.frag.data[0,]
-      }else{
-        sp.iso.frag.data <-iso_data$MSIP_result[[iso_count]][[sample]]@Spectra_data%>%
-          dplyr::filter(sp.id == "combined_sp"|is.na(fragment_group  ))%>%
-          dplyr::arrange(sp.id)
-    }
 
     sp.m0.frag.data <- sp.m0.frag.data%>%
       dplyr::mutate(sp.id="M0",x = mz,
                     y =intensity)
-    suppressWarnings(
-      sp.iso.frag.data <- sp.iso.frag.data%>%
-        dplyr::mutate(sp.id="Mn",
-                      x = mz,
-                      y = -intensity)
-    )
 
-    sp.data <- bind_rows(sp.m0.frag.data,sp.iso.frag.data)%>%
-      dplyr::mutate(annotated = !is.na(fragment_group),
-                    collisionEnergy = as.character(collisionEnergy),
-                    collisionEnergy = case_when(annotated~paste0("CE=",collisionEnergy),
-                                                T~ " " ),
-                    hover_label = paste0("Frag group: ",fragment_group,"\n",
-                                         "mz: ",round(mz,4),"\n",
-                                         "intensity: ",round(intensity,4)),
-                    point.size = case_when(annotated~0.5,
-                                           T~0))
+  }else{
+    msip.core.m0 <-iso_data$MSIP_result[["M0"]][[sample]]
+    if (!is.null(msip.core.m0)) {
+      sp.m0.frag.data <- msip.core.m0@Spectra_data%>%
+        dplyr::mutate(sp.id="M0",x = mz,
+                      y =intensity)
+    }else{
+      sp.m0.frag.data <- data.frame()
+    }
+  }
+
+  ### sp data
+  {
+    msip.core <- iso_data$MSIP_result[[iso_count]][[sample]]
+    if (is.null(msip.core)){
+      sp.iso.frag.data<- sp.m0.frag.data[0,]
+    }else{
+      sp.iso.frag.data <-msip.core@Spectra_data%>%
+        dplyr::filter(sp.id == "combined_sp"|is.na(fragment_group  ))%>%
+        dplyr::arrange(sp.id)
+      suppressWarnings(
+        sp.iso.frag.data <- sp.iso.frag.data%>%
+          dplyr::mutate(sp.id="Mn",
+                        x = mz,
+                        y = -intensity)
+      )
+    }
+
+
+
 
   }
+
+  sp.data <- bind_rows(sp.m0.frag.data,sp.iso.frag.data)
+  if (!nrow(sp.data)) {
+    return(NULL)
+  }
+  sp.data <- sp.data %>%
+    dplyr::mutate(annotated = !is.na(fragment_group),
+                  collisionEnergy = as.character(collisionEnergy),
+                  collisionEnergy = case_when(annotated~paste0("CE=",collisionEnergy),
+                                              T~ " " ),
+                  hover_label = paste0("Frag group: ",fragment_group,"\n",
+                                       "mz: ",round(mz,4),"\n",
+                                       "intensity: ",round(intensity,4)),
+                  point.size = case_when(annotated~0.5,
+                                         T~0))
+
 
   return(sp.data)
 
@@ -214,6 +248,19 @@ shiny_plotly_empty <- function(...){
     add_markers(x = 0,y = 0,color = I("transparent"))%>%
     layout(xaxis = list(range = c(0,100)),
            yaxis = list(range = c(-100,100)))
+}
+
+
+shiny_vis_empty <- function(){
+
+  nodes <- data.frame(
+    id = 1,               # Unique ID for the node
+    label = "No data",    # The text to display
+    shape = "text",       # Node shape as text (no border)
+    font.size = 20        # Adjust the font size as needed
+  )
+  visNetwork(nodes)
+
 }
 
 shiny_plotly_void <- function(...){
@@ -235,7 +282,7 @@ shiny_get_fg <- function(sp.data,
                          x){
 
   if (all(is.na(sp.data))) {
-    return(NA)
+    return(NULL)
   }
   if (length(x)) {
     idx <- match_mz(x,sp.data$x,mz.ppm = 5)
@@ -248,32 +295,87 @@ shiny_get_fid <- function(iso_data,
                           fg){
 
   if (all(is.na(iso_data))) {
-    return(NA)
+    return(NULL)
   }
-  if (length(fg)) {
-    fid <-  iso_data$CFM_annotation@fragment_define%>%
-      dplyr::filter(fragment_group ==fg)%>%
-      dplyr::pull(fragment_id )
-    return(fid)
+
+
+  if (iso_data$compound_info$merged) {
+
+    fg.split <- strsplit(fg,"_")[[1]]
+
+    if (length(fg)) {
+      fid <- iso_data[[paste0("CFM_annotation",fg.split[2])]]@fragment_define%>%
+        dplyr::filter(fragment_group ==fg.split[1])%>%
+        dplyr::pull(fragment_id )
+
+      return(fid)
+    }
+
+  }else{
+    if (length(fg)) {
+      fid <-  iso_data$CFM_annotation@fragment_define%>%
+        dplyr::filter(fragment_group ==fg)%>%
+        dplyr::pull(fragment_id )
+
+      return(fid)
+    }
   }
+
+
+
+
   return(NA)
 }
 
-shiny_get_fg_ig <- function(iso_data,fid = 1){
+shiny_get_fg_ig <- function(iso_data,
+                            fg = NULL,
+                            fid = 1){
 
   if (all(is.na(iso_data))) {
-    return(NA)
+    return(NULL)
   }
   if (all(is.na(fid))) {
-    return(NA)
+    return(NULL)
   }
-  iso_data$CFM_annotation@fragment_igraph[[fid]]
+  if(is.null(fg)|is.na(fg)){
+    return(NULL)
+  }
+
+
+  fg.split <- strsplit(fg,"_")[[1]]
+  cfmd <- "CFM_annotation"
+  if (iso_data$compound_info$merged) {
+    cfmd <- paste0("CFM_annotation",fg.split[2])
+  }
+  if (fid == "seed") {
+    fid <- 1
+  }
+  iso_data[[cfmd]]@fragment_igraph[[fid]]
 
 }
 
-shiny_get_frag_formula <- function(iso_data,fid){
+shiny_get_frag_formula <- function(iso_data, fg = NULL,fid){
 
-  frag.def <- iso_data$CFM_annotation@fragment_define
+
+  if (all(is.na(iso_data))) {
+    return(NULL)
+  }
+  if (all(is.na(fid))) {
+    return(NULL)
+  }
+  if(is.null(fg)){
+    return(NULL)
+  }
+  fg.split <- strsplit(fg,"_")[[1]]
+  cfmd <- "CFM_annotation"
+  if (iso_data$compound_info$merged) {
+    cfmd <- paste0("CFM_annotation",fg.split[2])
+  }
+  if (fid == "seed") {
+    fid <- 1
+  }
+
+  frag.def <- iso_data[[cfmd]]@fragment_define
   if (fid %in% frag.def$fragment_id) {
     formula <- frag.def%>%
       dplyr::filter(fragment_id == fid)%>%
@@ -287,6 +389,7 @@ shiny_get_frag_formula <- function(iso_data,fid){
 
 shiny_get_atom_map <- function(iso_data,
                                fid,
+                               fg = NULL,
                                prob = T){
   x <- list(NA,NA)
   #message("A",names(iso_data))
@@ -298,11 +401,17 @@ shiny_get_atom_map <- function(iso_data,
     return(x)
   }
 
-  if (!fid%in%names( iso_data$CFM_annotation@fragment_atom_map) ) {
+  fg.split <- strsplit(fg,"_")[[1]]
+  cfmd <- "CFM_annotation"
+  if (iso_data$compound_info$merged) {
+    cfmd <- paste0("CFM_annotation",fg.split[2])
+  }
+
+  if (!fid%in%names(iso_data[[cfmd]]@fragment_atom_map) ) {
     return(x)
   }
 
-  map.matrix <- iso_data$CFM_annotation@fragment_atom_map[[fid]]
+  map.matrix <- iso_data[[cfmd]]@fragment_atom_map[[fid]]
   if (is.null(map.matrix)) return(x)
   if (nrow(map.matrix)) {
 
@@ -401,11 +510,15 @@ shiny_vis_sdf_igraph <- function(ig,
                                  show_id = F,
                                  prob.border= NA,
                                  prob.fill =NA){
+  if (is.null(ig)) {
+    return(shiny_vis_empty())
+  }
+
+  message_with_time(show_id)
   ig%>%
     sdf_igraph_add_background_color(value = prob.fill)%>%
     sdf_igraph_add_border_color(prob.border)%>%
-    sdf_igraph_show_id(show_id)%>%
-    vis_sdf_igraph()
+    vis_sdf_igraph(show_id = show_id)
 
 }
 

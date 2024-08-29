@@ -46,7 +46,7 @@ MSIPCore_correct_natural <- function(MSIPCoreData,
 
 MSIPCore_solve <- function(MSIPCoreData,
                            max_prob_map = F,
-                           int_thresh = 1e3,
+                           int_thresh = 1e4,
                            certainty_thresh = 0.8){
 
   ### set all include
@@ -72,7 +72,8 @@ MSIPCore_solve <- function(MSIPCoreData,
   MSIPIsotopomerMap <- MSIPIsotopomerMap_set_solve_QP(MSIPIsotopomerMap)
   MSIPCoreData@solve$MSIPIsotopomerMap <- MSIPIsotopomerMap
   MSIPCoreData@solve$Atom_prob <- get_atom_prob_from_MSIPIsotopomerMap(MSIPIsotopomerMap)
-
+  MSIPCoreData@solve$int_thresh <- int_thresh
+  MSIPCoreData@solve$certainty_thresh <- certainty_thresh
   return(MSIPCoreData)
 }
 
@@ -220,7 +221,15 @@ get_MSIPIsotopomerMap <- function(MSIPCoreData){
   }
   ### all possible iso form
   {
+    if (frag.max.iso == 0 ) {
+      message_with_time("No isotopomers")
+      return(MSIPIsotopomerMap)
+    }
     if.combn <- choose(ncol(frag.atom.matrix),frag.max.iso)
+    if(if.combn > 1e8){
+      message_with_time("Isotopomers too many: ",format(1236547889,sci = T,digits = 2),", solve cancel")
+      return(MSIPIsotopomerMap)
+    }
     isotopomer <- combn(colnames(frag.atom.matrix),frag.max.iso,simplify = F)
     names(isotopomer) <- paste0("isotopomer_",num2str(1:length(isotopomer)))
   }
@@ -832,5 +841,141 @@ plotly_MSIPCore_pred_nature_prob  <- function(MSIPCoreData){
 
 }
 
+MSIPCore_merge <- function(MSIPCoreData1,
+                           MSIPCoreData2,
+                           suffix1 = "Positive",
+                           suffix2 = "Negative"){
+
+
+  if (!(is.null(MSIPCoreData1)|isEmpty(MSIPCoreData1))) {
+    MSIPCoreData1 <- MSIPCore_FG_suffix(MSIPCoreData1,suffix1)
+  }
+  if (!(is.null(MSIPCoreData2)|isEmpty(MSIPCoreData2))) {
+    MSIPCoreData2 <- MSIPCore_FG_suffix(MSIPCoreData2,suffix2)
+  }
+
+
+  if (is.null(MSIPCoreData1)|isEmpty(MSIPCoreData1)) {
+    if (is.null(MSIPCoreData2)|isEmpty(MSIPCoreData2)) {
+      return(NULL)
+    }else{
+      return(MSIPCoreData2)
+    }
+  }else{
+    if (is.null(MSIPCoreData2)|isEmpty(MSIPCoreData2)) {
+      return(MSIPCoreData1)
+    }
+    MSIPCoreData <- MSIPCoreData1
+  }
+
+
+  ### Spectra_data
+  {
+
+
+    MSIPCoreData@Spectra_data <-
+      bind_rows(MSIPCoreData1@Spectra_data,
+            MSIPCoreData2@Spectra_data)
+
+  }
+
+
+  ### FG_map
+  {
+    MSIPCoreData@FG_map@fragment.intensity
+    ### fragment.atom.matrix
+    {
+
+      MSIPCoreData@FG_map@fragment.atom.matrix <-
+        rbind(MSIPCoreData1@FG_map@fragment.atom.matrix,
+            MSIPCoreData2@FG_map@fragment.atom.matrix)
+    }
+
+    ### fragment.ratio.matrix
+    {
+
+      MSIPCoreData@FG_map@fragment.ratio.matrix <-
+        rbind(MSIPCoreData1@FG_map@fragment.ratio.matrix,
+              MSIPCoreData2@FG_map@fragment.ratio.matrix)
+    }
+
+    ### fragment.intensity
+    {
+
+      MSIPCoreData@FG_map@fragment.intensity <-
+        c(MSIPCoreData1@FG_map@fragment.intensity,
+              MSIPCoreData2@FG_map@fragment.intensity)
+    }
+
+    ### fragment.include
+    {
+
+      MSIPCoreData@FG_map@fragment.include <-
+        c(MSIPCoreData1@FG_map@fragment.include,
+          MSIPCoreData2@FG_map@fragment.include)
+    }
+
+  }
+
+  MSIPCoreData@solve <- list()
+
+  return(MSIPCoreData)
+
+}
+
+MSIPCore_FG_suffix <- function(MSIPCoreData,
+                               suffix = "suffix"){
+  ### Spectra_data
+  {
+
+    MSIPCoreData@Spectra_data$fragment_group <-
+      sapply(MSIPCoreData@Spectra_data$fragment_group,function(x){
+        if(is.na(x)){
+          return(NA)
+        }else
+          paste0(x,"_",suffix)
+      })%>%as.character()
+
+
+  }
+
+
+  ### FG_map
+  {
+    ### fragment.atom.matrix
+    {
+      rownames(MSIPCoreData@FG_map@fragment.atom.matrix) %<>%
+        paste0(.,"_",suffix)
+
+    }
+
+    ### fragment.ratio.matrix
+    {
+      rownames(MSIPCoreData@FG_map@fragment.ratio.matrix) %<>%
+        paste0(.,"_",suffix)
+
+    }
+
+    ### fragment.intensity
+    {
+      names(MSIPCoreData@FG_map@fragment.intensity) %<>%
+        paste0(.,"_",suffix)
+    }
+
+    ### fragment.include
+    {
+      names(MSIPCoreData@FG_map@fragment.include) %<>%
+        paste0(.,"_",suffix)
+
+    }
+
+  }
+
+  MSIPCoreData@solve <- list()
+
+  return(MSIPCoreData)
+
+
+}
 
 
