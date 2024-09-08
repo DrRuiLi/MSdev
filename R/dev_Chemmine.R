@@ -294,7 +294,8 @@ get_atom_map <- function(sdf.parent,
                          sdf.product,
                          ig.parent = get_sdf_igraph(sdf.parent),
                          ig.product = get_sdf_igraph(sdf.product),
-                         return.type = c("prob_matrix","most_prob")){
+                         iso_ele = "[13]C",
+                         return.type = c("most_prob","prob_matrix")){
   return.type <- match.arg(return.type)
   mcs <- fmcsR::fmcs(sdf.parent,sdf.product,bu = 10000)
   mcs.map <- get_mcs_atom_map(mcs)
@@ -401,12 +402,18 @@ get_atom_map <- function(sdf.parent,
     ### bond diff
     {
       temp.map <- na.omit(this.mapv)
-      m1 <- as_adj(ig.parent,
-                   attr = "bond_type")[(temp.map),(temp.map)]
+      temp.map.t <- make_vector(names(temp.map),temp.map)
+      ig.sub <- igraph_filter_distance(ig.parent,from = temp.map,dis = 1)
+
+      m1 <- as_adj(ig.sub,
+                   attr = "bond_type")
       m1 <- m1+t(m1)
       m2 <- as_adj(ig.product,
                    attr = "bond_type")[names(temp.map),names(temp.map)]
       m2 <- m2 + t(m2)
+      m2 <- get_matrix_value_fill_with_NA(
+        m2,temp.map.t[rownames(m1)],temp.map.t[colnames(m1)])
+      m2[is.na(m2)] <- 0
       bond.score[j] <- 1- sum((m1-m2)!=0)/sum(m1!=0)
 
 
@@ -417,14 +424,19 @@ get_atom_map <- function(sdf.parent,
 
 
   }
-  atom.count <- apply(atom.map.matrix,1,function(x)sum(!is.na(x)))
-  full.mapped <- apply(atom.map.matrix,1,function(x)sum(is.na(x))==0)
-  selected <- which.max(atom.count+bond.score)
-  if (return.type == "most_prob")
-    return(atom.map.matrix[selected,])
-  if (return.type== "prob_matrix"){
-    #apply(atom.map.matrix[atom.count==max(atom.count),,drop=F],2,function(x){
-    apply(atom.map.matrix[full.mapped,,drop=F],2,function(x){
+
+
+  ### select map
+  {
+    atom.ele <- vdata(ig.product)$atom
+    iso.atom.map.matrix <- atom.map.matrix[,atom.ele==get_ele_uniso(iso_ele ),drop = F]
+    atom.count <- apply(iso.atom.map.matrix,1,function(x)sum(!is.na(x)))
+    full.mapped <- apply(iso.atom.map.matrix,1,function(x)sum(is.na(x))==0)
+    selected <- which((atom.count+bond.score)==max(atom.count+bond.score,na.rm = T))
+
+  }
+  if (return.type == "most_prob"){
+    map <-  apply(atom.map.matrix[selected,,drop=F],2,function(x){
       x <- na.omit(x)
       xp <- table(x)/length(x)
       xp <- xp[atom(sdf.parent)]
@@ -433,7 +445,27 @@ get_atom_map <- function(sdf.parent,
       return(xp)
     })
 
+    attributes(map)$bond.score <- mean(bond.score[selected])
   }
+
+
+  if (return.type== "prob_matrix"){
+    #apply(atom.map.matrix[atom.count==max(atom.count),,drop=F],2,function(x){
+    map <-  apply(atom.map.matrix[full.mapped,,drop=F],2,function(x){
+      x <- na.omit(x)
+      xp <- table(x)/length(x)
+      xp <- xp[atom(sdf.parent)]
+      names(xp) <- atom(sdf.parent)
+      xp[is.na(xp)] <- 0
+      return(xp)
+    })
+    attributes(map)$bond.score <- mean(bond.score)
+
+  }
+
+
+
+  return(map)
 
 }
 

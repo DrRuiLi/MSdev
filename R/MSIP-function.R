@@ -250,17 +250,16 @@ MSIP_get_isotopologues_data <- function(object,
       dplyr::mutate(ms2_count = lengths(ms2_id),
                     ele_count = get_formula_ele_count(formula,
                                           ele = get_ele_uniso(iso_ele)))%>%
-      dplyr::group_by(iso_seed)%>%
       dplyr::filter(!is.na(iso_seed),
-                    n() > 1,
-                    iso_count < ele_count,
-                    rep(any(is_labeled) ,n()))%>%
+                    iso_count < ele_count
+                    )%>%
+      dplyr::group_by(iso_seed)%>%
+      dplyr::filter(rep(any(is_labeled)),n() > 1)%>%
       dplyr::ungroup()
     seed.id <- unique(iso.table$iso_seed)
     match(xcms.fdf$iso_seed[which((lengths(xcms.fdf$ms2_id)>0)&!is.na(xcms.fdf$iso_seed))],
           seed.id)
     for (i_seed_id in seq_along(seed.id)) {
-      #message(i_seed_id)
       this.fdf <- iso.table%>%
         dplyr::filter(iso_seed == seed.id[i_seed_id])
       this.seed.df <- this.fdf%>%
@@ -400,7 +399,7 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
 
 
   ff <- function(x){
-    #x <- msdev.purity@statData$MSIP$isotopologues_data[["FT06121_Negative"]]
+    #x <- msdev.M1@statData$MSIP$isotopologues_data[["FT06121_Negative"]]
     ### combine sp of seed to cfm-annotate
     {
       ### process M0 Spectra
@@ -415,6 +414,13 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
                                                plot = F)
         seed.sp.c <- Spectra_fill_3CE(seed.sp.c)
       }
+
+      if (!is.null(x[['CFM_annotation']])) {
+        message_with_time("cfmd exist, skip")
+        return(x)
+
+      }
+
       CFM_result <- NA
       try.return <- try({
 
@@ -573,7 +579,7 @@ get_isotopologues_Spectra_process <- function(iso.list){
 
 MSIP_solve_isotopologues <- function(object,
                                      process.info = MSIP_solve_computation_evaluate(object,F),
-                            ppm = 20,
+                            ppm = 10,
                             timeout = 60,
                             BPPARAM = SerialParam(progressbar = T)){
 
@@ -603,13 +609,13 @@ MSIP_solve_isotopologues <- function(object,
     #                                      cfmd = this.cfmd,
     #                                      natural.ratio = this.natural.ratio)
 
-    msip.core <- MSIPCore_solve(msip.core,int_thresh = 3.8,certainty_thresh = 0.8)
+    msip.core <- MSIPCore_solve(msip.core,int_thresh = 10^3.8,certainty_thresh = 0.8)
     time_consume <- Sys.time()-start_time
-    MSIPIsoformMap <- msip.core@solve$MSIPIsoformMap
-    if (is.null(MSIPIsoformMap )){
+    MSIPIsotopomerMap <- msip.core@solve$MSIPIsotopomerMap
+    if (is.null(MSIPIsotopomerMap )){
       n_isotopomers <- 0
     }else{
-      n_isotopomers <- length(MSIPIsoformMap@isoform.defination)
+      n_isotopomers <- length(MSIPIsotopomerMap@isotopomer.defination)
     }
 
     message_with_time("total of ",n_isotopomers," isotopomers, time consume: ",
@@ -622,7 +628,8 @@ MSIP_solve_isotopologues <- function(object,
   msip.result.list <- bplapply(1:nrow(process.info),
                                FUN = function(i){
                                  R.utils::withTimeout(.f(i),
-                                                      timeout = timeout,onTimeout = "silent")
+                                                      timeout = timeout,
+                                                      onTimeout = "silent")
                                },
                  BPPARAM =BPPARAM)
   for (i in 1:nrow(process.info)) {
@@ -763,7 +770,8 @@ MSIP_solve_computation_evaluate <- function(object, show_message = F){
       iso_count = iso_count,
       target_ele_count =this.ele.count,
       samples = all.sample,
-      stringsAsFactors =F
+      stringsAsFactors =F,
+      merged = iso.data[[i]]$compound_info$merged
     )%>%
       dplyr::mutate(iso_form = choose(target_ele_count ,iso_count ))%>%
       dplyr::rowwise()%>%
@@ -800,7 +808,8 @@ MSIP_solve_computation_evaluate <- function(object, show_message = F){
 
   }
 
-  comp.eval <- do.call(rbind,comp.eval.list)
+  comp.eval <- do.call(rbind,comp.eval.list)%>%
+    dplyr::filter(!merged,ms2.count>0)
 
   return(invisible( comp.eval ))
 
@@ -863,7 +872,10 @@ MSIP_merge_isotopologues <- function(object,
                   )%>%
     dplyr::filter(polarity %in%0:1)%>%
     dplyr::group_by(cp.group)%>%
-    dplyr::filter( any(polarity==0) & any(polarity==1))
+    dplyr::filter( any(polarity==0) & any(polarity==1))%>%
+    dplyr::mutate(rt.diff = abs(rt - mean(rt)))%>%
+    dplyr::group_by(polarity)%>%
+    dplyr::slice_min(rt.diff)
 
   to.merge <- unique(isotopologues.to.merge$cp.group)
   for (i in seq_along(to.merge)) {

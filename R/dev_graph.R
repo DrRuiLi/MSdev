@@ -24,6 +24,19 @@ igraph_filter_vertex <- function(ig,v){
 
 }
 
+igraph_filter_distance <- function(ig, from , dis = 1,...){
+
+  dis.matrix <- distances(ig,from)
+  dis.pass <- dis.matrix <= dis
+  id <- apply(dis.pass,2,function(x){
+    any(x)
+  })
+
+  igraph_filter_vertex(ig,id)
+
+}
+
+
 igraph_filter_shortest_path <- function(ig,from,to){
 
   sp <- shortest_paths(ig,from,to)
@@ -107,4 +120,41 @@ igraph_node_path_to_edge_path <- function(graph, node_path) {
     return(edges)
   })
   return(edge_paths)
+}
+
+
+
+vis_add_text <- function(vis,text, font.size =10 ){
+
+  to.add.df <- data.frame(
+    name = "text",
+    shape = "box",
+    font.size = font.size,
+    label = text,
+    color.border = "#888888",
+    color.background = "#eeeeee"
+
+  )
+
+  vis$x$nodes <- bind_rows(vis$x$nodes,to.add.df)
+  vis
+}
+
+
+vis_add_arrow_icon <- function(vis,
+                               size = 60,
+                               color = "#222222"){
+
+  to.add.df <- nodes <- data.frame(name = "ARROW",
+                                   shape = "icon",  # Specify that the node shape is an icon
+                                   icon.face = 'FontAwesome',  # Use FontAwesome icons
+                                   icon.code = "f061",  # Unicode for an arrow (FontAwesome)
+                                   icon.size = size,  # Set the size of the icon
+
+                                   icon.color =color)  # Set the color of the icon
+
+
+  vis$x$nodes <- bind_rows(vis$x$nodes,to.add.df)
+  vis%>%
+  addFontAwesome()
 }

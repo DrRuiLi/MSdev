@@ -138,7 +138,7 @@ vis_cfm_data_trans_map<- function(cfmd,trans_id,
 sdf_igraph_add_border_color <- function(sdf.igraph,
                                         value,
                                         color.ramp = colramp(breaks = c(0,Inf,1),
-                                                             colors = c("#aaaaaa","#97C2FC","#2B7CE9"))
+                                                             colors = c("#CCCCCC","#97C2FC","#2B7CE9"))
                                         ){
 
   sdf.igraph.temp <-sdf.igraph
@@ -167,7 +167,7 @@ sdf_igraph_add_background_color <- function(sdf.igraph,
 
 sdf_igraph_show_id <- function(sdf.igraph,show_id){
 
-  message_with_time(show_id)
+  #message_with_time(show_id)
   if (show_id) {
     vdata(sdf.igraph)$label <-   vdata(sdf.igraph)$id%>%
       str_format_len()

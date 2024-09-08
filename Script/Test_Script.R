@@ -1448,3 +1448,340 @@ open_plot_win(p)
 
 
 
+
+# Thu Aug 29 10:21:02 2024 MSIP TUNE------------------------------
+iso.list <- msdev.M1@statData$MSIP$isotopologues_data
+iso.data <- iso.list$FT00684_Negative
+msip.core <- iso.data$MSIP_result$M1$Con
+
+
+
+# Thu Aug 29 13:15:26 2024 get_MSIPCoreData------------------------------
+iso.list <- msdev.M1@statData$MSIP$isotopologues_data
+iso.data <- iso.list$FT11987_Negative
+msip.core <- iso.data$MSIP_result$M3$Con
+msip.core
+msip.core <- get_MSIPCoreData(sp.iso = iso.data$Spectra$M1$Con,
+                              cfmd = iso.data$CFM_annotation,
+                              iso_count = 1,
+                              ppm = 10)
+msip.core <- MSIPCore_solve(msip.core)
+MSIPFragmentMap <- msip.core@FG_map
+
+MSIPFragmentMap <- MSIPFragmentMap_add_constraint(MSIPFragmentMap)
+heatmap_MSIPFragmentMap(MSIPFragmentMap)
+
+MSIPCore_solve(msip.core)
+
+
+
+# Thu Aug 29 15:06:35 2024 isotopomers set vis------------------------------
+msip.frag.map <- msip.core@solve$MSIPIsotopomerMap
+possible.set <- msip.frag.map@solve$isotopomer.set[msip.frag.map@solve$isotopomer.set.prob > 1e-5]
+
+for (i_set  in seq_along(possible.set)) {
+  msip.frag.map@isotopomer.defination[possible.set[[i_set]]]%>%
+    unlist()%>%
+    table()%>%
+    `/`(sum(.))%>%
+    `*`(3)%>%
+    print()
+}
+
+# Thu Aug 29 17:33:55 2024 eval cor and RMSE------------------------------
+process.info <- MSIP_solve_computation_evaluate(msdev.M1)
+process.infoL <- process.info%>%
+  dplyr::filter(iso_count == 1&samples == "Liver")
+#process.info <- process.info[1:10,]
+#msdev.M1 <- MSIP_solve_isotopologues(msdev.M1,
+#                                     process.info,
+#                                     ppm = 20,
+#                                     timeout = 15)
+process.infoL$cor <- NA
+process.infoL$count <- NA
+iso.list <- msdev.M1@statData$MSIP$isotopologues_data
+for (i in 1:nrow(process.infoL)) {
+
+  msip.core <- iso.list[[process.infoL$feature_id[i]]]$
+    MSIP_result[[str_isotope2_num(process.infoL$iso_count[i])]][[process.infoL$samples[i]]]
+  if (is.null(msip.core)|isEmpty(msip.core)) {
+    next
+  }
+  msip.ifmap <- msip.core@solve$MSIPIsotopomerMap
+  x <- lengths(msip.ifmap@solve$isotopomer.set)
+
+  y <- msip.ifmap@solve$isotopomer.set.prob
+  if (length(x)) {
+    x <- x/sum(x)
+    process.infoL$count[i] <- length(x)
+    process.infoL$cor[i]<-  cor(x,y)^2
+    process.infoL$rmse[i] <- sqrt(mean((x - y) ^ 2))
+  }
+
+}
+
+
+plot.data <- process.infoL%>%
+  dplyr::filter(count > 0)%>%
+  dplyr::mutate(meaningful = count>1)
+
+ggplot(plot.data)+
+  geom_histogram(aes(x  = rmse,fill = meaningful ),position = "dodge")->p.cor
+
+open_plot_win(p)
+
+# Sat Aug 31 15:10:26 2024 ------------------------------
+
+iso.list <- msdev.M1@statData$MSIP$isotopologues_data
+iso.data <- iso.list[[196]]
+shiny_vis_cfmd(iso.data$CFM_annotation0)
+
+cfmd <- iso.data$CFM_annotation0
+msip.core <- iso.data$MSIP_result$M1$Liver
+heatmap_MSIPFragmentMap(msip.core@FG_map)
+msip.core <- MSIPCore_solve(msip.core,
+                            int_thresh = 8000,
+                            certainty_thresh = 0)
+plotly_MSIPCore_pred_nature_prob(msip.core)%>%
+  open_visNet()
+
+
+
+cfmd <- CFM_data_get_atom_map(cfmd)
+# Sat Aug 31 16:54:37 2024 MSIP single solve pipline ------------------------------
+object <- msdev.M1
+iso.list <- object@statData$MSIP$isotopologues_data
+iso.data <- iso.list[[9]]
+### CFM
+{
+  cfmd <- get_CFM_data_from_smiles(
+    smiles = iso.data$compound_info$smiles,
+    compound_id = iso.data$compound_info$compound_id,
+    ppm =  10,
+    adduct = switch(as.character(iso.data$compound_info$polarity),
+                    "0"="[M-H]-",
+                    "1"="[M+H]+"),
+    check_temp = F,
+    temp_dir = paste0(object@projectInfo$CompoundDB_path,"_cfmd"))
+  iso.data$CFM_annotation <- cfmd
+
+
+}
+
+get_CFM_data_MSIPFragmentMap(cfmd)%>%
+  heatmap_MSIPFragmentMap()
+
+
+ggplot(cfmd@fragment_define)+
+  geom_point(aes(x = ratio ,y= bond.score))
+
+
+# Tue Sep  3 18:21:37 2024 evaluate Cor and rmse ------------------------------
+### Liver
+{
+  process.info <- MSIP_solve_computation_evaluate(msdev.M1)
+  process.infoL <- process.info%>%
+    dplyr::filter(iso_count == 1&samples == "Liver")
+  #process.info <- process.info[1:10,]
+  #msdev.M1 <- MSIP_solve_isotopologues(msdev.M1,
+  #                                     process.info,
+  #                                     ppm = 20,
+  #                                     timeout = 15)
+  process.infoL$cor <- NA
+  process.infoL$count <- NA
+  iso.list <- msdev.M1@statData$MSIP$isotopologues_data
+  for (i in 1:nrow(process.infoL)) {
+
+    msip.core <- iso.list[[process.infoL$feature_id[i]]]$
+      MSIP_result[[str_isotope2_num(process.infoL$iso_count[i])]][[process.infoL$samples[i]]]
+    if (is.null(msip.core)|isEmpty(msip.core)) {
+      next
+    }
+    msip.ifmap <- msip.core@solve$MSIPIsotopomerMap
+    x <- lengths(msip.ifmap@solve$isotopomer.set)
+
+    y <- msip.ifmap@solve$isotopomer.set.prob
+    if (length(x)) {
+      x <- x/sum(x)
+      process.infoL$count[i] <- length(x)
+      process.infoL$cor[i]<-  cor(x,y)^2
+      process.infoL$rmse[i] <- sqrt(mean((x - y) ^ 2))
+      process.infoL$r2[i]<-  summary(lm(x~y))$r.squared
+
+
+
+    }
+
+  }
+
+
+  plot.data <- process.infoL%>%
+    dplyr::filter(count > 0)%>%
+    dplyr::mutate(meaningful = count>1,
+                  solve.ratio = count/target_ele_count)
+
+  p.rmse <- ggplot(plot.data)+
+    geom_histogram(aes(x  = rmse,fill = meaningful ),position = "dodge")+
+    scale_fill_manual(values = c("TRUE" = "#00BFC4","FALSE" = "#F8766D"))+
+    labs(x = "RMSE",y = "Count")+
+    theme_bw()
+
+  p.cor <- ggplot(plot.data)+
+    geom_histogram(aes(x  = r2,fill = meaningful ),position = "dodge",show.legend = F)+
+    scale_fill_manual(values = c("TRUE" = "#00BFC4","FALSE" = "#F8766D"))+
+    labs(x = "R²",y = "Count")+
+    theme_bw()
+
+
+  p.stat <- ggplot(plot.data)+
+    geom_point(aes(x = solve.ratio, y = count,col = meaningful),show.legend = F)+
+    scale_fill_manual(values = c("TRUE" = "#00BFC4","FALSE" = "#F8766D"))+
+    labs(x = "Solve ratio",y = "Isotopomers set count")+
+    theme_bw()
+
+  p <- p.rmse+p.cor+p.stat+plot_layout(guides="collect")+
+    plot_annotation(title = "Natural isotopomers M1 validation in Liver")
+  open_plot_win(p, 10, 3)
+
+}
+
+
+### Cell
+{
+  process.info <- MSIP_solve_computation_evaluate(msdev.M1)
+  process.infoL <- process.info%>%
+    dplyr::filter(iso_count == 1&samples == "Con")
+  #process.info <- process.info[1:10,]
+  #msdev.M1 <- MSIP_solve_isotopologues(msdev.M1,
+  #                                     process.info,
+  #                                     ppm = 20,
+  #                                     timeout = 15)
+  process.infoL$cor <- NA
+  process.infoL$count <- NA
+  iso.list <- msdev.M1@statData$MSIP$isotopologues_data
+  for (i in 1:nrow(process.infoL)) {
+
+    msip.core <- iso.list[[process.infoL$feature_id[i]]]$
+      MSIP_result[[str_isotope2_num(process.infoL$iso_count[i])]][[process.infoL$samples[i]]]
+    if (is.null(msip.core)|isEmpty(msip.core)) {
+      next
+    }
+    msip.ifmap <- msip.core@solve$MSIPIsotopomerMap
+    x <- lengths(msip.ifmap@solve$isotopomer.set)
+
+    y <- msip.ifmap@solve$isotopomer.set.prob
+    if (length(x)) {
+      x <- x/sum(x)
+      process.infoL$count[i] <- length(x)
+      process.infoL$cor[i]<-  cor(x,y)^2
+      process.infoL$rmse[i] <- sqrt(mean((x - y) ^ 2))
+      process.infoL$r2[i]<-  summary(lm(x~y))$r.squared
+    }
+
+  }
+
+
+  plot.data <- process.infoL%>%
+    dplyr::filter(count > 0)%>%
+    dplyr::mutate(meaningful = count>1,
+                  solve.ratio = count/target_ele_count)
+
+  p.rmse <- ggplot(plot.data)+
+    geom_histogram(aes(x  = rmse,fill = meaningful ),position = "dodge")+
+    scale_fill_manual(values = c("TRUE" = "#00BFC4","FALSE" = "#F8766D"))+
+    labs(x = "RMSE",y = "Count")+
+    theme_bw()
+
+  p.cor <- ggplot(plot.data)+
+    geom_histogram(aes(x  = r2,fill = meaningful ),position = "dodge",show.legend = F)+
+    scale_fill_manual(values = c("TRUE" = "#00BFC4","FALSE" = "#F8766D"))+
+    labs(x = "R²",y = "Count")+
+    theme_bw()
+
+  p.stat <- ggplot(plot.data)+
+    geom_point(aes(x = solve.ratio, y = count,col = meaningful),show.legend = F)+
+    scale_fill_manual(values = c("TRUE" = "#00BFC4","FALSE" = "#F8766D"))+
+    labs(x = "Solve ratio",y = "Isotopomers set count")+
+    theme_bw()
+
+  p <- p.rmse+p.cor+p.stat+plot_layout(guides="collect")+
+    plot_annotation(title = "Natural isotopomers M1 validation in Cell")
+  open_plot_win(p, 10, 3)
+
+}
+
+
+# Tue Sep  3 22:04:40 2024 NMR data ------------------------------
+gln.iso.data.mix <- msdev.M1@statData$MSIP$isotopologues_data$FT02220_Negative
+
+ms1.int.matirx <- gln.iso.data.mix$compound_info$ratio_matrix
+Heatmap(ms1.int.matirx,
+        name = "Ratio",
+        col = colramp(),
+        cell_fun = function(j, i, x, y, width, height, fill) {
+          grid.text(sprintf("%.2f", ms1.int.matirx[i, j]), x, y, gp = gpar(fontsize = 10))
+        },
+        row_names_side = "left",
+        column_names_rot = 0,
+        cluster_columns = F,
+        cluster_rows = F
+        ) -> p
+open_plot_win( p )
+
+nmr.data <- gln.iso.data.mix$MSIP_result$M1$NMR
+p <- heatmap_MSIPFragmentMap(nmr.data@FG_map)
+open_plot_win(p, 6, 8)
+nmr.data@solve$MSIPIsotopomerMap@isotopomer.defination
+nmr.data@solve$MSIPIsotopomerMap@solve$isotopomer.set
+nmr.data@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob
+
+nmr.data <- gln.iso.data.mix$MSIP_result$M2$NMR
+p <- heatmap_MSIPFragmentMap(nmr.data@FG_map)
+open_plot_win(p,7,8)
+
+nmr.data <- gln.iso.data.mix$MSIP_result$M3$NMR
+p <- heatmap_MSIPFragmentMap(nmr.data@FG_map)
+open_plot_win(p,8,8)
+
+vis_sdf_igraph(gln.iso.data.mix$CFM_annotation@fragment_igraph$Fragment01,show_id = T)%>%
+  open_visNet()
+
+plot.data = data.frame(
+  x = c(0.216,0.2875,0.2875,0.0753,0.066),
+  y = c(0.275,0.1718,0.378,0,0.174)
+)
+
+ggplot(plot.data)+
+  geom_point(aes(x = x,y=y))+
+  geom_abline(slope = 1,intercept = 0,col = "grey",linewidth = 2)+
+  xlim(c(0,0.5))+
+  ylim(c(0,0.5))+
+  theme_bw()+
+  labs(x = "MSIP", y = "NMR")->p
+
+open_plot_win(p,3.3,3)
+
+
+
+
+
+
+# Sat Sep  7 19:39:21 2024 CFM network------------------------------
+{
+  nodes <- data.frame(id = 1:4, label = c("Node 1", "Node 2", "Node 3", "Node 4"))
+
+  # Create edge data frame with a 'dis' attribute for distance
+  edges <- data.frame(
+    from = c(1, 2, 3),
+    to = c(2, 3, 4),
+    length = c(100, 200, 50)  # Example distances
+  )
+
+  # Visualize the network and set the edge lengths based on the 'dis' column
+  visNetwork(nodes, edges) %>%
+    visEdges(smooth = FALSE, scaling = list(min = 10, max = 200)) %>%  # Control scaling of edges if necessary
+    #visPhysics(solver = "forceAtlas2Based", forceAtlas2Based = list(gravitationalConstant = -200)) %>%
+    #visEdges(length = edges$dis)%>%
+    open_visNet()
+
+}

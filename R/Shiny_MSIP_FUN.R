@@ -917,3 +917,17 @@ shiny_plotly_iso_distribution <- function(frag.iso.distribution){
 
 }
 
+
+shiny_get_int_thresh <- function(msip.core){
+
+  if (is.null(msip.core)) {
+    return(0)
+  }
+
+  int_thresh <- msip.core@solve[["int_thresh"]]
+  if (is.null(int_thresh)) {
+    return(0)
+  }else
+    return(log10(int_thresh))
+}
+

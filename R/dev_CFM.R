@@ -397,7 +397,8 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
                     smiles =  str_extract(line.data,"(?<=^[^\\s]{1,50}\\s[^\\s]{1,50}\\s)[^\\s].*")
       )%>%
       dplyr::filter(!is.na(from))%>%
-      dplyr::select(from,to,smiles)
+      dplyr::select(from,to,smiles)%>%
+      dplyr::distinct(from,to,smiles)
 
   }
 
@@ -771,6 +772,7 @@ CFM_data_get_igraph <- function(object){
 
 
 CFM_data_get_atom_map <- function(object,
+                                  iso_ele = "[13]C",
                                   BPPARAM = SerialParam()){
 
 
@@ -781,9 +783,11 @@ CFM_data_get_atom_map <- function(object,
     fragment.trans <- object@fragment_transition
     trans.maps <- bplapply(1:nrow(fragment.trans),
                            get_CFM_data_trans_map,cfmd = object,
+                           iso_ele=iso_ele,
                            BPPARAM = BPPARAM)
     names(trans.maps) <- paste0(fragment.trans$from,fragment.trans$to)
-    trans.maps.stat <- check_CFM_data_trans_map(object,trans.maps)
+    trans.maps.stat <- check_CFM_data_trans_map(object,trans.maps = trans.maps,iso_ele = iso_ele)
+    trans.maps.stat$bond.score <- sapply(trans.maps,function(x) attributes(x)$bond.score)
     fragment.trans[,colnames(trans.maps.stat)] <- trans.maps.stat
 
     object@fragment_transition <- fragment.trans
@@ -801,11 +805,13 @@ CFM_data_get_atom_map <- function(object,
   {
     #message_with_time("atom map")
     fragment.atom.map <-list()
+    ### weight for path selection
     fragment.trans <- object@fragment_transition%>%
       dplyr::mutate(id =  paste0(from,to),
-                    weight = n_atoms - n_atoms_compose_map)
+                    weight = n_atoms - n_atoms_compose_map+1-bond.score  )
     fragment.data <- object@fragment_define
     fragment.data$ratio <- NA
+    fragment.data$bond.score<- NA
     fragment.igraph <- object@fragment_igraph
     if (nrow(fragment.trans)) {
       ig.trans <- graph_from_data_frame(fragment.trans)
@@ -826,21 +832,27 @@ CFM_data_get_atom_map <- function(object,
           #this.path <- all_simple_paths(ig.trans,from = 1,to = this.frag,
           #                              mode = "out",
           #                              cutoff = distances(ig.trans,1,this.frag,mode = "out")+5)
-          this.path <- shortest_paths(ig.trans,from = 1,to = this.frag,
+          this.path <- shortest_paths(ig.trans,from = 1,
+                                      to = this.frag,
                                       mode = "out",output  = "vpath")$vpath
           #this.path.len <- lengths(this.path)
           #this.path <- this.path[this.path.len<min(this.path.len)+5]
-          message_with_time(i," ",length(this.path))
+
           this.epath <- sapply(this.path,function(path){
             epath <- paste0(names(path),names(path)[-1])
             epath[1:length(epath)-1]
           })
           #this.epath.len <- lengths(this.epath)
-          this.path.score <- sapply(this.epath,function(epath){
+          this.path.ratio <- sapply(this.epath,function(epath){
             idx.path <- match(epath,fragment.trans$id)
             r <- fragment.trans$ratio[idx.path]
-            prod(r)
-          })
+            return(r)
+          })%>%prod()
+          this.path.bond.score <- sapply(this.epath,function(epath){
+            idx.path <- match(epath,fragment.trans$id)
+            r <- fragment.trans$bond.score[idx.path]
+            return(r)
+          })%>%prod()
           #id.max.r <- which((this.path.score==max(this.path.score)))
           #trans.idx <- this.epath[[id.max.r[which.min(this.epath.len[id.max.r])]]]
           trans.idx <- this.epath
@@ -861,7 +873,8 @@ CFM_data_get_atom_map <- function(object,
           }
         }
 
-        fragment.data$ratio[i] <-  max(this.path.score)
+        fragment.data$ratio[i] <-  this.path.ratio
+        fragment.data$bond.score[i] <-  this.path.bond.score
 
       }
       names(fragment.atom.map) <-fragment.data$fragment_id
@@ -932,7 +945,7 @@ CFM_data_remove_trans <- function(object){
 }
 
 
-get_CFM_data_trans_map <- function(cfmd,trans_id){
+get_CFM_data_trans_map <- function(cfmd,trans_id,iso_ele="[13]C"){
 
   #message("trans: ",trans_id)
   fragment.trans <- cfmd@fragment_transition
@@ -943,18 +956,27 @@ get_CFM_data_trans_map <- function(cfmd,trans_id){
   sdf.parent <- fragment.sdf[[fragment.trans$from[trans_id]]]
   sdf.product <- fragment.sdf[[fragment.trans$to[trans_id]]]
 
-  maps <- get_atom_map(sdf.parent ,sdf.product ,ig.parent ,ig.product )
+  maps <- get_atom_map(sdf.parent ,sdf.product ,ig.parent ,ig.product ,iso_ele=iso_ele)
   return(maps)
 }
 
 
-check_CFM_data_trans_map <- function(cfmd,trans.maps =NULL){
+check_CFM_data_trans_map <- function(cfmd,
+                                     iso_ele = "[13]C",
+                                     trans.maps =NULL){
 
   if (is.null(trans.maps)) {
     trans.maps <- sapply(1:nrow(cfmd@fragment_transition),
                          get_CFM_data_trans_map,cfmd = cfmd)
   }
   #x <- trans.maps[[30]]
+  atom.ele <- get_ele_uniso(iso_ele )
+  trans.maps <- lapply(trans.maps,function(x){
+    x[grepl(atom.ele,rownames(x)),grepl(atom.ele,colnames(x)),drop = F]
+  })
+  n_parent <- sapply(trans.maps,function(x){
+    nrow(x)
+  })
   n_atoms <-sapply(trans.maps,function(x){
     ncol(x)
   })
@@ -976,6 +998,7 @@ check_CFM_data_trans_map <- function(cfmd,trans.maps =NULL){
   })
 
   map.stat <- data.frame(n_atoms,
+                         n_parent,
                   n_atoms_compose_map,
                   n_atoms_certain_map,
                   n_atoms_noncertain_map,
@@ -988,8 +1011,32 @@ check_CFM_data_trans_map <- function(cfmd,trans.maps =NULL){
 get_CFM_data_trans_igraph <- function(object){
 
 
-  frag.trans.graph <- graph_from_data_frame(object@fragment_transition,
-                                            vertices =object@fragment_define )
+
+  node.df <- object@fragment_define %>%
+    dplyr::mutate(id = fragment_id,
+                  no = 1:n(),
+                  color.border =case_when(
+                    no == 1~ "rgba(100, 100, 100, 0.8)",
+                      T ~ "rgba(100, 100, 100, 0.1)"
+                    ),
+                  color.background = case_when(
+                    T ~ "rgba(200, 200, 200, 1)"
+                  ),
+                  borderWidth = 5,
+                  size = case_when(no == 1~ 100,
+                                   T~50))
+  edge.df <- object@fragment_transition%>%
+    dplyr::mutate(match.str = paste0(from,to),
+                  no = 1:n(),
+                  atom.loss = n_atoms - n_atoms_compose_map,
+                  bond.loss =1-bond.score,
+                  color =  "rgba(100, 100, 100, 0.1)",
+                  width = 10,
+                  loss.distance = atom.loss+bond.loss,
+                  length = normalize_max_min(loss.distance)*1500)
+
+  frag.trans.graph <- graph_from_data_frame(edge.df,
+                                            vertices = node.df )
   return(frag.trans.graph)
 }
 
@@ -1019,13 +1066,15 @@ cfm_data_get_fragment_group <- function(cfm_data,ppm = 10){
 get_cfm_data_fragment_group_atom_map <- function(cfm_data,frag.group){
 
   frag.idx <- which(cfm_data@fragment_define$fragment_group == frag.group)
+
   if (1%in%frag.idx) {
     ele <- get_sdf_igraph_atom(get_cfm_data_sdf_igraph(cfm_data))
     frag.atoms.prob <- rep(1,length(ele))
     names(frag.atoms.prob) <- ele
   }else{
-    frag.def <- cfm_data@fragment_define%>%
-      dplyr::filter(fragment_group == frag.group)
+    frag.def <- cfm_data@fragment_define[frag.idx,]
+    frag.score <- frag.def$ratio*0.7 + frag.def$bond.score*0.3
+    frag.idx<- frag.idx[frag.score == max(frag.score,na.rm = T)]
     frag.maps <- cfm_data@fragment_atom_map[frag.idx]
     frag.maps <- frag.maps[!sapply(frag.maps,is.null)]
     if (!length(frag.maps)) {
@@ -1280,6 +1329,7 @@ get_CFM_data_from_smiles <- function(smiles = "NCC(O)=O",
                                      ppm = 5,
                                      adduct = "[M+H]+",
                                      check_temp = T,
+                                     iso_ele = "[13]C",
                                      temp_dir = tempdir(),
                                      ...){
   if(check_temp){
@@ -1298,7 +1348,7 @@ get_CFM_data_from_smiles <- function(smiles = "NCC(O)=O",
   cfmd <- cfm_data_get_fragment_group(cfmd)
   cfmd <- CFM_data_get_igraph(cfmd)
   message_with_time("CFM_data_get_atom_map")
-  cfmd <- CFM_data_get_atom_map(cfmd)
+  cfmd <- CFM_data_get_atom_map(cfmd,iso_ele = iso_ele)
   message_with_time("Done")
   if(check_temp){
     dir.create(temp_dir,showWarnings = F,recursive = T)
@@ -1368,4 +1418,17 @@ shiny_vis_cfmd <- function(cfmd){
 
 
 
+get_cfmd_FG_map_check <- function(cfmd){
 
+  fg.map <- get_CFM_data_MSIPFragmentMap(cfmd)
+  fg.fragment.count <- table(cfmd@fragment_define$fragment_group)
+  fg.certainty <- get_MSIPFragmentMap_certainty(fg.map)
+  fg.df <- data.frame(
+    fg = names(fg.certainty),
+    certainty =fg.certainty,
+    fragment.count = as.numeric(fg.fragment.count[names(fg.certainty)])
+  )
+
+  return(fg.df)
+
+}

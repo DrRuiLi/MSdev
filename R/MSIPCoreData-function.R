@@ -8,7 +8,9 @@ get_MSIPCoreData <- function(sp.iso,
                                              ppm = ppm,
                                              iso_count = iso_count)
   sp.frag.data <- CFM_spectra_data_merge(sp.frag.data,iso_count)
-  fg.map <- get_MSIPFragmentMap(sp.frag.data,cfmd,iso_count = iso_count)
+  fg.map <- get_MSIPFragmentMap(sp.frag.data,
+                                cfmd,
+                                iso_count = iso_count)
 
 
   MSIPCoreData <- new("MSIPCoreData")
@@ -46,8 +48,12 @@ MSIPCore_correct_natural <- function(MSIPCoreData,
 
 MSIPCore_solve <- function(MSIPCoreData,
                            max_prob_map = F,
-                           int_thresh = 1e4,
-                           certainty_thresh = 0.8){
+                           int_thresh = 10^3.8,
+                           certainty_thresh = 0.8,
+                           re_split_isotopomers = T){
+
+  if (isEmpty(MSIPCoreData))
+    return(MSIPCoreData)
 
   ### set all include
   MSIPCoreData@FG_map@fragment.include <- MSIPCoreData@FG_map@fragment.include|T
@@ -56,7 +62,8 @@ MSIPCore_solve <- function(MSIPCoreData,
   MSIPFragmentMap_temp <- MSIPFragmentMap_filter_certainty(MSIPFragmentMap_temp,certainty_thresh = certainty_thresh)
   MSIPCoreData@FG_map <- MSIPFragmentMap_temp
 
-  MSIPFragmentMap_reduced <- MSIPFragmentMap_include_fragment(MSIPFragmentMap_temp)
+  MSIPFragmentMap_reduced <- MSIPFragmentMap_include_fragment(MSIPFragmentMap_temp)%>%
+    MSIPFragmentMap_add_constraint()
 
   if (isEmpty(MSIPFragmentMap_reduced))
     return(MSIPCoreData)
@@ -65,6 +72,8 @@ MSIPCore_solve <- function(MSIPCoreData,
   }
   MSIPCoreData.temp <- MSIPCoreData
   MSIPCoreData.temp@FG_map <- MSIPFragmentMap_reduced
+  if(re_split_isotopomers)
+    MSIPCoreData.temp@solve <- list()
   MSIPIsotopomerMap <- get_MSIPIsotopomerMap(MSIPCoreData.temp)
   MSIPIsotopomerMap <- MSIPIsotopomerMap_set_split(MSIPIsotopomerMap,
                                        MSIPFragmentMap_reduced)
@@ -87,6 +96,7 @@ MSIPCore_drop <- function(MSIPCoreData){
 
 get_MSIPFragmentMap <- function(sp.frag.data,
                                 cfmd,
+                                iso_ele = "[13]C",
                                 iso_count){
 
   ### frag group to label fraction
@@ -125,20 +135,20 @@ get_MSIPFragmentMap <- function(sp.frag.data,
   }
 
 
-  ### frag group to C atom prob
+  ### frag group to atom prob
   {
-    c_ele <- get_sdf_igraph_atom(get_cfm_data_sdf_igraph(cfmd),"C")
-    frag.atom.matrix <- matrix(ncol = length(c_ele),
+    target_atoms <- get_sdf_igraph_atom(get_cfm_data_sdf_igraph(cfmd),get_ele_uniso(iso_ele))
+    frag.atom.matrix <- matrix(ncol = length(target_atoms),
                             nrow = length(fg.idx),
                             dimnames = list(names(fg.idx),
-                                            c_ele))
+                                            target_atoms))
     for (i.fg in seq_along(fg.idx)) {
 
       this.frag.group <- names(fg.idx)[i.fg]
       this.frags <- cfmd@fragment_define[cfmd@fragment_define$fragment_group==this.frag.group,]
       this.frag.ratio <-frag.ratio.matrix[i.fg,]
       this.frag.atom <- get_cfm_data_fragment_group_atom_map(cfmd,this.frag.group)
-      this.frag.c <- this.frag.atom[c_ele]
+      this.frag.c <- this.frag.atom[target_atoms]
       #this.iso.expectation <- sum(str_extract_num(names(this.frag.ratio))*this.frag.ratio)
       #this.frag.c <- this.frag.c*this.iso.expectation/sum(this.frag.c)
       #this.frag.c <- this.frag.c[this.frag.c!=0]
@@ -349,7 +359,24 @@ MSIPFragmentMap_filter_certainty <- function(MSIPFragmentMap,
   MSIPFragmentMap@fragment.include <-  frag.include
   return(MSIPFragmentMap)
 }
+MSIPFragmentMap_add_constraint <- function(MSIPFragmentMap){
 
+  m <- MSIPFragmentMap@fragment.atom.matrix
+  MSIPFragmentMap@fragment.atom.matrix <-
+    rbind(m,matrix(c(0,1),2,ncol(m),dimnames = list(c("FGNULL","FGFULL"),colnames(m))))
+
+  m <- MSIPFragmentMap@fragment.ratio.matrix
+  m1 <- matrix(0,2,ncol(m),dimnames = list(c("FGNULL","FGFULL"),colnames(m)))
+  m1[1] <- m1[length(m1)] <- 1
+  MSIPFragmentMap@fragment.ratio.matrix <- rbind(m,m1)
+
+  MSIPFragmentMap@fragment.intensity %<>% c(.,FGNULL = 1e9,FGFULL=1e9)
+  MSIPFragmentMap@fragment.include %<>% c(.,FGNULL = T,FGFULL=T)
+
+
+  return(MSIPFragmentMap)
+
+}
 
 get_MSIPFragmentMap_certainty <- function(MSIPFragmentMap){
   frag.matrix <- MSIPFragmentMap@fragment.atom.matrix
