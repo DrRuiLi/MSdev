@@ -13,7 +13,7 @@ MSIP_shiny_server <- function(object){
     {
       fid.selected <- reactiveVal()
       iso.data.list <- reactiveVal( object@statData$MSIP$isotopologues_data)
-      iso.data <- reactiveVal( object@statData$MSIP$isotopologues_data[[1]])
+      iso.data <- reactiveVal()
       msip.core.data <- reactiveVal()
 
 
@@ -63,7 +63,7 @@ MSIP_shiny_server <- function(object){
 
 
       observeEvent(input$metabolite_table_rows_selected,{
-        message_with_time("metabolite_table_rows_selected")
+        message_with_time("metabolite_table_rows_selected: ",input$metabolite_table_rows_selected)
         fid.selected(
           names(iso.data.list())[input$metabolite_table_rows_selected]
         )
@@ -323,6 +323,12 @@ MSIP_shiny_server <- function(object){
 
         message_with_time("observeEvent269")
         fg.include( shiny_get_fg_include(msip.core.data()) )
+
+        message_with_time("shiny_get_int_thresh")
+        msip.core.int_thresh <- shiny_get_int_thresh(msip.core.data())
+        updateSliderInput(inputId = "int_thresh",
+                          value = msip.core.int_thresh)
+
 
       })
 
