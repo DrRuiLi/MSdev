@@ -297,8 +297,9 @@ get_atom_map <- function(sdf.parent,
                          iso_ele = "[13]C",
                          return.type = c("most_prob","prob_matrix")){
   return.type <- match.arg(return.type)
-  mcs <- fmcsR::fmcs(sdf.parent,sdf.product,bu = 10000)
+  mcs <- fmcsR::fmcs(sdf.parent,sdf.product,bu = 10)
   mcs.map <- get_mcs_atom_map(mcs)
+  mcs.map <- mcs.map.filter.duplicate(mcs.map,target_ele = get_ele_uniso(iso_ele))
   atom.map.matrix <- matrix(nrow = length(mcs.map),
                         ncol = length(atom(sdf.product)),
                         dimnames = list(seq_along(mcs.map),
@@ -469,6 +470,25 @@ get_atom_map <- function(sdf.parent,
 
 }
 
+mcs.map.filter.duplicate <- function(mcs.map,target_ele = "C"){
+
+
+  mcs.list <- lapply(mcs.map,function(x){
+
+    x <- x %>%
+      dplyr::filter(
+        grepl(target_ele,mc1.atom)
+      )%>%
+      dplyr::arrange(mc1.idx)
+
+    make_vector(x$mc2.atom,name = x$mc1.atom)
+
+  })
+
+  return(mcs.map[!duplicated(mcs.list)])
+}
+
+
 
 #' vis_smiles
 #'
@@ -533,7 +553,7 @@ get_isopattern_score <- function(formula,
            id <- match_mz(mz1 = iso_patterng$mz.center,
                              mz2 = mzs,
                              mz.ppm  = ppm)
-           iso.valm <- int_matrix[id,]
+           iso.valm <- int_matrix[id,,drop = F]
            iso.ratio <- t(t(iso.valm)/iso.valm[1,])*100
            apply(iso.ratio , 2, function(iso.ratio.x){
              x <- iso_patterng$abundance[-1]

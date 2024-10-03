@@ -1046,3 +1046,135 @@
 
 }
 
+
+# Thu Sep 19 13:54:07 2024 CHB------------------------------
+{
+  #msdev.CHB <- MSdev("d:/2024_07_08-Lirui/Data/" )
+  msdev.CHB <- load_as_var("d:/2024.09.19.CHB/MSdev_2024_09_19.Rdata")
+  msdev.CHB <- MSdev_msConvert(msdev.CHB)
+  msdev.CHB <- MSdev_checkSampleInfo(msdev.CHB)
+  msdev.CHB <- MSdev_xcmsProcessing(msdev.CHB)
+  msdev.CHB <- MSdev_annotation(msdev.CHB,
+                                expand_adduct= T,
+                                selected_adduct = c("[M-H]-","[M+H]+"),
+                                cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+  msdev.CHB <- MSdev_get_Stat(msdev.CHB,QC_RSD = 0.3)
+  MSdev_save(msdev.CHB)
+  MSdev_export(msdev.CHB,candi = F)
+
+
+}
+
+# Wed Jul 31 15:46:54 2024 XCH ------------------------------
+{
+  MSdev.XCH  <- MSdev("D:/2024.09.25.XCH/Data/")
+  MSdev.XCH <- load_as_var("D:/2024.09.25.XCH/MSdev_2024_09_27.Rdata")
+  MSdev.XCH <- MSdev_msConvert(MSdev.XCH)
+  MSdev.XCH <- MSdev_checkSampleInfo(MSdev.XCH)
+  MSdev.XCH <- MSdev_xcmsProcessing(MSdev.XCH)
+  MSdev.XCH <- MSdev_extract_Spectra(MSdev.XCH)
+  MSdev.XCH <- MSdev_match_Spectra_to_feature(MSdev.XCH)
+  MSdev.XCH <- MSdev_annotation(MSdev.XCH,
+                                cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast.sqlite",
+                                selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
+  MSdev.XCH <- MSdev_get_Stat(MSdev.XCH,candi = F,QC_RSD = 10)
+  MSdev_export(MSdev.XCH,candi = F)
+  MSdev_save(MSdev.XCH)
+
+  {
+
+    proj.dir <- MSdev.XCH@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(MSdev.XCH,from = "metabolite")
+    data.se <- data.se[,data.se$group%in% c( "G10",   "G50" ,  "G_B","QC") ]
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 5,height = 5)
+
+
+    ### sample_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank")]
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+
+  }
+
+
+
+}
+
+
+# Mon Sep 30 13:49:14 2024 ------------------------------
+{
+  MSdev.CX  <- MSdev("D:/2024_09_27-Chenxin/Data/")
+  MSdev.CX <- load_as_var("D:/2024_09_27-Chenxin/MSdev_2024_09_30.Rdata")
+  MSdev.CX <- MSdev_msConvert(MSdev.CX)
+  MSdev.CX <- MSdev_checkSampleInfo(MSdev.CX)
+  MSdev.CX <- MSdev_update_xcms_pdata(MSdev.CX)
+  MSdev.CX <- MSdev_xcmsProcessing(MSdev.CX)
+  MSdev.CX <- MSdev_extract_Spectra(MSdev.CX)
+  MSdev.CX <- MSdev_match_Spectra_to_feature(MSdev.CX)
+  MSdev.CX <- MSdev_annotation(MSdev.CX,
+                               cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast.sqlite",
+                               selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
+  MSdev.CX <- MSdev_get_Stat(MSdev.CX,candi = F,QC_RSD = 10)
+  MSdev_export(MSdev.CX,candi = F)
+  MSdev_save(MSdev.CX)
+
+  {
+
+    proj.dir <- MSdev.CX@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(MSdev.CX,from = "metabolite")
+    #data.se <- data.se[,!colnames(data.se)%in% c( "G1",   "G2" ,  "G3","G4") ]
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 5,height = 5)
+
+
+    ### sample_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank","A0")]
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+
+  }
+
+
+
+}

@@ -4,7 +4,7 @@
 \alias{heatmap_MSIPFragmentMap}
 \title{heatmap_MSIPFragmentMap}
 \usage{
-heatmap_MSIPFragmentMap(MSIPFragmentMap)
+heatmap_MSIPFragmentMap(MSIPFragmentMap, show_ratio = F)
 }
 \arguments{
 \item{MSIPFragmentMap}{MSIPFragmentMap}

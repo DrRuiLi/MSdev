@@ -49,12 +49,20 @@ groupMz <- function(x,ppm = 10,return.type = c("vector","data.frame")){
 #
  # }
 #
+  x.na <- is.na(x)
+  x.raw <- x
+  x <- x[!x.na]
+
   return.type <- match.arg(return.type)
   x.group <- MsCoreUtils::group(x,ppm = ppm)
+
+  x.group.na <- seq_along(x.raw)
+  x.group.na[x.na] <- NA
+  x.group.na[!x.na] <- x.group
   if (return.type == "vector")
-    return(x.group)
-  x.table <-data.frame(mz = x,
-                       mz.group = x.group) %>%
+    return(x.group.na)
+  x.table <-data.frame(mz = x.raw,
+                       mz.group = x.group.na) %>%
     dplyr::group_by(mz.group)%>%
     dplyr::mutate(mz.center = median(mz),
                   mz.diff = abs(mz.center - mz),
@@ -178,7 +186,23 @@ mean_f <- function(x,f,...){
   sapply(split(x,f),mean,...)
 }
 
+sum_matrix <- function(...){
 
+  mat.list <- list(...)
+  if(length(mat.list)<2){
+    return(mat.list[[1]])
+  }
+
+  mat <- mat.list[[1]]
+  for (i in 2:length(mat.list)) {
+    mat <- mat + mat.list[[i]]
+  }
+
+  return(mat)
+
+
+
+}
 
 #' @title normalize_max_min
 #'
@@ -328,5 +352,11 @@ groupHclust <- function (x, maxDiff = 5){
 
 plot_density <- function(x){
   plot(density(x))
+}
+
+which.mid <- function(x){
+
+  x.mid <- median(x)
+  which.min(abs((x-x.mid)))
 }
 

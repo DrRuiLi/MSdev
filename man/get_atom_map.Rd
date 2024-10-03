@@ -9,7 +9,8 @@ get_atom_map(
   sdf.product,
   ig.parent = get_sdf_igraph(sdf.parent),
   ig.product = get_sdf_igraph(sdf.product),
-  return.type = c("prob_matrix", "most_prob")
+  iso_ele = "[13]C",
+  return.type = c("most_prob", "prob_matrix")
 )
 }
 \arguments{

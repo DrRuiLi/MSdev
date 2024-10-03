@@ -539,7 +539,7 @@ MSIP_shiny_Acq_server <- function(object){
         if (is.na(id)){
           xchrom(NA)
         }else{
-          xchrom(xchrom.selected.polarity()[id, pdf$sample.type != "Blank" ])
+          xchrom(xchrom.selected.polarity()[id, pdf$sample.type != "Blank" ,drop = F])
         }
       }
       message_with_time("observeEvent 452 done")

@@ -700,7 +700,7 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
     xcms.fdf.temp[,"iso_seed"] <- xcms.fdf[xcms.fdf.temp$feature_id,"iso_seed"]
     xcms.fdf.temp[,"iso_count"] <- xcms.fdf[xcms.fdf.temp$feature_id,"iso_count"]
     xcms.fdf.temp[,"iso_connection_group"] <- xcms.fdf[xcms.fdf.temp$feature_id,"iso_connection_group"]
-    xcms.fdf.temp -> xcms.xcms@msFeatureData$featureDefinitions
+    xcms.fdf.temp -> featureDefinitions(xcms.xcms)
     message("Get ",
             sum(!is.na(xcms.fdf.temp[,"iso_count"])),
             " isotopologues")
@@ -798,8 +798,9 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
 
     xcms.ratio.to.seed <- get_xcms_iso_fraction(xcms.xcms  )
     xcms.ratio.to.seed <- apply(xcms.ratio.to.seed ,1,
-               function(x){  mean_f(x , f = xcms.se$sample.source,na.rm=T)})%>%
-      t
+               function(x){  mean_f(x , f = xcms.se$sample.source,,
+                                    simplify = F,na.rm=T)})%>%
+      do.call(rbind,.)
 
   }
 
@@ -860,7 +861,7 @@ get_xcms_iso_fraction <- function(xcms.xcms){
       this.fid <- xcms.fseed[i]
       this.iso <- xcms.rda%>%
         dplyr::filter(iso_seed %in% this.fid)
-      this.matrix <- xcms.val[this.iso$feature_id,]
+      this.matrix <- xcms.val[this.iso$feature_id,,drop = F]
       this.matrix <- t(t(this.matrix)/this.matrix[this.fid,])
       xcms.ratio.to.seed[rownames(this.matrix),] <- this.matrix
     }
@@ -1762,7 +1763,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
 
 
 
-  if (length(oligoClasses::sampleNames(xcms.xcms))>1) {
+  if (length(sampleNames(xcms.xcms))>1) {
     if (sum(peaksGroup=="QC") <2 ) {
       rt.adjust.param <- PeakGroupsParam(minFraction = 0.4,
                                          #subset = which(peaksGroup == "QC"),
@@ -1773,7 +1774,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
       rt.adjust.param <- PeakGroupsParam(minFraction = 0.4,
                                           subset = which(peaksGroup == "QC"),
                                           subsetAdjust = "average",span = 0.4)
-      xcms.xcms <- adjustRtime(xcms.xcms,param = rt.adjust.param)
+      #xcms.xcms <- adjustRtime(xcms.xcms,param = rt.adjust.param)
     }
   }
 
@@ -2310,7 +2311,7 @@ xcms_get_feature_purity <- function(xcms.xcms,
   {
 
     xcms.pdata <- pData(xcms.xcms)[selected.sample,]
-    xcms.pm <- ms1_purity_matrix[,xcms.pdata$sampleNames]
+    xcms.pm <- ms1_purity_matrix[,xcms.pdata$sampleNames,drop = F]
     if (split_source) {
       xcms.pm <- apply(xcms.pm,1,mean_f,xcms.pdata$sample.source,simplify =F)%>%
         do.call(rbind,.)

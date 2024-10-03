@@ -260,6 +260,7 @@ get_MSIPIsotopomerMap <- function(MSIPCoreData){
     isotopomer.map <- t(do.call(bind_rows,isotopomer.maps))
     isotopomer.map <- isotopomer.map[order(rownames(isotopomer.map)),,drop = F]
     isotopomer.map[is.na(isotopomer.map)] <- 0
+    isotopomer.map <- isotopomer.map[!apply(isotopomer.map,1,function(x){all(x==0)}),,drop = F]
     rownames(isotopomer.map) <- sub(pattern = ".",x = rownames(isotopomer.map),
                                   replacement = "_",fixed = T)
     colnames(isotopomer.map) <- names(isotopomer)
@@ -493,7 +494,8 @@ MSIPFragmentMap_merge_complementary <- function(MSIPFragmentMap){
 #' @return heatmap
 #' @export
 #' @import ComplexHeatmap grid
-heatmap_MSIPFragmentMap <- function(MSIPFragmentMap){
+heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
+                                    show_ratio = F){
 
   ### size
   {
@@ -541,8 +543,15 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap){
                                 #rect_gp =  grid::gpar(lwd=2,col = "white"),
                                 cluster_rows = F)
   h1
+  if(show_ratio){
+    cellfun <- function(j, i, x, y, width, height, fill) {
+      grid.text(sprintf("%.2f", frag.ratio.matrix[i, j]), x, y, gp = gpar(col = "black", fontsize = 10))
+    }
+  }else cellfun <- NULL
+
   h2 <- ComplexHeatmap::Heatmap(frag.ratio.matrix,
                                 na_col  ="#999999",
+                                cell_fun = cellfun,
                                 # width = unit( ncol(frag.ratio.matrix)*length.unit,cell.unit),
                                 # height =unit( nrow(frag.atom.matrix)*length.unit,cell.unit),
                                 name = "Isotope labeled\nratio",
@@ -734,7 +743,13 @@ MSIPIsotopomerMap_set_solve_QP <- function(MSIPIsotopomerMap){
     message(nrow(f),"-",ncol(f))
     # Define weights based on fragment reliability (higher intensity = higher weight)
     int <- MSIPIsotopomerMap@solve$isotopomer.set.intensity # Example weights
-    weights <- .intensity_weight(int)
+    weights <- .intensity_weight(int*I)
+    weight.df <- data.frame(
+      frag.total = int,
+      peak.int = int*I,
+      ratio = I,
+      w = weights
+    )
     # Incorporate weights into the contribution matrix and observed intensities
     W <- diag(weights)
     f_weighted <- W %*% f
@@ -775,7 +790,7 @@ MSIPIsotopomerMap_set_solve_QP <- function(MSIPIsotopomerMap){
 
   ### assign set to isotopomer
   {
-    isotopomer.set.prob <- p_estimated
+    isotopomer.set.prob <- p_estimated/sum(p_estimated)
     isotopomer.set <- MSIPIsotopomerMap@solve$isotopomer.set
     isotopomer.prob <- mapply(x = isotopomer.set.prob ,
                            y = isotopomer.set,function(x,y){

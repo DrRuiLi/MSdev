@@ -1441,9 +1441,11 @@ df <- data.frame(
 
 ggplot(df)+
   geom_point(aes(x = raw, y = weight))+
+  #geom_vline(xintercept = c(1e3,1e4))+
   scale_x_log10()+
   labs(x = "intensity",
-       title = "Fragment weight curve")->p
+       title = "Fragment weight curve")+
+  theme_bw()->p
 open_plot_win(p)
 
 
@@ -1785,3 +1787,592 @@ open_plot_win(p,3.3,3)
     open_visNet()
 
 }
+
+# Tue Sep 10 15:43:19 2024 ------------------------------
+{
+
+
+}
+
+# Tue Sep 10 19:08:57 2024 ------------------------------
+smile <-  "CCCC(CCC)C(O)=O"
+sdf <- get_smiles_sdf(smile)
+sdf.ig <- get_sdf_igraph(sdf)[[1]]
+
+vis_sdf_igraph(sdf.ig)%>%
+  open_visNet()
+
+
+
+
+
+
+
+# Wed Sep 11 20:04:58 2024 ------------------------------
+
+
+nodes <- data.frame(id = 1:3,
+                    shape = 'image',
+                    image = paste('data:image/png;base64', img.txt, sep = ','),
+                    stringsAsFactors = F)
+edges <- data.frame(from = c(1,1), to = c(2,3))
+
+visNetwork(nodes, edges) %>%
+  visNodes(shapeProperties = list(useBorderWithImage = TRUE)) %>%
+  visHierarchicalLayout()
+
+# Fri Sep 13 14:46:17 2024 ------------------------------
+m1.stat <- get_MSIP_M1_Statistic(msdev.M1)
+fragment.stat <- get_MSIP_fragment_Statistic(msdev.M1)
+
+fragment.stat <- fragment.stat%>%
+  dplyr::mutate(solve.ratio = is.count/isotopomer)
+ggplot(fragment.stat)+
+  geom_point(aes(x = target_ele_count,
+                 y = fragment.count,
+                 size = iso_count,
+                 col =  solve.ratio))+
+  scale_color_gsea()
+
+fragment.stat$is.count[fragment.stat$is.count>10]<-10
+ggplot(fragment.stat)+
+  geom_histogram(aes(x = solve.ratio) )
+
+cell.stat <- fragment.stat%>%
+  dplyr::filter(samples%in% c("Con" ,   "Glu" ,  "U"  ))
+edit_df_in_excel(cell.stat)
+
+
+
+this.path <- all_simple_paths(ig.trans,from = 1,to = this.frag,
+                              mode = "out",
+                              cutoff = 3)
+# Fri Sep 20 19:57:15 2024 GLN STD------------------------------
+iso.data.list <- msdev.M1@statData$MSIP$isotopologues_data
+iso.data <- iso.data.list$FT02170_Negative
+iso.data$Spectra$M1$STD$dataOrigin%>%table()
+
+
+
+cfmd <- get_CFM_data_from_smiles(iso.data$compound_info$smiles,
+                                 adduct = "[M-H]-",
+                                 check_temp = F)
+msip.core <- get_MSIPCoreData(sp.iso = iso.data$Spectra$M1$STD,
+                              cfmd = cfmd,
+                              iso_count = 1,
+                              ppm = 20)
+msip.core <- MSIPCore_solve(msip.core,
+                            int_thresh = 10^4,
+                            re_split_isotopomers = T)
+plotly_MSIPCore_pred_nature_prob(msip.core)
+heatmap_MSIPFragmentMap(msip.core@FG_map,T)
+
+
+# Sat Sep 21 14:15:18 2024 cfmd fragmetn0------------------------------
+gln.smiles <- "N[C@@H](CCC(N)=O)C(O)=O"
+cfmd0 <- get_CFM_data_from_smiles(gln.smiles,
+                                  adduct = "[M-H]-",
+                                  check_temp = F)
+
+cfmd1<- get_CFM_data_from_smiles(gln.smiles,
+                                 adduct = "[M+H]+",
+                                 check_temp = F)
+
+vis_sdf_igraph(cfmd0@fragment_igraph$Fragment00,show_id = T)
+
+
+
+
+
+
+# Mon Sep 23 08:16:27 2024 M1 select for Liver------------------------------
+a <- featureDefinitions(xcms.chrom.data$Positive_Chromatograms)
+xcms.chrom.data$Positive_Chromatograms@featureDefinitions <-  featureDefinitions(xcms.chrom.data$Positive_Chromatograms)[,1:39]
+xcms.chrom.data$Negative_Chromatograms@featureDefinitions <-  featureDefinitions(xcms.chrom.data$Negative_Chromatograms)[,1:39]
+msdev.liver@xcmsData$Positive_Chromatograms <- xcms.chrom.data$Positive_Chromatograms
+msdev.liver@xcmsData$Negative_Chromatograms <- xcms.chrom.data$Negative_Chromatograms
+
+
+
+xcms.chrom.data <- object@xcmsData[c("Positive_Chromatograms",
+                                       "Negative_Chromatograms")]
+
+xcms.chrom.data <- lapply(xcms.chrom.data,
+                          onDiskData_retrieve  )
+
+coln <- xcms.chrom.data$Positive_Chromatograms@featureDefinitions%>%colnames()
+idx <- grepl("Ratio_to_seed_FT",coln)
+xcms.chrom.data$Positive_Chromatograms@featureDefinitions[,idx] <- NULL
+xcms.chrom.data$Positive_Chromatograms[1,1,drop = F]%>%featureDefinitions()
+
+
+coln <- xcms.chrom.data$Negative_Chromatograms@featureDefinitions%>%colnames()
+idx <- grepl("Ratio_to_seed_FT",coln)
+xcms.chrom.data$Negative_Chromatograms@featureDefinitions[,idx] <- NULL
+xcms.chrom.data$Negative_Chromatograms[1,1,drop = F]%>%featureDefinitions()
+
+
+
+
+# Tue Sep 24 15:19:39 2024 ------------------------------
+MSconvertR::msConvertDir("d:/temp/")
+xcms.xcms <- readMSData("d:/temp/MCE-pos.mzML",mode = "onDisk")
+xcms.scans <- get_xcms_scan_Stat(xcms.xcms)
+xcms.sp <- get_xcms_Spectra(xcms.xcms)
+
+xcms.sp.ms2 <- xcms.sp[msLevel(xcms.sp)==2]
+plotly_Spectra(xcms.sp.ms2[100])
+
+plot.data <- xcms.scans%>%
+  dplyr::distinct(ms1_no,ms2_count,cycle_time,.keep_all = T)
+
+p <- ggplot(plot.data)+
+  geom_point(aes(x = retentionTime,
+                 y = ms2_count,
+                 color = cycle_time))+
+  scale_color_gradient(low = "yellow",high = "red")+
+  theme_bw()
+open_plot_win(p,5,3)
+
+xcms.sp.ms2 <- Spectra_get_noise(xcms.sp.ms2)
+
+
+# Wed Sep 25 11:48:49 2024 ------------------------------
+{
+
+  x <- msdev.liver@statData$MSIP$isotopologues_table$Positive
+  id <- grepl("Ratio_to_seed_FT",colnames(x))
+  msdev.liver@statData$MSIP$isotopologues_table$Positive <- x[,!id]
+
+  x <- msdev.liver@statData$MSIP$isotopologues_table$Negative
+  id <- grepl("Ratio_to_seed_FT",colnames(x))
+  msdev.liver@statData$MSIP$isotopologues_table$Negative <- x[,!id]
+}
+
+{
+
+  x <- msdev.liver@xcmsData$PositiveMS1
+  id <- grepl("Ratio_to_seed_FT",colnames(featureDefinitions(x)))
+  featureDefinitions(x) <- featureDefinitions(x)[,!id]
+  x -> msdev.liver@xcmsData$PositiveMS1
+
+  x <- msdev.liver@xcmsData$NegativeMS1
+  id <- grepl("Ratio_to_seed_FT",colnames(featureDefinitions(x)))
+  featureDefinitions(x) <- featureDefinitions(x)[,!id]
+  x -> msdev.liver@xcmsData$NegativeMS1
+}
+
+
+x <- msdev.liver@xcmsData$Positive_Chromatograms
+x.data <- onDiskData_retrieve(x)
+id <- grepl("Ratio_to_seed_FT",colnames(x.data@featureDefinitions))
+x.data@featureDefinitions <- x.data@featureDefinitions[,!id]
+x <- onDiskData_update(x,x.data)
+
+
+# Thu Sep 26 11:01:26 2024 ------------------------------
+a <- apply(xcms.ratio.to.seed ,1,
+      function(x){  mean_f(x , f = c("A","A","B"),
+                           simplify = F,na.rm=T)})%>%
+  do.call(rbind,.)
+
+b <- apply(xcms.ratio.to.seed ,1,
+           function(x){  mean_f(x , f = c("A","A","A"),simplify =F,na.rm=T)})%>%
+  do.call(rbind,.)
+dim(a)
+dim(b)
+
+# Thu Sep 26 15:22:47 2024 GLN STD------------------------------
+##neg
+{
+  iso.data.list <- msdev.M1@statData$MSIP$isotopologues_data
+  iso.data <- iso.data.list$FT02170_Negative
+  iso.data$Spectra$M1$STD$dataOrigin%>%table()
+
+
+
+  cfmd <- get_CFM_data_from_smiles(iso.data$compound_info$smiles,
+                                   adduct = "[M-H]-",
+                                   check_temp = F)
+  msip.core <- get_MSIPCoreData(sp.iso = iso.data$Spectra$M1$STD,
+                                cfmd = cfmd,
+                                iso_count = 1,
+                                ppm = 20)
+  msip.core <- MSIPCore_solve(msip.core,
+                              int_thresh = 10^3.8,
+                              certainty_thresh = 0.5,
+                              re_split_isotopomers = T)
+  sprintf("%2f",msip.core@solve$Atom_prob)
+  fg <- MSIPFragmentMap_filter_intensity(msip.core@FG_map,10^3)%>%
+    MSIPFragmentMap_include_fragment
+  heatmap_MSIPFragmentMap(fg,T)
+
+}
+##pos
+{
+  {
+    iso.data.list <- msdev.M1@statData$MSIP$isotopologues_data
+    iso.data <- iso.data.list$FT03168_Positive
+    iso.data$Spectra$M1$STD$dataOrigin%>%table()
+
+
+
+    cfmd <- get_CFM_data_from_smiles(iso.data$compound_info$smiles,
+                                     adduct = "[M+H]+",
+                                     check_temp = F)
+
+    msip.core <- get_MSIPCoreData(sp.iso = iso.data$Spectra$M1$STD,
+                                  cfmd = cfmd,
+                                  iso_count = 1,
+                                  ppm = 20)
+    msip.core <- MSIPCore_solve(msip.core,
+                                int_thresh = 10^3.8,
+                                certainty_thresh = 0,
+                                re_split_isotopomers = T)
+    sprintf("%2f",msip.core@solve$Atom_prob)
+    fg <- MSIPFragmentMap_filter_intensity(msip.core@FG_map,10^3.8)%>%
+      MSIPFragmentMap_include_fragment
+    heatmap_MSIPFragmentMap(fg,T)
+  }
+}
+
+
+### Check for FG map
+{
+  vis_cfm_data_fragment_atom_map(cfmd,
+                                 "Fragment05")%>%
+    open_visNet()
+  vis_cfm_data_trans_map(cfmd,37)
+  vis_cfm_data_fragment(cfmd,1)
+}
+
+
+### merged map
+{
+
+  iso.data.list <- msdev.M1@statData$MSIP$isotopologues_data
+  iso.data <- iso.data.list$HMDB0000641_merged
+  msip.core <- iso.data$MSIP_result$M1$STD
+
+  fg <- msip.core@FG_map%>%
+    MSIPFragmentMap_filter_intensity(10^4)%>%
+    MSIPFragmentMap_include_fragment()
+  p <- heatmap_MSIPFragmentMap(fg,show_ratio = T)
+  open_plot_win(p,10,10)
+}
+
+# Thu Sep 26 18:10:12 2024 colramp------------------------------
+
+library(wesanderson)
+
+ggplot(mtcars, aes(x = wt, y = mpg, color = hp)) +
+  geom_point(size = 4) +
+  scale_color_gradientn(colors = wes_palette("Moonrise2", 100,
+                                             type = "continuous"))
+
+
+wes_palette("GrandBudapest2", 100,
+            type = "continuous")
+
+library(scico)
+
+ggplot(mtcars, aes(x = wt, y = mpg, color = hp)) +
+  geom_point(size = 4) +
+  scale_color_scico(palette = "acton")
+
+
+
+
+
+# Thu Sep 26 18:27:55 2024 Glutamate compare to NMR------------------------------
+cp.id <- "HMDB0000148"
+
+fdf <- msdev.13C1@statData$MSIP$isotopologues_table$Negative%>%
+  dplyr::filter(iso_seed =="FT01908")
+ratio.matrix <- msdev.13C1@statData$MSIP$isotopologues_matrix$ratio_to_seed$Negative[fdf$feature_id,]
+
+##pos
+{
+  fdf <- msdev.13C1@statData$MSIP$isotopologues_table$Positive%>%
+    dplyr::filter(iso_seed =="FT03300")
+  ratio.matrix <- msdev.13C1@statData$MSIP$isotopologues_matrix$ratio_to_seed$Positive[fdf$feature_id,]
+
+}
+
+ratio.matrix <- apply(ratio.matrix,1,
+                      mean_f,f = paste0(rep(0:3,each = 3),"-Glu"))%>%t
+rownames(ratio.matrix) <- paste0("M",fdf$iso_count)
+Heatmap(ratio.matrix,
+        col = colramp(),
+        cell_fun =  function(j, i, x, y, width, height, fill) {
+          grid.text(sprintf("%.2f", ratio.matrix[i, j]), x, y, gp = gpar(col = "black", fontsize = 10))
+        },show_heatmap_legend = F,
+        cluster_columns = F,
+        cluster_rows = F,
+        row_names_side = "left"
+        )->p
+open_plot_win(p,5,5)
+
+
+{
+
+  nmr.data <- readxl::read_excel("d:/temp/GLU_13C1_NMR.xlsx")%>%
+    column_to_rownames("...1")%>%
+    apply(1,function(x)x/sum(x))%>%t
+  id <- colnames(nmr.data)
+
+
+  iso.data <- msdev.13C1@statData$MSIP$isotopologues_data$HMDB0000148_merged
+  samples <- names(iso.data$MSIP_result$M0)
+  prob.list <- list()
+  atom.prob.matrix.list <- list()
+  for (i in 1:3) {
+    this.sample <- samples[i]
+    atom.prob.matrix <- data.frame(M1 = iso.data$MSIP_result$M1[[this.sample]]@solve$Atom_prob,
+               M2= iso.data$MSIP_result$M2[[this.sample]]@solve$Atom_prob,
+               M3= iso.data$MSIP_result$M3[[this.sample]]@solve$Atom_prob)%>%
+    #  apply(2,function(x){
+    #  x/sum(x)
+   # })%>%
+      t
+    atom.prob.matrix.list[[i]] <- atom.prob.matrix%>%
+        apply(1,function(x){
+        x/sum(x)
+       })%>%t
+    x <- apply(atom.prob.matrix,2,
+          weighted.mean,
+          w = ratio.matrix[paste0("M",1:3),paste0(i,"-Glu")] )
+    x <- x[id]
+    y <- nmr.data[i,id]
+    prob.list[[i]] <-
+      data.frame(tracer = paste0(i,"-Glu"),
+                 value = c(x,y),
+                 source = rep(c("MSIP","NMR"),each = 5))
+
+    prob.list[[i]] <-
+      data.frame(tracer = paste0(i,"-Glu"),
+                 label = id,
+                 MSIP = x,
+                 NMR = y)
+  }
+
+  prob.df <- prob.list%>%
+  do.call(rbind,.)%>%
+    dplyr::filter(tracer!= "3-Glu")
+
+  ggplot(prob.df)+
+    geom_point(aes(x = MSIP, y = NMR,colour = tracer),size = 5)+
+    geom_abline(slope = 1)+
+    ggrepel::geom_text_repel(aes(x = MSIP, y = NMR,label = label))+
+    scale_color_npg()+
+    xlim(c(0,1))+
+    ylim(c(0,1))+
+    theme_bw()->p
+  open_plot_win(p,6,5)
+
+
+}
+
+### Heatmap atom prob
+{
+
+  rownames(nmr.data) <- paste0(rownames(nmr.data),"-NMR\nTotal Isotopomers")
+  glu1.matrix <- atom.prob.matrix.list[[1]][,id]%>%
+    `rownames<-`(paste0("GLU1-",rownames(.)))
+  glu2.matrix <- atom.prob.matrix.list[[2]][,id]%>%
+    `rownames<-`(paste0("GLU2-",rownames(.)))
+  glu3.matrix <- atom.prob.matrix.list[[3]][,id]%>%
+    `rownames<-`(paste0("GLU3-",rownames(.)))
+  total.matrix <- rbind(
+    nmr.data[1,id,drop = F],
+    glu1.matrix[,id,drop = F],
+    nmr.data[2,id,drop = F],
+    glu2.matrix[,id,drop = F],
+    nmr.data[3,id,drop = F],
+    glu3.matrix[,id,drop = F]
+  )
+  Heatmap(total.matrix,
+          col = colramp(),
+          row_split = c(10,11,11,11,20,22,22,22,30,33,33,33),
+          cluster_row_slices = F,
+          cluster_rows = F,
+          cluster_columns = F,
+          row_title = NULL,
+          rect_gp = gpar(color = "grey"),
+          row_names_side = "left")->p
+  open_plot_win(p,5,7)
+
+}
+
+# Fri Sep 27 13:13:18 2024 Astra MS2 evaluation------------------------------
+{
+  xcms.qe <- readMSData("d:/temp/GLU1_PRM_NEG_CE10.mzML",mode = "onDisk")
+  qe.scans <- get_xcms_scan_Stat(xcms.qe)
+  qe.sp <- get_xcms_Spectra(xcms.qe)
+  qe.sp.ms2 <- qe.sp[msLevel(qe.sp)==2]
+  qe.sp.ms2 <- Spectra_get_noise(qe.sp.ms2)
+
+  plotly_Spectra(qe.sp.ms2[100])
+
+  xcms.astral <- readMSData("d:/temp/MCE-pos.mzML", mode = "onDisk" )
+  astral.scans <- get_xcms_scan_Stat(xcms.astral)
+  astral.sp <- get_xcms_Spectra(xcms.astral)
+  astral.sp.ms2 <- astral.sp[msLevel(astral.sp)==2]
+  astral.sp.ms2 <- Spectra_get_noise(astral.sp.ms2)
+
+  plotly_Spectra(astral.sp.ms2[100])
+
+  plot.data <- astral.scans%>%
+    dplyr::distinct(ms1_no,ms2_count,cycle_time,.keep_all = T)
+
+  p <- ggplot(plot.data)+
+    geom_point(aes(x = retentionTime,
+                   y = ms2_count,
+                   color = cycle_time))+
+    #scale_color_gradient(low = "yellow",high = "red")+
+    scico::scale_color_scico(direction = -1)+
+    theme_bw()
+  open_plot_win(p,5,3)
+
+
+  ### MS2 scan time compare to QE
+  plot.data <- rbind(
+    qe.scans%>%
+      dplyr::mutate(instrument = "QE"),
+    astral.scans%>%
+      dplyr::mutate(instrument = "Astra")%>%
+      dplyr::filter(msLevel==2)
+  )
+  ggplot(plot.data)+
+    geom_boxplot(aes(x = instrument , y = scan_time,colour = instrument),show.legend = F)+
+    ylim(c(0,0.5))+
+    ggsci::scale_color_aaas()+
+    theme_bw()->p.scan.time
+  p.scan.time
+
+  ggplot(plot.data)+
+    geom_bar(aes(x = instrument ,fill = instrument))+
+    #ylim(c(0,0.5))+
+    ggsci::scale_fill_aaas()+
+    labs(y = "MS2 count")+
+    theme_bw()->p.ms2.count
+  p.ms2.count
+
+  p <- p.scan.time+p.ms2.count+
+    plot_layout(guides = "collect")
+  open_plot_win(p)
+
+
+
+   ### noise
+  sp.data <- rbind(
+    spectraData(qe.sp.ms2)%>%
+      as.data.frame()%>%
+      dplyr::mutate(instrument = "QE"),
+    spectraData(astral.sp.ms2)%>%
+      as.data.frame()%>%
+      dplyr::mutate(instrument = "Astra")%>%
+      dplyr::filter(msLevel==2)
+  )%>%
+    dplyr::mutate(TNR = totIonCurrent/noise)
+
+  ggplot(sp.data)+
+    geom_point(aes(x = log10(totIonCurrent),
+                   y = log10(noise),
+                   color = instrument),alpha = 0.2)+
+    ggsci::scale_color_aaas()+
+    #labs(y = "MS2 count")+
+    theme_bw()->p.noise.tic
+
+
+  open_plot_win(p.noise.tic,5,4)
+
+  ggplot(sp.data)+
+    geom_violin(aes(x = instrument,
+                    y = log10(totIonCurrent),
+                    color = instrument),alpha = 0.2)+
+    ggsci::scale_color_aaas()+
+    #labs(y = "MS2 count")+
+    theme_bw()->p.tic
+  p.tic
+  ggplot(sp.data)+
+    geom_violin(aes(x = instrument,
+                    y = log10(noise),
+                    color = instrument),alpha = 0.2)+
+    ggsci::scale_color_aaas()+
+    #labs(y = "MS2 count")+
+    theme_bw()->p.noise
+  p.noise
+  ggplot(sp.data)+
+    geom_violin(aes(x = instrument,
+                   y = log10(TNR),
+                   color = instrument),alpha = 0.2)+
+    ggsci::scale_color_aaas()+
+    #labs(y = "MS2 count")+
+    theme_bw()->p.tnr
+  p.tnr
+  p <- p.noise+p.tic+p.tnr+
+    plot_layout(guides = "collect")
+  open_plot_win(p,6,4)
+
+
+
+
+}
+# Sat Sep 28 13:47:49 2024 ------------------------------
+xcms.xcms <- msdev.Astral@sampleInfo$msData.files[1]%>%
+  readMSData(mode = "onDisk")
+xcms.scans <- get_xcms_scan_Stat(xcms.xcms)
+xcms.scans.ms1 <- xcms.scans%>%
+  dplyr::filter(msLevel==1)
+
+ggplot(xcms.scans.ms1)+
+  geom_point(aes(x = retentionTime, y = cycle_time))
+
+
+# Sun Sep 29 18:43:16 2024 ------------------------------
+all.path <- lapply(1:199,
+                   function(x){
+                     all_shortest_paths(ig.trans,1,x,mode = "out")$vpath
+                   })
+
+all.path[54]
+
+cfmd@fragment_group%>%
+  ggplot()+
+  geom_jitter(
+    aes(x = fragment_count,
+                 y= certainty),
+    color = "red",
+    size = 3,
+    alpha = 0.2)
+
+
+get_CFM_data_from_smiles(smiles = "OC(=O)[C@@H]1CCC(=O)N1",
+                         adduct = "[M-H]-",
+                         check_temp = T)
+
+msdev.M1@statData$MSIP$isotopologues_data <- list()
+# Wed Oct  2 13:39:19 2024 debug for atm error------------------------------
+get_CFM_data_from_smiles()
+
+cfmd.files <- dir(
+  "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb_cfmd/",
+  pattern = "cfmd",full.names = T
+)
+
+cfmd <- readRDS(cfmd.files[1])
+cfmd <- CFM_data_get_igraph(cfmd)
+cfmd <- CFM_data_get_atom_map(cfmd,iso_ele = iso_ele)
+cfmd <- cfm_data_get_FG_map(cfmd,iso_ele = iso_ele)
+
+
+
+sdf_igraph_merge(sdf.igraphA =ig.parent,sdf.igraphB =ig.product
+)%>%vis_sdf_igraph(show_id = T)%>%
+  open_visNet()
+
+
+
+system.time(mcs <- fmcsR::fmcs(sdf.parent,sdf.product,bu = 10))
+system.time(mcs <- fmcsR::fmcs(sdf.parent,sdf.product,bu = 10,fast = T))

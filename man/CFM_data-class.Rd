@@ -2,12 +2,12 @@
 % Please edit documentation in R/dev_CFM.R
 \name{CFM_data_get_igraph}
 \alias{CFM_data_get_igraph}
-\alias{cfm_data_get_fragment_group}
+\alias{cfm_data_get_FG_map}
 \title{CFM_data_get_igraph}
 \usage{
 CFM_data_get_igraph(object)
 
-cfm_data_get_fragment_group(cfm_data, ppm = 10)
+cfm_data_get_FG_map(cfm_data, iso_ele = "[13]C", ppm = 5)
 }
 \arguments{
 \item{object}{cfmd}
@@ -24,12 +24,12 @@ cfmd
 \description{
 CFM_data_get_igraph
 
-cfm_data_get_fragment_group
+cfm_data_get_FG_map
 }
 \section{Functions}{
 \itemize{
 \item \code{CFM_data_get_igraph()}: CFM_data_get_igraph
 
-\item \code{cfm_data_get_fragment_group()}: cfm_data_get_fragment_group
+\item \code{cfm_data_get_FG_map()}: cfm_data_get_FG_map
 
 }}

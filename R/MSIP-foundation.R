@@ -84,7 +84,7 @@ get_frag_group_map <- function(sp.frag.data,cfmd,iso_count,atom_prob = F){
 }
 
 
-get_iso_form_map_old <- function(fg.map,atom_prob = T ){
+get_isotopomer_map_old <- function(fg.map,atom_prob = T ){
 
   #load("temp.rda")
   #iso_count <- 5
@@ -160,7 +160,7 @@ get_iso_form_map_old <- function(fg.map,atom_prob = T ){
   {
     iso.form.split <- apply(iso.form.map, 2, function(x){paste0(x,collapse = ";")})
     iso.form.split <-  split(seq_along(iso.form),iso.form.split)
-    names(iso.form.split) <- paste0("iso_form_set_",num2str(seq_along(iso.form.split)))
+    names(iso.form.split) <- paste0("isotopomer_set_",num2str(seq_along(iso.form.split)))
     iso.form.set.map <- sapply(iso.form.split ,
                                 function(x){ iso.form.map[,x[1]] },
                                 USE.NAMES=F)
@@ -182,7 +182,7 @@ get_iso_form_map_old <- function(fg.map,atom_prob = T ){
 
 }
 
-get_iso_form_map <- function(fg.map,max_combn = 500000){
+get_isotopomer_map <- function(fg.map,max_combn = 500000){
 
 
   ###
@@ -203,7 +203,7 @@ get_iso_form_map <- function(fg.map,max_combn = 500000){
     if.combn <- choose(ncol(frag.c.matrix),frag.max.iso)
     if (if.combn > max_combn) return(NA)
     iso.form <- combn(colnames(frag.c.matrix),frag.max.iso,simplify = F)
-    names(iso.form) <- paste0("iso_form_",num2str(1:length(iso.form)))
+    names(iso.form) <- paste0("isotopomer_",num2str(1:length(iso.form)))
   }
   ### iso form map to iso ratio
   {
@@ -233,7 +233,7 @@ get_iso_form_map <- function(fg.map,max_combn = 500000){
 
 }
 
-get_iso_form_set_map <- function(if.map,fg.map){
+get_isotopomer_set_map <- function(if.map,fg.map){
 
 
 
@@ -269,7 +269,7 @@ get_iso_form_set_map <- function(if.map,fg.map){
   {
     iso.form.split <- apply(iso.form.map, 2, function(x){paste0(x,collapse = ";")})
     iso.form.split <-  split(seq_along(if.map$iso.form),iso.form.split)
-    names(iso.form.split) <- paste0("iso_form_set_",num2str(seq_along(iso.form.split)))
+    names(iso.form.split) <- paste0("isotopomer_set_",num2str(seq_along(iso.form.split)))
     iso.form.set.map <- sapply(iso.form.split ,
                                function(x){ iso.form.map[,x[1]] },
                                USE.NAMES=F)
@@ -437,7 +437,7 @@ merge_frag_group_map <- function(fg.map){
 
 }
 
-get_iso_form_prob_GLPK <- function(iso.form.map){
+get_isotopomer_prob_GLPK <- function(iso.form.map){
 
   {
     if (all(is.na(iso.form.map))) return(NA)
@@ -484,7 +484,7 @@ get_iso_form_prob_GLPK <- function(iso.form.map){
                                              iso_count = iso_count)
   sp.frag.data <- CFM_spectra_data_int_weight(sp.frag.data,iso_count)
   fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso_count = iso_count)
-  if.map <- get_iso_form_map(fg.map)
+  if.map <- get_isotopomer_map(fg.map)
   ### adjust nature
   sp.frag.data <- CFM_spectra_data_remove_natural(sp.frag.data,natural.ratio,if.map)
   fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso_count = iso_count)
@@ -492,8 +492,8 @@ get_iso_form_prob_GLPK <- function(iso.form.map){
   fgn.map <- merge_frag_group_map(fg.map)
 
   ### calc by if-set
-  if.map <- get_iso_form_set_map(if.map ,fgn.map)
-  if.map <- get_iso_form_prob_GLPK(if.map)
+  if.map <- get_isotopomer_set_map(if.map ,fgn.map)
+  if.map <- get_isotopomer_prob_GLPK(if.map)
   c.prob <- get_iso_from_C_prob(if.map, cfmd,iso_count)
 
   #heatmap.fg.map(fg.map)
@@ -560,8 +560,8 @@ get_iso_form_prob_GLPK <- function(iso.form.map){
   fgn.map <- merge_frag_group_map(fg.map)
 
   ### calc by if-set
-  if.map <- get_iso_form_set_map(msip.core.data$if.map ,fgn.map)
-  if.map <- get_iso_form_prob_GLPK(if.map)
+  if.map <- get_isotopomer_set_map(msip.core.data$if.map ,fgn.map)
+  if.map <- get_isotopomer_prob_GLPK(if.map)
   c.prob <- get_iso_from_C_prob(if.map)
 
   ### return

@@ -273,12 +273,25 @@ get_MSdev_param <- function(object){
 
     fpp <- MassifquantParam(ppm = 5,
                             peakwidth = c(10,100),
-                            mzCenterFun  = "wMeanApex3",                            snthresh = 10,
+                            mzCenterFun  = "wMeanApex3",
+                            snthresh = 10,
                             prefilter = c(5,1000),
                             verboseColumns=T,
                             withWave = T)
     gpp <- PeakDensityParam("A",bw = 10,
                             minFraction = 0.3,binSize = 0.002)
+
+    ### temp for Astral
+    if (object@projectInfo$msModel == "Thermo Electron instrument model") {
+
+      fpp <- MassifquantParam(ppm = 5,
+                              peakwidth = c(5,60),
+                              mzCenterFun  = "wMeanApex3",
+                              snthresh = 100,
+                              prefilter = c(3,100),
+                              verboseColumns=T,
+                              withWave = T)
+    }
 
     msdev.param <- list(findChromPeaks = fpp,
                         groupChromPeaks = gpp)
@@ -1529,6 +1542,7 @@ MSdev_match_Spectra_to_feature <- function(object,
     pol <- ifelse(i==0,"Negative","Positive")
     sp.ms2 <- MS2_Spectra%>%
       ProtGenerics::filterPolarity(i)
+    if (length(sp.ms2)==0) next
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
       as.data.frame()
@@ -1891,8 +1905,10 @@ MSdev_update_xcms_pdata <- function(object,
 #'
 get_MSdev_ms2_Spectra <- function(object){
 
-  sp.total <- do.call(`c`,unname(object@spectra))
-  return(sp.total)
+  sp <- object@spectra$MS2_Spectra%>%
+    onDiskData_retrieve()
+  #sp.total <- do.call(`c`,unname(object@spectra))
+  return(sp)
 }
 
 

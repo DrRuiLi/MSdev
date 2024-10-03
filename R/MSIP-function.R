@@ -48,7 +48,8 @@ MSIP_get_isotopologues_table <- function(object,
 
     ### MS1 purity
     {
-      sample.idx <- !is.na(pData(xcms.xcms)$isotope_tracer)
+      #sample.idx <- !is.na(pData(xcms.xcms)$isotope_tracer)
+      sample.idx <- seq_along(filepaths(xcms.xcms))
       #sample.idx <-  pData(xcms.xcms)$group=="FSLowCFullGlu"
       if ( !"ms1_purity"%in%   colnames(xcms.xcms@msFeatureData$featureDefinitions)) {
         xcms.purity.matrix <- get_xcms_feature_purity_matrix(xcms.xcms ,
@@ -71,10 +72,14 @@ MSIP_get_isotopologues_table <- function(object,
         dplyr::filter(!sample.type%in% c("Blank"))
       xcms.fdf <- featureDefinitions(xcms.xcms)%>%as.data.frame()
       xcms.fv <- get_xcms_quantify_MSIP(xcms.xcms)
-      xcms.fv <- assay(xcms.fv)[,xcms.pdata$sampleNames]
+      xcms.fv <- assay(xcms.fv)[,xcms.pdata$sampleNames,drop = F]
       f.traced <- ifelse(is.na(xcms.pdata$isotope_tracer),
                          "int_mean_nontracer","int_mean_tracer")
       int.mean <- apply(xcms.fv,1,mean_f,f = f.traced,simplify = F)%>%do.call(rbind,.)
+      int.mean <- cbind(int.mean,matrix(0,nrow = nrow(int.mean),
+                                        ncol =length(setdiff(c("int_mean_nontracer","int_mean_tracer"),colnames(int.mean))),
+                               dimnames = list(rownames(int.mean),
+                                               setdiff(c("int_mean_nontracer","int_mean_tracer"),colnames(int.mean)))))
       xcms.fdf[,colnames(int.mean)] <- int.mean
 
       ratio.matrix <- get_xcms_iso_fraction(xcms.xcms)
@@ -254,7 +259,9 @@ MSIP_get_isotopologues_data <- function(object,
                     iso_count < ele_count
                     )%>%
       dplyr::group_by(iso_seed)%>%
-      dplyr::filter(rep(any(is_labeled)),n() > 1)%>%
+      dplyr::filter(#rep(any(is_labeled)),
+        any(ms2_count)>0,
+                    n() > 1)%>%
       dplyr::ungroup()
     seed.id <- unique(iso.table$iso_seed)
     match(xcms.fdf$iso_seed[which((lengths(xcms.fdf$ms2_id)>0)&!is.na(xcms.fdf$iso_seed))],
@@ -317,7 +324,8 @@ MSIP_get_isotopologues_data <- function(object,
             isotopologues_matrix$ratio_to_seed[[pol]][this.fdf$feature_id,]
           xcms.se.temp <-xcms.se[,colnames(ratio_matrix)]
           ratio_matrix <- apply(ratio_matrix,1,mean_f,
-                                 f = xcms.se.temp$sample.source)%>%t
+                                f = xcms.se.temp$sample.source,simplify = F)%>%
+            do.call(rbind,.)
           rownames(ratio_matrix) <- paste0("M",this.fdf$iso_count)
         }
 
@@ -327,7 +335,8 @@ MSIP_get_isotopologues_data <- function(object,
             isotopologues_matrix$ms1_purity[[pol]][this.fdf$feature_id,]
           xcms.se.temp <-xcms.se[,colnames(purity_matrix)]
           purity_matrix <- apply(purity_matrix,1,mean_f,
-                                 f = xcms.se.temp$sample.source)%>%t
+                                 f = xcms.se.temp$sample.source,simplify = F)%>%
+            do.call(rbind,.)
           rownames(purity_matrix) <- paste0("M",this.fdf$iso_count)
         }
 
@@ -379,8 +388,8 @@ get_MSdev_iso_ele <- function(object){
     iso_ele <- iso_ele[1]
   }
   if(length(iso_ele)==0){
-    message("No iso_ele, please check")
-
+    message("No iso_ele, using [13]C please check")
+    iso_ele <- "[13]C"
   }
   return(iso_ele)
 }
@@ -475,6 +484,20 @@ get_MSdev_iso_acq_list <- function(object,keep = F){
     acq.list[[pol]] <- QE_list_2feature_def(acq.list.pol,keep = keep)
 
   }
+
+  acq.df <- do.call(bind_rows,acq.list)
+  acq.df.group <- acq.df%>%
+    dplyr::filter(is_seed)%>%
+    dplyr::group_by(compound_id)%>%
+    dplyr::mutate(rt.diff =diff(range(rtmed)),
+                  count = n(),
+                  is_paired = case_when(
+                    n() >1&rt.diff < 10~T,
+                    T~F
+                  ))
+
+
+
   return(acq.list)
 }
 
@@ -742,7 +765,9 @@ MSIP_update_compoundDB_from_interest_list <- function(){
 
 
 
-MSIP_solve_computation_evaluate <- function(object, show_message = F){
+MSIP_solve_computation_evaluate <- function(object,
+                                            include.merged = F,
+                                            show_message = F){
 
   iso.data <- object@statData$MSIP$isotopologues_data
   iso_ele <- get_MSdev_iso_ele(object)
@@ -754,7 +779,7 @@ MSIP_solve_computation_evaluate <- function(object, show_message = F){
   comp.eval.list <- list()
   for (i in seq_along(iso.data)) {
 
-    cfmd <- iso.data[[i]]$CFM_annotation
+    cfmd <- iso.data[[i]][[grep("CFM",names(iso.data[[i]]),value = T)[1]]]
     if (is.null(cfmd)) next
     cfmd.ig <- get_cfm_data_sdf_igraph(cfmd)
     this.atom <- get_sdf_igraph_atom(cfmd.ig,ele = target_ele)
@@ -767,13 +792,15 @@ MSIP_solve_computation_evaluate <- function(object, show_message = F){
     ms2_count.matrix <- iso.data[[i]]$compound_info$ms2_count
     comp.eval <- expand.grid(
       feature_id = names(iso.data)[i],
+      name = iso.data[[i]]$compound_info$name,
+      compound_id = iso.data[[i]]$compound_info$compound_id,
       iso_count = iso_count,
       target_ele_count =this.ele.count,
       samples = all.sample,
       stringsAsFactors =F,
       merged = iso.data[[i]]$compound_info$merged
     )%>%
-      dplyr::mutate(iso_form = choose(target_ele_count ,iso_count ))%>%
+      dplyr::mutate(isotopomer = choose(target_ele_count ,iso_count ))%>%
       dplyr::rowwise()%>%
       dplyr::mutate(natural.ratio =
                       get_matrix_value_fill_with_NA(natural.ratio.matrix,
@@ -795,7 +822,7 @@ MSIP_solve_computation_evaluate <- function(object, show_message = F){
 
     message(names(iso.data)[i],", Total ",this.ele.count," ", target_ele)
     mes <- paste0("M",comp.eval$iso_count,", isoforms: ",
-                  comp.eval$iso_form)%>%
+                  comp.eval$isotopomer)%>%
       paste0(collapse = "\n")
     message(mes)
     message("")
@@ -809,7 +836,14 @@ MSIP_solve_computation_evaluate <- function(object, show_message = F){
   }
 
   comp.eval <- do.call(rbind,comp.eval.list)%>%
-    dplyr::filter(!merged,ms2.count>0)
+    dplyr::filter(ms2.count>0)
+
+  if(include.merged){
+    comp.eval <- comp.eval
+  }else{
+    comp.eval <- comp.eval%>%
+      dplyr::filter(!merged)
+  }
 
   return(invisible( comp.eval ))
 
@@ -985,3 +1019,77 @@ merge_isotopologues_data <- function(iso.data1,iso.data2){
   return(iso.data)
 
 }
+
+
+
+get_MSIP_M1_Statistic <- function(object){
+
+
+  non.tracer.sample <- .get_MSIP_tracer(object)%>%
+    is.na()%>%
+    which()%>%
+    names()
+
+  process.info <- MSIP_solve_computation_evaluate(object,
+                                                  include.merged = T)
+  process.info.m1 <- process.info%>%
+    dplyr::filter(iso_count == 1,
+                  samples %in%non.tracer.sample,
+                  solved)
+  process.info.m1$r2 <- NA
+  process.info.m1$rmse <- NA
+  process.info.m1$is.count <- NA
+  iso.list <- object@statData$MSIP$isotopologues_data
+  for (i in 1:nrow(process.info.m1)) {
+
+    msip.core <- iso.list[[process.info.m1$feature_id[i]]]$
+      MSIP_result[[str_isotope2_num(process.info.m1$iso_count[i])]][[process.info.m1$samples[i]]]
+    if (is.null(msip.core)|isEmpty(msip.core)) {
+      next
+    }
+    msip.ifmap <- msip.core@solve$MSIPIsotopomerMap
+    x <- lengths(msip.ifmap@solve$isotopomer.set)
+    y <- msip.ifmap@solve$isotopomer.set.prob
+    if (length(x)) {
+      x <- x/sum(x)
+      process.info.m1$is.count[i] <- length(x)
+      process.info.m1$r2[i]<-  summary(lm(x~y))$r.squared
+      process.info.m1$rmse[i] <- sqrt(mean((x - y) ^ 2))
+    }
+  }
+
+
+  return(process.info.m1)
+
+
+
+}
+
+
+get_MSIP_fragment_Statistic <- function(object){
+
+  process.info <- MSIP_solve_computation_evaluate(object,
+                                                  include.merged = T)
+  process.info.fg <- process.info%>%
+    dplyr::filter(iso_count>0,solved)
+  iso.list <- object@statData$MSIP$isotopologues_data
+  process.info.fg$fragment.count <- NA
+  process.info.fg$is.count<- NA
+  for (i in 1:nrow(process.info.fg)) {
+
+    msip.core <- iso.list[[process.info.fg$feature_id[i]]]$
+      MSIP_result[[str_isotope2_num(process.info.fg$iso_count[i])]][[process.info.fg$samples[i]]]
+    if (is.null(msip.core)|isEmpty(msip.core)) {
+      next
+    }
+    msip.map <- msip.core@FG_map
+    msip.ifmap<- msip.core@solve$MSIPIsotopomerMap
+    process.info.fg$fragment.count[i]  <- sum(msip.map@fragment.include)
+    process.info.fg$is.count[i] <- length( lengths(msip.ifmap@solve$isotopomer.set))
+
+  }
+
+  return(process.info.fg)
+
+}
+

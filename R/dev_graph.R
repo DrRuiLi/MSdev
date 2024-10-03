@@ -140,21 +140,44 @@ vis_add_text <- function(vis,text, font.size =10 ){
   vis
 }
 
+vis_add_image <- function(vis,img.file ,size = 500){
+
+  img.txt <- RCurl::base64Encode(readBin(img.file,
+                                     'raw',
+                                     file.info(img.file)[1, 'size']),
+                             'txt')
+
+  to.add.df <- data.frame(
+    x = 0,y = 0,
+    name = "image",
+    size= size,
+    shape = 'image',
+    color.border = "rgba(256,256,256,1)",
+    image = paste('data:image/png;base64', img.txt, sep = ','),
+    stringsAsFactors = F
+  )
+
+  vis$x$nodes <- bind_rows(to.add.df,vis$x$nodes)
+  vis
+
+}
+
 
 vis_add_arrow_icon <- function(vis,
                                size = 60,
                                color = "#222222"){
 
-  to.add.df <- nodes <- data.frame(name = "ARROW",
+  to.add.df <- nodes <- data.frame(x = 0,
+                                   y = 0,
+                                   name = "ARROW",
                                    shape = "icon",  # Specify that the node shape is an icon
                                    icon.face = 'FontAwesome',  # Use FontAwesome icons
-                                   icon.code = "f061",  # Unicode for an arrow (FontAwesome)
+                                   icon.code = "f178",  # Unicode for an arrow (FontAwesome)
                                    icon.size = size,  # Set the size of the icon
-
                                    icon.color =color)  # Set the color of the icon
 
 
   vis$x$nodes <- bind_rows(vis$x$nodes,to.add.df)
   vis%>%
-  addFontAwesome()
+  addFontAwesome(version  = "4.7.0")
 }
