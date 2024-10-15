@@ -99,23 +99,36 @@ MSIP_shiny_ui <- function() {
 
           ))),
         tabPanel(
-          "Atom map",
-          fluidRow(
+          title = "Isotopomers",
+          fluidPage(
             column(
-              width = 6,
-              visNetworkOutput(outputId = "mol_graph_atom_map")
+              width = 4,
+              DTOutput(outputId = "FSIS_table")
             ),
             column(
-              width = 6,
-              selectInput(
-                inputId = "select_fragment_id",
-                label = "Possible fragment structure",
-                choices = NULL
-              ),
-              fluidRow(align = "center", textOutput(outputId = "frag_formula")),
-              visNetworkOutput(outputId = "frag_graph")
-            ))
-          ),
+              width = 8,
+              visNetworkOutput(outputId = "Vis_isotopomer_set")
+            )
+          )
+        ),
+        #tabPanel(
+        #  "Atom map",
+        #  fluidRow(
+        #    column(
+        #      width = 6,
+        #      visNetworkOutput(outputId = "mol_graph_atom_map")
+        #    ),
+        #    column(
+        #      width = 6,
+        #      selectInput(
+        #        inputId = "select_fragment_id",
+        #        label = "Possible fragment structure",
+        #        choices = NULL
+        #      ),
+        #      fluidRow(align = "center", textOutput(outputId = "frag_formula")),
+        #      visNetworkOutput(outputId = "frag_graph")
+        #    ))
+        #  ),
         tabPanel(
           "Fragment map",
           fluidRow(

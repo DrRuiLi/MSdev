@@ -53,7 +53,7 @@ get_MSdev_MSinfo <- function(object){
   ### define acquire Type
   ### note, these model string are identified by mzR
   {
-    HRMS <- c("Q Exactive Plus","TripleTOF 6600","Orbitrap Exploris 480")
+    HRMS <- c("Q Exactive Plus","TripleTOF 6600","Orbitrap Exploris 480","Orbitrap Astral")
     TQMS <- c("TSQ Quantis")
     model.df <- data.frame(
       model = c(HRMS,TQMS),
@@ -282,12 +282,12 @@ get_MSdev_param <- function(object){
                             minFraction = 0.3,binSize = 0.002)
 
     ### temp for Astral
-    if (object@projectInfo$msModel == "Thermo Electron instrument model") {
+    if ("Orbitrap Astral"  %in% object@projectInfo$msModel ) {
 
       fpp <- MassifquantParam(ppm = 5,
                               peakwidth = c(5,60),
                               mzCenterFun  = "wMeanApex3",
-                              snthresh = 100,
+                              snthresh = 10,
                               prefilter = c(3,100),
                               verboseColumns=T,
                               withWave = T)

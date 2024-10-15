@@ -9,10 +9,15 @@
 get_sdf_igraph <- function(sdf,addH = F){
 
   .f <- function(sdf,addH){
+
+    sdf <- canonicalize(sdf)
+    #cn <- canonicalNumbering_OB(obmol(sdf))[[1]]
     atom.data <- atomblock(sdf)[,1:2]%>%
       `colnames<-`(c("x","y"))%>%
       as.data.frame()%>%
-      rownames_to_column("Atom_id" )
+      rownames_to_column("Atom_id" )#%>%
+      #dplyr::mutate(Canonical_Numbering = cn )
+
     atom.data <- cbind(atom.data,bonds(sdf))%>%
       dplyr::group_by(atom)%>%
       dplyr::mutate(id = Atom_id,
@@ -26,8 +31,8 @@ get_sdf_igraph <- function(sdf,addH = F){
                     color.background = "#FFFFFF",
                     borderWidth = 5,
                     shape = "circle",
-                    physics = F)
-
+                    physics = F)%>%
+      dplyr::ungroup()
     bond.data <- bondblock(sdf)[,1:3,drop =F]%>%
       `colnames<-`(c("from","to","bond_type"))%>%
       as.data.frame()%>%
@@ -37,6 +42,12 @@ get_sdf_igraph <- function(sdf,addH = F){
                     color = c("#888888","#444444","#000000")[bond_type],
                     smooth = FALSE
                     )
+
+  #  atom.data <- atom.data%>%
+   #   dplyr::arrange(desc(Canonical_Numbering))%>%
+   #   dplyr::mutate(RCN_id = paste0(atom,num2str(1:n())),
+   #                 label = RCN_id)%>%
+   #   dplyr::ungroup()
 
     sdf.igraph <- graph_from_data_frame(
       bond.data,vertices = atom.data
@@ -67,6 +78,8 @@ get_sdf_igraph <- function(sdf,addH = F){
 
 
 }
+
+
 
 #' vis_sdf_igraph
 #'

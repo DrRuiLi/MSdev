@@ -204,6 +204,21 @@ sum_matrix <- function(...){
 
 }
 
+add_matrix <- function(mat1,mat2){
+
+  rn <- unique(c(rownames(mat1),rownames(mat2)))%>%
+    groupStringFactor()%>%levels()
+  cn <- unique(c(colnames(mat1),colnames(mat2)))%>%
+    groupStringFactor()%>%levels()
+  m1 <- get_matrix_value_fill_with_NA(mat1,rn,cn)
+  m2 <- get_matrix_value_fill_with_NA(mat2,rn,cn)
+  combined_array <- array(c(m1, m2), dim = c(nrow(m1), ncol(m2), 2))
+  sum_matrix <- apply(combined_array, c(1, 2),
+                       function(x) sum(x, na.rm = TRUE))
+  dimnames(sum_matrix) <- dimnames(m1)
+  return(sum_matrix)
+}
+
 #' @title normalize_max_min
 #'
 #' @param x num

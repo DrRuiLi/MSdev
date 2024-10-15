@@ -287,3 +287,9 @@ sum_matrix <- function(mat1,mat2){
 setMethod("isEmpty","NULL",definition = function(object){
   return(T)
 })
+
+
+str_digit <- function(x,digit = 2){
+
+  sprintf(paste0("%.",digit,"f"), x )
+}

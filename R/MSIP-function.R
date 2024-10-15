@@ -602,6 +602,9 @@ get_isotopologues_Spectra_process <- function(iso.list){
 
 MSIP_solve_isotopologues <- function(object,
                                      process.info = MSIP_solve_computation_evaluate(object,F),
+                                     int_thresh = 10^3.8,
+                                     certainty_thresh = 0.6,
+                                     weight_fun = .intensity_weight,
                             ppm = 10,
                             timeout = 60,
                             BPPARAM = SerialParam(progressbar = T)){
@@ -613,7 +616,7 @@ MSIP_solve_isotopologues <- function(object,
 
     this.fid <- process.info$feature_id[i]
     this.iso.count <- process.info$iso_count[i]
-    this.sample<- process.info$samples[i]
+    this.sample <- process.info$samples[i]
 
 
     start_time <- Sys.time()
@@ -628,11 +631,13 @@ MSIP_solve_isotopologues <- function(object,
                                   cfmd = this.cfmd,
                                   iso_count = this.iso.count,
                                   ppm = ppm)
-    #msip.core <- MSIPCore_correct_natural(msip.core,
-    #                                      cfmd = this.cfmd,
-    #                                      natural.ratio = this.natural.ratio)
-
-    msip.core <- MSIPCore_solve(msip.core,int_thresh = 10^3.8,certainty_thresh = 0.8)
+    msip.core <- MSIPCore_solve(msip.core,
+                                int_thresh = int_thresh,
+                                weight_fun=weight_fun,
+                                certainty_thresh = certainty_thresh)
+    if (process.info$traced[i]){
+      msip.core <- MSIPCore_correct_natural(msip.core, natural.ratio = this.natural.ratio)
+    }
     time_consume <- Sys.time()-start_time
     MSIPIsotopomerMap <- msip.core@solve$MSIPIsotopomerMap
     if (is.null(MSIPIsotopomerMap )){
@@ -655,6 +660,8 @@ MSIP_solve_isotopologues <- function(object,
                                                       onTimeout = "silent")
                                },
                  BPPARAM =BPPARAM)
+
+
   for (i in 1:nrow(process.info)) {
     this.fid <- process.info$feature_id[i]
     this.iso.count <- process.info$iso_count[i]%>%str_isotope2_num()
@@ -835,9 +842,12 @@ MSIP_solve_computation_evaluate <- function(object,
 
   }
 
+  sample.tracer <- .get_MSIP_tracer(object)
   comp.eval <- do.call(rbind,comp.eval.list)%>%
-    dplyr::filter(ms2.count>0)
-
+    dplyr::filter(ms2.count>0)%>%
+    dplyr::mutate(traced = case_when(
+      is.na(sample.tracer[samples] )~F,
+      T~T))
   if(include.merged){
     comp.eval <- comp.eval
   }else{
@@ -952,7 +962,7 @@ merge_isotopologues_data <- function(iso.data1,iso.data2){
     iso.data$compound_info$polarity <- paste0(iso.data1$compound_info$polarity,";",
                                               iso.data2$compound_info$polarity)
     iso.data$compound_info$merged <- T
-    iso.data$compound_info$ms2_count <- sum_matrix(iso.data1$compound_info$ms2_count,
+    iso.data$compound_info$ms2_count <- add_matrix(iso.data1$compound_info$ms2_count,
                                                    iso.data2$compound_info$ms2_count)
     iso.data$compound_info$ratio_matrix <- mean_matrix(iso.data1$compound_info$ratio_matrix,
                                                    iso.data2$compound_info$ratio_matrix)
@@ -1093,3 +1103,13 @@ get_MSIP_fragment_Statistic <- function(object){
 
 }
 
+
+get_MSIP_weight_fun <- function(object){
+
+  msmodel <- object@projectInfo$msModel
+  if ("Orbitrap Astral" %in% msmodel) {
+    return(.intensity_weight_astral)
+  }
+  return(.intensity_weight)
+
+}

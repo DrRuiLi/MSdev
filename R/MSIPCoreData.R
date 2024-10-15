@@ -20,10 +20,9 @@ setMethod(f = "isEmpty",signature = "MSIPCoreData",
 #### MSIPFragmentMap
 setClass(Class = "MSIPFragmentMap",
          slots = list(
-           "fragment.atom.matrix" = "matrix",
-           "fragment.ratio.matrix" = "matrix",
-           "fragment.intensity" = "numeric",
-           "fragment.include" = "logical"
+           "FG.atom.matrix" = "matrix",
+           "FG.ratio.matrix" = "matrix",
+           "FG.data" = "data.frame"
          ))
 
 
@@ -31,11 +30,11 @@ setMethod(f = "show",
           "MSIPFragmentMap",definition = function(object){
 
             x <- paste0("Map of ",
-                        yellow(nrow(object@fragment.atom.matrix)),
+                        yellow(nrow(object@FG.atom.matrix)),
                         " fragment group, ",
-                        yellow( ncol(object@fragment.atom.matrix)),
+                        yellow( ncol(object@FG.atom.matrix)),
                         " atom, ",
-                        yellow(ncol(object@fragment.ratio.matrix)),
+                        yellow(ncol(object@FG.ratio.matrix)),
                         " labeled")
             message(x)
           })
@@ -43,7 +42,7 @@ setMethod(f = "show",
 
 setMethod(f = "isEmpty",signature = "MSIPFragmentMap",
           definition = function(object){
-  nrow(object@fragment.atom.matrix)==0
+  nrow(object@FG.atom.matrix)==0
 })
 
 #### MSIPIsotopomerMap
@@ -51,9 +50,8 @@ setClass(Class = "MSIPIsotopomerMap",
          slots = list(
            "isotopomer.defination" = "list",
            "isotopomer.map" = "matrix",
-           "isotopomer.ratio" = "numeric",
+           "Labeled.FG.data" = "data.frame",
            "isotopomer.probability" = "numeric",
-           "isotopomer.intensity" = "numeric",
            "solve" = "list"
          ))
 

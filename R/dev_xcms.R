@@ -649,7 +649,7 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
                                                      ppm,rt.tol )
 
 
-  ### assign isotope
+  ### assign isotopologues
   {
 
     xcms.fdf <- featureDefinitions(xcms.xcms)%>%

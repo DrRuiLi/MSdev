@@ -1026,7 +1026,7 @@ plotly_Spectra_mirror <- function(sp1,sp2){
                     dplyr::mutate(sp.id=1),
                   get_Spectra_data(sp2)%>%
                     dplyr::mutate(sp.id=2))%>%
-    dplyr::mutate(groupMz(mz))%>%
+    dplyr::mutate(groupMz(mz,return.type = "data.frame"))%>%
     dplyr::mutate(x = mz,
                   xend = mz,
                   y = 0,

@@ -706,12 +706,21 @@ CFM_annotate_isotopologues <- function(sp,
 
 
   sp.data <- sp.data%>%
-    dplyr::mutate(idx =match_mz(mz1=mz,
+    dplyr::mutate(idx = match_mz(mz1=mz,
                                 mz2 = mz.labeled.m$mz,
                                 mz.ppm = ppm),
                   fragment_group = mz.labeled.m$fragment_group[idx],
                   iso_count = mz.labeled.m$iso_count[idx])%>%
-    dplyr::select(-idx)
+    dplyr::select(-idx)%>%
+    dplyr::group_by(fragment_group,sp.id)%>%
+    dplyr::mutate(
+      ratio = case_when(
+      !is.na(fragment_group)~intensity/sum(intensity),
+      T~NA),
+      int_sum =  case_when(
+        !is.na(fragment_group)~sum(intensity),
+        T~NA))%>%
+    dplyr::ungroup()
   }
 
 
@@ -1314,44 +1323,60 @@ CFM_spectra_data_int_weight <- function(sp.data,iso_count){
 CFM_spectra_data_merge <- function(sp.data,iso_count){
 
 
-
+  sp.data$merged <- F
   ### weighted intensity matrix
   {
     fg.idx <- split(1:nrow(sp.data),sp.data$fragment_group)
     if (!length(fg.idx))  return(sp.data)
-    frag.iso.matrix <- matrix(
+    frag.ratio.matrix <- matrix(
       nrow = length(fg.idx),ncol = iso_count+1,
       dimnames = list(names(fg.idx),paste0("M",0:iso_count)))
-    frag.int.sum <- c()
+    frag.df <- data.frame(
+      fragment_group = names(fg.idx),
+      int_sum = NA,
+      peaks_count = NA,
+      icc = NA,
+      cos = NA
+    )
     for (i.fg in seq_along(fg.idx)) {
+
       x.df <- sp.data[fg.idx[[i.fg]],]
-      x.int <- x.df%>%
-        dplyr::select(-mz,-collisionEnergy)%>%
+      x.ratio <- x.df%>%
         tidyr::pivot_wider(names_from ="iso_count",
                            id_cols = "sp.id",
-                           values_from = "intensity",
-                           values_fn = sum)%>%
+                           values_from = "ratio",
+                           values_fn = mean
+                           )%>%
         tibble::column_to_rownames("sp.id")%>%
         dplyr::select(dplyr::starts_with("M"))%>%
         as.matrix()
-      to.add <- setdiff(paste0("M",0:iso_count),colnames(x.int))
-      x.int <- cbind(matrix(0,nrow(x.int),length(to.add),
-                            dimnames = list(NULL,to.add)),x.int)
-      x.int <- x.int[,paste0("M",0:iso_count),drop =F]
-      x.int[is.na(x.int)] <- 0
-      if (ncol(x.int)==1) {
-        x.ratio <- x.int
+      x.ratio <- get_matrix_value_fill_with_NA(
+        x.ratio,
+        rownames_vec = row.names(x.ratio),
+        colnames_vec = paste0("M",0:iso_count),drop = F)
+      x.ratio[is.na(x.ratio)] <- 0
+      if (ncol(x.ratio)==1) {
         x.ratio[,1] <- 1
-      }else{
-        x.ratio <- t(apply(x.int,1,function(z) z/sum(z)))
       }
-      x.weight <- rowSums(x.int)
-      x.int.weighted <- apply(x.int,2,weighted.mean,w = x.weight)
-      x.ratio.weighted <- apply(x.ratio,2,weighted.mean,w = x.weight)
-      frag.iso.matrix[i.fg,] <- x.int.weighted
-      frag.int.sum[i.fg] <- sum(x.int.weighted)
+      x.int.sum <- x.df%>%
+        dplyr::distinct(sp.id,.keep_all = T)%>%
+        dplyr::pull(int_sum,name = sp.id)
+      x.int.sum <- x.int.sum[rownames(x.ratio)]
+      x.ratio.weighted <- apply(x.ratio,2,weighted.mean,w = x.int.sum)
+      x.int.sum.weighted <- weighted.mean(x.int.sum,x.int.sum)
+      x.icc <- irr::icc(t(x.ratio), model = "twoway",
+          type = "consistency", unit = "single")$value
+      x.cos <- lsa::cosine(x.ratio.weighted,t(x.ratio))
+      x.cos.weight <- weighted.mean(x.cos,w = log10(x.int.sum))
+      frag.ratio.matrix[i.fg,] <- x.ratio.weighted
+      frag.df$int_sum[i.fg] <- x.int.sum.weighted
+      frag.df$icc[i.fg] <- x.icc
+      frag.df$cos[i.fg] <- x.cos.weight
+      frag.df$peaks_count[i.fg] <- nrow(x.ratio)
+
+      #Heatmap(x.ratio,cluster_columns = F,cluster_rows = F)
+
     }
-    names(frag.int.sum) <- names(fg.idx)
 
   }
 
@@ -1362,15 +1387,17 @@ CFM_spectra_data_merge <- function(sp.data,iso_count){
       dplyr::filter(!is.na(fragment_group))%>%
       dplyr::mutate(fg.iso = paste0(fragment_group,iso_count))
 
-    iso.peak.data <- frag.iso.matrix%>%
+    iso.peak.data <- frag.ratio.matrix%>%
       as.data.frame()%>%
       rownames_to_column("fragment_group")%>%
       tidyr::pivot_longer(starts_with("M"),
                           names_to = "iso_count",
-                          values_to = "intensity")%>%
+                          values_to = "ratio")%>%
       dplyr::mutate(sp.id= "combined_sp",
                     fg.iso = paste0(fragment_group,iso_count),
                     mz = sp.mz$mz[match(fg.iso,sp.mz$fg.iso)],
+                    frag.df[match(fragment_group,frag.df$fragment_group),],
+                    intensity = int_sum*ratio ,
                     merged = T )%>%
       dplyr::filter(!is.na(mz))
 
@@ -1442,7 +1469,6 @@ get_CFM_data_MSIPFragmentMap<- function(cfmd){
   cfmd.sp <- get_CFM_data_Spectra(cfmd)
   cfmd.msip.core <- get_MSIPCoreData(cfmd.sp,cfmd,0)
   cfmd.fg.map <- cfmd.msip.core@FG_map
-  #MSIPFragmentMap_reduce_fragment(cfmd.fg.map)
 
   cfmd.fg.map
 }
@@ -1475,6 +1501,7 @@ get_CFM_data_from_smiles <- function(smiles = "NCC(O)=O",
                                   abs_mass_tol = 0.005,
                                   param_adduct = adduct )
   cfmd.temp.file <- tempfile(pattern = "cfmd.temp.",tmpdir = temp_dir)
+  cfmd.temp.file <- paste0(temp_dir,"/cfmd.temp.",compound_id,".",adduct,".rds")
   saveRDS(cfmd,cfmd.temp.file)
   log.info["cfm.time"] <- (Sys.time()-start.time)%>%
     as.numeric(units = "mins")

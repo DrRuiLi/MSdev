@@ -230,10 +230,10 @@ get_sdf_igraph_atom <- function(ig,ele = "all"){
 }
 
 
-vis_sdf <- function(sdf,...){
+vis_sdf <- function(sdf,show_id = F,...){
 
   sdf.igraph <- get_sdf_igraph(sdf)
-  vis_sdf_igraph(sdf.igraph,...)
+  vis_sdf_igraph(sdf.igraph,show_id = show_id,...)
 
 
 }

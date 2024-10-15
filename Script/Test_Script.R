@@ -2091,13 +2091,6 @@ fdf <- msdev.13C1@statData$MSIP$isotopologues_table$Negative%>%
   dplyr::filter(iso_seed =="FT01908")
 ratio.matrix <- msdev.13C1@statData$MSIP$isotopologues_matrix$ratio_to_seed$Negative[fdf$feature_id,]
 
-##pos
-{
-  fdf <- msdev.13C1@statData$MSIP$isotopologues_table$Positive%>%
-    dplyr::filter(iso_seed =="FT03300")
-  ratio.matrix <- msdev.13C1@statData$MSIP$isotopologues_matrix$ratio_to_seed$Positive[fdf$feature_id,]
-
-}
 
 ratio.matrix <- apply(ratio.matrix,1,
                       mean_f,f = paste0(rep(0:3,each = 3),"-Glu"))%>%t
@@ -2111,12 +2104,12 @@ Heatmap(ratio.matrix,
         cluster_rows = F,
         row_names_side = "left"
         )->p
-open_plot_win(p,5,5)
+#open_plot_win(p,5,5)
 
 
 {
 
-  nmr.data <- readxl::read_excel("d:/temp/GLU_13C1_NMR.xlsx")%>%
+  nmr.data <- readxl::read_excel("C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/2024.09.26.GLU_13C1_NMR.xlsx")%>%
     column_to_rownames("...1")%>%
     apply(1,function(x)x/sum(x))%>%t
   id <- colnames(nmr.data)
@@ -2126,11 +2119,28 @@ open_plot_win(p,5,5)
   samples <- names(iso.data$MSIP_result$M0)
   prob.list <- list()
   atom.prob.matrix.list <- list()
+  int <- 10^3
+  cer = 0.6
   for (i in 1:3) {
     this.sample <- samples[i]
-    atom.prob.matrix <- data.frame(M1 = iso.data$MSIP_result$M1[[this.sample]]@solve$Atom_prob,
-               M2= iso.data$MSIP_result$M2[[this.sample]]@solve$Atom_prob,
-               M3= iso.data$MSIP_result$M3[[this.sample]]@solve$Atom_prob)%>%
+
+    msip.core.m1 <- iso.data$MSIP_result$M1[[this.sample]]
+    msip.core.m1 <- MSIPCore_solve(msip.core.m1,int_thresh = int,
+                                   certainty_thresh = cer,
+                                   weight_fun = .intensity_weight )
+    msip.core.m2 <- iso.data$MSIP_result$M2[[this.sample]]
+    msip.core.m2 <- MSIPCore_solve(msip.core.m2,int_thresh = int,
+                                   certainty_thresh = cer,
+                                   weight_fun = .intensity_weight )
+    msip.core.m3 <- iso.data$MSIP_result$M3[[this.sample]]
+    msip.core.m3 <- MSIPCore_solve(msip.core.m3,int_thresh = int,
+                                   certainty_thresh = cer,
+                                   weight_fun = .intensity_weight )
+
+    atom.prob.matrix <- data.frame(
+      M1 = msip.core.m1@solve$Atom_prob,
+      M2= msip.core.m2@solve$Atom_prob,
+      M3= msip.core.m3@solve$Atom_prob)%>%
     #  apply(2,function(x){
     #  x/sum(x)
    # })%>%
@@ -2139,10 +2149,11 @@ open_plot_win(p,5,5)
         apply(1,function(x){
         x/sum(x)
        })%>%t
+    #atom.prob.matrix <- atom.prob.matrix.list[[i]][,id]
     x <- apply(atom.prob.matrix,2,
           weighted.mean,
           w = ratio.matrix[paste0("M",1:3),paste0(i,"-Glu")] )
-    x <- x[id]
+    x <- x[id]/sum(x)
     y <- nmr.data[i,id]
     prob.list[[i]] <-
       data.frame(tracer = paste0(i,"-Glu"),
@@ -2159,15 +2170,18 @@ open_plot_win(p,5,5)
   prob.df <- prob.list%>%
   do.call(rbind,.)%>%
     dplyr::filter(tracer!= "3-Glu")
+  R2 <- summary(lm(prob.df$MSIP~prob.df$NMR))$r.squared
 
   ggplot(prob.df)+
-    geom_point(aes(x = MSIP, y = NMR,colour = tracer),size = 5)+
+    geom_point(aes(x = NMR, y =  MSIP,colour = tracer),size = 5)+
     geom_abline(slope = 1)+
-    ggrepel::geom_text_repel(aes(x = MSIP, y = NMR,label = label))+
-    scale_color_npg()+
+    ggrepel::geom_text_repel(aes(x = NMR, y =  MSIP,label = label))+
+    ggsci::scale_color_npg()+
+    labs(title = R2)+
     xlim(c(0,1))+
     ylim(c(0,1))+
     theme_bw()->p
+  print(p)
   open_plot_win(p,6,5)
 
 
@@ -2376,3 +2390,551 @@ sdf_igraph_merge(sdf.igraphA =ig.parent,sdf.igraphB =ig.product
 
 system.time(mcs <- fmcsR::fmcs(sdf.parent,sdf.product,bu = 10))
 system.time(mcs <- fmcsR::fmcs(sdf.parent,sdf.product,bu = 10,fast = T))
+
+
+### this compound leat to cfm annotation error
+hmdb.id <- "HMDB0001206"
+hmdb.df <- MSdb:::get_HMDB_Compound_DF()
+idx <- match(hmdb.id,hmdb.df$accession)
+smiles <- hmdb.df$smiles[idx]
+
+a <- get_CFM_data_from_smiles(smiles ,adduct = "[M+H]+")
+
+
+# Sat Oct  5 10:22:13 2024 ATOM debug------------------------------
+{
+  cfmd <- readRDS("c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb_cfmd/cfmd.temp.HMDB0001206.[M+H]+.rds")
+  cfmd <- CFM_data_get_igraph(cfmd)
+  cfmd <- CFM_data_get_atom_map(cfmd)
+
+
+}
+
+# Sat Oct  5 10:05:19 2024 Astral noise------------------------------
+{
+  iso.list <- msdev.Astral@statData$MSIP$isotopologues_data
+  i <- 10
+  iso.data <- iso.list[[i]]
+  message(iso.data$compound_info$name," ",iso.data$compound_info$adduct)
+
+  plotly_Spectra(iso.data$Spectra$M0$Glu2)%>%
+    open_visNet()
+
+}
+
+
+
+
+# Thu Sep 26 18:27:55 2024 Glutamate compare to NMR Astral------------------------------
+cp.id <- "HMDB0000148"
+
+fdf <- msdev.Astral@statData$MSIP$isotopologues_table$Negative%>%
+  dplyr::filter(iso_seed =="FT0845")
+ratio.matrix <- msdev.Astral@statData$MSIP$isotopologues_matrix$ratio_to_seed$Negative[fdf$feature_id,]
+
+
+ratio.matrix <- apply(ratio.matrix,1,
+                      mean_f,f = paste0(rep(1:3,each = 3),"-Glu"))%>%t
+rownames(ratio.matrix) <- paste0("M",fdf$iso_count)
+Heatmap(ratio.matrix,
+        col = colramp(),
+        cell_fun =  function(j, i, x, y, width, height, fill) {
+          grid.text(sprintf("%.2f", ratio.matrix[i, j]), x, y, gp = gpar(col = "black", fontsize = 10))
+        },show_heatmap_legend = F,
+        cluster_columns = F,
+        cluster_rows = F,
+        row_names_side = "left"
+)->p
+open_plot_win(p,5,5)
+
+
+{
+
+  nmr.data <- readxl::read_excel("C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/2024.09.26.GLU_13C1_NMR.xlsx")%>%
+    column_to_rownames("...1")%>%
+    apply(1,function(x)x/sum(x))%>%t
+  id <- colnames(nmr.data)
+
+
+  iso.data <- msdev.Astral@statData$MSIP$isotopologues_data$FT0845_Negative
+  vis_sdf_igraph(iso.data$CFM_annotation@fragment_igraph[[1]],show_id = T)
+  samples <- names(iso.data$MSIP_result$M0)
+  prob.list <- list()
+  atom.prob.matrix.list <- list()
+  int = 10^2
+  cer = 0.8
+  #plot_MSIPCore_solve_weight_fun(.intensity_weight_astral)
+  {
+
+    for (i in 1:3) {
+    this.sample <- samples[i]
+    msip.core.m1 <- iso.data$MSIP_result$M1[[this.sample]]
+    msip.core.m1 <- MSIPCore_solve(msip.core.m1,int_thresh = int,
+                                   certainty_thresh = cer,
+                                   weight_fun = .intensity_weight_astral )
+    msip.core.m2 <- iso.data$MSIP_result$M2[[this.sample]]
+    msip.core.m2 <- MSIPCore_solve(msip.core.m2,int_thresh = int,
+                                   certainty_thresh = cer,
+                                   weight_fun = .intensity_weight_astral )
+
+
+    atom.prob.matrix <- data.frame(M1 = msip.core.m1@solve$Atom_prob,
+                                   M2 = msip.core.m2@solve$Atom_prob
+                                   #M3= iso.data$MSIP_result$M3[[this.sample]]@solve$Atom_prob
+                                   )%>%
+      #  apply(2,function(x){
+      #  x/sum(x)
+      # })%>%
+      t
+    atom.prob.matrix.list[[i]] <- atom.prob.matrix%>%
+      apply(1,function(x){
+        x/sum(x)
+      })%>%t
+    #atom.prob.matrix <- atom.prob.matrix.list[[i]]
+    x <- apply(atom.prob.matrix,2,
+               weighted.mean,
+               w = ratio.matrix[paste0("M",1:2),paste0(i,"-Glu")] )
+    x <- x[id]
+    y <- nmr.data[i,id]
+    prob.list[[i]] <-
+      data.frame(tracer = paste0(i,"-Glu"),
+                 value = c(x,y),
+                 source = rep(c("MSIP","NMR"),each = 5))
+
+    prob.list[[i]] <-
+      data.frame(tracer = paste0(i,"-Glu"),
+                 label = id,
+                 MSIP = x,
+                 NMR = y)
+  }
+
+  prob.df <- prob.list%>%
+    do.call(rbind,.)%>%
+   dplyr::filter(tracer!= "3-Glu",
+                 !label %in% c("C_5","C_2")
+                 )%>%
+    dplyr::group_by(tracer)%>%
+    dplyr::mutate(MSIP = MSIP/sum(MSIP),
+                  NMR = NMR/sum(NMR))
+  R2 <- summary(lm(prob.df$MSIP~prob.df$NMR))$r.squared
+  ggplot(prob.df)+
+    geom_abline(slope = 1,lty = 2, col = "grey")+
+    geom_point(aes(x =NMR , y =  MSIP,colour = tracer),size = 5)+
+    ggrepel::geom_text_repel(aes(x = NMR, y =  MSIP,colour = tracer,label = label))+
+    ggsci::scale_color_npg()+
+    xlim(c(0,1))+
+    ylim(c(0,1))+
+    labs(title = R2)+
+    theme_bw()->p
+  print(p)
+  open_plot_win(p,6,5)
+  }
+
+
+}
+
+### Heatmap atom prob
+{
+
+  rownames(nmr.data) <- paste0(rownames(nmr.data),"-NMR\nTotal Isotopomers")
+  glu1.matrix <- atom.prob.matrix.list[[1]][,id]%>%
+    `rownames<-`(paste0("GLU1-",rownames(.)))
+  glu2.matrix <- atom.prob.matrix.list[[2]][,id]%>%
+    `rownames<-`(paste0("GLU2-",rownames(.)))
+  glu3.matrix <- atom.prob.matrix.list[[3]][,id]%>%
+    `rownames<-`(paste0("GLU3-",rownames(.)))
+  total.matrix <- rbind(
+    nmr.data[1,id,drop = F],
+    glu1.matrix[,id,drop = F],
+    nmr.data[2,id,drop = F],
+    glu2.matrix[,id,drop = F],
+    nmr.data[3,id,drop = F],
+    glu3.matrix[,id,drop = F]
+  )
+  Heatmap(total.matrix,
+          col = colramp(),
+          row_split = c(10,11,11,11,20,22,22,22,30,33,33,33),
+          cluster_row_slices = F,
+          cluster_rows = F,
+          cluster_columns = F,
+          row_title = NULL,
+          rect_gp = gpar(color = "grey"),
+          row_names_side = "left")->p
+  open_plot_win(p,5,7)
+
+}
+
+# Mon Oct  7 23:42:06 2024 check QE glutamic data------------------------------
+{
+
+
+
+
+
+  m1.sp <- iso.data$Spectra$M1$FS_1_13C%>%
+    filterPolarity(1)
+  m1.sp.df <- spectraData(m1.sp)%>%
+    as.data.frame()%>%
+    dplyr::filter(collisionEnergy == 10)
+
+  plotly_Spectra_mirror(m1.sp[m1.sp.df$sp_id[1]],
+                    m1.sp[m1.sp.df$sp_id[2]])
+
+
+  ggplot(m1.sp.df)+
+    geom_point(aes(x = rtime,
+                   y = log10(totIonCurrent),
+                   col = collisionEnergy))
+
+
+
+}
+
+# Thu Oct 10 14:20:01 2024 13C1 isotopomers data NMR and QE------------------------------
+{
+
+  msdev.13C1 <- load_as_var(
+    "C:/Users/91879/OneDrive/Code/R/data/MSIP_data/240701_FS_ONE_POSITION/MSdev_2024_07_04.Rdata"
+  )
+
+  iso.data <- msdev.13C1@statData$MSIP$isotopologues_data$HMDB0000148
+  fdf <- msdev.13C1@statData$MSIP$isotopologues_table$Negative%>%
+    dplyr::filter(iso_seed =="FT01908")
+  ratio.matrix <- msdev.13C1@statData$MSIP$isotopologues_matrix$ratio_to_seed$Negative[fdf$feature_id,]
+
+
+  ratio.matrix <- apply(ratio.matrix,1,
+                        mean_f,f = paste0(rep(0:3,each = 3),"-Glu"))%>%t
+  rownames(ratio.matrix) <- paste0("M",fdf$iso_count)
+
+  {
+
+    ### NMR data
+    {
+      nmr.data <- readxl::read_excel("c:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/2024.09.26.GLU_13C1_NMR.xlsx",sheet = 4)
+      nmr.data <- nmr.data%>%
+        dplyr::group_by(isotopomer)%>%
+        dplyr::mutate(Glu1 = sum(Glu1),
+                      Glu2 = sum(Glu2))%>%
+        dplyr::ungroup()%>%
+        dplyr::distinct(isotopomer,Glu1,.keep_all = T)%>%
+        dplyr::group_by(atom)%>%
+        dplyr::mutate(ratio_glu1 = Glu1/sum(Glu1),
+                      ratio_glu2 = Glu2/sum(Glu2))%>%
+        dplyr::ungroup()
+
+    }
+
+    ### MSIP formate
+    {
+      samples <- c("FS_1_13C","FS_2_13C","FS_3_13C")
+      samples.name <- make_vector(c("1-Glu","2-Glu","3-Glu"),samples)
+      samples.list <- list()
+      for (i.sample in samples) {
+
+        lapply(c("M1","M2","M3"), function(i.m) {
+          i.atoms <- iso.data$MSIP_result[[i.m]][[i.sample]]@solve$MSIPIsotopomerMap@isotopomer.defination
+          i.names <- i.atoms%>%
+            sapply(function(x){
+              x%>%
+                sub("_","",.)%>%
+                sub("8","1",.)%>%
+                paste0(collapse = ",")
+            })
+          i.code <- i.atoms%>%
+            sapply(function(x){
+              x <- x%>%
+                sub("_","",.)%>%
+                sub("8","1",.)
+              z <- make_vector(0,paste0("C",1:5))
+              z[x]<-1
+              paste0(z,collapse = "")
+            })
+          i.matrix <- i.atoms%>%
+            sapply(function(x){
+              x <- x%>%
+                sub("_","",.)%>%
+                sub("8","1",.)
+              z <- make_vector(0,paste0("C",1:5))
+              z[x]<-1
+              z
+            })%>%t
+          i.prob <- iso.data$MSIP_result[[i.m]][[i.sample]]@solve$MSIPIsotopomerMap@isotopomer.probability
+          i.ratio <- ratio.matrix[i.m,samples.name[i.sample]]
+          data.frame(isotopomer = i.names,
+                     isotopologue = i.m,
+                     code = i.code,
+                     prob = i.prob,
+                     value = i.prob*i.ratio,
+                     i.matrix)%>%
+            remove_rownames()
+        })%>%
+          data.table::rbindlist()->samples.list[[i.sample]]
+
+
+      }
+
+
+
+    }
+
+
+    ### get data in NMR formate
+    {
+      nmr.code.table <-readxl::read_excel("c:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/2024.09.26.GLU_13C1_NMR.xlsx",sheet = 5)
+
+      msip.nmr.list <- lapply(samples.list,function(msip.data){
+        sum.list <- list()
+        for (i in 1:nrow(nmr.code.table)) {
+
+          idx <- which(str_sub(msip.data$code,start = nmr.code.table$char.start[i],
+                               end = nmr.code.table$char.end[i])==nmr.code.table$code[i])
+          val <- msip.data$value[idx]
+          if (is.null(val))  val <- 0
+          data.frame(
+            atom = nmr.code.table$atom[i],
+            isotopomer = nmr.code.table$isotopomer[i],
+            code = nmr.code.table$code[i],
+            val = sum(val)
+          )->sum.list[[i]]
+
+        }
+
+        sum.df <- do.call(rbind,sum.list)%>%
+          dplyr::group_by(isotopomer)%>%
+          dplyr::mutate(val = sum(val))%>%
+          dplyr::ungroup()%>%
+          dplyr::distinct(isotopomer,val,.keep_all = T)%>%
+          dplyr::group_by(atom)%>%
+          dplyr::mutate(ratio = val/sum(val))%>%
+          dplyr::ungroup()
+        return(sum.df)
+
+      })
+
+
+      nmr.data <- nmr.data%>%
+        dplyr::mutate(
+          msip_glu1 =msip.nmr.list[[1]]$ratio[
+            match(isotopomer,msip.nmr.list[[1]]$isotopomer)
+          ],
+          msip_glu2 =msip.nmr.list[[2]]$ratio[
+            match(isotopomer,msip.nmr.list[[2]]$isotopomer)
+          ]
+        )
+
+
+    }
+
+
+    ### plot
+    {
+
+      ### glu1
+      {
+        plot.data <- nmr.data%>%
+          tidyr::pivot_longer(c(ratio_glu1,msip_glu1))%>%
+          dplyr::mutate(label = paste0(isotopomer,"/",code),
+                        method = case_when(name=="ratio_glu1"~"NMR",
+                                           name =="msip_glu1"~"MSIP"),
+                        method = factor(method,level = c("NMR","MSIP")))
+
+        ggplot(plot.data)+
+          geom_bar(aes(x = label, y = value,col = method),
+                   fill = "white",width =0.6,linewidth = 1,
+                   stat = "identity",position =  position_dodge(width = 0.8))+
+          scale_color_manual(values = c("MSIP"="#FF9D00", "NMR" ="#2871FF"))+
+          scale_y_continuous(expand = expansion())+
+          theme_classic()+
+          theme(axis.text.x = element_text(angle = 30,hjust = 1))+
+          labs(title = "Glu1",x = "",y = "Fraction")->p1
+      }
+
+      ### glu2
+      {
+        plot.data <- nmr.data%>%
+          tidyr::pivot_longer(c(ratio_glu2,msip_glu2))%>%
+          dplyr::mutate(label = paste0(isotopomer,"/",code),
+                        method = case_when(name=="ratio_glu2"~"NMR",
+                                           name =="msip_glu2"~"MSIP"),
+                        method = factor(method,level = c("NMR","MSIP")))
+
+        ggplot(plot.data)+
+          geom_bar(aes(x = label, y = value,col = method),
+                   fill = "white",width =0.6,linewidth = 1,
+                   stat = "identity",position =  position_dodge(width = 0.8))+
+          scale_color_manual(values = c("MSIP"="#FF9D00", "NMR" ="#2871FF"))+
+          scale_y_continuous(expand = expansion())+
+          theme_classic()+
+          theme(axis.text.x = element_text(angle = 30,hjust = 1))+
+          labs(title = "Glu2",x = "",y = "Fraction")->p2
+      }
+      p<-p1+p2+plot_layout(guides = "collect")
+      open_plot_win(p,width = 10,height = 3)
+    }
+
+
+  }
+
+}
+
+# Fri Oct 11 19:44:06 2024 ------------------------------
+{
+  vis_sdf_igraph(sdf.ig[[7]])
+}
+# Sat Oct 12 09:06:32 2024 ------------------------------
+ms2.sp <- get_MSdev_ms2_Spectra(msdev.Astral)
+ms2.info <- spectraData(ms2.sp)%>%
+  as.data.frame()
+
+
+ms2.info.pos <- ms2.info%>%
+  dplyr::filter(polarity==1)
+xcms.fdf.pos <- featureDefinitions(msdev.Astral@xcmsData$PositiveMS1)%>%
+  as.data.frame()
+
+sum(length(unlist(xcms.fdf.pos$ms2_id)))
+nrow(ms2.info.pos)
+
+# Sun Oct 13 13:59:59 2024 ------------------------------
+MSIP_get_isotopologues_table()
+a <- msdev.Astral@statData$MSIP$isotopologues_matrix
+b <- msdev.Astral@statData$MSIP$isotopologues_table
+c <- msdev.Astral@statData$MSIP$isotopologues_data
+
+
+MSIP_get_isotopologues
+
+
+# Sun Oct 13 16:03:36 2024 ------------------------------
+
+cfmd <- msdev.13C1@statData$MSIP$isotopologues_data[[1]]$CFM_annotation
+vis_cfm_data_fragment(cfmd,1,show_id = T)
+
+#rcdk
+{
+
+  # Get all atoms in the molecule
+  atoms <- get.atoms(molecule)
+
+  # Loop through each atom in the molecule
+  for (i in seq_along(atoms)) {
+    atom <- atoms[[i]]
+
+    # Get the symbol for this atom
+    atom_symbol <- get.symbol(atom)
+    # Check if the atom is Carbon (C)
+    if (atom_symbol == "C") {
+      # Print the atom index and symbol
+      print(paste("Atom index:", i, "Symbol:", atom_symbol))
+
+      # Get the bonds of the atom from the molecule
+
+    }
+  }
+
+}
+
+img <- view.image.2d(parse.smiles(smiles)[[1]])
+plot(1:10, 1:10, pch=19)
+rasterImage(img, 1,6, 5,10)
+
+
+
+
+smiles <- msdev.13C1@statData$MSIP$isotopologues_data[[1]]$compound_info$smiles
+sdf.chemmine <- smiles2sdf(smiles)
+
+sdf.ig <- get_sdf_igraph(sdf.chemmine)[[1]]
+vis_sdf_igraph(sdf.ig,show_id = T)
+
+plot(a$x,a$y)
+
+canonicalNumbering(sdf.chemmine)
+canonicalNumbering(sdf.chemmine)
+sdfs <- sdf.chemmine
+sdf<-sdfs[[1]]
+
+canonicalNumbering_OB(obmol(sdf))
+
+n <- 2^(1:20)
+
+for (i in n) {
+
+  sdfs <- smiles2sdf(rep(smiles,i))
+  message_with_time(i)
+  system.time(a <- canonicalNumbering(sdfs))%>%print()
+  system.time(a <- sapply(1:i,function(x){
+    canonicalNumbering_OB(obmol(sdfs[[1]]))
+  }))%>%print()
+
+}
+
+
+i <- 17
+smiles <- msdev.13C1@statData$MSIP$isotopologues_data[[i]]$compound_info$smiles
+msdev.13C1@statData$MSIP$isotopologues_data[[i]]$compound_info$name
+sdf.chemmine <- smiles2sdf(smiles)
+
+sdf.ig <- get_sdf_igraph(sdf.chemmine)[[1]]
+vis_sdf_igraph(sdf.ig,show_id = T)
+
+
+canonicalNumbering()
+
+iso.list <- msdev.13C1@statData$MSIP$isotopologues_data
+iso.data <- iso.list$FT00366_Negative
+msip.core <- iso.data$MSIP_result$M1$FS_3_13C
+
+
+### assign set to isotopomer
+{
+  isotopomer.set.prob <- p_estimated/sum(p_estimated)
+  isotopomer.set <- MSIPIsotopomerMap@solve$isotopomer.set
+  isotopomer.prob <- mapply(x = isotopomer.set.prob ,
+                            y = isotopomer.set,function(x,y){
+                              make_vector(x/length(y),num2str(y,10))
+                            },SIMPLIFY = F)
+  isotopomer.prob <- unlist(isotopomer.prob)
+  isotopomer.prob <- isotopomer.prob[order(names(isotopomer.prob))]
+  isotopomer.prob <- unname(isotopomer.prob)
+}
+
+
+msip.core <- msdev.13C1@statData$MSIP$isotopologues_data[[17]]$MSIP_result$M1$FS_1_13C
+msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob%>%str_digit(2)
+a <- MSIPCore_correct_natural(msip.core,0.5)
+a@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob
+
+msip.core@solve$Atom_prob
+a@solve$Atom_prob
+
+MSIPCore_solve(MSIPCoreData)
+
+# Mon Oct 14 14:48:32 2024 show sp merge------------------------------
+{
+
+  iso.list <- msdev.Astral@statData$MSIP$isotopologues_data
+  iso.data <- iso.list$FT12669_Positive
+
+  MSIPCoreData <- get_MSIPCoreData(sp.iso = iso.data$Spectra$M4$GLUCE1,
+                   cfmd = iso.data$CFM_annotation,
+                   iso_count = 4)
+  a <-  MSIPCore_solve(MSIPCoreData)
+  peak.df <- CFM_annotate_isotopologues(sp = iso.data$Spectra$M4$GLUCE1,
+                             cfmd = iso.data$CFM_annotation,
+                             iso_count = 4)
+  sp.frag.data <- CFM_spectra_data_merge(peak.df,4)
+  fg.map <- get_MSIPFragmentMap(sp.frag.data,
+                                cfmd,
+                                iso_count = iso_count)
+
+  dist_matrix <- dist((x.ratio))
+
+}
+
+ggplot(frag.df)+
+  geom_point(aes(x = log10(int_sum),
+                 y = cos,
+                 size = peaks_count))
+

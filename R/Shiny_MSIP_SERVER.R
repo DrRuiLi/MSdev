@@ -6,7 +6,9 @@ MSIP_shiny_server <- function(object){
 
   function(input, output, session) {
 
-    output$test_info <- renderPrint({})
+    output$test_info <- renderPrint({
+      FSIS_selected()
+    })
 
 
     ### reactiveval
@@ -321,13 +323,15 @@ MSIP_shiny_server <- function(object){
       fg.include <- reactiveVal()
       observeEvent(msip.core.data(),{
 
-        message_with_time("observeEvent269")
+        message_with_time("shiny_get_fg_include")
         fg.include( shiny_get_fg_include(msip.core.data()) )
 
         message_with_time("shiny_get_int_thresh")
         msip.core.int_thresh <- shiny_get_int_thresh(msip.core.data())
         updateSliderInput(inputId = "int_thresh",
                           value = msip.core.int_thresh)
+        updateSliderInput(inputId = "certainty_thresh",
+                          value = msip.core.data()@solve$certainty_thresh)
 
 
       })
@@ -336,7 +340,7 @@ MSIP_shiny_server <- function(object){
 
       output$heatmap_fg_map <- renderPlot({
 
-        message_with_time("heatmap_fg_map")
+        message_with_time("shiny_heatmap_fgmap")
         shiny_heatmap_fgmap(msip.core.data())
 
       })
@@ -394,7 +398,8 @@ MSIP_shiny_server <- function(object){
         #x <- shiny_update_msip_core_data(msip.core.data(),
         #                                 fg.include())
         message_with_time("ReSolve")
-        msip.core.data(MSIPCore_solve(msip.core.data(),
+        wf <- get_MSIP_weight_fun(object)
+        msip.core.data(MSIPCore_solve(msip.core.data(),weight_fun = wf,
                                       int_thresh = 10^input$int_thresh,
                             certainty_thresh = input$certainty_thresh))
 
@@ -425,6 +430,51 @@ MSIP_shiny_server <- function(object){
 
 
       })
+
+    }
+
+
+
+    ### isotopomers
+    {
+      FSIS_table <- reactiveVal()
+      message_with_time("shiny_get_FSIS_table")
+      observeEvent(msip.core.data(),{
+
+        FSIS_table(shiny_get_FSIS_table(msip.core.data()))
+      })
+
+      output$FSIS_table <- renderDT({
+        FSIS_table()%>%
+          datatable(options = list(
+            columns =list(orderable = F),
+            dom = 't',   # 't' means only the table body is displayed
+            paging = FALSE,  # Disable pagination
+            searching = FALSE,  # Disable search box
+            info = FALSE  # Disable table information
+          ),
+                    selection = list(
+                      mode = 'single', selected =1
+                    ))
+      })
+
+      FSIS_selected <- reactiveVal()
+      observeEvent(input$FSIS_table_rows_selected,{
+
+        FSIS_selected(
+          FSIS_table()$FSIS[input$FSIS_table_rows_selected]
+        )
+
+
+      })
+
+
+      message_with_time("vis_MSIPcore_isotopoer_set")
+      output$Vis_isotopomer_set <- renderVisNetwork({
+        vis_MSIPcore_isotopoer_set(msip.core.data(),
+                                   mol.ig(),FSIS_selected())
+      })
+
 
     }
 

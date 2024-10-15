@@ -797,7 +797,7 @@ shiny_get_fg_include <- function(msip.core.data){
   #}else{
   #  frag.include <- msip.core.data$fg.map$frag.include
   #}
-  frag.include <- msip.core.data@FG_map@fragment.include
+  frag.include <- msip.core.data@FG_map@FG.data$include
   return(frag.include)
 }
 
@@ -840,6 +840,7 @@ shiny_plotly_natural_ratio <- function(natural.ratio = 0.6 ){
 
 
   natural.ratio <- ifelse(natural.ratio>1,1,natural.ratio)
+  natural.ratio <- ifelse(natural.ratio<0.0001,0,natural.ratio)
 
   df <- data.frame(
     name = c("labeled","natural"),
@@ -875,7 +876,7 @@ shiny_get_frag_iso_distribution<- function(msip.core,fg.id){
 
   if (is.null(msip.fgmap)|isEmpty(msip.fgmap)) return(NULL)
 
-  fgm <- msip.fgmap@fragment.ratio.matrix
+  fgm <-msip.fgmap@FG.ratio.matrix
   if (!fg.id%in% rownames(fgm)) return(NULL)
 
   iso.dis <- fgm[fg.id,]
@@ -931,3 +932,18 @@ shiny_get_int_thresh <- function(msip.core){
     return(log10(int_thresh))
 }
 
+
+shiny_get_FSIS_table <- function(msip.core){
+
+  data.frame(
+    FSIS = names(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set),
+    isotopomer.count =unname(lengths(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set)),
+    prob = msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob
+  )%>%
+    #dplyr::filter(prob>0.001)%>%
+    dplyr::mutate(
+      prob = str_digit(prob,3)
+    )%>%
+    remove_rownames()
+
+}
