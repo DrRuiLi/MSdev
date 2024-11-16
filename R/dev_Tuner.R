@@ -4,7 +4,6 @@
 #'
 #' @return Autotuner
 #' @export
-#' @import Autotuner
 #'
 
 get_xcms_Autotuner <- function(xcms.xcms ){

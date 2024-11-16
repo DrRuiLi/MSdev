@@ -89,7 +89,6 @@ get_sdf_igraph <- function(sdf,addH = F){
 #'
 #' @return vis html
 #' @export
-#' @import igraph visNetwork
 vis_sdf_igraph <- function(sdf.igraph,show_id = F,...){
 
   sdf.igraph <- sdf.igraph%>%
@@ -111,6 +110,15 @@ vis_cfm_data_fragment <- function(cfmd,fragment_id,
     sdf_igraph_show_id(show_id )
   vis_sdf_igraph(ig,show_id = show_id,...)
 
+}
+
+vis_cfm_data_FG_mapped <- function(cfmd,FG,
+                                   show_id= T){
+
+  atom.prob <- get_cfm_data_fragment_group_atom_map(cfmd,FG)
+  get_cfm_data_sdf_igraph(cfmd)%>%
+    sdf_igraph_add_border_color(value = atom.prob)%>%
+    vis_sdf_igraph(show_id)
 }
 
 vis_cfm_data_fragment_atom_map<- function(cfmd,fragment_id,

@@ -19,9 +19,14 @@ open_plot_win <- function(p,width = 5,height = 4){
                      file =temp.file,
                      width = width,height= height
                      )
-  }else{
+  }else if(any(c("ggplot")%in%class(p))){
     ggplot2::ggsave(filename = temp.file,plot = p,
                     width = width,height= height,dpi = 600)
+  }else{
+    export::graph2png(p,
+                      file =temp.file,
+                      width = width,height= height
+    )
   }
   open_file(temp.file)
 

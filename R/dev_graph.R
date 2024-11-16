@@ -46,6 +46,16 @@ igraph_filter_shortest_path <- function(ig,from,to){
 }
 
 
+igraph_filter_path<- function(ig,paths){
+
+
+  ids <- sapply(paths,as_ids)
+  ids <- unique(unlist(ids))
+  igraph_filter_vertex(ig,ids)
+}
+
+
+
 show_vis_icon <- function(icon_code = paste0("f",num2str(1:900)),
                           type = c("FontAwesome","Ionicons")){
 
@@ -180,4 +190,11 @@ vis_add_arrow_icon <- function(vis,
   vis$x$nodes <- bind_rows(vis$x$nodes,to.add.df)
   vis%>%
   addFontAwesome(version  = "4.7.0")
+}
+
+
+vis_igraph <- function(ig){
+
+  visNetwork::visNetwork(nodes = vdata(ig),edges = edata(ig))
+
 }

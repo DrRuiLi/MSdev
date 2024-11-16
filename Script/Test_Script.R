@@ -2938,3 +2938,182 @@ ggplot(frag.df)+
                  y = cos,
                  size = peaks_count))
 
+
+plot.data%>%
+  dplyr::group_by(atom,name)%>%
+  dplyr::summarise(sum(value))
+
+
+p <- ggplot(pi)+
+  geom_boxplot(aes(y = name_m,x = solve.ratio))+
+  geom_point(aes(y = name_m,x = solve.ratio))+
+  labs(x = "Solve Ratio", y = "")+
+  theme_bw()
+
+open_plot_win(p,5,10)
+export::graph2pdf(p,file = "a.pdf",width = 5,height = 10)
+
+{
+
+  process.info.as <- MSIP_solve_computation_evaluate(msdev.Astral, show_message = F)
+  pi.as <- process.info.as%>%
+    dplyr::mutate(solve.ratio = FSIS.count/isotopomer,
+                  name_m = paste0(name,"-M+",iso_count))%>%
+    dplyr::group_by(name_m)%>%
+    dplyr::mutate(mean_ratio = mean(solve.ratio,na.rm =T))%>%
+    dplyr::ungroup()%>%
+    dplyr::arrange(mean_ratio)%>%
+    dplyr::mutate(name_m = factor(name_m,level = unique(name_m)),
+                  instru = "Astral")%>%
+    dplyr::filter((mean_ratio >=0.3))
+
+}
+
+{
+  process.info.qe <- MSIP_solve_computation_evaluate(msdev.13C1, show_message = F)
+  pi.qe <- process.info.qe%>%
+    dplyr::mutate(solve.ratio = FSIS.count/isotopomer,
+                  name_m = paste0(name,"-M+",iso_count))%>%
+    dplyr::group_by(name_m)%>%
+    dplyr::mutate(mean_ratio = mean(solve.ratio,na.rm =T))%>%
+    dplyr::ungroup()%>%
+    dplyr::arrange(mean_ratio)%>%
+    dplyr::mutate(name_m = factor(name_m,level = unique(name_m)),
+                  instru = "QE")%>%
+    dplyr::filter((mean_ratio >=0.3))
+}
+plot.data <- rbind(pi.as,pi.qe)
+
+ggplot(plot.data)+
+  geom_histogram(aes(x = solve.ratio, after_stat(density),fill = instru),
+                 bins = 10,
+                 position = "dodge")
+
+
+# Thu Oct 17 16:14:18 2024 ------------------------------
+{
+
+  data.list <- list()
+  for (i in 1:nrow(process.info)) {
+
+    msip.core <- object@statData$MSIP$isotopologues_data[[process.info$feature_id[i]]]$MSIP_result[[str_isotope2_num(process.info$isotopomer[i])]][[process.info$samples[i]]]
+    if (is.null(msip.core)) next
+    plot.data <- msip.core@Spectra_data%>%
+      dplyr::filter(merged)->data.list[[i]]
+    ggplot(plot.data)+
+      geom_point(aes(x = log10(int_sum),
+                     y = icc,
+                     size = peaks_count ))
+  }
+  data.list <- data.list[!sapply(data.list,is.null)]
+  plot.data <- data.table::rbindlist(data.list, fill=TRUE)%>%
+    dplyr::filter(peaks_count > 5,
+                  peaks_count < 50)
+
+  ggplot(plot.data)+
+    geom_point(aes(x = log10(int_sum),
+                   y = icc,
+                  size = peaks_count),alpha = 0.1)+
+    labs(y = "ICC(Intraclass correlation coefficient)\nof FG ratio")+
+    theme_bw()->p
+  open_plot_win(p,6,5)
+
+
+}
+
+
+# Wed Nov 13 10:48:54 2024 ------------------------------
+kegg.ig <- FELLA::buildGraphFromKEGGREST('hsa')
+vda <- vdata(kegg.ig)
+eda <- edata(kegg.ig)
+
+dis <- distances(kegg.ig,v = "R01224")
+ig.sub <- igraph_filter_distance(kegg.ig,c("C01189"),1)
+
+visIgraph(ig.sub)%>%
+  open_visNet()
+
+paths <- all_simple_paths(kegg.ig,
+                          "C00031","C00051",
+                          mode   = "all")
+
+
+kegg.rc <- KEGGREST::keggList("reaction")
+
+kegg.rc.split <- split(kegg.rc,
+                       ceiling(seq_along(kegg.rc) / 10))
+
+kegg.rc.data <- plyr::llply(kegg.rc.split,
+                    .fun = function(x){
+                      success <- FALSE
+                      result <- NULL
+                      while (!success) {
+                        Sys.sleep(1)
+                        try({
+                          rc.da <- KEGGREST::keggGet(names(x))
+                        success <- TRUE },
+                        silent = TRUE)
+                      }
+                      return(rc.da)
+                    },
+                    .progress = "text")
+
+kegg.rc.data <- unlist(kegg.rc.data,recursive = F)
+names(kegg.rc.data) <- sapply(kegg.rc.data,`[[`,"ENTRY")
+
+a <- lapply( kegg.rc.data, KEGG_reaction_parse)
+
+
+
+a <-do.call(rbind,kegg.rc.data[1:3])
+
+
+
+vars <- c("ENTRY","NAME","DEFINITION","EQUATION","ENZYME",
+          "BRITE","DBLINKS","COMMENT","RCLASS","PATHWAY",
+          "ORTHOLOGY","MODULE","REMARK","REFERENCE")
+var <- "RCLASS"
+
+sapply(kegg.rc.data,function(rc.data){
+ rc.data[[var]]%>%class
+  })%>%unlist%>%table()
+
+sapply(kegg.rc.data,function(rc.data){
+  rc.data[[var]]%>%length
+})%>%unlist%>%table()
+
+
+
+eqs <- sapply(kegg.rc.data,`[`,"EQUATION")
+
+a <- lapply(eqs,KEGG_reaction_EQUATION_parse)
+
+kegg.rc.data.p <-
+ plyr::llply(kegg.rc.data,
+             KEGG_reaction_parse,
+             .progress = "text")
+
+
+rc.ig <- MSdb::get_KEGG_Reaction_network()
+eda <- edata(rc.ig)
+vda <- vdata(rc.ig)
+
+rc.ig <- igraph_filter_vertex(rc.ig,vda$name!="C00001")
+eda <- edata(rc.ig)
+vda <- vdata(rc.ig)
+
+paths <- all_simple_paths(rc.ig,
+                          from = "C00031",
+                          to = "C00051",
+                          mode = "all",
+                          cutoff = 8)
+
+igraph_filter_path(rc.ig,paths)%>%
+  vis_igraph()%>%
+  open_visNet()
+
+
+
+
+
+

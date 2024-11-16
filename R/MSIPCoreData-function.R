@@ -676,7 +676,9 @@ heatmap_MSIPIsotopomerMap <- function(MSIPIsotopomerMap){
 
 
 MSIPIsotopomerMap_set_split <- function(MSIPIsotopomerMap,
-                                     MSIPFragmentMap_reduced){
+                                     MSIPFragmentMap_reduced,
+                                     approx_split = T,binwidth = 0.02
+                                     ){
 
 
   if (isEmpty(MSIPIsotopomerMap))
@@ -687,6 +689,15 @@ MSIPIsotopomerMap_set_split <- function(MSIPIsotopomerMap,
   ### Isotopomers to FSIS
   {
     isotopomer.map <- MSIPIsotopomerMap@isotopomer.map
+    if (approx_split) {
+      bins <- seq(0,1,binwidth)
+      closest_value <- function(x, values) {
+        values[which.min(abs(values - x))]
+      }
+      isotopomer.map <- apply(isotopomer.map,c(1,2),closest_value,values = bins)
+    }
+
+
     isotopomer.split <- apply(isotopomer.map, 2, function(x){paste0(x,collapse = ";")})
     isotopomer.split <-  split(colnames(isotopomer.map),
                                isotopomer.split)
@@ -769,7 +780,7 @@ MSIPIsotopomerMap_set_solve_QP <- function(MSIPIsotopomerMap,
       sum(x==1)/sum(x)
     })
     cer[is.nan(cer)] <- 1
-    weights <- weight_fun(Labeled.FG.data$int_sum*I)*Labeled.FG.data$cos
+    weights <- weight_fun(Labeled.FG.data$int_sum*I)*(Labeled.FG.data$cos-0.5)
     #weights <- make_vector(1,I)
     weight.df <- data.frame(
       frag.total = Labeled.FG.data$int_sum,
@@ -1049,6 +1060,29 @@ MSIPCore_FG_suffix <- function(MSIPCoreData,
 
   return(MSIPCoreData)
 
+
+}
+
+
+get_MSIPCore_isotopomer_data <- function(MSIPCoreData){
+
+  FSIS.def <- MSIPCoreData@solve$MSIPIsotopomerMap@solve$isotopomer.set
+  FSIS.prob <- MSIPCoreData@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob
+  isotopomer.def <-  MSIPCoreData@solve$MSIPIsotopomerMap@isotopomer.defination
+
+  data.frame(
+    FSIS = names(FSIS.def)
+  )
+  isotopomer.iso_count <- unique(lengths(isotopomer.def))
+  isotopomer.def.formate <- sapply(isotopomer.def,function(x){
+    paste0("M+",isotopomer.iso_count,":",paste0(x,collapse = ","))
+  })
+  lapply(FSIS.def,function(x) data.frame(isotopomer = x))%>%
+    data.table::rbindlist(idcol = "FSIS")%>%
+    dplyr::mutate(prob = FSIS.prob[FSIS],
+                  name = isotopomer.def.formate[isotopomer],
+                  iso_count = isotopomer.iso_count
+                  )
 
 }
 

@@ -635,7 +635,7 @@ MSIP_solve_isotopologues <- function(object,
                                 int_thresh = int_thresh,
                                 weight_fun=weight_fun,
                                 certainty_thresh = certainty_thresh)
-    if (process.info$traced[i]){
+    if (process.info$traced[i]&!is.na(this.natural.ratio)){
       msip.core <- MSIPCore_correct_natural(msip.core, natural.ratio = this.natural.ratio)
     }
     time_consume <- Sys.time()-start_time
@@ -817,13 +817,20 @@ MSIP_solve_computation_evaluate <- function(object,
                       get_matrix_value_fill_with_NA(ms2_count.matrix,
                                                     str_isotope2_num(iso_count),
                                                     paste0(samples)),
-                    solved = F)%>%
+                    solved = F,
+                    FSIS.count = NA)%>%
       dplyr::ungroup()%>%
       dplyr::filter(!is.na(ms2.count))
   for (j in 1:nrow(comp.eval)) {
     msip.core <- iso.data[[i]][["MSIP_result"]][[str_isotope2_num(comp.eval$iso_count[j])]][[
       comp.eval$samples[j]]]
     comp.eval$solved[j] <-!is.null(msip.core)
+    if (comp.eval$solved[j]) {
+      if(!isEmpty(msip.core@solve$MSIPIsotopomerMap)){
+        #length(msip.core@solve$MSIPIsotopomerMap@)
+        comp.eval$FSIS.count[j] <-length(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set)
+      }
+    }
   }
   if (show_message) {
 

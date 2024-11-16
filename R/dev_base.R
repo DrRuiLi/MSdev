@@ -293,3 +293,20 @@ str_digit <- function(x,digit = 2){
 
   sprintf(paste0("%.",digit,"f"), x )
 }
+
+
+
+try_until_success <- function(func, ...) {
+  success <- FALSE
+  result <- NULL
+
+  while (!success) {
+    try({
+      result <- func(...)
+      success <- TRUE
+    }, silent = TRUE)
+  }
+
+  return(result)
+}
+

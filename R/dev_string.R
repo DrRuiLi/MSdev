@@ -53,12 +53,12 @@ groupStringFactor <- function(x){
 #' @export
 #'
 
-vector2str <- function(v,verbose = F){
+vector2str <- function(v,verbose = T){
 
   x <- paste0("c(\"",paste0(na.omit(v),collapse = "\",\""),"\")")
   if (verbose)
    cat(x)
-    return(x)
+  invisible((x))
 }
 
 

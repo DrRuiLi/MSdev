@@ -499,7 +499,6 @@ mcs.map.filter.duplicate <- function(mcs.map,target_ele = "C"){
 #'
 #' @return vis
 #' @export
-#' @import ChemmineR igraph visNetwork
 vis_smiles <- function(smiles,
                        show.formula = T,
                        show_id =T,

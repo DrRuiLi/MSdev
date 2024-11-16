@@ -580,6 +580,39 @@ DEP_pathway_enrich <- function(data.se,
 
 }
 
+
+DEP_pathway_enrich_gene <- function(data.se,
+                               contrast ,
+                               database = c("KEGG_2021_Human")){
+
+
+  if (contrast == "all") {
+    enrich.list <- list()
+    for (i in 1:length( DEP_list_contrast(data.se ))) {
+      i_contrast <-  DEP_list_contrast(data.se )[i]
+      enrich.list[[i_contrast]] <- DEP_pathway_enrich_gene(data.se ,
+                                                      contrast = i_contrast,
+                                                      database = database)
+    }
+    return(enrich.list)
+  }
+  database <- match.arg(database)
+  {
+    pathway.table <- DEP_get_diff_table(data.se,
+                                        contrast = contrast,
+                                        keep.all = T)%>%
+      dplyr::filter(significant)%>%
+      dplyr::pull(genes)%>%
+      enrichR::enrichr(databases = database)
+    pathway.table <- pathway.table[[1]]
+  }
+
+  return(pathway.table)
+
+
+
+}
+
 DEP_normalization <- function(data.se){
 
   data_filt <- DEP::filter_missval(data.se,
@@ -605,3 +638,45 @@ se_adjuset_by_weight <- function(data.se){
 
   return(data.se)
 }
+
+
+DEP_test_ANOVA <- function(data.se){
+
+
+  data.matrix <- assay(data.se)
+  p.kruskal <- apply(data.matrix, 1, function(x){
+    kruskal.test(x~data.se$condition)$p.value
+  })
+  p.kruskal.fdr <- p.adjust(p.kruskal)
+
+  rowData(data.se)$p.kruskal <- p.kruskal
+  rowData(data.se)$p.kruskal.fdr <- p.kruskal.fdr
+  return(data.se)
+}
+
+
+
+DEP_plot_single_bar <- function(data.se,
+                                id){
+
+  plot.data <- data.frame(
+    group = data.se$group,
+    val = assay(data.se)[id,]
+  )
+
+  ggplot(plot.data ,
+         aes(x = group , y = val) )+
+    #geom_bar(stat = "summary",fun  = mean)+
+    geom_boxplot()+
+    #ggsignif::geom_signif(
+    #  comparisons = apply(combn(names(col.groups),2),2
+    #                      ,c,simplify = F),
+    #  test  = "t.test",
+    #  y_position = seq(8000,12000,length.out = 6))+
+    theme_bw()
+
+
+}
+
+
+
