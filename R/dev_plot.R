@@ -43,7 +43,6 @@ open_plot_win <- function(p,width = 5,height = 4){
 #'
 #' @return null
 #' @export
-#' @import patchwork
 #'
 
 ggplot_sum_patchwork <- function(ggplot.list){

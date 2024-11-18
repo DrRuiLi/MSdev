@@ -5,7 +5,6 @@
 #'
 #' @return igraph
 #' @export
-#' @import dplyr tibble ChemmineR igraph
 get_sdf_igraph <- function(sdf,addH = F){
 
   .f <- function(sdf,addH){

@@ -70,7 +70,6 @@ setMethod("show",signature ="CFM_data",definition =
 #'
 #' @return list of cfm data
 #' @export
-#' @import crayon stringr
 
 CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
                           prob_thresh = 0.001,
@@ -123,7 +122,6 @@ CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([
 #'
 #' @return cfm data
 #'
-#' @import crayon stringr magrittr
 #' @export
 #'
 
@@ -443,7 +441,6 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
 #' @param result_path path
 #'
 #' @return list of cfm data
-#' @import dplyr stringr
 #' @export
 #'
 
@@ -665,7 +662,6 @@ plot_CFM_annotated_Spectra <- function(cfmd){
 #'
 #' @return null
 #' @export
-#' @import MSCC
 #'
 CFM_annotate_isotopologues <- function(sp,
                                  cfmd,
@@ -735,7 +731,6 @@ CFM_annotate_isotopologues <- function(sp,
 #'
 #' @return cfmd
 #' @export
-#' @import magrittr
 CFM_data_get_igraph <- function(object){
 
   ### fragment def
@@ -1102,7 +1097,6 @@ get_CFM_data_trans_igraph <- function(object){
 #'
 #' @param cfm_data cfmd
 #' @param ppm 10
-#' @import magrittr
 #' @return cfmd
 cfm_data_get_FG_map <- function(cfm_data,iso_ele = "[13]C",ppm = 5){
 

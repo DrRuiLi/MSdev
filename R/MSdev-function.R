@@ -104,7 +104,6 @@ get_MSdev_MSinfo <- function(object){
 #'
 #' @return MSdev
 #' @export
-#' @import dplyr xcms
 MSdev_add_sample <- function(object,
                              raw.data.dir = object@projectInfo$rawDataDir){
   sample.info <- object@sampleInfo
@@ -137,7 +136,6 @@ MSdev_add_sample <- function(object,
 #'
 #' @return MSdev
 #' @export
-#' @import xcms MSnbase
 MSdev_xcmsProcessing <- function(object,...){
 
   MS.mode <- object@projectInfo$msAcquisition
@@ -193,7 +191,6 @@ MSdev_get_xcms <- function(object){
 #'
 #' @return MSdev
 #' @export
-#' @import  xcms
 xcmsProcessingMSdev.DDA <- function(object,...){
 
   xcms.param <- get_MSdev_param(object )
@@ -1393,7 +1390,6 @@ MSdev_checkSampleInfo <- function(object){
 #'
 #' @return MSdev
 #' @export
-#' @importFrom BiocParallel  bplapply
 
 #'
 
@@ -1455,7 +1451,6 @@ MSdev_msConvert<- function(object){
 #' @param object  MSdev
 #'
 #' @return MSdev
-#' @import Spectra dplyr
 #' @export
 #'
 MSdev_extract_Spectra <- function(object,
@@ -1526,7 +1521,6 @@ MSdev_extract_Spectra <- function(object,
 #' MSdev_match_Spectra_to_feature
 #'
 #' @param object MSdev
-#' @import BiocParallel Spectra
 #'
 #' @return MSdev
 #' @export
@@ -1590,7 +1584,6 @@ MSdev_match_Spectra_to_feature <- function(object,
 #' @param ...
 #'
 #' @return MSdev
-#' @import CompoundDb Biobase BiocParallel Spectra
 #' @export
 #'
 

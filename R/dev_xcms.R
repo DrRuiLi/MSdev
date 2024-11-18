@@ -138,7 +138,6 @@ get_xchroms_peaks_count <- function(xchroms){
 #' @param rt one of c("all","identity","expand")
 #'
 #' @return xcms XChromatograms
-#' @import xcms
 #' @export
 #'
 
@@ -216,7 +215,6 @@ xcms_get_peak_fill <- function(xcms.xcms){
 #'
 #' @return xcms
 #' @export
-#' @import MsFeatures
 #'
 
 xcms_get_feature_group <- function(xcms.xcms,
@@ -1525,7 +1523,6 @@ plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"
 #'
 #' @return xcms
 #' @export
-#' @import xcms
 #'
 
 plot_xcms_peaks_ms2_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS2"){
@@ -1724,7 +1721,6 @@ chromPeaks_Sta <- function(xcms.xcms){
 #'
 #' @return xcms
 #' @export
-#' @import xcms
 
 xcmsProcessingMS1 <- function(xcms.xcms,
                               ion_mode = NA,

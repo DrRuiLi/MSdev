@@ -465,7 +465,6 @@ plot_Spectra_Mirror<- function(sp1,sp2,show.label = "rtime"){
 #'
 #' @return ggplot
 #' @export
-#' @import ggplot2
 plot_Spectra<- function(sp,label.top = 10){
 
   sp.data <-get_Spectra_data(sp)%>%
@@ -967,7 +966,6 @@ Spectra_set_MEM_backend <- function(sp){
 #'
 #' @return plotly
 #' @export
-#' @import plotly
 #'
 plotly_Spectra <- function(sp,label.top = 10){
 
@@ -1017,7 +1015,6 @@ plotly_Spectra <- function(sp,label.top = 10){
 #'
 #' @return plotly
 #' @export
-#' @import plotly
 #'
 plotly_Spectra_mirror <- function(sp1,sp2){
 
@@ -1062,7 +1059,6 @@ plotly_Spectra_mirror <- function(sp1,sp2){
 #'
 #' @return plotly
 #' @export
-#' @import plotly
 #'
 plotly_Spectra_iso_mirror <- function(sp,sp.iso ,
                                       ppm = 10,
@@ -1188,7 +1184,6 @@ Spectra_get_noise <- function(sp){
 #'
 #' @return Spectra
 #' @export
-#' @import Spectra
 Spectra_filter_noise <- function(sp){
 
   if (!"noise" %in% spectraVariables(sp)) {

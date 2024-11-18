@@ -4,7 +4,7 @@
 #'
 #' @return NULL
 #' @export
-#' @import  shiny
+
 MSIP_shiny_start <- function(object){
 
 
@@ -26,7 +26,6 @@ MSIP_shiny_start <- function(object){
 #'
 #' @return NULL
 #' @export
-#' @import  shiny
 MSIP_shiny_Acq <- function(object){
 
   ### Start Shiny APP

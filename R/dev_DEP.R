@@ -496,7 +496,6 @@ DEP.plot.heatmap <- function(data.se,
 #'
 #' @param data.se SE
 #' @param file_path path
-#' @import SummarizedExperiment
 #' @return null
 #' @export
 #'

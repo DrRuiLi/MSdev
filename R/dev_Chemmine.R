@@ -118,7 +118,6 @@ get_sdf_formula <- function(sdf){
 #'
 #' @return sdf
 #' @export
-#' @import ChemmineR
 get_smiles_sdf <- function(smiles,smiles.id = NULL){
 
   data("smiles_map")

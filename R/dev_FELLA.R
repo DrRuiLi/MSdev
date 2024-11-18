@@ -14,7 +14,6 @@ fella_enrich <- function(cpd_kegg,
 #'
 #' @return igraph
 #' @export
-#' @import igraph
 #'
 
 fella_igraph <- function(fella.fella,
@@ -88,6 +87,13 @@ fella_get_igraph_for_vis <- function(fella.fella,
         com == 4 ~ "Reaction",
         com == 5 ~ "Metabolite"
       ),
+      label = case_when(
+        com == 1 ~ label,
+        com == 2 ~ "",
+        com == 3 ~ "",
+        com == 4 ~ "",
+        com == 5 ~ label
+      ),
       size = case_when(
         com == 1 ~ 50,
         com == 2 ~ 40,
@@ -113,7 +119,8 @@ fella_get_igraph_for_vis <- function(fella.fella,
         com == 4 ~ "#8DB6CD",
         com == 5 ~ "#548B54"
       ),
-     font.color = color.background
+     font.color = color.background,
+     font.size = 20
     )
 
 

@@ -91,19 +91,20 @@ show_vis_icon <- function(icon_code = paste0("f",num2str(1:900)),
 
 edata <- function(ig){
 
-  igraph::as_data_frame(ig,"e")
+  igraph::as_data_frame(ig,"edges")
 
 }
 
 vdata <-  function(ig){
 
-  igraph::as_data_frame(ig,"v")
+  igraph::as_data_frame(ig,"vertices")
 
 }
 
 `edata<-` <- function(ig,value){
 
-  edge.attributes(ig) <- as.list(value)
+  value <- value[,!grepl("from|to",colnames(value))]
+  edge.attributes(ig) <- as.list( value )
   ig
 }
 
@@ -195,6 +196,8 @@ vis_add_arrow_icon <- function(vis,
 
 vis_igraph <- function(ig){
 
-  visNetwork::visNetwork(nodes = vdata(ig),edges = edata(ig))
+  visNetwork::visNetwork(nodes = vdata(ig),edges = edata(ig))%>%
+    visNetwork::visOptions(width = "200%",
+                           height = "200%")
 
 }

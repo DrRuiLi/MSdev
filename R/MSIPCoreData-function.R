@@ -546,7 +546,6 @@ MSIPFragmentMap_merge_complementary <- function(MSIPFragmentMap){
 #'
 #' @return heatmap
 #' @export
-#' @import ComplexHeatmap grid
 heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
                                     show_ratio = F){
 

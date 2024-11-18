@@ -3102,18 +3102,73 @@ rc.ig <- igraph_filter_vertex(rc.ig,vda$name!="C00001")
 eda <- edata(rc.ig)
 vda <- vdata(rc.ig)
 
-paths <- all_simple_paths(rc.ig,
+paths <- all_simple_paths(kegg.rig,
                           from = "C00031",
                           to = "C00051",
                           mode = "all",
-                          cutoff = 8)
+                          cutoff = 9)
 
-igraph_filter_path(rc.ig,paths)%>%
+igraph_filter_path(rc.ig,
+                   paths)%>%
   vis_igraph()%>%
   open_visNet()
 
 
 
+kegg.raw.data <- MSdb:::get_KEGG_rawdata()
+
+# Mon Nov 18 12:48:27 2024 ------------------------------
+kegg.rig <- MSdb::get_KEGG_Reaction_network()
+kegg.rig <- KEGG_Reaction_network_add_label(kegg.rig)
+
+
+path.stat <- data.frame(
+  cutoff = 8:12,
+  path.count = NA
+)
+for (i in 1:nrow(path.stat)) {
+  paths <- all_simple_paths(kegg.rig,
+                            from = "C00031",
+                            to = "C00051",
+                            mode = "all",
+                            cutoff = path.stat$cutoff[i])
+  path.stat$path.count[i] <- length(paths)
+}
+
+p1 <- ggplot(path.stat)+
+  geom_bar(aes(x = cutoff,y = path.count),stat = "identity")
+
+kegg.rig <- KEGG_Reaction_network_merge_path(kegg.rig)
+path.stat <- data.frame(
+  cutoff = 8:12,
+  path.count = NA
+)
+for (i in 1:nrow(path.stat)) {
+  paths <- all_simple_paths(kegg.rig,
+                            from = "C00031",
+                            to = "C00051",
+                            mode = "all",
+                            cutoff = path.stat$cutoff[i])
+  path.stat$path.count[i] <- length(paths)
+}
+
+p2 <- ggplot(path.stat)+
+  geom_bar(aes(x = cutoff,y = path.count),stat = "identity")
 
 
 
+
+kegg.rig <- KEGG_Reaction_network_merge_path(kegg.rig)
+paths <- all_simple_paths(kegg.rig,
+                          from = "C00031",
+                          to = "C00051",
+                          mode = "all",
+                          cutoff = 10)
+
+ig.path <- igraph_filter_path(kegg.rig,
+                   paths)
+
+vda <- vdata(ig.path)%>%
+  dplyr::mutate(
+    ff = MSCC:::chemform_formate(Formula)
+  )

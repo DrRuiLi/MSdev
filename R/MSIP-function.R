@@ -399,7 +399,6 @@ get_MSdev_iso_ele <- function(object){
 #' @param object msdev
 #'
 #' @return  list of cfm data
-#' @import magrittr tidyverse
 #' @export
 #'
 MSIP_get_isotopologues_CFM_annotation <- function(object,
@@ -567,7 +566,6 @@ get_iso_net_assign <- function(iso.ig,net.degree.ratio = 0.6){
 #'
 #' @return iso.list
 #' @export
-#' @import  Spectra
 get_isotopologues_Spectra_process <- function(iso.list){
 
   for (i in seq_along(iso.list)) {

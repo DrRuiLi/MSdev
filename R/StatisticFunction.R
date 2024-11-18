@@ -191,9 +191,9 @@ plot_PCA <- function(pca.matrix,pca.group,showlabel = F){
       )
   }
     p+
-    stat_ellipse(aes(x = p1, y = p2 , fill = pca.group),
-                 alpha = 0.2,
-                 geom = "polygon") +
+   #stat_ellipse(aes(x = p1, y = p2 , fill = pca.group),
+   #             alpha = 0.2,
+   #             geom = "polygon") +
     scale_color_manual(values = col.list) +
     scale_fill_manual(values = col.list) +
     #xlim(-40,40)+
