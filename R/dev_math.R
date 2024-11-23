@@ -1,11 +1,8 @@
-#' t.test_dev
+#' Title
 #'
-#' @param ... see t.test
+#' @param t.test
 #'
-#' @return  see t.test
-#' @export
-#'
-
+#' @return t.test
 t.test_dev <- function(...){
 
   try.catch <-try(p.value <- t.test(...)$p.value,silent = T)

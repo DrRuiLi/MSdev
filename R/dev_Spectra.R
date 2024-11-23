@@ -100,14 +100,14 @@ makeSpectra <- function(precursorMz = 0,
 
   Spectra::Spectra(S4Vectors::DataFrame(precursorMz = precursorMz,
                              rtime = rtime,
-                             ...),backend = MsBackendMemory())
+                             ...),backend = Spectra::MsBackendMemory())
 
 }
 
 makeEmptySpectra <- function(...){
   Spectra::Spectra(S4Vectors::DataFrame(precursorMz = 0,
                                         rtime = 0,
-                                        ...),backend = MsBackendMemory())
+                                        ...),backend = Spectra::MsBackendMemory())
 
 }
 
@@ -128,7 +128,7 @@ filterSpectra_below_PrecursorMz <- function(sp){
     z[idx,,drop = F]
   }
   sp <- Spectra::addProcessing(sp,FUN = nf, spectraVariables = "precursorMz")%>%
-    applyProcessing(BPPARAM = SerialParam())
+    Spectra::applyProcessing(BPPARAM = SerialParam())
 
   return(sp)
 }
@@ -173,7 +173,7 @@ normalizeSpectra_by_precursorIntensity <- function(sp){
     z
   }
   sp <- Spectra::addProcessing(sp,FUN = nf, spectraVariables = "precursorIntensity")%>%
-    applyProcessing(BPPARAM = SerialParam())
+    Spectra::applyProcessing(BPPARAM = SerialParam())
 
   return(sp)
 
@@ -329,7 +329,7 @@ Spectra_fill_3CE <- function(sp){
     z[1,,drop = F]
   }
   sp.to.fill <- addProcessing(sp,remove_peaks)%>%
-    applyProcessing(BPPARAM = SerialParam())
+    Spectra::applyProcessing(BPPARAM = SerialParam())
   sp.to.fill <- sp.to.fill[rep(1,length(ce.to.fill))]
   collisionEnergy(sp.to.fill) <- ce.to.fill
   sp.filled <- c(sp,sp.to.fill)
@@ -951,8 +951,8 @@ Spectra_set_MEM_backend <- function(sp){
     sp$smoothed <-T
   }
 
-  sp <- setBackend(sp,
-                  backend = MsBackendMemory())
+  sp <- Spectra::setBackend(sp,
+                  backend = Spectra::MsBackendMemory())
   sp
 }
 
@@ -1197,7 +1197,7 @@ Spectra_filter_noise <- function(sp){
   }
   sp <- Spectra::addProcessing(sp,FUN = nf,
                                spectraVariables = "noise")%>%
-    applyProcessing(BPPARAM = SerialParam())
+    Spectra::applyProcessing(BPPARAM = SerialParam())
 
   return(sp)
 }

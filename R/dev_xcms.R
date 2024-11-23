@@ -204,7 +204,7 @@ xcms_get_peak_fill <- function(xcms.xcms){
 
 
   ###return
-  chromPeaks(xcms.xcms) <- xcms.peaks
+  xcms::chromPeaks(xcms.xcms) <- xcms.peaks
   return(xcms.xcms)
 }
 
@@ -963,14 +963,14 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
       filterSpectra_below_PrecursorMz()%>%
       normalizeSpectra(norm_to = "max")%>%
       filterSpectraIntensity(ratio = 0.05)%>%
-      applyProcessing()
+      Spectra::applyProcessing()
     if(length(sp.ms2)!=0){
       sp.ms2 <- sp.ms2%>%
         filterSpectra_below_PrecursorMz()%>%
         normalizeSpectra(norm_to = "max")%>%
         filterSpectraIntensity(ratio = 0.05)%>%
         Spectra_set_MEM_backend()%>%
-        applyProcessing()
+        Spectra::applyProcessing()
       #if ("from_iso" %in% spectraVariables(sp.ms2)) {
       #  sp.ms2 <- sp.ms2[!sp.ms2$from_iso]
       #}
@@ -1716,7 +1716,7 @@ chromPeaks_Sta <- function(xcms.xcms){
 #' @description Import `msDataFiles`, filter `ion_mode`, find peaks using `centWaveParam`, correct RT, group peaks using `peaksGroup`, fill peaks by xcms at MS1 Level
 #' @param msDataFiles `char` ms file (full) paths
 #' @param ion_mode to filter ion_mode, 1: positive, 0: negative, import when scans with both pos and neg
-#' @param peaksGroup `vector` to PeakGroupsParam(sampleGroups), should contain "QC"
+#' @param peaksGroup `vector` to xcms::PeakGroupsParam(sampleGroups), should contain "QC"
 #' @param centWaveParam xcms::CentWaveParam()
 #'
 #' @return xcms
@@ -1761,16 +1761,16 @@ xcmsProcessingMS1 <- function(xcms.xcms,
 
   if (length(sampleNames(xcms.xcms))>1) {
     if (sum(peaksGroup=="QC") <2 ) {
-      rt.adjust.param <- PeakGroupsParam(minFraction = 0.4,
+      rt.adjust.param <- xcms::PeakGroupsParam(minFraction = 0.4,
                                          #subset = which(peaksGroup == "QC"),
                                          subsetAdjust = "previous",span = 0.4)
-      xcms.xcms <- adjustRtime(xcms.xcms,param = rt.adjust.param)
+      xcms.xcms <- xcms::adjustRtime(xcms.xcms,param = rt.adjust.param)
     }else{
       ### adjust based on QC
-      rt.adjust.param <- PeakGroupsParam(minFraction = 0.4,
+      rt.adjust.param <- xcms::PeakGroupsParam(minFraction = 0.4,
                                           subset = which(peaksGroup == "QC"),
                                           subsetAdjust = "average",span = 0.4)
-      #xcms.xcms <- adjustRtime(xcms.xcms,param = rt.adjust.param)
+      #xcms.xcms <- xcms::adjustRtime(xcms.xcms,param = rt.adjust.param)
     }
   }
 
@@ -1779,9 +1779,9 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   message(Sys.time()," Group peaks...")
   peak.density.param <- xcms_param$groupChromPeaks
   peak.density.param@sampleGroups <- Biobase::pData(xcms.xcms)$sample.type
-  xcms.xcms <- groupChromPeaks(xcms.xcms,param = peak.density.param)
+  xcms.xcms <- xcms::groupChromPeaks(xcms.xcms,param = peak.density.param)
   message(Sys.time()," ",nrow(featureDefinitions(xcms.xcms))," feature found")
-  xcms.xcms <- fillChromPeaks(xcms.xcms,param = FillChromPeaksParam())
+  xcms.xcms <- xcms::fillChromPeaks(xcms.xcms,param = xcms::FillChromPeaksParam())
 
 
 
@@ -2044,7 +2044,7 @@ get_xcms_peaks_stat <- function(xcms.xcms){
 get_xcms_centwave_tune <- function(xcms.xcms,
                                    iteration = 10){
 
-  cwp <- CentWaveParam(peakwidth = c(5,20),
+  cwp <- xcms::CentWaveParam(peakwidth = c(5,20),
                        verboseColumns=T,fitgauss = T)
   xcms.tune.df <- data.frame(
     No = 1:iteration,

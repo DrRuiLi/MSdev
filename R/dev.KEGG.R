@@ -1,18 +1,22 @@
-
-get_KEGG_Reaction_network <- function(kegg.rdata ,
-                                      parse_by = "RCLASS" ){
+get_KEGG_Reaction_network <- function(kegg.rdata ){
 
 
-  kegg.rdata <- MSdb:::get_KEGG_rawdata()$Reaction_rawdata
-  kegg.rdata <- lapply(kegg.rdata,KEGG_reaction_parse)
-  kegg.r.net <- KEGG_reaction_to_network(kegg.rdata,"hsa")
+  kegg.rawdata <- MSdb:::get_KEGG_rawdata()
+  kegg.rdata <-  kegg.rawdata$Reaction_rawdata
+  kegg.rdata <- lapply(kegg.rdata,KEGG_parse_REACTION)
+  ig.krn <- KEGG_reaction_to_network(kegg.rdata,"hsa")
+
+  kegg.mdata <- kegg.rawdata$Module_rawdata
+  ig.krn <- KEGG_reaction_get_direction_from_module(ig.krn,kegg.mdata)
+
+  kegg.mdata <- kegg.rawdata$Module_rawdata
 
 
 
 
 }
-
-KEGG_reaction_parse <- function(reaction.data,
+#1' @import igraph
+KEGG_parse_REACTION <- function(reaction.data,
                                 parse_by = "RCLASS" ){
 
   vars <- c("ENTRY",
@@ -44,29 +48,20 @@ KEGG_reaction_parse <- function(reaction.data,
     if(parse_by=="RCLASS"){
 
       #reaction.data <- kegg.rdata[[1]]
-      RCLASS_data <- KEGG_reaction_RCLASS_parse(reaction.data[["RCLASS"]])
+      RCLASS_data <- KEGG_parse_REACTION_RCLASS(reaction.data[["RCLASS"]])
       reaction.data$RCLASS_data <- RCLASS_data
     }
+
+
   }
 
 
-  ### EQUATION
-  {
-
-    if(F){
-
-      ### not update
-      eq.data <- KEGG_reaction_EQUATION_parse(reaction.data[["EQUATION"]])
-      reaction.data <- append(reaction.data,eq.data)
-    }
-  }
 
   return(reaction.data)
 
 }
 
-
-KEGG_reaction_EQUATION_parse <- function(EQUATION){
+KEGG_parse_REACTION_EQUATION <- function(EQUATION){
 
 
   eq.syn <- str_extract(pattern = "[<=>]+",EQUATION)
@@ -77,8 +72,8 @@ KEGG_reaction_EQUATION_parse <- function(EQUATION){
   )
 
   eq.split <- str_split(EQUATION,eq.syn)[[1]]
-  eq.l <-  str_extract_all(eq.split[1],"C[0-9]{5}")[[1]]
-  eq.r <-  str_extract_all(eq.split[2],"C[0-9]{5}")[[1]]
+  eq.l <-  stringr::str_extract_all(eq.split[1],"C[0-9]{5}")[[1]]
+  eq.r <-  stringr::str_extract_all(eq.split[2],"C[0-9]{5}")[[1]]
 
 
   return(list(
@@ -90,11 +85,17 @@ KEGG_reaction_EQUATION_parse <- function(EQUATION){
 
 }
 
-KEGG_reaction_RCLASS_parse <- function(RCLASS){
+
+KEGG_parse_MODULE_REACTION <- function(REACTION){
+
+
+}
+
+KEGG_parse_REACTION_RCLASS <- function(RCLASS){
 
 
 
-  str_extract_all(pattern = "[R]{0,1}C[0-9]{5}",RCLASS)%>%
+  stringr::str_extract_all(pattern = "[R]{0,1}C[0-9]{5}",RCLASS)%>%
     lapply(function(x){
 
       data.frame(RCLASS_id = x[1],
@@ -105,7 +106,10 @@ KEGG_reaction_RCLASS_parse <- function(RCLASS){
 
 }
 
-KEGG_reaction_to_network <- function(kegg.rdata,filter_org = "hsa"){
+KEGG_reaction_to_network <- function(kegg.rdata,
+                                     filter_org = "hsa"){
+
+
 
   ### filter_org
   {
@@ -116,8 +120,17 @@ KEGG_reaction_to_network <- function(kegg.rdata,filter_org = "hsa"){
       is.org <- sapply(kegg.rdata,function(reaction.data){
         any(reaction.data[["ENZYME"]] %in% kegg.link)
       })
-      kegg.rdata <- kegg.rdata[is.org]
+      kegg.rdata.filtered <- kegg.rdata[is.org]
     }
+
+  }
+
+  ### filter empty rclass
+  {
+    rclass.empty <- sapply(kegg.rdata.filtered,function(reaction.data){
+      nrow(reaction.data$RCLASS_data)==0
+    })
+    kegg.rdata.filtered <- kegg.rdata.filtered[!rclass.empty]
 
   }
 
@@ -125,27 +138,39 @@ KEGG_reaction_to_network <- function(kegg.rdata,filter_org = "hsa"){
   ### edge
   {
     rcn.edges <- plyr::llply(
-      kegg.rdata,
+      kegg.rdata.filtered,
       function(reaction.data){
 
         if (!"RCLASS_data" %in% names(reaction.data)) {
-          return()
+          invisible()
         }
-        reaction.data[["RCLASS_data"]]%>%
-          dplyr::mutate(kegg_id = reaction.data$ENTRY,
+        enz <- reaction.data[["ENZYME"]]
+        rda <- reaction.data[["RCLASS_data"]]%>%
+          dplyr::mutate(REACTION_id = reaction.data$ENTRY,
                         name = reaction.data$NAME,
                         equation = reaction.data$EQUATION)
+        enzn <- rep(enz,nrow(rda))
+        rdan <- rda[rep(1:nrow(rda),each = length(enz)),]
+        rcda <- data.frame(rdan,
+                   ENZYME = enzn)
+        return(rcda)
 
       },.progress = "text"
     )
     rcn.edges.df <-do.call(bind_rows,rcn.edges)%>%
       dplyr::select(from,to,everything())
 
+    if (!is.null(filter_org)) {
+      rcn.edges.df <- rcn.edges.df%>%
+        dplyr::filter(ENZYME%in% kegg.link)
+    }
+
 
   }
 
   ### node
   {
+
     kegg.cp <- MSdb:::get_KEGG_compound_df()%>%
       as.data.frame()%>%
       dplyr::filter(KEGG_id %in% rcn.edges.df$from|
@@ -160,6 +185,7 @@ KEGG_reaction_to_network <- function(kegg.rdata,filter_org = "hsa"){
 
   }
 
+
   ### ig
   {
     kegg.reaction.ig <- igraph::graph_from_data_frame(
@@ -169,6 +195,13 @@ KEGG_reaction_to_network <- function(kegg.rdata,filter_org = "hsa"){
   }
 
   return(kegg.reaction.ig)
+
+}
+
+KEGG_reaction_get_direction_from_module <-
+  function(ig.krn,kegg.mdata){
+
+
 
 }
 
@@ -201,3 +234,11 @@ KEGG_Reaction_network_remove_nonformat_node <- function(kegg.rig){
 
   return(kegg.rig)
 }
+
+
+
+get_KRN_edge <- function(KRN){
+
+
+}
+

@@ -12,6 +12,22 @@ setClass("MSdev",
 
 
 
+
+#' @importFrom magrittr `%>%` `%<>%`
+#' @import  tidyverse dplyr
+#' @importFrom xcms filepaths mzrange plotSpec noise filterFile chromPeaks
+#' featureDefinitions polarity `featureDefinitions<-` featureValues
+#' @importFrom MSnbase readMSData sampleNames
+#' @importFrom BiocParallel SnowParam SerialParam bpmapply bplapply
+#' @importFrom tibble tibble as.tibble rownames_to_column
+#' @importFrom S4Vectors isEmpty
+#' @importFrom Biobase pData fData
+#' @importFrom Spectra msLevel Spectra
+#' @importFrom ProtGenerics filterMsLevel filterPolarity
+#' @importFrom CompoundDb compounds
+#' @importFrom MSCC chemform_adduct_check
+#' @importFrom stringr str_extract
+#'
 MSdev <- function(rawDataDir =
                     "C:/Users/91879/OneDrive/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data",
                   projectDir = dirname(rawDataDir),

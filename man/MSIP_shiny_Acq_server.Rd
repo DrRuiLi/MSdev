@@ -2,7 +2,7 @@
 % Please edit documentation in R/Shiny_MSIP_SERVER.R
 \name{MSIP_shiny_Acq_server}
 \alias{MSIP_shiny_Acq_server}
-\title{Title}
+\title{MSIP_shiny_Acq_server}
 \usage{
 MSIP_shiny_Acq_server(object)
 }
@@ -13,5 +13,5 @@ MSIP_shiny_Acq_server(object)
 MSdev
 }
 \description{
-Title
+MSIP_shiny_Acq_server
 }

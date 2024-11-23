@@ -19,8 +19,8 @@ get_edges_from_path <- function(ig,v){
 igraph_filter_vertex <- function(ig,v){
 
   if (is.numeric(v)|is.logical(v)|is.character(v))
-    v <- V(ig)[v]
-  delete.vertices(ig,setdiff(V(ig),v))
+    v <- igraph::V(ig)[v]
+  igraph::delete.vertices(ig,setdiff(igraph::V(ig),v))
 
 }
 
@@ -49,12 +49,60 @@ igraph_filter_shortest_path <- function(ig,from,to){
 igraph_filter_path<- function(ig,paths){
 
 
-  ids <- sapply(paths,as_ids)
+  ids <- sapply(paths,igraph::as_ids)
   ids <- unique(unlist(ids))
   igraph_filter_vertex(ig,ids)
 }
 
 
+igraph_vpath_to_epath <- function(ig,vpath){
+
+  eda <- edata(ig)%>%
+    dplyr::mutate(str_vpath = paste0(
+      from,"_",to
+    ))
+
+  str_vpaths <- plyr::llply(vpath,
+                           function(x){
+                             v <- names(x)
+                             x.str <- paste0(
+                               head(v,-1),
+                               "_",
+                               tail(v,-1)
+                             )
+                             return(x.str)
+                           })
+  vpath.epath <- plyr::llply(str_vpaths,
+              function(str_vpath){
+                epaths <- lapply(str_vpath,function(x) which(eda$str_vpath==x))
+                epaths <- expand.grid(epaths)
+                epaths <- apply(epaths,1,function(x) unname(x) ,simplify = F)
+                return(epaths)
+  },.progress = "text")
+  epaths <- unlist(vpath.epath,recursive = F)
+  return(epaths)
+}
+
+
+igraph_add_reverse_edges <- function(ig){
+
+  eda <- edata(ig)%>%
+    dplyr::mutate(direction = 1)
+  edata(ig) <- eda
+  eda.rev <- eda%>%
+    dplyr::mutate(
+      tmp = from,
+      from = to,
+      to = tmp,
+      direction = - direction
+    )%>%
+    dplyr::select(-tmp,-from,-to)
+
+  ig <- igraph::add_edges(ig,
+                          as.vector(rbind(eda$to,eda$from)),
+                           attr = eda.rev)
+
+}
 
 show_vis_icon <- function(icon_code = paste0("f",num2str(1:900)),
                           type = c("FontAwesome","Ionicons")){
@@ -104,13 +152,13 @@ vdata <-  function(ig){
 `edata<-` <- function(ig,value){
 
   value <- value[,!grepl("from|to",colnames(value))]
-  edge.attributes(ig) <- as.list( value )
+  igraph::edge.attributes(ig) <- as.list( value )
   ig
 }
 
 `vdata<-` <- function(ig,value){
 
-  vertex.attributes(ig) <- as.list(value)
+  igraph::vertex.attributes(ig) <- as.list(value)
   ig
 }
 

@@ -275,7 +275,7 @@ get_MSdev_param <- function(object){
                             prefilter = c(5,1000),
                             verboseColumns=T,
                             withWave = T)
-    gpp <- PeakDensityParam("A",bw = 10,
+    gpp <- xcms::PeakDensityParam("A",bw = 10,
                             minFraction = 0.3,binSize = 0.002)
 
     ### temp for Astral
@@ -312,7 +312,7 @@ get_MSdev_xcms_param_by_exp <- function(object){
   MS.instru <-object@projectInfo$msModel
   MS.LC.rate <- object@experimentInfo@Chroma_gradient[[1]]$Flow_rate%>%mean
   MS.LC.time <- object@experimentInfo@Chroma_gradient[[1]]$time%>%max
-  cwp <- CentWaveParam(fitgauss = F,verboseColumns = T)
+  cwp <- xcms::CentWaveParam(fitgauss = F,verboseColumns = T)
 
   ### ppm
   cwp@ppm <- switch(MS.instru,
@@ -338,7 +338,7 @@ get_MSdev_xcms_param_by_exp <- function(object){
 
   ### group peaks param
   {
-    gpp <- PeakDensityParam(sampleGroups = "A",
+    gpp <- xcms::PeakDensityParam(sampleGroups = "A",
                             bw = 10,
                             minFraction = 0.7,
                             binSize = 0.015)

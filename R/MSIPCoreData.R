@@ -1,3 +1,9 @@
+setClass(Class = "MSIPFragmentMap",
+         slots = list(
+           "FG.atom.matrix" = "matrix",
+           "FG.ratio.matrix" = "matrix",
+           "FG.data" = "data.frame"
+         ))
 setClass(Class = "MSIPCoreData",
          slots = list(
            "Spectra_data" = "data.frame",
@@ -13,17 +19,12 @@ setMethod(f = "show",signature = "MSIPCoreData",
 
 
 setMethod(f = "isEmpty",signature = "MSIPCoreData",
-          definition = function(object){
-            isEmpty(object@FG_map)
+          definition = function(x){
+            isEmpty(x@FG_map)
           })
 
 #### MSIPFragmentMap
-setClass(Class = "MSIPFragmentMap",
-         slots = list(
-           "FG.atom.matrix" = "matrix",
-           "FG.ratio.matrix" = "matrix",
-           "FG.data" = "data.frame"
-         ))
+
 
 
 setMethod(f = "show",
@@ -39,10 +40,9 @@ setMethod(f = "show",
             message(x)
           })
 
-
 setMethod(f = "isEmpty",signature = "MSIPFragmentMap",
-          definition = function(object){
-  nrow(object@FG.atom.matrix)==0
+          definition = function(x){
+  nrow(x@FG.atom.matrix)==0
 })
 
 #### MSIPIsotopomerMap
@@ -70,7 +70,7 @@ setMethod(f = "show",
 
 
 setMethod(f = "isEmpty",signature = "MSIPIsotopomerMap",
-          definition = function(object){
-            length(object@isotopomer.defination)==0
+          definition = function(x){
+            length(x@isotopomer.defination)==0
           })
 

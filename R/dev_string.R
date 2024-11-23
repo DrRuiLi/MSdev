@@ -120,7 +120,7 @@ str_format_len <- function(str,to = "max"){
 
 
 
-str_search_files <- function(str,file_path = paste0(getwd(),"/R")){
+str_search_files <- function(pattern,perl =F,fixed  = F,file_path = paste0(getwd(),"/R")){
 
   if (any(file.info(file_path)$isdir) ) {
     file_path <- dir(file_path,full.names = T,recursive = T)
@@ -129,13 +129,16 @@ str_search_files <- function(str,file_path = paste0(getwd(),"/R")){
   for (i in seq_along(file_path)) {
 
     txt <- readr::read_lines(file_path[i])
-    txt.exist <-  grepl(str,txt)
+    txt.exist <-  grepl(pattern = pattern,
+                        x=txt,perl = perl,fixed =fixed )
     if (any(txt.exist)) {
 
       #message(i)
-      message(crayon::red(file_path[i]))
+      i.lines <- which(txt.exist)[1]
+      name = paste0(file_path[i],":",i.lines)
+      cli::cli_inform(c(x = "Found in {.path {name}}"))
       message(crayon::red("Line ", which(txt.exist), ":",
-                          yellow(txt[txt.exist]),
+                          crayon::yellow(txt[txt.exist]),
                           collapse = "\n") )
 
     }

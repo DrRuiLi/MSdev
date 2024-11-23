@@ -11,7 +11,7 @@ xcmsProcessingMS1(xcms.xcms, ion_mode = NA, xcms_param = NULL, ...)
 
 \item{msDataFiles}{\code{char} ms file (full) paths}
 
-\item{peaksGroup}{\code{vector} to PeakGroupsParam(sampleGroups), should contain "QC"}
+\item{peaksGroup}{\code{vector} to xcms::PeakGroupsParam(sampleGroups), should contain "QC"}
 
 \item{centWaveParam}{xcms::CentWaveParam()}
 }

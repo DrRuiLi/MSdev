@@ -3126,6 +3126,7 @@ path.stat <- data.frame(
   cutoff = 8:12,
   path.count = NA
 )
+
 for (i in 1:nrow(path.stat)) {
   paths <- all_simple_paths(kegg.rig,
                             from = "C00031",
@@ -3159,7 +3160,7 @@ p2 <- ggplot(path.stat)+
 
 
 kegg.rig <- KEGG_Reaction_network_merge_path(kegg.rig)
-paths <- all_simple_paths(kegg.rig,
+paths <- igraph::all_simple_paths(kegg.rig,
                           from = "C00031",
                           to = "C00051",
                           mode = "all",
@@ -3172,3 +3173,85 @@ vda <- vdata(ig.path)%>%
   dplyr::mutate(
     ff = MSCC:::chemform_formate(Formula)
   )
+
+
+
+kegg.rig <- KEGG_Reaction_network_remove_nonformat_node(kegg.rig)
+paths <- igraph::all_simple_paths(kegg.rig,
+                                  from = "C00031",
+                                  to = "C00051",
+                                  mode = "all",
+                                  cutoff = 10)
+
+ig.path <- igraph_filter_path(kegg.rig,
+                              paths)
+vis_igraph(ig.path)%>%
+  open_visNet()
+
+eda <- edata(ig.path)
+
+kegg.rawdata <- MSdb:::get_KEGG_rawdata()
+kegg.rdata <- kegg.rawdata$Reaction_rawdata
+R00149 <- kegg.rdata[["R00149"]]
+
+
+# Mon Nov 18 15:45:32 2024 ------------------------------
+
+kegg.rig <- MSdb::get_KEGG_Reaction_network()
+kegg.rig <- KEGG_Reaction_network_add_label(kegg.rig)
+kegg.rig <- KEGG_Reaction_network_remove_nonformat_node(kegg.rig)
+
+
+
+ig <- kegg.rig
+ig <- igraph_add_reverse_edges(ig)
+
+paths <- igraph::all_simple_paths(kegg.rig,
+                                  from = "C00031",
+                                  to = "C00051",
+                                  mode = "all",
+                                  cutoff = 10)
+path.ig <- igraph_filter_path(ig,paths)
+vis_igraph(path.ig)%>%
+  open_visNet()
+epaths <- igraph_vpath_to_epath(ig,paths)
+
+eda <- edata(ig)
+
+epaths.dis <- plyr::laply(epaths,function(x){
+  sum(eda$direction[x])
+},.progress = "text")
+
+epaths.len <- lengths(epaths)
+
+plot.data <- data.frame(
+  x = epaths.dis,
+  y = epaths.len)
+
+p <- ggplot2::ggplot(plot.data)+
+  geom_jitter(aes(x,y))
+
+open_plot_win(p)
+
+
+kegg.ig <- MSdb::get_KEGG_Reaction_network()
+
+eda <- edata(ig.krn)%>%
+  dplyr::filter(REACTION_id == "R08575")
+
+# Fri Nov 22 14:18:26 2024 ------------------------------
+name = "aaa"
+path = "c:/aaa.d"
+
+cli::cli_inform(c(x = "Reading {.path {path}}"))
+# Load the cli package
+library(cli)
+
+# Define the path and the text to display
+path <- "C:/Users/91879/OneDrive/Code/R/Package/MSdev/Script/Test_Script.R"
+text <- "Click here to read the file"
+
+# Use cli::cli_inform to display the link with custom text
+cli::cli_inform("Reading {.href  [AAA](file://{path}:10)}")
+cli::cli_inform("Reading {.file  file://{path}:10}")
+

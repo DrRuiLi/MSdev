@@ -284,7 +284,7 @@ sum_matrix <- function(mat1,mat2){
 }
 
 
-setMethod("isEmpty","NULL",definition = function(object){
+setMethod("isEmpty","NULL",definition = function(x){
   return(T)
 })
 

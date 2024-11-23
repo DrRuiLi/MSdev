@@ -2,16 +2,16 @@
 % Please edit documentation in R/dev_math.R
 \name{t.test_dev}
 \alias{t.test_dev}
-\title{t.test_dev}
+\title{Title}
 \usage{
-t.test_dev(...)
+\method{t}{test_dev}(...)
 }
 \arguments{
-\item{...}{see t.test}
+\item{t.test}{}
 }
 \value{
-see t.test
+t.test
 }
 \description{
-t.test_dev
+Title
 }
