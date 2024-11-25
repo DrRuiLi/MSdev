@@ -110,7 +110,7 @@ show_vis_icon <- function(icon_code = paste0("f",num2str(1:900)),
   type <- match.arg(type)
   n.row <- sqrt(length(icon_code))%>%ceiling()
 
-  vis.v <- vertex(icon_code)
+  vis.v <- igraph::vertex(icon_code)
   vis.v$x <- rep(x = 1:n.row,
                times = n.row)[1:length(icon_code)]
   vis.v$y <- rep(x = 1:n.row,

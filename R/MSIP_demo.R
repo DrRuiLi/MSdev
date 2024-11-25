@@ -83,13 +83,13 @@ MSIP_demo <- function(object){
 
     cfmd <- x.iso.cfm$CFM_annotation
     sp.iso <- x.iso.cfm$Spectra$M1$U
-    iso.count = 1
+    iso_count = 1
     sp.frag.data <- CFM_annotate_isotopologues(sp.iso,
                                                cfmd  = cfmd,
                                                ppm = 20,
-                                               iso.count = iso.count)
-    sp.frag.data <- CFM_spectra_data_int_weight(sp.frag.data,iso.count)
-    fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso.count = iso.count)
+                                               iso_count = iso_count)
+    sp.frag.data <- CFM_spectra_data_int_weight(sp.frag.data,iso_count)
+    fg.map <- get_frag_group_map(sp.frag.data,cfmd,iso_count = iso_count)
     heatmap.fg.map(fg.map)%>%
       open_plot_win(height = 6)
     if.map <- get_iso_form_map(fg.map)
@@ -100,7 +100,7 @@ MSIP_demo <- function(object){
             )%>%
       open_plot_win(height = 8)
     sp.frag.data2 <- CFM_spectra_data_remove_natural(sp.frag.data,
-                                                     natural.ratio.matrix[iso.count+1,3],
+                                                     natural.ratio.matrix[iso_count+1,3],
                                                      if.map)
     spd1 <- data.frame(sp.frag.data,f = "nature")%>%
       dplyr::mutate(intensity =sp.frag.data$intensity-0
@@ -147,7 +147,7 @@ MSIP_demo <- function(object){
                 position = position_stack(vjust = 0.5))+
       theme_void()->p
   open_plot_win(p,2,3)
-  fg.map <- get_frag_group_map(sp.frag.data2,cfmd,iso.count = iso.count)
+  fg.map <- get_frag_group_map(sp.frag.data2,cfmd,iso_count = iso_count)
   heatmap.fg.map(fg.map)%>%
     open_plot_win(height = 6)
 }

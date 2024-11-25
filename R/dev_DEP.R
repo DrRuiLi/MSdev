@@ -476,7 +476,7 @@ DEP.plot.heatmap <- function(data.se,
                     as.data.frame()
     )%>%
     dplyr::mutate(row_group = "",
-                  row_labels = name)%>%
+                  row_labels = label)%>%
     dplyr::filter(significant)
 
   heatmap.matrix <-SummarizedExperiment::assay(data.se[row.info$name,col.info$ID])%>%

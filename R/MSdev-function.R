@@ -1661,7 +1661,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
       pol <- ifelse(i==0,"Negative","Positive")
       xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
       if (is.null(xcms.xcms)) {
-        se[[pol]] <- SummarizedExperiment()
+        se[[pol]] <- SummarizedExperiment::SummarizedExperiment()
         next
       }
       pol.se <- get_xcms_feature_se(xcms.xcms)

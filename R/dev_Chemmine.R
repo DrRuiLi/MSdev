@@ -4,7 +4,7 @@ ggplot_sdf <- function(sdf,
 
 
   sdf.formula <- MF(sdf,addH=T)
-  sdf.mz <- chemform_mz(sdf.formula)%>%round(digits = 4)
+  sdf.mz <- MSCC::chemform_mz(sdf.formula)%>%round(digits = 4)
   atom.data <- atomblock(sdf)[,1:2]%>%
     `colnames<-`(c("x","y"))%>%
     as.data.frame()%>%

@@ -700,7 +700,7 @@ plot_Spectra_similarity <- function(sp,col_title = NULL){
   sp.data <- spectraData(sp)%>%as.data.frame()%>%
     dplyr::arrange(collisionEnergy,rtime)
   sp <- sp[rownames(sp.data)]
-  sp.simlilarity <- compareSpectra(sp)
+  sp.simlilarity <- Spectra::compareSpectra(sp)
   colnames(sp.simlilarity) <- sp.data$rtime%>%round(0)
   Heatmap(sp.simlilarity,
           name = "Spectra\nSimilarity",

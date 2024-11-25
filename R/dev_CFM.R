@@ -684,7 +684,7 @@ CFM_annotate_isotopologues <- function(sp,
     dplyr::mutate(mz = 0)
 
   diff.formula <- paste0(iso_ele,get_ele_uniso(iso_ele),"-1")
-  iso.mz.diff <- (0:iso_count)*chemform_mz(diff.formula)
+  iso.mz.diff <- (0:iso_count)*MSCC::chemform_mz(diff.formula)
   mz.labeled.m <- matrixSub(cfm.peaks.data$mz,-iso.mz.diff)%>%
     `colnames<-`(paste0("M",0:iso_count))%>%
     as.data.frame()%>%

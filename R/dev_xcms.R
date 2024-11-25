@@ -10,7 +10,7 @@
 
 get_features_from_xcms <- function(xcms.xcms,missing = NA){
 
-  xcms.sum <- quantify(xcms.xcms,missing = missing )
+  xcms.sum <- xcms::quantify(xcms.xcms,missing = missing )
   feature.def <- SummarizedExperiment::rowData(xcms.sum)%>%
     tibble::as_tibble()
 
@@ -57,7 +57,7 @@ get_xcms_feature_se <- function(xcms.xcms,...){
   colnames(featureval) <- Biobase::pData(xcms.xcms)$sample.name
   rownames(featureval) <- featuredef$feature_id
 
-  feature.se <- SummarizedExperiment(assays = featureval,
+  feature.se <- SummarizedExperiment::SummarizedExperiment(assays = featureval,
                        rowData = featuredef,
                        colData =sample.info
                       )
@@ -737,7 +737,7 @@ get_xcms_feature_iso_connection <- function(xcms.xcms,
     iso.chemform <- paste0(iso_ele,1,
                            str_extract(string = iso_ele,pattern = "[[:alpha:]]+"),-1)
     iso.count <- -max_label:max_label
-    iso.mz <- chemform_mz(iso.chemform,0)*iso.count
+    iso.mz <- MSCC::chemform_mz(iso.chemform,0)*iso.count
 
     closest.iso.count <- sapply(fdf.connect$mz.diff, function(x){
       iso.count[which.min(abs(iso.mz-x))]
@@ -898,7 +898,7 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
   if ("has_sp"%in% colnames(cpdbt))  cpdbt <- cpdbt[cpdbt$has_sp>0,]
   cpdbt$formula <- MSCC::chemform_formate(cpdbt$formula)
 
-  adducts <- chemform_adduct_check(selected_adduct)%>%
+  adducts <-  MSCC::chemform_adduct_check(selected_adduct)%>%
     dplyr::mutate(polarity = case_when(Ion_mode == "negative"~0,T~1))%>%
     dplyr::filter(polarity %in% polarity(xcms.xcms))
   cp.adduct <- MSCC::chemform_adduct(cpdbt$formula,
@@ -1041,7 +1041,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
         }
       }
       if (is.null(refSpec)) return(NULL)
-      scorem <- compareSpectra(expSpec,refSpec,...)
+      scorem <- Spectra::compareSpectra(expSpec,refSpec,...)
       dim(scorem) <- c(length(expSpec),length(refSpec))
       scorem[is.infinite(scorem)|is.na(scorem )] <- 0
       scores <- apply(scorem,2,max,na.rm=T)
@@ -1087,7 +1087,7 @@ xcms_get_feature_isopattern_score <- function(xcms.xcms,
                xcms.se.temp <- xcms.se[MSdev:::between.range(xcms.fdf$rtmed,
                                                      c(xcms.fdf$rtmed[i]-10,
                                                        xcms.fdf$rtmed[i]+10)),]
-               formulas <-mapply(chemform_adduct,
+               formulas <-mapply( MSCC::chemform_adduct,
                                  chemform = xcms.fdf$candidate.formula[[i]],
                                  adduct =  xcms.fdf$candidate.adduct[[i]],
                                  value = "chemform")
@@ -2352,7 +2352,7 @@ cbind_Chromatograms <- function(...){
 
 get_xcms_quantify_MSIP <- function(xcms.xcms){
 
-  quantify(xcms.xcms,missing = 1,method="max",value = "intb")
+  xcms::quantify(xcms.xcms,missing = 1,method="max",value = "intb")
 
 }
 

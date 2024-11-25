@@ -1183,7 +1183,7 @@
 {
 
   MSdev.ZJ  <- MSdev("D:/2024_11_19-Zhujing/Data/")
-  MSdev.ZJ <- load_as_var("D:/2024_11_19-Zhujing/MSdev_2024_11_22.Rdata")
+  MSdev.ZJ <- load_as_var("D:/2024_11_19-Zhujing/MSdev_2024_11_23.Rdata")
   MSdev.ZJ <- MSdev_msConvert(MSdev.ZJ)
   MSdev.ZJ <- MSdev_checkSampleInfo(MSdev.ZJ)
   MSdev.ZJ <- MSdev_update_xcms_pdata(MSdev.ZJ)
@@ -1204,7 +1204,7 @@
     #data.se <- data.se[,!colnames(data.se)%in% c( "G1",   "G2" ,  "G3","G4") ]
     p.pca <- DEP_plot_PCA(data.se)
     export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                     width = 5,height = 5)
+                     width = 3,height = 3)
 
 
     ### sample_p
@@ -1216,19 +1216,25 @@
     p.diff.list <- DEP_plot_volcano(data.diff,"all")
     p.diff <- ggplot_sum_patchwork(p.diff.list)
     export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                     width = 10,height = 10,append = T)
+                     width = 3,height = 3,append = T)
     data.diff <- DEP_test_diff(data.se.Sample_P)
     data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
 
     p.diff.list <- DEP_plot_volcano(data.diff,"all")
     p.diff <- ggplot_sum_patchwork(p.diff.list)
     export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                     width = 10,height = 10,append = T)
+                     width = 3,height = 3,append = T)
     table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
     xlsx.write.list(table.diff,
                     paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
     )
 
+
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+    hm <- DEP.plot.heatmap(data.diff)
+    export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 6,height =8,append = T)
 
 
   }

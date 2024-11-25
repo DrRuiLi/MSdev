@@ -14,7 +14,7 @@ setClass("MSdev",
 
 
 #' @importFrom magrittr `%>%` `%<>%`
-#' @import  tidyverse dplyr
+#' @import  tidyverse dplyr ggplot2
 #' @importFrom xcms filepaths mzrange plotSpec noise filterFile chromPeaks
 #' featureDefinitions polarity `featureDefinitions<-` featureValues
 #' @importFrom MSnbase readMSData sampleNames
@@ -27,6 +27,8 @@ setClass("MSdev",
 #' @importFrom CompoundDb compounds
 #' @importFrom MSCC chemform_adduct_check
 #' @importFrom stringr str_extract
+#' @importFrom plotly layout
+#' @importFrom SummarizedExperiment rowData colData assay `rowData<-` `colData<-` `assay<-`
 #'
 MSdev <- function(rawDataDir =
                     "C:/Users/91879/OneDrive/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data",

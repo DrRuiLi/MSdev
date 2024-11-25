@@ -166,6 +166,7 @@ analyzePathwayHyperTest <- function(kegg.id){
 plot_PCA <- function(pca.matrix,pca.group,showlabel = F){
 
   pca.pca <- ropls::opls(x = pca.matrix,
+                         crossvalI = ifelse(nrow(pca.matrix)>6,7,nrow(pca.matrix)),
                          predI = 5)
   pca.data <- data.frame(pca.group,
                          pca.label = rownames(pca.matrix),
@@ -191,9 +192,9 @@ plot_PCA <- function(pca.matrix,pca.group,showlabel = F){
       )
   }
     p+
-   #stat_ellipse(aes(x = p1, y = p2 , fill = pca.group),
-   #             alpha = 0.2,
-   #             geom = "polygon") +
+   stat_ellipse(aes(x = p1, y = p2 , fill = pca.group),
+                alpha = 0.2,
+                geom = "polygon") +
     scale_color_manual(values = col.list) +
     scale_fill_manual(values = col.list) +
     #xlim(-40,40)+
@@ -427,7 +428,7 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
 
                           show_column_dend = F,
                           show_row_dend = F,
-                          show_row_names = F
+                          show_row_names = T
                           )->p
   p
 

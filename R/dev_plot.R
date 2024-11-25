@@ -50,7 +50,7 @@ ggplot_sum_patchwork <- function(ggplot.list){
   x.len <- length(x)
   sum.exp <- 1
   x.exp <- paste0( "x.sum <- ",paste0(paste0("x[[",1:x.len,"]]"),collapse = " + "),
-                   "+plot_annotation(tag_levels=\"A\")")%>%
+                   "+patchwork::plot_annotation(tag_levels=\"A\")")%>%
     str2expression()
   eval(x.exp)
   return(x.sum)

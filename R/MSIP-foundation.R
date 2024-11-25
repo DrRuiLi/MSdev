@@ -494,7 +494,7 @@ get_isotopomer_prob_GLPK <- function(iso.form.map){
   ### calc by if-set
   if.map <- get_isotopomer_set_map(if.map ,fgn.map)
   if.map <- get_isotopomer_prob_GLPK(if.map)
-  c.prob <- get_iso_from_C_prob(if.map, cfmd,iso_count)
+  c.prob <- get_iso_from_C_prob(if.map)
 
   #heatmap.fg.map(fg.map)
   #heatmap.ifs.map(if.map)
