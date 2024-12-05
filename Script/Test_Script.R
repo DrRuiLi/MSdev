@@ -3255,3 +3255,213 @@ text <- "Click here to read the file"
 cli::cli_inform("Reading {.href  [AAA](file://{path}:10)}")
 cli::cli_inform("Reading {.file  file://{path}:10}")
 
+
+all.m.reaction <- lapply(kegg.mdata,
+                        function(mdata){
+                          mdata$REACTION
+                        })%>%
+  unname()%>%unlist()
+
+grepl(" <- ",all.m.reaction)%>%table
+all.m.reaction[grepl(" <- ",all.m.reaction)]
+
+
+
+a <- data.frame(
+  n = names(all.m.reaction),
+  v = all.m.reaction
+)
+
+edge_paths <- lapply(this.path, function(path) {
+  # Convert path to numeric vector
+  path <- as.numeric(path)
+
+  # Find edge IDs for consecutive vertex pairs
+  edge_ids <- sapply(seq_along(path)[-length(path)], function(i) {
+    get_edge_ids(this.ig, c(path[i], path[i + 1]))
+  })
+  edge_ids
+})
+
+
+# Thu Nov 28 15:39:58 2024 ------------------------------
+kegg.mdata.df <- kegg.mdata.df%>%
+  dplyr::mutate(str_syn =
+                  paste0(REACTION_id,"_",
+                         from,"_",
+                         to),
+                x = case_when(
+                  str_syn%in% eda$str_syn~1,
+                  str_syn%in% eda$str_syn_rev~-1
+
+                )      )
+
+
+ig.krn.dired<- igraph_filter_edge(ig.krn,
+                                  which(!is.na(edata(ig.krn)$direction))
+
+                                  )
+
+paths <- igraph::all_simple_paths(ig.krn,
+                                  from = "C00031",
+                                  to = "C00051",
+                                  cutoff = 8,
+                                  mode = "all")
+
+
+
+# Mon Dec  2 13:05:16 2024 ------------------------------
+ig.krn <- get_KEGG_Reaction_network()
+eda <- edata(ig.krn)
+table(eda$direction)
+ig.krn.hsa <- KEGG_Reaction_network_filter_by_emzyme(
+  ig.krn,"hsa"
+)
+eda <- edata(ig.krn.hsa)
+vda <- vdata(ig.krn.hsa)
+table(eda$direction)
+
+
+paths <- igraph::all_simple_paths(ig.krn.hsa,
+                          "C00031","C00051",
+                          mode   = "all",cutoff = 10)
+
+
+# Mon Dec  2 15:39:03 2024 MFNA figures------------------------------
+### prob shared by isotopomers
+{
+  msip.core <- iso.data$MSIP_result$M2$U
+  msip.core <- MSIPCore_solve(msip.core,
+                              int_thresh = 10^4)
+  solve.data <- data.frame(
+    is = names(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set),
+    Raw =msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob,
+    Natural = lengths(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set)
+  )%>%
+    dplyr::mutate(Natural =Natural/sum(Natural)*natural.ratio,
+                  Adjusted = Raw-Natural,
+                  Adjusted = case_when(Adjusted<0~0,
+                                       T~Adjusted),
+                  Adjusted = Adjusted/sum(Adjusted))%>%
+    tidyr::pivot_longer(2:4)
+
+  is.data <- solve.data%>%
+    dplyr::filter(name == "Adjusted" )%>%
+    dplyr::filter(value > 0.01)
+  isotopomers.idx <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set[is.data$is]
+  plot.data <- lapply(isotopomers.idx,function(idx){
+    isotopomer.name <- sapply(msip.core@solve$MSIPIsotopomerMap@isotopomer.defination[idx],
+                              function(x){
+                                paste0(x,collapse = ",")
+                              })
+    data.frame(
+      isotopomer.name = isotopomer.name
+    )
+  })%>%
+    data.table::rbindlist(idcol = "is")%>%
+    dplyr::group_by(is)%>%
+    dplyr::mutate(prob = is.data$value[match(is,is.data$is)] ,
+                  w = case_when(n()==1~0.8,
+                                T~1))%>%
+    dplyr::ungroup()%>%
+    dplyr::arrange(desc(prob))%>%
+    dplyr::mutate(isotopomer.name=
+                    factor(isotopomer.name,level = isotopomer.name))
+
+
+  p <- ggplot(plot.data)+
+    geom_bar(aes(x = isotopomer.name,
+                 y = prob,
+                 fill = is,
+                 width = w),
+             stat = "identity")+
+    ggsci::scale_fill_npg()+
+    labs(title = "Glutathione M+2",y = "Probability",x = NULL,fill = "FSIS")+
+    theme_classic()+
+    theme(legend.position = "none",
+          axis.text.x = element_text(angle = -45,hjust = 0),
+          legend.position.inside = c(0.7,0.8))
+  p
+  open_plot_win(p,5,3)
+
+  atom.prob <- c("C_8"=0.6,"C_9"=0.6)
+  get_cfm_data_sdf_igraph(iso.data$CFM_annotation)%>%
+    sdf_igraph_add_background_color(atom.prob,color.ramp = cf)%>%
+    sdf_igraph_add_border_color(atom.prob,
+                                color.ramp = cf)%>%
+    vis_sdf_igraph()%>%
+    visNodes(shadow= T)%>%
+    open_visNet()
+
+
+}
+
+###
+{
+  df <- expand.grid(
+    x = 1:20,
+    y = 1:20
+  )%>%
+    dplyr::filter(y <= x) %>%
+    dplyr::mutate(n = choose(x,y),
+                  isotopologues = paste0("M+",y))
+
+
+  ggplot(df)+
+    geom_point(aes(x = x,y = n ,
+                   fill = y, size = y),
+               alpha = 0.5,
+               shape  = 21)+
+    scale_y_log10()+
+    scico::scale_fill_scico(direction = -1)+
+    labs(x = "Number of C", y = "Number of Isotopomers" )+
+    theme_bw() +  # Ensure same name for size
+    guides(
+      fill = guide_legend(title = "Isotopologues"),
+      size = guide_legend(title = "Isotopologues")
+    )->p
+  open_plot_win(p,4,3)
+
+  plot.data<-df%>%
+    dplyr::group_by(x)%>%
+    dplyr::mutate(total.isotopomers = sum(n),
+                  total.isotopologues =x+1
+                  )%>%
+    dplyr::distinct(x,total.isotopologues,.keep_all = T)%>%
+    pivot_longer(total.isotopomers:total.isotopologues)
+
+  ggplot(plot.data)+
+    geom_bar(aes(x = x,y=value,fill = name),
+             stat = "identity",position = "dodge")+
+    scale_y_log10()+
+    ggsci::scale_fill_aaas()+
+    coord_flip()+
+    labs(x = "Number of C", y = "Data size",
+         fill = "Data Type")+
+    theme_bw()->p
+  open_plot_win(p,4,3)
+}
+
+# Tue Dec  3 16:23:33 2024 ------------------------------
+{
+  ig.krn <- get_KEGG_Reaction_network()
+  ig.krn.hsa <- KEGG_Reaction_network_filter_by_emzyme(
+    ig.krn,"hsa"
+  )
+  paths <- igraph::all_simple_paths(ig.krn.hsa,
+                                    "C00031","C00051",
+                                    mode   = "all",cutoff = 8)
+  ep <- igraph_vpath_to_epath(ig.krn.hsa,paths)
+  ig <- igraph_filter_path(ig.krn.hsa,paths)
+  igraph_add_vcolor(ig,v =  c("C00031","C00051"),color = "#F36482")%>%
+    igraph_add_vfill(v =  c("C00031","C00051"),color = "#F36482")%>%
+    #igraph_add_vfill(v =  c("C00024"),color = "#F36482")%>%
+    igraph_add_ecolor(e = which(edata(ig )$direction==1),color = "#498FED")%>%
+    igraph_add_earrow(e = which(edata(ig )$direction==1),"to")%>%
+    vis_igraph()%>%
+    visNodes(shadow = T)%>%
+    visEdges(width = 5,color= "#DDDDDD")%>%
+    open_visNet()
+
+}
+

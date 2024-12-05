@@ -14,7 +14,7 @@ setClass("MSdev",
 
 
 #' @importFrom magrittr `%>%` `%<>%`
-#' @import  tidyverse dplyr ggplot2
+#' @import  tidyverse dplyr ggplot2 patchwork
 #' @importFrom xcms filepaths mzrange plotSpec noise filterFile chromPeaks
 #' featureDefinitions polarity `featureDefinitions<-` featureValues
 #' @importFrom MSnbase readMSData sampleNames

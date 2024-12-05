@@ -1242,3 +1242,66 @@
 
 
 }
+# Wed Dec  4 14:30:02 2024 ZJ lipidomic------------------------------
+{
+
+  MSdev.ZJ  <- MSdev("D:/2024_12_04-Zhujing/Data/")
+  MSdev.ZJ <- load_as_var("D:/2024_12_04-Zhujing/MSdev_2024_12_04.Rdata")
+  MSdev.ZJ <- MSdev_msConvert(MSdev.ZJ)
+  MSdev.ZJ <- MSdev_checkSampleInfo(MSdev.ZJ)
+  MSdev.ZJ <- MSdev_update_xcms_pdata(MSdev.ZJ)
+  MSdev.ZJ <- MSdev_xcmsProcessing(MSdev.ZJ)
+  MSdev.ZJ <- MSdev_extract_Spectra(MSdev.ZJ)
+  MSdev.ZJ <- MSdev_match_Spectra_to_feature(MSdev.ZJ)
+  MSdev.ZJ <- MSdev_annotation(MSdev.ZJ,
+                               cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast.sqlite",
+                               selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
+  MSdev.ZJ <- MSdev_get_Stat(MSdev.ZJ,candi = F,QC_RSD = 10)
+  MSdev_export(MSdev.ZJ,candi = F)
+  MSdev_save(MSdev.ZJ)
+
+  {
+
+    proj.dir <- MSdev.ZJ@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(MSdev.ZJ,from = "metabolite")
+    #data.se <- data.se[,!colnames(data.se)%in% c( "G1",   "G2" ,  "G3","G4") ]
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3)
+
+
+    ### sample_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank","A0")]
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3,append = T)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+    hm <- DEP.plot.heatmap(data.diff)
+    export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 6,height =8,append = T)
+
+
+  }
+
+
+
+}

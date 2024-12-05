@@ -24,6 +24,18 @@ igraph_filter_vertex <- function(ig,v){
 
 }
 
+igraph_filter_edge <- function(ig,e){
+
+  if (is.numeric(e))
+    e <- igraph::E(ig)[e]
+
+
+  ig <- igraph::delete.edges(ig,setdiff(igraph::E(ig),e))
+  igraph_filter_vertex(ig,igraph::degree(ig)!=0)
+
+
+}
+
 igraph_filter_distance <- function(ig, from , dis = 1,...){
 
   dis.matrix <- distances(ig,from)
@@ -55,33 +67,6 @@ igraph_filter_path<- function(ig,paths){
 }
 
 
-igraph_vpath_to_epath <- function(ig,vpath){
-
-  eda <- edata(ig)%>%
-    dplyr::mutate(str_vpath = paste0(
-      from,"_",to
-    ))
-
-  str_vpaths <- plyr::llply(vpath,
-                           function(x){
-                             v <- names(x)
-                             x.str <- paste0(
-                               head(v,-1),
-                               "_",
-                               tail(v,-1)
-                             )
-                             return(x.str)
-                           })
-  vpath.epath <- plyr::llply(str_vpaths,
-              function(str_vpath){
-                epaths <- lapply(str_vpath,function(x) which(eda$str_vpath==x))
-                epaths <- expand.grid(epaths)
-                epaths <- apply(epaths,1,function(x) unname(x) ,simplify = F)
-                return(epaths)
-  },.progress = "text")
-  epaths <- unlist(vpath.epath,recursive = F)
-  return(epaths)
-}
 
 
 igraph_add_reverse_edges <- function(ig){
@@ -102,6 +87,7 @@ igraph_add_reverse_edges <- function(ig){
                           as.vector(rbind(eda$to,eda$from)),
                            attr = eda.rev)
 
+  ig
 }
 
 show_vis_icon <- function(icon_code = paste0("f",num2str(1:900)),
@@ -181,6 +167,54 @@ igraph_node_path_to_edge_path <- function(graph, node_path) {
   return(edge_paths)
 }
 
+igraph_vpath_to_epath <- function(ig,vpath){
+
+  eda <- edata(ig)%>%
+    dplyr::mutate(str_vpath = paste0(
+      from,"_",to
+    ))
+
+  str_vpaths <- plyr::llply(vpath,
+                            function(x){
+                              v <- names(x)
+                              x.str <- paste0(
+                                head(v,-1),
+                                "_",
+                                tail(v,-1)
+                              )
+                              return(x.str)
+                            })
+  vpath.epath <- plyr::llply(str_vpaths,
+                             function(str_vpath){
+                               epaths <- lapply(str_vpath,function(x) which(eda$str_vpath==x))
+                               epaths <- expand.grid(epaths)
+                               epaths <- apply(epaths,1,function(x) unname(x) ,simplify = F)
+                               return(epaths)
+                             },.progress = "text")
+  epaths <- unlist(vpath.epath,recursive = F)
+  return(epaths)
+}
+
+igraph_sort_direction <- function(ig){
+
+  eda <- edata(ig)
+  rev.id <- which(eda$direction==-1)
+  igd <- igraph::delete_edges(ig,rev.id)
+  eda.to.add <- edata(ig)%>%
+    dplyr::filter(direction == -1)%>%
+    dplyr::mutate(tmp = from,
+                  from = to,
+                  to = tmp,
+                  direction = -direction)
+  eda.attr <- eda.to.add%>%
+    dplyr::select(-from,-to,-tmp)
+
+  igd <- igraph::add_edges(igd,
+                          as.vector(rbind(eda.to.add$to,eda.to.add$from)),
+                          attr =eda.attr)
+  return(igd)
+}
+
 
 
 vis_add_text <- function(vis,text, font.size =10 ){
@@ -249,3 +283,51 @@ vis_igraph <- function(ig){
                            height = "200%")
 
 }
+
+
+igraph_add_vcolor<- function(ig,v,color){
+
+  vda <- vdata(ig)
+  if (!"color.border" %in% colnames(vda)) {
+    vda[v,"color.border"] <- NA
+  }
+  vda[v,"color.border"] <- color
+  vda -> vdata(ig)
+  return(ig)
+}
+
+igraph_add_vfill<- function(ig,v,color){
+
+  vda <- vdata(ig)
+  if (!"color.background" %in% colnames(vda)) {
+    vda[v,"color.background"] <- NA
+  }
+  vda[v,"color.background"] <- color
+  vda -> vdata(ig)
+  return(ig)
+}
+
+igraph_add_ecolor<- function(ig,e,color){
+
+  eda <- edata(ig)
+  if (!"color" %in% colnames(eda)) {
+    eda[e,"color"] <- NA
+  }
+  eda[e,"color"] <- color
+  eda -> edata(ig)
+  return(ig)
+}
+
+igraph_add_earrow<- function(ig,e,arrows = "to"){
+
+  eda <- edata(ig)
+  if (!"arrows" %in% colnames(eda)) {
+    eda[e,"arrows"] <- NA
+  }
+  eda[e,"arrows"] <- arrows
+  eda -> edata(ig)
+  return(ig)
+}
+
+
+
