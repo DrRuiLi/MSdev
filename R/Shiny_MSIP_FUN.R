@@ -62,7 +62,7 @@ shiny_plotly_iso_data_spectra <- function(sp.data,
       dplyr::mutate(annotated = case_when(merged~T,
                                                T~F))%>%
       plot_ly(source = "plotly_ms2_sp")%>%
-      highlight_key(~fragment_group
+      plotly::highlight_key(~fragment_group
                     )%>%
       add_segments(x = ~x , xend = ~x,
                    y = I(0),yend = ~y,
@@ -87,9 +87,9 @@ shiny_plotly_iso_data_spectra <- function(sp.data,
                   #hovertemplate = "%{text}<extra></extra>",
                   hoverinfo = "text",
                   showlegend = F)%>%
-      highlight(on = "plotly_click",
+      plotly::highlight(on = "plotly_click",
                 off = NULL,
-                selected = attrs_selected(
+                selected = plotly::attrs_selected(
                   showlegend = F
                 ),
                 defaultValues=filter(sp.data,!is.na(fragment_group))$fragment_group[1])%>%
@@ -103,7 +103,7 @@ shiny_plotly_iso_data_spectra <- function(sp.data,
                                               "0"),
                           range = c(-ymax,ymax),
                           title = "Relative intensity"))%>%
-      event_register("plotly_click")
+      plotly::event_register("plotly_click")
 
   }
 
@@ -274,7 +274,7 @@ shiny_plotly_void <- function(...){
            paper_bgcolor = 'rgba(0,0,0,0)',
            margin = list(l = 0, r = 0, b = 0, t = 0, pad = 0),
            showlegend = FALSE)%>%
-    config(displayModeBar = FALSE)
+    plotly::config(displayModeBar = FALSE)
 }
 
 
@@ -863,7 +863,7 @@ shiny_plotly_natural_ratio <- function(natural.ratio = 0.6 ){
            paper_bgcolor = 'rgba(0,0,0,0)',
            margin = list(l = 0, r = 0, b = 0, t = 0, pad = 0),
            showlegend = FALSE)%>%
-    config(displayModeBar = FALSE)
+    plotly::config(displayModeBar = FALSE)
 
 }
 
@@ -914,7 +914,7 @@ shiny_plotly_iso_distribution <- function(frag.iso.distribution){
            paper_bgcolor = 'rgba(0,0,0,0)',
            margin = list(l = 0, r = 0, b = 0, t = 0, pad = 0),
            showlegend = FALSE)%>%
-    config(displayModeBar = FALSE)
+    plotly::config(displayModeBar = FALSE)
 
 }
 

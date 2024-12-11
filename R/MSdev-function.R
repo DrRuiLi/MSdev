@@ -268,7 +268,7 @@ get_MSdev_param <- function(object){
 
   if (object@experimentInfo@General$Name == "Metabolomics_YLF") {
 
-    fpp <- MassifquantParam(ppm = 5,
+    fpp <- xcms::MassifquantParam(ppm = 5,
                             peakwidth = c(10,100),
                             mzCenterFun  = "wMeanApex3",
                             snthresh = 10,
@@ -281,7 +281,7 @@ get_MSdev_param <- function(object){
     ### temp for Astral
     if ("Orbitrap Astral"  %in% object@projectInfo$msModel ) {
 
-      fpp <- MassifquantParam(ppm = 5,
+      fpp <- xcms::MassifquantParam(ppm = 5,
                               peakwidth = c(5,60),
                               mzCenterFun  = "wMeanApex3",
                               snthresh = 10,

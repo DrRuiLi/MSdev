@@ -3442,6 +3442,22 @@ paths <- igraph::all_simple_paths(ig.krn.hsa,
   open_plot_win(p,4,3)
 }
 
+## MOL
+{
+  document()
+  cfmd.glu <- get_CFM_data_from_smiles("C([C@@H]1[C@H]([C@@H]([C@H](C(O1)O)O)O)O)O")
+  get_cfm_data_sdf_igraph(cfmd.glu,1)%>%
+    sdf_igraph_add_background_color(value = 0)%>%
+    sdf_igraph_add_border_color(value = 0.00001,color.ramp = colramp())%>%
+    igraph_add_vfill("C_1","#FFB593")%>%
+    igraph_add_vcolor("C_1","#FFB593")%>%
+    vis_sdf_igraph(show_id = F)%>%
+    visNodes(shadow= list(enable = T,color = "#000000",size = 10))%>%
+    open_visNet()
+
+
+}
+
 # Tue Dec  3 16:23:33 2024 ------------------------------
 {
   ig.krn <- get_KEGG_Reaction_network()
@@ -3450,18 +3466,138 @@ paths <- igraph::all_simple_paths(ig.krn.hsa,
   )
   paths <- igraph::all_simple_paths(ig.krn.hsa,
                                     "C00031","C00051",
-                                    mode   = "all",cutoff = 8)
+                                    mode   = "all",cutoff = 10)
   ep <- igraph_vpath_to_epath(ig.krn.hsa,paths)
   ig <- igraph_filter_path(ig.krn.hsa,paths)
+  paths <- igraph::all_simple_paths(ig,
+                                    "C00031","C00051",
+                                    mode   = "all",cutoff = 8)
+  ep <- igraph_vpath_to_epath(ig,paths)
   igraph_add_vcolor(ig,v =  c("C00031","C00051"),color = "#F36482")%>%
     igraph_add_vfill(v =  c("C00031","C00051"),color = "#F36482")%>%
     #igraph_add_vfill(v =  c("C00024"),color = "#F36482")%>%
     igraph_add_ecolor(e = which(edata(ig )$direction==1),color = "#498FED")%>%
+    #igraph_add_ecolor(e = ep[[1]],color = "#498FED")%>%
+    #igraph_add_ecolor(e = ep[[sample(1:length(ep),1)]],color = "#E63F32")%>%
     igraph_add_earrow(e = which(edata(ig )$direction==1),"to")%>%
     vis_igraph()%>%
     visNodes(shadow = T)%>%
-    visEdges(width = 5,color= "#DDDDDD")%>%
+    visEdges(width = 10,color= "#DDDDDD")%>%
     open_visNet()
 
 }
+
+
+# Fri Dec  6 15:52:16 2024 KEGG NET STAT------------------------------
+kegg.rawdata <- MSdb:::get_KEGG_rawdata()
+kegg.rdata <-  kegg.rawdata$Reaction_rawdata
+kegg.rdata <- lapply(kegg.rdata,KEGG_parse_REACTION)
+ig.krn <- KEGG_reaction_to_network(kegg.rdata)
+
+kegg.mdata <- kegg.rawdata$Module_rawdata
+ig.krn <- KEGG_reaction_get_direction_from_module(ig.krn,kegg.mdata)
+ig.krn.filter <-  KEGG_Reaction_network_filter_by_emzyme(ig.krn,"hsa")
+
+plot.data <- data.frame(
+  edges = nrow(edata(ig.krn)),
+  nodes =  nrow(vdata(ig.krn))
+)%>%pivot_longer(1:2)
+ggplot(plot.data)+
+  geom_bar(aes(y = name ,x  = value,fill = name),
+           stat = "identity",color = "black",
+           show.legend = F)+
+  ggsci::scale_fill_npg()+
+  labs(x = "",y = "")+
+  theme_bw()->p
+open_plot_win(p,3,1.5)
+
+
+plot.data <- data.frame(
+  directed = sum(!is.na(edata(ig.krn)$direction)),
+
+  edges =  nrow(edata(ig.krn))- sum(!is.na(edata(ig.krn)$direction))
+)%>%pivot_longer(1:2)
+
+ggplot(plot.data)+
+  geom_bar(aes(x = 1, y = value,fill = name),
+           stat = "identity",color = "black",
+           show.legend = F)+
+  scale_fill_manual(values = c("#2A6EBB","grey"))+
+  labs(x = "",y = "")+
+  coord_polar(theta = "y")+
+  theme_bw()+
+  theme_void()->p
+p
+open_plot_win(p,3,3)
+
+
+
+plot.data <- data.frame(
+
+  nodes.hsa = nrow(vdata(ig.krn.filter)),
+  nodes = nrow(vdata(ig.krn))- nrow(vdata(ig.krn.filter))
+
+)%>%pivot_longer(1:2)
+
+ggplot(plot.data)+
+  geom_bar(aes(x = 1, y = value,fill = name),
+           stat = "identity",color = "black",
+           show.legend = F)+
+  scale_fill_manual(values = c("grey","#973B22"))+
+  labs(title = paste0(nrow(vdata(ig.krn.filter)),
+                      " Nodes in hsa"),x = "",y = "")+
+  coord_polar(theta = "y")+
+  theme_bw()+
+  theme_void()+
+  theme(plot.title = element_text(hjust = 0.5))->p
+p
+open_plot_win(p,2,2)
+
+
+
+
+
+plot.data <- data.frame(
+
+  nodes.hsa = nrow(edata(ig.krn.filter)),
+  nodes = nrow(edata(ig.krn))- nrow(edata(ig.krn.filter))
+
+)%>%pivot_longer(1:2)
+
+ggplot(plot.data)+
+  geom_bar(aes(x = 1, y = value,fill = name),
+           stat = "identity",color = "black",
+           show.legend = F)+
+  scale_fill_manual(values = c("grey","#973B22"))+
+  labs(title = paste0(nrow(edata(ig.krn.filter)),
+                      " Edges in hsa"),x = "",y = "")+
+  coord_polar(theta = "y")+
+  theme_bw()+
+  theme_void()+
+  theme(plot.title = element_text(hjust = 0.5))->p
+p
+open_plot_win(p,2,2)
+
+
+
+
+path.stat <- data.frame(
+  cutoff = 8:12,
+  path.count = NA
+)
+for (i in 1:nrow(path.stat)) {
+  paths <- all_simple_paths(ig.krn.filter,
+                            from = "C00031",
+                            to = "C00051",
+                            mode = "all",
+                            cutoff = path.stat$cutoff[i])
+  path.stat$path.count[i] <- length(paths)
+}
+
+
+p <- ggplot(path.stat)+
+  geom_bar(aes(x = cutoff,y = path.count),stat = "identity")+
+  scale_y_log10()+
+  theme_bw()
+open_plot_win(p,5,5)
 

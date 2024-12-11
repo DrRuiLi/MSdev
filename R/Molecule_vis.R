@@ -9,7 +9,7 @@ get_sdf_igraph <- function(sdf,addH = F){
 
   .f <- function(sdf,addH){
 
-    sdf <- canonicalize(sdf)
+    #sdf <- canonicalize(sdf)
     #cn <- canonicalNumbering_OB(obmol(sdf))[[1]]
     atom.data <- atomblock(sdf)[,1:2]%>%
       `colnames<-`(c("x","y"))%>%

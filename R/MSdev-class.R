@@ -19,17 +19,26 @@ setClass("MSdev",
 #' featureDefinitions polarity `featureDefinitions<-` featureValues
 #' @importFrom MSnbase readMSData sampleNames
 #' @importFrom BiocParallel SnowParam SerialParam bpmapply bplapply
-#' @importFrom tibble tibble as.tibble rownames_to_column
+#' @importFrom tibble tibble as.tibble rownames_to_column remove_rownames
 #' @importFrom S4Vectors isEmpty
 #' @importFrom Biobase pData fData
-#' @importFrom Spectra msLevel Spectra
-#' @importFrom ProtGenerics filterMsLevel filterPolarity
+#' @importFrom Spectra msLevel Spectra peaksData spectraNames
+#' @importFrom ProtGenerics filterMsLevel filterPolarity collisionEnergy
 #' @importFrom CompoundDb compounds
+#' @importFrom ChemmineR atomcountMA MF smiles2sdf `cid<-` cid validSDF canonicalize
+#' atomblock bonds bondblock rings
 #' @importFrom MSCC chemform_adduct_check
 #' @importFrom stringr str_extract
 #' @importFrom plotly layout
 #' @importFrom SummarizedExperiment rowData colData assay `rowData<-` `colData<-` `assay<-`
-#'
+#' @importFrom shiny shinyApp fluidPage fluidRow
+#' checkboxInput selectInput navbarPage
+#' column h1 h3 h4 br wellPanel
+#' @importFrom plotly add_markers plot_ly add_pie add_segments
+#' event_data add_text add_lines
+#' @importFrom visNetwork visNetwork visLayout
+#' @importFrom ComplexHeatmap draw Legend rowAnnotation
+#' @importFrom grid gpar grid.rect grid.circle
 MSdev <- function(rawDataDir =
                     "C:/Users/91879/OneDrive/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data",
                   projectDir = dirname(rawDataDir),

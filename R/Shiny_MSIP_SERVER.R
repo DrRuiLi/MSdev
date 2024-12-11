@@ -1,7 +1,7 @@
 MSIP_shiny_server <- function(object){
 
 
-  ### for renderDT, to avoid fresh
+  ### for DT::renderDT, to avoid fresh
   object.temp <- object
 
   function(input, output, session) {
@@ -54,11 +54,11 @@ MSIP_shiny_server <- function(object){
 
     ### metabolite table
     {
-      output$metabolite_table <- renderDT({
+      output$metabolite_table <- DT::renderDT({
 
         message_with_time("metabolite_table")
         get_MSIP_compound_info(object.temp)%>%
-          datatable(options = list(columns =list(orderable = F)),
+          DT::datatable(options = list(columns =list(orderable = F)),
                     selection = list(
             mode = 'single', selected =1
           ))})
@@ -157,7 +157,7 @@ MSIP_shiny_server <- function(object){
     {
 
 
-      output$plotly_ms2_sp <-  renderPlotly({
+      output$plotly_ms2_sp <-  plotly::renderPlotly({
 
         message_with_time("plotly_ms2_sp")
 
@@ -187,14 +187,14 @@ MSIP_shiny_server <- function(object){
       })
 
 
-      output$plotly_natural_ratio <-  renderPlotly({
+      output$plotly_natural_ratio <-  plotly::renderPlotly({
         message_with_time("plotly_natural_ratio")
 
         shiny_plotly_natural_ratio(natural.ratio())
 
       })
 
-      output$plotly_fragment_iso_distribution <-  renderPlotly({
+      output$plotly_fragment_iso_distribution <-  plotly::renderPlotly({
         message_with_time("shiny_get_frag_iso_distribution")
         frag.iso.dis <- shiny_get_frag_iso_distribution(msip.core.data(),
                                                         fragment_group_selected())
@@ -246,7 +246,7 @@ MSIP_shiny_server <- function(object){
 
 
 
-      output$mol_graph_atom_prob <- renderVisNetwork(
+      output$mol_graph_atom_prob <- visNetwork::renderVisNetwork(
         {
           message_with_time("mol_graph_atom_prob")
 
@@ -285,7 +285,7 @@ MSIP_shiny_server <- function(object){
 
     ### atom map
     {
-      output$mol_graph_atom_map <- renderVisNetwork(
+      output$mol_graph_atom_map <- visNetwork::renderVisNetwork(
         {
           message_with_time("mol_graph_atom_map")
 
@@ -305,7 +305,7 @@ MSIP_shiny_server <- function(object){
       })
 
 
-      output$frag_graph <- renderVisNetwork(
+      output$frag_graph <- visNetwork::renderVisNetwork(
         {
           message_with_time("frag_graph")
           shiny_vis_sdf_igraph(frag.ig(),
@@ -347,11 +347,11 @@ MSIP_shiny_server <- function(object){
 
 
       if(F){
-        output$include_fragment_group <- renderDT({
+        output$include_fragment_group <- DT::renderDT({
 
           message_with_time("include_fragment_group")
           shiny_DT_fg_include(msip.core.data())%>%
-            datatable(escape = F,
+            DT::datatable(escape = F,
                       #rownames = F,
                       colnames = " ",
                       selection = "none",
@@ -382,7 +382,7 @@ MSIP_shiny_server <- function(object){
             #print(x)
             x <- shiny_update_msip_core_data(msip.core.data(),fg.include())
             x <- shiny_DT_fg_include(x)
-            dataTableProxy("include_fragment_group")%>%
+            DT::datatableProxy("include_fragment_group")%>%
               replaceData(x,resetPaging = F,clearSelection ="none" )
           }
 
@@ -423,7 +423,7 @@ MSIP_shiny_server <- function(object){
 
     ### predict and natural prob
     {
-      output$pred_nat_prob <- renderPlotly({
+      output$pred_nat_prob <- plotly::renderPlotly({
 
         message_with_time("pred_nat_prob")
         plotly_MSIPCore_pred_nature_prob(msip.core.data())
@@ -444,9 +444,9 @@ MSIP_shiny_server <- function(object){
         FSIS_table(shiny_get_FSIS_table(msip.core.data()))
       })
 
-      output$FSIS_table <- renderDT({
+      output$FSIS_table <- DT::renderDT({
         FSIS_table()%>%
-          datatable(options = list(
+          DT::datatable(options = list(
             columns =list(orderable = F),
             dom = 't',   # 't' means only the table body is displayed
             paging = FALSE,  # Disable pagination
@@ -470,7 +470,7 @@ MSIP_shiny_server <- function(object){
 
 
       message_with_time("vis_MSIPcore_isotopoer_set")
-      output$Vis_isotopomer_set <- renderVisNetwork({
+      output$Vis_isotopomer_set <- visNetwork::renderVisNetwork({
         vis_MSIPcore_isotopoer_set(msip.core.data(),
                                    mol.ig(),FSIS_selected())
       })
@@ -533,7 +533,7 @@ MSIP_shiny_Acq_server <- function(object){
         acq.selected()[[input$select_polarity]]
       ))
 
-      dataTableProxy("feature_tab")%>%
+      DT::datatableProxy("feature_tab")%>%
         showCols(show = 1:6,reset = T)
 
       ratio_matrix(object@statData$MSIP$isotopologues_matrix$ratio_to_seed
@@ -565,7 +565,7 @@ MSIP_shiny_Acq_server <- function(object){
         acq.list[[input$select_polarity]],
         acq.selected()[[input$select_polarity]]
       )
-      dataTableProxy("feature_tab")%>%
+      DT::datatableProxy("feature_tab")%>%
         replaceData(x,resetPaging = F,clearSelection ="none" )%>%
         showCols(show = 1:6,reset = T)
 
@@ -595,13 +595,13 @@ MSIP_shiny_Acq_server <- function(object){
 
     })
 
-    output$feature_tab <- renderDT({
+    output$feature_tab <- DT::renderDT({
 
 
       message_with_time("feature_tab")
 
       acq.list.table()%>%
-        datatable(escape = F,
+        DT::datatable(escape = F,
                   extensions = c('RowGroup',"Scroller"),
                   selection = list(
                     mode = 'single', selected = 1,target="row"
@@ -618,7 +618,7 @@ MSIP_shiny_Acq_server <- function(object){
                                  scrollY = 500,
                                  scroller = TRUE))
     })
-    output$feature_chrom <- renderPlotly({
+    output$feature_chrom <- plotly::renderPlotly({
       message_with_time("feature_chrom")
 
       if (!all(is.na(xchrom()))) {
@@ -627,13 +627,13 @@ MSIP_shiny_Acq_server <- function(object){
 
 
     })
-    output$p1 <- renderPlotly({
+    output$p1 <- plotly::renderPlotly({
       message_with_time("p1")
       if (!all(is.na(xchrom())))
       shiny_plotly_feature_int(xchrom(),col.map = col.sample.source)
 
     })
-    output$p2 <- renderPlotly({
+    output$p2 <- plotly::renderPlotly({
       message_with_time("p2")
       if (!all(is.na(xchrom())))
       shiny_plotly_feature_ratio(xchrom(),
@@ -641,14 +641,14 @@ MSIP_shiny_Acq_server <- function(object){
                                  ratio_to_seed = ratio_matrix()[feature_id(),] )
 
     })
-    output$p3 <- renderPlotly({
+    output$p3 <- plotly::renderPlotly({
       message_with_time("p3")
       if (!all(is.na(xchrom())))
         shiny_plotly_feature_purity(xchrom(),
                                    col.map = col.sample.source,
                                      ms1_purity = purity_matrix()[feature_id(),] )
     })
-    output$p4 <- renderPlotly({
+    output$p4 <- plotly::renderPlotly({
       message_with_time("p4")
 
     })

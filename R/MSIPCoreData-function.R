@@ -610,7 +610,7 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
                                 col = circlize::colorRamp2(breaks = c(0,0.5,1),
                                                            c("white","#F7844F","#B20C26")),
                                 right_annotation  = rowAnnotation(
-                                  intensity = anno_numeric(round(log10(MSIPFragmentMap@FG.data$int_sum),1),
+                                  intensity = ComplexHeatmap::anno_numeric(round(log10(MSIPFragmentMap@FG.data$int_sum),1),
                                                            bg_gp = gpar(fill = "#AFAFAF", col = "black")),
                                   width  = unit(0.8,"inch"),
                                   annotation_label = list(intensity = "Log10\nIntensity"),
@@ -924,7 +924,7 @@ plotly_MSIPCore_pred_nature_prob  <- function(MSIPCoreData){
            paper_bgcolor = 'rgba(0,0,0,0)',
            margin = list(l = 0, r = 0, b = 0, t = 0, pad = 0),
            showlegend = FALSE)%>%
-    config(displayModeBar = FALSE)
+    plotly::config(displayModeBar = FALSE)
 
   #open_visNet(p)
   p

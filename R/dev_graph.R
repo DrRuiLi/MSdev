@@ -8,7 +8,7 @@ get_nodes_between_selected <- function(ig,selected.node){
   c(nodes,selected.node)%>%unique()%>%return()
 }
 
-get_edges_from_path <- function(ig,v){
+get_edges_from_epath <- function(ig,v){
 
   vp <- rep(names(v),each=2)
   vp <- vp[-c(1,length(vp))]
@@ -157,41 +157,17 @@ open_visNet <- function(x){
 }
 
 
-igraph_node_path_to_edge_path <- function(graph, node_path) {
-  edge_paths <- lapply(node_path, function(path) {
-    edges <- unlist(lapply(seq_along(path)[-length(path)], function(i) {
-      E(graph, path = c(path[i], path[i + 1]))
-    }))
-    return(edges)
-  })
-  return(edge_paths)
-}
-
 igraph_vpath_to_epath <- function(ig,vpath){
 
-  eda <- edata(ig)%>%
-    dplyr::mutate(str_vpath = paste0(
-      from,"_",to
-    ))
+  epaths <- lapply(vpath, function(path) {
+    edges <- c()
+    for (i in seq_along(path)[-length(path)]) {
+      edges <- c(edges, get_edge_ids(ig, c(path[i], path[i + 1]),
+                                     directed  =F))
+    }
+    edges
+  })
 
-  str_vpaths <- plyr::llply(vpath,
-                            function(x){
-                              v <- names(x)
-                              x.str <- paste0(
-                                head(v,-1),
-                                "_",
-                                tail(v,-1)
-                              )
-                              return(x.str)
-                            })
-  vpath.epath <- plyr::llply(str_vpaths,
-                             function(str_vpath){
-                               epaths <- lapply(str_vpath,function(x) which(eda$str_vpath==x))
-                               epaths <- expand.grid(epaths)
-                               epaths <- apply(epaths,1,function(x) unname(x) ,simplify = F)
-                               return(epaths)
-                             },.progress = "text")
-  epaths <- unlist(vpath.epath,recursive = F)
   return(epaths)
 }
 

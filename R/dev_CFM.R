@@ -736,7 +736,8 @@ CFM_data_get_igraph <- function(object){
   ### fragment def
   {
     fragment.data <- object@fragment_define
-    fragment.sdf <- suppressWarnings(smiles2sdf(fragment.data$smiles))
+    fragment.sdf <- suppressWarnings(smiles2sdf(fragment.data$smiles))%>%
+      canonicalize
     fragment.data$formula <- get_sdf_formula(fragment.sdf)
 
   }
@@ -1558,7 +1559,7 @@ shiny_vis_cfmd <- function(cfmd){
           heatmap_MSIPFragmentMap()
       })
 
-      output$atom_map <- renderVisNetwork({
+      output$atom_map <- visNetwork::renderVisNetwork({
         vis_cfm_data_fragment_atom_map(cfmd ,input$fragment)
       })
 

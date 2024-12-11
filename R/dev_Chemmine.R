@@ -296,7 +296,8 @@ get_atom_map <- function(sdf.parent,
                          iso_ele = "[13]C",
                          return.type = c("most_prob","prob_matrix")){
   return.type <- match.arg(return.type)
-  mcs <- fmcsR::fmcs(sdf.parent,sdf.product,bu = 10)
+  mcs <- fmcsR::fmcs(sdf.parent,
+                     sdf.product,bu = 10)
   mcs.map <- get_mcs_atom_map(mcs)
   mcs.map <- mcs.map.filter.duplicate(mcs.map,target_ele = get_ele_uniso(iso_ele))
   atom.map.matrix <- matrix(nrow = length(mcs.map),
@@ -405,11 +406,11 @@ get_atom_map <- function(sdf.parent,
       temp.map.t <- make_vector(names(temp.map),temp.map)
       ig.sub <- igraph_filter_distance(ig.parent,from = temp.map,dis = 1)
 
-      m1 <- as_adj(ig.sub,
-                   attr = "bond_type")
+      m1 <- igraph::as_adjacency_matrix(ig.sub,
+                   attr = "bond_type",sparse = F)
       m1 <- m1+t(m1)
-      m2 <- as_adj(ig.product,
-                   attr = "bond_type")[names(temp.map),names(temp.map)]
+      m2 <- igraph::as_adjacency_matrix(ig.product,
+                   attr = "bond_type",sparse = F)[names(temp.map),names(temp.map)]
       m2 <- m2 + t(m2)
       m2 <- get_matrix_value_fill_with_NA(
         m2,temp.map.t[rownames(m1)],temp.map.t[colnames(m1)])

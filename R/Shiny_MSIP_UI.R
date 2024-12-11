@@ -5,8 +5,8 @@ MSIP_shiny_ui <- function() {
       width = 5,
       #shinythemes::themeSelector(),
       h1("Metabolite table"),
-      verbatimTextOutput(outputId = "test_info"),
-      wellPanel(DTOutput(outputId = "metabolite_table")),
+      shiny::verbatimTextOutput(outputId = "test_info"),
+      wellPanel(DT::DTOutput(outputId = "metabolite_table")),
       wellPanel(
         h3("Help"),
         h4("1. Click Metablolite table to select a metabolite\n"),
@@ -52,24 +52,24 @@ MSIP_shiny_ui <- function() {
         ),
         column(
           3,
-          verbatimTextOutput(
+          shiny::verbatimTextOutput(
             outputId = "compound_info"
           )
         )),
         fluidRow(
           column(width = 10,
-            plotlyOutput(outputId = "plotly_ms2_sp")
+            plotly::plotlyOutput(outputId = "plotly_ms2_sp")
           ),
           column(width = 2,
-            plotlyOutput(outputId = "plotly_natural_ratio",height  = "200px"),
-            plotlyOutput(outputId = "plotly_fragment_iso_distribution",height  = "200px"),
+            plotly::plotlyOutput(outputId = "plotly_natural_ratio",height  = "200px"),
+            plotly::plotlyOutput(outputId = "plotly_fragment_iso_distribution",height  = "200px"),
             style = "padding:0px; margin:0px; background-color: #FFFFFF"
           )
         )
       ),
       navbarPage(
         title = NULL,
-        tabPanel("Atom label probability", fluidRow(#h2("Molecule Structrue"),
+        shiny::tabPanel("Atom label probability", fluidRow(#h2("Molecule Structrue"),
           fluidPage(
             column(
               width = 3,
@@ -79,7 +79,7 @@ MSIP_shiny_ui <- function() {
                   label = "Show Atom ID"
                 ),
                 br(),
-                tableOutput(outputId = "atom_prob_table")
+                shiny::tableOutput(outputId = "atom_prob_table")
               )
               ),
             column(
@@ -87,36 +87,36 @@ MSIP_shiny_ui <- function() {
               #h5("Atom labeled probability"),
               fluidRow(
                 align = "right",
-                plotOutput(
+                shiny::plotOutput(
                   outputId = "atom_prob_legend",
                   inline = F,
                   width = "200px",
                   height  = "70px"
                 )
               ),
-              fluidRow(visNetworkOutput(outputId = "mol_graph_atom_prob"))
+              fluidRow(visNetwork::visNetworkOutput(outputId = "mol_graph_atom_prob"))
             ),
 
           ))),
-        tabPanel(
+        shiny::tabPanel(
           title = "Isotopomers",
           fluidPage(
             column(
               width = 4,
-              DTOutput(outputId = "FSIS_table")
+              DT::DTOutput(outputId = "FSIS_table")
             ),
             column(
               width = 8,
-              visNetworkOutput(outputId = "Vis_isotopomer_set")
+              visNetwork::visNetworkOutput(outputId = "Vis_isotopomer_set")
             )
           )
         ),
-        #tabPanel(
+        #shiny::tabPanel(
         #  "Atom map",
         #  fluidRow(
         #    column(
         #      width = 6,
-        #      visNetworkOutput(outputId = "mol_graph_atom_map")
+        #      visNetwork::visNetworkOutput(outputId = "mol_graph_atom_map")
         #    ),
         #    column(
         #      width = 6,
@@ -126,44 +126,44 @@ MSIP_shiny_ui <- function() {
         #        choices = NULL
         #      ),
         #      fluidRow(align = "center", textOutput(outputId = "frag_formula")),
-        #      visNetworkOutput(outputId = "frag_graph")
+        #      visNetwork::visNetworkOutput(outputId = "frag_graph")
         #    ))
         #  ),
-        tabPanel(
+        shiny::tabPanel(
           "Fragment map",
           fluidRow(
             fluidRow(
               column(width = 5,
-                     sliderInput(inputId = "int_thresh",
+                     shiny::sliderInput(inputId = "int_thresh",
                                  label = "Intensity threshold (log10)",
                                  ticks  = F,step = 0.01,
                                  min = 0,max = 10,value = 3 )
                      ),
               column(width = 5,
-                     sliderInput(inputId = "certainty_thresh",
+                     shiny::sliderInput(inputId = "certainty_thresh",
                                  label = "Certainty threshold",
                                  ticks  = F,step = 0.01,
                                  min = 0,max = 1,value = 0.8)),
               column(width = 2,
-                     actionButton(
+                     shiny::actionButton(
                        inputId = "Re_calc_button",
                        label = "Re calculate")
                      )
             ),
-              #DTOutput(
+              #DT::DTOutput(
               #  outputId = "include_fragment_group"
               #)
-              plotOutput(
+              shiny::plotOutput(
                   outputId = "heatmap_fg_map",
                   height = "500px",
                   width = "800px"
                 )
             )
           ),
-        tabPanel(
+        shiny::tabPanel(
           title = "Natural distribution",
           fluidRow(
-            plotlyOutput(
+            plotly::plotlyOutput(
               outputId = "pred_nat_prob"
             )
           )
@@ -190,7 +190,7 @@ MSIP_shiny_Acq_ui <- function() {
 
   fluidPage(
     title = "MSIP Acq vis",
-    verbatimTextOutput(outputId = "test_info"),
+    shiny::verbatimTextOutput(outputId = "test_info"),
     column(
       width = 4,
       selectInput(
@@ -198,17 +198,17 @@ MSIP_shiny_Acq_ui <- function() {
         label = "Polarity",
         choices = c("Positive", "Negative")
       ),
-      DTOutput(outputId = "feature_tab", height  = "700px"),
+      DT::DTOutput(outputId = "feature_tab", height  = "700px"),
       fluidRow(
         column(
           width = 2,
           offset = 8,
-          actionButton(inputId = "save_button", label = "Save")
+          shiny::actionButton(inputId = "save_button", label = "Save")
         ),
         column(
           width = 2,
           offset = 0,
-          actionButton(inputId = "quit_button", label = "Quit")
+          shiny::actionButton(inputId = "quit_button", label = "Quit")
         )
       )
     ),
@@ -216,19 +216,19 @@ MSIP_shiny_Acq_ui <- function() {
     column(
       width = 8,
       h1("chromatograms"),
-      plotlyOutput(outputId = "feature_chrom", height  = "400px"),
+      plotly::plotlyOutput(outputId = "feature_chrom", height  = "400px"),
       fluidRow(
         column(width = 3, (
-          plotlyOutput(outputId = "p1", height  = "300px")
+          plotly::plotlyOutput(outputId = "p1", height  = "300px")
         )),
         column(width = 3, (
-          plotlyOutput(outputId = "p2", height  = "300px")
+          plotly::plotlyOutput(outputId = "p2", height  = "300px")
         )),
         column(width = 3, (
-          plotlyOutput(outputId = "p3", height  = "300px")
+          plotly::plotlyOutput(outputId = "p3", height  = "300px")
         )),
         column(width = 3, (
-          plotlyOutput(outputId = "p4", height  = "300px")
+          plotly::plotlyOutput(outputId = "p4", height  = "300px")
         ))
       )
     )
