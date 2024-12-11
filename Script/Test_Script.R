@@ -3601,3 +3601,12 @@ p <- ggplot(path.stat)+
   theme_bw()
 open_plot_win(p,5,5)
 
+# Wed Dec 11 16:15:17 2024 MSIP quantify ------------------------------
+{
+
+  msip.cp.df <- get_MSIP_compound_info(msdev.Astral,
+                                       vars = "all")
+  iso.data <- msdev.Astral@statData$MSIP$isotopologues_data[[27]]
+  MSIPCore_solve(iso.data$MSIP_result$M1$GLUCE1)
+
+}

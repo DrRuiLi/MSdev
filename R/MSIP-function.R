@@ -541,7 +541,7 @@ get_iso_net_assign <- function(iso.ig,net.degree.ratio = 0.6){
     igraph::distances(this.igraph.sub,mode = "out",
                       weights = edge.attributes(this.igraph.sub)$closest.iso.count )
     to.delete <- degree(this.igraph.sub)<(length(V(this.igraph.sub))-1)*2*net.degree.ratio
-    this.igraph.sub <-delete.vertices(this.igraph.sub,to.delete )
+    this.igraph.sub <- igraph::delete.vertices(this.igraph.sub,to.delete )
     #visNetwork::visIgraph(this.igraph.sub)
     this.dis <- igraph::distances(this.igraph.sub,mode = "out",
                                   weights = edge.attributes(this.igraph.sub)$closest.iso.count )
@@ -719,7 +719,7 @@ get_iso_natural_ratio <- function(formula, iso_ele, ratio_matrix ){
 
   thresh = min(ratio_matrix)
   if (thresh < 1e-5)  thresh<- 1e-3
-  iso_pattern <- chemform_isotopes_pattern_enviPat(
+  iso_pattern <- MSCC::chemform_isotopes_pattern_enviPat(
     formula,
     thresh = thresh)%>%
     dplyr::filter(grepl(iso_ele,isotope_element,fixed = T)|isotope_element=="")%>%

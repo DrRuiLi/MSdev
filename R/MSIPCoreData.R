@@ -31,11 +31,11 @@ setMethod(f = "show",
           "MSIPFragmentMap",definition = function(object){
 
             x <- paste0("Map of ",
-                        yellow(nrow(object@FG.atom.matrix)),
+                        crayon::yellow(nrow(object@FG.atom.matrix)),
                         " fragment group, ",
-                        yellow( ncol(object@FG.atom.matrix)),
+                        crayon::yellow( ncol(object@FG.atom.matrix)),
                         " atom, ",
-                        yellow(ncol(object@FG.ratio.matrix)),
+                        crayon::yellow(ncol(object@FG.ratio.matrix)),
                         " labeled")
             message(x)
           })
@@ -60,9 +60,9 @@ setMethod(f = "show",
           "MSIPIsotopomerMap",definition = function(object){
 
             x <- paste0("Map of ",
-                        yellow(length(object@isotopomer.defination)),
+                        crayon::yellow(length(object@isotopomer.defination)),
                         " isotopomers, ",
-                        yellow(nrow(object@isotopomer.map)),
+                        crayon::yellow(nrow(object@isotopomer.map)),
                         " labeled fragment")
             message(x)
 

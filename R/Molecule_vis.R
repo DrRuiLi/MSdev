@@ -52,7 +52,7 @@ get_sdf_igraph <- function(sdf,addH = F){
       bond.data,vertices = atom.data
     )
     if (!addH) {
-      sdf.igraph <- delete.vertices(sdf.igraph,
+      sdf.igraph <- igraph::delete.vertices(sdf.igraph,
                                     V(sdf.igraph)$atom=="H")
     }
 

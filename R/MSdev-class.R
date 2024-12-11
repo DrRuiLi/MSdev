@@ -15,14 +15,16 @@ setClass("MSdev",
 
 #' @importFrom magrittr `%>%` `%<>%`
 #' @import  tidyverse dplyr ggplot2 patchwork
-#' @importFrom xcms filepaths mzrange plotSpec noise filterFile chromPeaks
-#' featureDefinitions polarity `featureDefinitions<-` featureValues
+#' @importFrom xcms filepaths mzrange plotSpec noise filterFile dirname chromPeaks
+#' featureDefinitions polarity `featureDefinitions<-` featureValues featureChromatograms
+#' fileNames
 #' @importFrom MSnbase readMSData sampleNames
-#' @importFrom BiocParallel SnowParam SerialParam bpmapply bplapply
+#' @importFrom BiocParallel SnowParam SerialParam bpmapply bplapply snowWorkers
 #' @importFrom tibble tibble as.tibble rownames_to_column remove_rownames
 #' @importFrom S4Vectors isEmpty
 #' @importFrom Biobase pData fData
-#' @importFrom Spectra msLevel Spectra peaksData spectraNames
+#' @importFrom Spectra msLevel Spectra MsBackendMemory `spectraNames<-`
+#' peaksData spectraNames filterPolarity rtime dataOrigin
 #' @importFrom ProtGenerics filterMsLevel filterPolarity collisionEnergy
 #' @importFrom CompoundDb compounds
 #' @importFrom ChemmineR atomcountMA MF smiles2sdf `cid<-` cid validSDF canonicalize
@@ -37,6 +39,8 @@ setClass("MSdev",
 #' @importFrom plotly add_markers plot_ly add_pie add_segments
 #' event_data add_text add_lines
 #' @importFrom visNetwork visNetwork visLayout
+#' @importFrom igraph as_adjacency_matrix distances edge.attributes
+#' degree V E
 #' @importFrom ComplexHeatmap draw Legend rowAnnotation
 #' @importFrom grid gpar grid.rect grid.circle
 MSdev <- function(rawDataDir =
