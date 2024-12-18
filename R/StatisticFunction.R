@@ -313,8 +313,8 @@ plotOPLSDA<- function(oplsda.matrix,oplsda.group,showlabel = F){
         pch = 16
       )
   }
-  xmax <- max(abs(oplsda.data$p1))*1.05
-  ymax <- max(abs(oplsda.data$o1))*1.05
+  xmax <- max(abs(oplsda.data$p1))*1.3
+  ymax <- max(abs(oplsda.data$o1))*1.3
   p+
     stat_ellipse(aes(x = p1, y = o1 , fill = oplsda.group),
                  alpha = 0.2,

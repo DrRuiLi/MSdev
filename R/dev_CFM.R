@@ -839,7 +839,7 @@ CFM_data_get_atom_map <- function(object,
     fragment.data$cumsum.loss.distance <- NA
     fragment.igraph <- object@fragment_igraph
     if (nrow(fragment.trans)) {
-      ig.trans <- graph_from_data_frame(fragment.trans)
+      ig.trans <- igraph::graph_from_data_frame(fragment.trans)
       for (i in 1:nrow(fragment.data)) {
 
        # message_with_time(i)
@@ -863,7 +863,7 @@ CFM_data_get_atom_map <- function(object,
           #this.paths <- shortest_paths(ig.trans,from = 1,
           #                            to = this.frag,
           #                            mode = "out",output  = "vpath")$vpath
-          this.paths <- all_shortest_paths(ig.trans,
+          this.paths <- igraph::all_shortest_paths(ig.trans,
                                           from = 1,
                                       to = this.frag,
                                       mode = "out")$vpath
@@ -943,7 +943,7 @@ CFM_data_remove_trans <- function(object){
     fragment.trans <-object@fragment_transition
     fragment.trans <-fragment.trans[fragment.trans$volid,]
 
-    trans.ig <- graph_from_data_frame(fragment.trans)
+    trans.ig <- igraph::graph_from_data_frame(fragment.trans)
     dis.to.fragment1 <- distances(trans.ig,mode  = "out",
                                   v = object@fragment_define$fragment_id[1])
     reachable <- colnames(dis.to.fragment1)[!is.infinite(dis.to.fragment1)]
@@ -1085,7 +1085,7 @@ get_CFM_data_trans_igraph <- function(object){
                   loss.distance = atom.loss+bond.loss,
                   length = normalize_max_min(loss.distance)*1500)
 
-  frag.trans.graph <- graph_from_data_frame(edge.df,
+  frag.trans.graph <- igraph::graph_from_data_frame(edge.df,
                                             vertices = node.df )
   return(frag.trans.graph)
 }

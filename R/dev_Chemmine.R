@@ -120,7 +120,6 @@ get_sdf_formula <- function(sdf){
 #' @export
 get_smiles_sdf <- function(smiles,smiles.id = NULL){
 
-  data("smiles_map")
   if (is.null(names(smiles))) {
     if (is.null(smiles.id)) {
       names(smiles) <- paste0("CMP",num2str(seq_along(smiles)))
@@ -134,9 +133,9 @@ get_smiles_sdf <- function(smiles,smiles.id = NULL){
   )
   for (id in ChemmineR::cid(smiles_map)) {
     which(smiles==id)
-    suppressWarnings(smiles.sdf[smiles==id] <- smiles_map[[id]])
+    suppressWarnings(smiles.sdf[smiles==id] <- MSdev::smiles_map[[id]])
   }
-
+  smiles.sdf <-canonicalize(smiles.sdf)
   return(smiles.sdf)
 
 }
@@ -519,13 +518,6 @@ vis_smiles <- function(smiles,
 }
 
 
-atom <- function(sdf){
-
-  rownames(atomblock(sdf))
-
-
-}
-
 
 get_isopattern_score <- function(formula,
                                  mzs,
@@ -577,4 +569,31 @@ get_isopattern_score <- function(formula,
 }
 
 
+make_element_table <- function(){
+
+  data("elem_table",package = "lc8")
+
+  element_table <- elem_table%>%
+    dplyr::mutate(element = get_ele_uniso(element) ,
+                  isotope = gsub("([0-9]+)", "[\\1]", isotope))%>%
+    dplyr::group_by(element)%>%
+    dplyr::mutate(is.isotope = case_when(
+      abundance==max(abundance) ~F,
+      T~T
+    ),
+    symbol = case_when(
+      is.isotope~isotope,
+      T~element
+    ))
+
+
+
+}
+
+
+is.isotope <- function(atoms){
+
+  make_vector(element_table$is.isotope,element_table$symbol )[atoms]
+
+}
 

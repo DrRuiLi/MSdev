@@ -7,6 +7,7 @@
 MSIP_get_isotopologues_CFM_annotation(
   object,
   ppm = 20,
+  check_temp = T,
   BPPARAM = SnowParam(progressbar = T)
 )
 }

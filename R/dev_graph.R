@@ -123,30 +123,7 @@ show_vis_icon <- function(icon_code = paste0("f",num2str(1:900)),
 
 
 
-edata <- function(ig){
 
-  igraph::as_data_frame(ig,"edges")
-
-}
-
-vdata <-  function(ig){
-
-  igraph::as_data_frame(ig,"vertices")
-
-}
-
-`edata<-` <- function(ig,value){
-
-  value <- value[,!grepl("from|to",colnames(value))]
-  igraph::edge.attributes(ig) <- as.list( value )
-  ig
-}
-
-`vdata<-` <- function(ig,value){
-
-  igraph::vertex.attributes(ig) <- as.list(value)
-  ig
-}
 
 open_visNet <- function(x){
 

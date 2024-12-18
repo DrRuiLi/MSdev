@@ -258,3 +258,35 @@ scale_color_random <- function(...) {
 scale_fill_random <- function(...) {
   ggplot2::discrete_scale("fill", "random", function(n) randomcoloR::distinctColorPalette(n), ...)
 }
+
+# Function to format legend labels with subscripts, with custom color and labels
+scale_subscript_legend <- function(values = NULL, labels = NULL) {
+
+  # Helper function to format labels with subscripts
+  format_labels <- function(labels) {
+    lapply(labels, function(label) {
+      # Check if label contains a number
+      if (grepl("\\d", label)) {
+        # If number found, split into text and number
+        split_label <- strsplit(label, "(?<=\\D)(?=\\d)", perl = TRUE)[[1]]
+        # Create an expression with subscript
+        expression_text <- bquote(.(split_label[1])[.(split_label[2])])
+      } else {
+        # If no number, return label as is
+        expression_text <- label
+      }
+      return(expression_text)
+    })
+  }
+
+  # Create a custom scale for color and fill
+  scale_custom_labels <- list(
+    scale_color_manual(values = values, labels = format_labels(labels)),
+    scale_fill_manual(values = values, labels = format_labels(labels))
+  )
+
+  # Return the list of scale components to add to the plot
+  return(scale_custom_labels)
+}
+
+

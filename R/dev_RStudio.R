@@ -11,7 +11,6 @@ setwdActivedFilePath <- function(){
 
 }
 
-
 #' setRStudioDir
 #'
 #' @param path path
@@ -31,7 +30,7 @@ getRStudioDir <- function(){
 }
 
 
-getActivedFilePath <- function(){
+get_dir_ActivedFilePath <- function(){
   rstudioapi::getSourceEditorContext()$path
 
 }

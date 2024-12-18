@@ -111,24 +111,24 @@ MSIP_shiny_ui <- function() {
             )
           )
         ),
-        #shiny::tabPanel(
-        #  "Atom map",
-        #  fluidRow(
-        #    column(
-        #      width = 6,
-        #      visNetwork::visNetworkOutput(outputId = "mol_graph_atom_map")
-        #    ),
-        #    column(
-        #      width = 6,
-        #      selectInput(
-        #        inputId = "select_fragment_id",
-        #        label = "Possible fragment structure",
-        #        choices = NULL
-        #      ),
-        #      fluidRow(align = "center", textOutput(outputId = "frag_formula")),
-        #      visNetwork::visNetworkOutput(outputId = "frag_graph")
-        #    ))
-        #  ),
+        shiny::tabPanel(
+          "Atom map",
+          fluidRow(
+            column(
+              width = 6,
+              visNetwork::visNetworkOutput(outputId = "mol_graph_atom_map")
+            ),
+            column(
+              width = 6,
+              selectInput(
+                inputId = "select_fragment_id",
+                label = "Possible fragment structure",
+                choices = NULL
+              ),
+              fluidRow(align = "center", textOutput(outputId = "frag_formula")),
+              visNetwork::visNetworkOutput(outputId = "frag_graph")
+            ))
+          ),
         shiny::tabPanel(
           "Fragment map",
           fluidRow(

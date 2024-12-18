@@ -3603,10 +3603,118 @@ open_plot_win(p,5,5)
 
 # Wed Dec 11 16:15:17 2024 MSIP quantify ------------------------------
 {
-
+  msdev.Astral <- load_as_var(
+    "C:/Users/91879/OneDrive/Code/R/data/MSIP_data/240926_Astral_GLU13C1/MSdev_2024_10_13.Rdata"
+  )
   msip.cp.df <- get_MSIP_compound_info(msdev.Astral,
                                        vars = "all")
-  iso.data <- msdev.Astral@statData$MSIP$isotopologues_data[[27]]
-  MSIPCore_solve(iso.data$MSIP_result$M1$GLUCE1)
+  iso.data <- msdev.Astral@statData$MSIP$isotopologues_data[[56]]
+  msip.core <- MSIPCore_solve(iso.data$MSIP_result$M1$GLUCE1)
+
+
 
 }
+# Fri Dec 13 14:09:59 2024 whf DATA------------------------------
+{
+  library(xcms)
+  library(MSnbase)
+
+  mzfiles <- dir("d:/2024.12.13.6500.data/","mzML",full.names = T)
+  xcms.xcms <- readSRMData(
+    mzfiles
+  )
+  xcms.sub <- xcms.xcms#[1:3,3:6]
+  xcms.rts <- XChromatograms_rt_unit(xcms.xcms)
+  xcms.peaks <- findChromPeaks(xcms.sub,
+                               param = MatchedFilterParam(),
+                               BPPARAM = SerialParam(progressbar = T))
+  chromPeakData(xcms.peaks)
+  xcms.features <- groupChromPeaks(xcms.peaks,
+                                   param = PeakDensityParam(
+                                     sampleGroups = rep("A",23) ) )
+  xcms.scans.info <- fData(xcms.xcms)
+  xcms.val <- featureValues(xcms.features)
+  colnames(xcms.val) <- basename(mzfiles)
+  xcms.fdf <- featureDefinitions(xcms.features)%>%
+    as.data.frame()%>%
+    dplyr::mutate(xcms.scans.info[row,])%>%
+    cbind(xcms.val)
+
+
+
+}
+
+# Fri Dec 13 15:05:27 2024 ------------------------------
+{
+  get_MSIP_compound_info(object,vars = c("all"))%>%
+    dplyr::mutate(feature_id = names(isotopologues.data.list),
+                  rt = as.numeric(rt),
+                  rt.group = MsCoreUtils::group(rt,
+                                                tolerance = rt.tol),
+                  cp.group = paste0(compound_id ,"_", rt.group)
+    )%>%
+    dplyr::filter(polarity %in%0:1)%>%
+    dplyr::group_by(cp.group)%>%
+    dplyr::filter( any(polarity==0) & any(polarity==1))%>%
+    dplyr::mutate(rt.diff = abs(rt - mean(rt)))%>%
+    dplyr::group_by(polarity,.add = T)%>%
+    dplyr::slice_min(rt.diff)
+
+}
+
+# Mon Dec 16 12:41:48 2024 ------------------------------
+ig <- igraph::make_ring(10)
+a <- new("Molecule_igraph")
+a@igraph <- ig
+
+
+cfmd <- get_CFM_data_from_smiles
+
+
+cfmd@fragment_sdf[[10]]%>%
+  plot()
+
+
+# Mon Dec 16 15:12:30 2024 ------------------------------
+data("smisample",package = "ChemmineR")
+smiles <- smisample
+sdfs <- smiles2sdf(smiles)
+sdf <- sdfs[[1]]
+
+a <- get_Molecule_igraph_from_sdf(sdf)
+b <- get_Molecule_igraph_from_smiles(smisample)
+
+
+vis_sdf_igraph(b[[1]]@igraph)
+
+`edata<-` <- function(ig,value){
+
+  value <- value[,!grepl("from|to",colnames(value))]
+  igraph::edge.attributes(ig) <- as.list( value )
+  ig
+}
+
+
+vdata(a) <- vdata(a)%>%
+  dplyr::mutate(aaaa="x")
+
+
+glutamate.smiles <- "C(CC(=O)O)C(C(=O)O)N"
+Molecule_igraph <- get_Molecule_igraph_from_smiles(glutamate.smiles)
+
+iso_vec <- make_vector("[13]C",
+                       sample(atom(Molecule_igraph,"C"),1))
+a <- add_Molecule_igraph_isotopomer(Molecule_igraph,
+                            iso_vec = iso_vec)
+
+
+# Wed Dec 18 14:54:23 2024 MFN------------------------------
+kegg.ig <- get_KEGG_Reaction_network()
+
+selected.vertex <- c("C00037","C00022","C00065","C00097",
+                     "C00036","C00025","C00031","C00197","C00051","C00024")
+
+kegg.ig.sub <- igraph_filter_vertex(kegg.ig,
+                                    selected.vertex)
+
+

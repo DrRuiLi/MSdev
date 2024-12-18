@@ -48,7 +48,7 @@ get_sdf_igraph <- function(sdf,addH = F){
    #                 label = RCN_id)%>%
    #   dplyr::ungroup()
 
-    sdf.igraph <- graph_from_data_frame(
+    sdf.igraph <- igraph::graph_from_data_frame(
       bond.data,vertices = atom.data
     )
     if (!addH) {
@@ -224,7 +224,7 @@ sdf_igraph_merge <- function(sdf.igraphA,sdf.igraphB){
     edata(sdf.igraphA),
     edata(sdf.igraphB)
   )
-  new.igraph <- graph_from_data_frame(edges,
+  new.igraph <- igraph::graph_from_data_frame(edges,
                                       vertices = nodes)
   return(new.igraph)
 }

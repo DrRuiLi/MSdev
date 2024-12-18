@@ -372,3 +372,24 @@ which.mid <- function(x){
   which.min(abs((x-x.mid)))
 }
 
+
+get_formula_from_lm <- function(lm_fit) {
+  # Extract coefficients
+  coefficients <- coef(lm_fit)
+
+  # Construct the formula string
+  formula_string <- paste0(
+    "y = ",
+    round(coefficients[1], 3),  # Intercept
+    paste(
+      sapply(2:length(coefficients), function(i) {
+        coef_value <- round(coefficients[i], 3)
+        sign <- ifelse(coef_value < 0, " - ", " + ")  # Handle signs
+        paste0(sign, abs(coef_value), " * ", names(coefficients)[i])
+      }),
+      collapse = ""  # Collapse terms into one string
+    )
+  )
+
+  return(formula_string)
+}

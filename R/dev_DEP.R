@@ -206,6 +206,9 @@ DEP_plot_volcano <- function(data.se,
 
   x.max <- max(abs(volcano.data$log2_fold_change))
   y.max <- max(volcano.data$y)
+  x.max <- 2
+  y.max <- 3
+
   if (y.max==0 ) y.max <- 1
 
   ggplot(volcano.data, aes(log2_fold_change, y)) +
