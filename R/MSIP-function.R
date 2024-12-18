@@ -318,6 +318,10 @@ MSIP_get_isotopologues_data <- function(object,
       ### matrix
       {
 
+        ### intensity_matrix
+        {
+
+        }
         ### ratio_matrix
         {
           ratio_matrix <- object@statData$MSIP$
@@ -403,6 +407,7 @@ get_MSdev_iso_ele <- function(object){
 #'
 MSIP_get_isotopologues_CFM_annotation <- function(object,
                                                   ppm = 20,
+                                                  check_temp = T,
                                                   BPPARAM = SnowParam(progressbar = T)){
 
 
@@ -439,7 +444,7 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
           adduct = switch(as.character(x$compound_info$polarity),
                                      "0"="[M-H]-",
                                      "1"="[M+H]+"),
-          check_temp =T,
+          check_temp = check_temp,
           temp_dir = paste0(object@projectInfo$CompoundDB_path,"_cfmd"))
 
       })
@@ -920,10 +925,10 @@ MSIP_merge_isotopologues <- function(object,
                   cp.group = paste0(compound_id ,"_", rt.group)
                   )%>%
     dplyr::filter(polarity %in%0:1)%>%
-    dplyr::group_by(cp.group)%>%
+    dplyr::group_by(cp.group,rt.group)%>%
     dplyr::filter( any(polarity==0) & any(polarity==1))%>%
     dplyr::mutate(rt.diff = abs(rt - mean(rt)))%>%
-    dplyr::group_by(polarity)%>%
+    dplyr::group_by(polarity,.add = T)%>%
     dplyr::slice_min(rt.diff)
 
   to.merge <- unique(isotopologues.to.merge$cp.group)
@@ -936,7 +941,7 @@ MSIP_merge_isotopologues <- function(object,
     iso.data2 <- isotopologues.data.list[[this.isotopologues$feature_id[2]]]
 
     iso.data <- merge_isotopologues_data(iso.data1,iso.data2)
-    isotopologues.data.list[[paste0(unique(this.isotopologues$compound_id),"_merged")]]<-
+    isotopologues.data.list[[paste0(unique(this.cp.group),"_merged")]]<-
       iso.data
 
   }
