@@ -140,6 +140,14 @@ get_smiles_sdf <- function(smiles,smiles.id = NULL){
 
 }
 
+get_sdf_smiles <- function(sdf){
+  if (inherits(sdf,"SDF")) {
+    sdf <- ChemmineR::SDFset(list(sdf))
+  }
+  ChemmineR::sdf2smiles(sdf)
+
+}
+
 get_smile_formula <- function(smile){
 
   smile.sdf <- get_smiles_sdf(smile)
@@ -593,7 +601,9 @@ make_element_table <- function(){
 
 is.isotope <- function(atoms){
 
-  make_vector(element_table$is.isotope,element_table$symbol )[atoms]
-
+  m <- make_vector(element_table$is.isotope,element_table$symbol )[atoms]
+  dim(m) <- dim(atoms)
+  dimnames(m) <- dimnames(atoms)
+  return(m)
 }
 

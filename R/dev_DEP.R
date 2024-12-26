@@ -494,6 +494,33 @@ DEP.plot.heatmap <- function(data.se,
 }
 
 
+
+DEP_plot_heatmap <- function(data.se){
+
+
+
+  col.info <-SummarizedExperiment::colData(data.se)%>%
+    as.data.frame()%>%
+    dplyr::mutate(col_group = condition,
+                  column_labels = sample.labels,
+                  column_split = group)
+  row.info <-SummarizedExperiment::rowData(data.se)%>%
+                    as.data.frame()%>%
+    dplyr::mutate(row_group = "",
+                  row_labels = label)
+
+  heatmap.matrix <-SummarizedExperiment::assay(data.se[row.info$name,col.info$ID])%>%
+    `^`(2,.)%>%t%>%scale%>%t
+
+
+
+  plotHeatmap(heatmap.matrix,col.info,row.info)
+
+
+
+}
+
+
 #' DEP_export_data
 #' wirte coldata and rowdata to excel
 #'

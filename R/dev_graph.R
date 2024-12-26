@@ -284,3 +284,19 @@ igraph_add_earrow<- function(ig,e,arrows = "to"){
 
 
 
+igraph_export <- function(ig,file){
+
+  ig.list <- list(
+    edata = edata(ig),
+    vdata = vdata(ig)
+  )
+
+  xlsx.write.list(ig.list,file )
+}
+
+igraph_import <- function(file){
+
+  vdata <- readxl::read_excel(file,sheet = "vdata")
+  edata <- readxl::read_excel(file,sheet = "edata")
+  igraph::graph.data.frame(edata,vertices = vdata)
+}

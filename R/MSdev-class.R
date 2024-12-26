@@ -26,7 +26,7 @@ setClass("MSdev",
 #' peaksData spectraNames filterPolarity rtime dataOrigin
 #' @importFrom ProtGenerics filterMsLevel filterPolarity collisionEnergy
 #' @importFrom CompoundDb compounds
-#' @importFrom ChemmineR atomcountMA MF smiles2sdf `cid<-` cid validSDF canonicalize
+#' @importFrom ChemmineR atomcountMA MF `cid<-` cid validSDF canonicalize
 #' atomblock bonds bondblock rings
 #' @importFrom MSCC chemform_adduct_check
 #' @importFrom stringr str_extract

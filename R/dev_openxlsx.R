@@ -27,7 +27,7 @@ wb_to_df <- function(wb,sheet_name = 1){
 #' @export
 #'
 
-edit_df_in_excel <- function(df,rowname = T){
+edit_df_in_excel <- function(df = data.frame(),rowname = T){
   wb <- df_to_wb(df,rowname=rowname)
   temp.xlsx <- paste0(tempdir(), "/temp_",paste0(sample(letters,5),collapse = ""),".xlsx")
   openxlsx::saveWorkbook(wb , file = temp.xlsx)

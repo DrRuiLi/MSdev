@@ -736,8 +736,7 @@ CFM_data_get_igraph <- function(object){
   ### fragment def
   {
     fragment.data <- object@fragment_define
-    fragment.sdf <- suppressWarnings(smiles2sdf(fragment.data$smiles))%>%
-      canonicalize
+    fragment.sdf <- suppressWarnings(get_smiles_sdf(fragment.data$smiles))
     fragment.data$formula <- get_sdf_formula(fragment.sdf)
 
   }
@@ -757,7 +756,7 @@ CFM_data_get_igraph <- function(object){
 
   ### igraph
   {
-    fragment.sdf <- suppressWarnings(smiles2sdf(fragment.data$smiles))
+    fragment.sdf <- suppressWarnings(get_smiles_sdf(fragment.data$smiles))
     cid(fragment.sdf) <- fragment.data$fragment_id
     fragment.igraph <- get_sdf_igraph(fragment.sdf)
     names(fragment.igraph) <- fragment.data$fragment_id
@@ -990,7 +989,7 @@ CFM_data_remove_trans <- function(object){
 
 get_CFM_data_trans_map <- function(cfmd,trans_id,iso_ele="[13]C"){
 
-  message("trans: ",trans_id)
+  #message("trans: ",trans_id)
   fragment.trans <- cfmd@fragment_transition
   fragment.igraph <- cfmd@fragment_igraph
   fragment.sdf <- cfmd@fragment_sdf

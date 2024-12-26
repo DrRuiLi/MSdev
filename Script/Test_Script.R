@@ -3711,10 +3711,55 @@ a <- add_Molecule_igraph_isotopomer(Molecule_igraph,
 # Wed Dec 18 14:54:23 2024 MFN------------------------------
 kegg.ig <- get_KEGG_Reaction_network()
 
-selected.vertex <- c("C00037","C00022","C00065","C00097",
-                     "C00036","C00025","C00031","C00197","C00051","C00024")
+selected.vertex <- c("C00022","C00668","C00085",
+                     "C00354","C00118","C00236","C00631","C00074",
+                     "C00158","C00026","C00417","C00311","C05379",
+                     #"C00065","C00097","C00037",###ser, cys
+                     #"C00051",# GSH
+                     "C00036","C00025","C00267","C00197","C00024")
 
 kegg.ig.sub <- igraph_filter_vertex(kegg.ig,
                                     selected.vertex)
+vdata(kegg.ig.sub)$label <- paste0(vdata(kegg.ig.sub)$id,
+                                   "\n",vdata(kegg.ig.sub)$label)
+vis_igraph(kegg.ig.sub)
 
 
+### gsh
+ggplot(ms2.data)+
+  geom_bar(aes(x = mz,y = abundance*100,fill = label),
+           col = "transparent",
+           width = 0.02,linewidth = 0.05,
+           stat = "identity")+
+  scale_x_continuous(expand = expansion(mult = 0.8))+
+  ggsci::scale_fill_npg()+
+  labs(x = "mz", y = "intensity" , fill = "isotopomers")+
+  theme_bw()+
+  xlim(c(220,230))
+
+
+
+# Sat Dec 21 13:33:31 2024 ------------------------------
+a <- get_MSIP_result_Statistic(msdev.13C1)%>%
+  dplyr::filter(FSIS.count > 0.5*isotopomer)
+
+ggplot(a)+
+  geom_boxplot(aes(y = str_isotope2_num(iso_count),col = iso_count,
+                   x = FSIS.count),width = 0.4,fill = "transparent",
+               show.legend = F)+
+  geom_jitter(aes(y = str_isotope2_num(iso_count),col = iso_count,
+                x = FSIS.count),show.legend = F)+
+  scico::scale_color_scico(palette = "vikO",direction = -1)+
+  labs( x = "Count of existed isotopomers", y = "Isotopologues")+
+  theme_bw()->p
+open_plot_win(p,3,4)
+
+# Tue Dec 24 19:40:13 2024 ------------------------------
+
+gsh.smiles <- "C(CC(=O)N[C@@H](CS)C(=O)NCC(=O)O)[C@@H](C(=O)O)N"
+Molecule_igraph <- get_Molecule_igraph_from_smiles(gsh.smiles)
+
+vis_Molecule_igraph(Molecule_igraph,show_id = T)
+
+# Thu Dec 26 23:09:26 2024 ------------------------------
+ig <- igraph_import("c:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/Glucose_to_glutatmate.network.xlsx")

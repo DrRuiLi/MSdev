@@ -421,7 +421,7 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
 
                           column_labels = col.info$column_labels,
                           column_names_rot =- 45,
-                          row_labels = str_short(row.info$row_labels,20),
+                          row_labels = str_short(row.info$row_labels,50),
                           row_names_side = "left",
                           row_names_gp = grid::gpar(fontsize= 6),
                           column_names_gp  = grid::gpar(fontsize= 6),

@@ -1114,6 +1114,106 @@ get_MSIP_fragment_Statistic <- function(object){
 }
 
 
+get_MSIP_result_Statistic <- function(object,
+                                      include.merged = F,
+                                      show_message = F){
+
+  iso.data <- object@statData$MSIP$isotopologues_data
+  iso_ele <- get_MSdev_iso_ele(object)
+  target_ele <- get_ele_uniso(iso_ele)
+  all.sample <- .get_MSIP_tracer(object)%>%names()
+  #traced.sample <- names(na.omit(all.sample))
+
+
+  comp.eval.list <- list()
+  for (i in seq_along(iso.data)) {
+
+    cfmd <- iso.data[[i]][[grep("CFM",names(iso.data[[i]]),value = T)[1]]]
+    if (is.null(cfmd)) next
+    cfmd.ig <- get_cfm_data_sdf_igraph(cfmd)
+    this.atom <- get_sdf_igraph_atom(cfmd.ig,ele = target_ele)
+    this.ele.count <-length(this.atom)
+    iso_count <- names(iso.data[[i]]$Spectra)%>%
+      str_isotope2_num()
+
+
+    natural.ratio.matrix <- iso.data[[i]]$compound_info$natural_matrix
+    ms2_count.matrix <- iso.data[[i]]$compound_info$ms2_count
+    comp.eval <- expand.grid(
+      feature_id = names(iso.data)[i],
+      name = iso.data[[i]]$compound_info$name,
+      compound_id = iso.data[[i]]$compound_info$compound_id,
+      iso_count = iso_count,
+      target_ele_count =this.ele.count,
+      samples = all.sample,
+      stringsAsFactors =F,
+      merged = iso.data[[i]]$compound_info$merged
+    )%>%
+      dplyr::mutate(isotopomer = choose(target_ele_count ,iso_count ))%>%
+      dplyr::rowwise()%>%
+      dplyr::mutate(natural.ratio =
+                      get_matrix_value_fill_with_NA(natural.ratio.matrix,
+                                                    str_isotope2_num(iso_count),
+                                                    paste0(samples)),
+                    ms2.count =
+                      get_matrix_value_fill_with_NA(ms2_count.matrix,
+                                                    str_isotope2_num(iso_count),
+                                                    paste0(samples)),
+                    solved = F,
+                    FSIS.count = NA)%>%
+      dplyr::ungroup()%>%
+      dplyr::filter(!is.na(ms2.count))
+    for (j in 1:nrow(comp.eval)) {
+      msip.core <- iso.data[[i]][["MSIP_result"]][[str_isotope2_num(comp.eval$iso_count[j])]][[
+        comp.eval$samples[j]]]
+      comp.eval$solved[j] <-!is.null(msip.core)
+      comp.eval$FSIS.exist <- NA
+      comp.eval$isotopomer.exist <- NA
+      if (comp.eval$solved[j]) {
+        if(!isEmpty(msip.core@solve$MSIPIsotopomerMap)){
+          #length(msip.core@solve$MSIPIsotopomerMap@)
+          comp.eval$FSIS.count[j] <-length(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set)
+          comp.eval$FSIS.exist[j]  <- sum(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob>0.00001)
+          comp.eval$isotopomer.exist[j] <- sum(msip.core@solve$MSIPIsotopomerMap@isotopomer.probability>0.00001)
+        }
+      }
+    }
+    if (show_message) {
+
+      message(names(iso.data)[i],", Total ",this.ele.count," ", target_ele)
+      mes <- paste0("M",comp.eval$iso_count,", isoforms: ",
+                    comp.eval$isotopomer)%>%
+        paste0(collapse = "\n")
+      message(mes)
+      message("")
+    }
+
+
+
+
+    comp.eval.list[[i]] <-comp.eval
+
+  }
+
+  sample.tracer <- .get_MSIP_tracer(object)
+  comp.eval <- do.call(rbind,comp.eval.list)%>%
+    dplyr::filter(ms2.count>0)%>%
+    dplyr::mutate(traced = case_when(
+      is.na(sample.tracer[samples] )~F,
+      T~T))
+  if(include.merged){
+    comp.eval <- comp.eval
+  }else{
+    comp.eval <- comp.eval%>%
+      dplyr::filter(!merged)
+  }
+
+  return(invisible( comp.eval ))
+
+}
+
+
+
 get_MSIP_weight_fun <- function(object){
 
   msmodel <- object@projectInfo$msModel
