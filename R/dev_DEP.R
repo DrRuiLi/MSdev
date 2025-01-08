@@ -588,7 +588,7 @@ DEP_pathway_enrich <- function(data.se,
                                         contrast = contrast,
                                         keep.all = T)%>%
         dplyr::filter(significant)%>%
-        dplyr::pull(kegg.id)%>%
+        dplyr::pull(kegg_id)%>%
       analyzePathwayHyperTest()
 
   }
@@ -597,7 +597,7 @@ DEP_pathway_enrich <- function(data.se,
     data.se <- data.se[!is.na(rowData(data.se)$kegg.id),
                        data.se$condition%in% strsplit(contrast,"_vs_")[[1]]]
     pathway.matrix <- assay(data.se)
-    rownames(pathway.matrix) <- rowData(data.se)$kegg.id
+    rownames(pathway.matrix) <- rowData(data.se)$kegg_id
     pathway.table <-  analyzePathwayGlobalTest(t(pathway.matrix) ,data.se$condition)
 
 

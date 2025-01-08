@@ -1305,3 +1305,137 @@
 
 
 }
+
+# Fri Dec 27 12:22:34 2024 ZQ lipidomic------------------------------
+{
+
+  MSdev.ZJ  <- MSdev("D:/ZQ/data/")
+  MSdev.ZJ <- load_as_var("D:/ZQ/MSdev_2024_12_27.Rdata")
+  MSdev.ZJ <- MSdev_msConvert(MSdev.ZJ)
+  MSdev.ZJ <- MSdev_checkSampleInfo(MSdev.ZJ)
+  MSdev.ZJ <- MSdev_update_xcms_pdata(MSdev.ZJ)
+  MSdev.ZJ <- MSdev_xcmsProcessing(MSdev.ZJ)
+  MSdev.ZJ <- MSdev_extract_Spectra(MSdev.ZJ)
+  MSdev.ZJ <- MSdev_match_Spectra_to_feature(MSdev.ZJ)
+  MSdev.ZJ <- MSdev_annotation(MSdev.ZJ,
+                               cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast.sqlite",
+                               selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
+  MSdev.ZJ <- MSdev_get_Stat(MSdev.ZJ,candi = F,polarity_paired = F,QC_RSD = 10)
+  MSdev_export(MSdev.ZJ,candi = F)
+  MSdev_save(MSdev.ZJ)
+
+  ### Tumor
+  {
+
+    proj.dir <- MSdev.ZJ@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(MSdev.ZJ,from = "metabolite")
+    data.se <- data.se[,grepl(data.se$group,pattern = "Tumor") ]
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3)
+
+
+    ### sample_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank","A0")]
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+    data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+    hm <- DEP.plot.heatmap(data.diff)
+    export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 6,height = 15,append = T)
+
+
+  }
+
+
+
+}
+
+# Sat Dec 28 14:13:10 2024 ZJ Metabolomics------------------------------
+{
+  msdev.zj <- MSdev("d:/2024_12_28-Zhujing/data/")
+  msdev.zj <- load_as_var("d:/2024_12_28-Zhujing/MSdev_2024_12_28.Rdata")
+  msdev.zj <- MSdev_msConvert(msdev.zj)
+  msdev.zj <- MSdev_checkSampleInfo(msdev.zj)
+  msdev.zj <- MSdev_xcmsProcessing(msdev.zj)
+  msdev.zj <- MSdev_extract_Spectra(msdev.zj)
+  msdev.zj <- MSdev_match_Spectra_to_feature(msdev.zj)
+  msdev.zj <- MSdev_annotation(msdev.zj,
+                                expand_adduct= T,
+                                cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+  msdev.zj <- MSdev_get_Stat(msdev.zj,QC_RSD = Inf)
+  MSdev_save(msdev.zj)
+  MSdev_export(msdev.zj)
+
+
+
+  {
+
+    proj.dir <- msdev.zj@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(msdev.zj,from = "metabolite")
+    #data.se <- data.se[,grepl(data.se$group,pattern = "Tumor") ]
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3)
+
+
+    ### sample_p
+   # data.se <- data.se[,!data.se$condition%in%c("QC","Blank","A0")]
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+    #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+    hm <- DEP.plot.heatmap(data.diff)
+    export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 6,height = 15,append = T)
+
+    data.path <- DEP_pathway_enrich(data.diff,contrast = "all")
+    xlsx.write.list(
+      data.path,
+      file =paste0(proj.dir,"/Statistic/pathway.xlsx")
+    )
+  }
+
+
+}

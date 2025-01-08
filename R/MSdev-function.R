@@ -1597,6 +1597,7 @@ MSdev_annotation <- function(object,
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    if (is.null(xcms.xcms)) next
     message_with_time("Find MS1 candidate...")
     xcms.xcms <- xcms_get_feature_ms1_candidate(xcms.xcms,
                                                 cpdb,
@@ -1646,13 +1647,14 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
                            keys = c("name","formula",
                                     "kegg_id",
                                     "inchikey","lipidclass"),
+                           polarity_paired = T,
                            candi = F){
 
   ### make se
   {
 
     sample.info <- object@sampleInfo%>%
-      dplyr::filter(polarity_paired)
+      dplyr::filter(polarity_paired|(!polarity_paired))
     col.order <- sample.info%>%
       dplyr::distinct(sample.name)%>%
       dplyr::pull(sample.name)
@@ -1677,6 +1679,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
       se[[pol]]$ExpTime<- NULL
     }
     feature.se <- do.call("rbind",se)
+    #feature.se <- se[[2]]
   }
 
   ### formate
@@ -1858,6 +1861,7 @@ MSdev_update_xcms_pdata <- function(object,
     ###XCMSnExp
     if(XCMSnExp){
       xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+      if (is.null(xcms.xcms)) next
       xcms.pdata <- Biobase::pData(xcms.xcms)%>%
         dplyr::mutate(sample_info[match(msData.files,
                                         sample_info$msData.files),  ])

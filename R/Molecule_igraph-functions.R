@@ -1,57 +1,60 @@
 get_Molecule_igraph_from_sdf <- function(sdf = sdfsample) {
-  .f <- function(sdf) {
 
-
-    atom.block <- atomblock(sdf) %>%
-      as.data.frame() %>%
-      rownames_to_column("id") %>%
-      dplyr::mutate(name = id,
-                    bonds(sdf),
-                    element = atom,
-                    x = C1,
-                    y = C2,
-                    .before = id)
-
-    bond.block  <- bondblock(sdf) %>%
-      as.data.frame() %>%
-      dplyr::mutate(from = atom.block$id[C1],
-                    to = atom.block$id[C2],
-                    bond_type = C3,
-                    .before = C1)
-
-    sdf.igraph <- igraph::graph_from_data_frame(bond.block, vertices = atom.block)
-
-    isotopomer.df <-  make_vector(atom.block$element,atom.block$id)%>%
-      as.list()%>%
-      as.data.frame()%>%
-      dplyr::mutate(isotopomer = "natural",
-                    isotopologue = "M0",
-                    label = "natural",
-                    abundance = 1,
-                    .before = everything()
-                    )
-    rownames(isotopomer.df) <- isotopomer.df$isotopomer
-    Molecule_igraph <- new("Molecule_igraph",
-                           sdf = sdf, igraph = sdf.igraph,isotopomer = isotopomer.df)
-    Molecule_igraph@molecule_info$smiles <- unname(as.character(get_sdf_smiles(sdf)))
-    return(Molecule_igraph)
-  }
 
   if (class(sdf) == "SDF")
-    Molecule_igraphs <- .f(sdf)
+    Molecule_igraphs <- sdf_to_Molecule_igraph(sdf)
 
 
   if (class(sdf) == "SDFset") {
     Molecule_igraphs <- list()
     sdf.valid <- validSDF(sdf)
     for (i in 1:length(sdf)) {
-      Molecule_igraphs[[i]] <- .f(sdf[[i]])
+      Molecule_igraphs[[i]] <- sdf_to_Molecule_igraph(sdf[[i]])
     }
     names(Molecule_igraphs) <- cid(sdf)
   }
 
   return(Molecule_igraphs)
 
+}
+
+
+sdf_to_Molecule_igraph <- function(sdf) {
+
+
+  atom.block <- atomblock(sdf) %>%
+    as.data.frame() %>%
+    rownames_to_column("id") %>%
+    dplyr::mutate(name = id,
+                  bonds(sdf),
+                  element = atom,
+                  x = C1,
+                  y = C2,
+                  .before = id)
+
+  bond.block  <- bondblock(sdf) %>%
+    as.data.frame() %>%
+    dplyr::mutate(from = atom.block$id[C1],
+                  to = atom.block$id[C2],
+                  bond_type = C3,
+                  .before = C1)
+
+  sdf.igraph <- igraph::graph_from_data_frame(bond.block, vertices = atom.block)
+
+  isotopomer.df <-  make_vector(atom.block$element,atom.block$id)%>%
+    as.list()%>%
+    as.data.frame()%>%
+    dplyr::mutate(isotopomer = "natural",
+                  isotopologue = "M0",
+                  label = "natural",
+                  abundance = 1,
+                  .before = everything()
+    )
+  rownames(isotopomer.df) <- isotopomer.df$isotopomer
+  Molecule_igraph <- new("Molecule_igraph",
+                         sdf = sdf, igraph = sdf.igraph,isotopomer = isotopomer.df)
+  Molecule_igraph@molecule_info$smiles <- unname(as.character(get_sdf_smiles(sdf)))
+  return(Molecule_igraph)
 }
 
 
@@ -62,134 +65,23 @@ get_Molecule_igraph_from_smiles <- function(smiles) {
 }
 
 
-
-setMethod(
-  "show",
-  "Molecule_igraph",
-  definition = function(object) {
-    print(paste0("Molecule_igraph: ", unname(MF(object@sdf, addH =  T))))
-  }
-)
-
-setGeneric(
-  "vdata",
-  def = function(object) {
-    igraph::as_data_frame(object, "vertices")
-  }
-)
-setMethod(
-  "vdata",
-  "Molecule_igraph",
-  definition = function(object) {
-    vdata(object@igraph)
-  }
-)
-
-
-
-setGeneric(
-  "vdata<-",
-  def = function(object, value) {
-    igraph::vertex.attributes(object) <- as.list(value)
-    object
-  }
-)
-
-setMethod(
-  "vdata<-",
-  "Molecule_igraph",
-  definition = function(object, value) {
-    vdata(object@igraph) <- value
-    object
-  }
-)
-
-
-setGeneric(
-  "edata",
-  def = function(object) {
-    igraph::as_data_frame(object, "edges")
-  }
-)
-setMethod(
-  "edata",
-  "Molecule_igraph",
-  definition = function(object) {
-    edata(object@igraph)
-  }
-)
-
-
-
-setGeneric(
-  "edata<-",
-  def = function(object, value) {
-    value <- value[, !grepl("from|to", colnames(value))]
-    igraph::edge.attributes(object) <- as.list(value)
-    object
-  }
-)
-setMethod(
-  "edata<-",
-  "Molecule_igraph",
-  definition = function(object, value) {
-    edata(object@igraph) <- value
-    object
-  }
-)
-
-
-
-
-
-setMethod(
-  f = "plot",
-  signature = "Molecule_igraph",
-  definition = function(object,x,y) {
-    plot(object@sdf)
-    invisible()
-  }
-)
-
-
-setGeneric("atom",
-           def = function(object,
-                          element = element_table$element){
-    rownames(atomblock(object))[bonds(object)$atom%in%element ]
-  }
-)
-
-setMethod("atom",
-          "Molecule_igraph",
-          definition = function(object,
-                                element = element_table$element){
-            vdata(object)%>%
-              dplyr::filter(element %in% !!element)%>%
-              dplyr::pull(name)
-          })
-
-setGeneric("element",
-           def = function(object,...){
-             bonds(object)$atom
-           }
-)
-
-setMethod("element",
-          "Molecule_igraph",
-          definition = function(object,...){
-            vdata(object)%>%
-              dplyr::pull(element)
-          })
-
-
-setMethod("formula","Molecule_igraph",
-          definition = function(x,...){
-            unname(MF(x@sdf,addH = T))
-          })
-
-add_Molecule_igraph_isotopomer <- function(
+#'  Add isotopomer
+#' @describeIn Molecule_igraph Add isotopomer
+#'
+#' @param Molecule_igraph `Molecule_igraph`
+#' @param isotopomer isotopomer name
+#' @param iso_vec isotope of atom, such as c("C_1" = "[13]C")
+#' @param abundance number
+#'
+#' @returns `Molecule_igraph`
+#' @export
+#'
+Molecule_igraph_add_isotopomer <- function(
     Molecule_igraph , isotopomer = NULL,iso_vec = NULL,abundance=NA){
 
+  if (identical(iso_vec,"all_C")) {
+    iso_vec <- make_vector("[13]C",atom(glu.mi,"C"))
+  }
 
   iso_label <- split(names(iso_vec),iso_vec)
   iso_label <- sapply(seq_along(iso_label),function(x){
@@ -214,7 +106,7 @@ add_Molecule_igraph_isotopomer <- function(
                        abundance = abundance
                        )
   rownames(to.add) <- to.add$isotopomer
-  isotopomer.df <- bind_rows(isotopomer.df,to.add)
+  isotopomer.df[isotopomer,names(to.add)] <- to.add
   isotopomer.df[isotopomer,atom(Molecule_igraph)] <- ele_vec
 
   isotopomer.df -> Molecule_igraph@isotopomer
@@ -323,8 +215,8 @@ vis_Molecule_igraph <- function(Molecule_igraph,show_id = F){
 
 
   vis_igraph(Molecule_igraph.formated) %>%
-    visPhysics(enabled = F) %>%
-    visOptions(width = "100%", height = "100%")
+    visNetwork::visPhysics(enabled = F) %>%
+    visNetwork::visOptions(width = "100%", height = "100%")
 
 }
 
@@ -356,5 +248,180 @@ Molecule_igraph_vis_format <- function(Molecule_igraph){
   return(Molecule_igraph)
 
 }
+
+
+
+get_Molecule_atom_transfer_by_map <- function(mol.ig.from,
+                                              mol.ig.to){
+
+
+
+  sdf.parent <- mol.ig.from@sdf
+  sdf.product <- mol.ig.to@sdf
+  ig.parent <- mol.ig.from@igraph
+  ig.product <- mol.ig.to@igraph
+
+  ### mcs map
+  {
+    mcs <- fmcsR::fmcs(sdf.parent,
+                       sdf.product,bu = 10)
+    mcs.map <- get_mcs_atom_map(mcs)
+    #mcs.map <- mcs.map.filter.duplicate(mcs.map,target_ele = get_ele_uniso(iso_ele))
+  }
+
+
+  ### complement mcs map
+  {
+    atom.map.matrix <- matrix(nrow = length(mcs.map),
+                              ncol = length(atom(sdf.product)),
+                              dimnames = list(seq_along(mcs.map),
+                                              atom(sdf.product)))
+    ring.diff <- length(rings(sdf.parent))- length(rings(sdf.product))
+    bond.score <- rep(0,length(mcs.map))
+    for (j in seq_along(mcs.map)) {
+      this.map <- mcs.map[[j]]
+      this.mapv <-this.map$mc1.atom
+      names(this.mapv) <- this.map$mc2.atom
+      this.mapv <- this.mapv[atom(sdf.product)]
+      names(this.mapv) <- atom(sdf.product)
+
+
+      ### ring re-assign
+      {
+        ring.solved <- F
+        if (ring.diff&sum(is.na(this.mapv))) {
+          ring.atom <- unname(unlist(rings(sdf.parent)))
+          ring.atom.to.assign <- ring.atom[!ring.atom%in% this.mapv]
+          ring.atom.to.assign <- unique(ring.atom.to.assign)
+          adj <- sapply(ring.atom.to.assign,function(x){
+            #x <- ring.atom.to.assign
+            x.adj <- names(V(ig.parent))[distances(ig.parent,x)==1]
+            x.adj <- x.adj[x.adj%in%this.mapv]
+            y.adj <- names(this.mapv)[match(x.adj,this.mapv)]
+            y.candi <-apply(distances(ig.product,y.adj),1,function(z){
+              zz <- names(z)[which(z==1)]
+              zz[!zz%in% names(na.omit(this.mapv))&
+                   str_extract(zz,"[:alpha:]*")==str_extract(x,"[:alpha:]*")]
+            })%>%unlist()%>%unique()
+            #message("ring candi: ",length(y.candi))
+            unname(y.candi[1])
+          })
+
+          adj <- na.omit(unlist(adj))
+          this.mapv[adj] <- names(adj)
+          ring.solved <- ifelse(length(adj),T,F)
+        }
+
+      }
+
+      ### ring nearest
+      {
+        if (ring.diff&sum(is.na(this.mapv))&ring.solved){
+          #
+          ring.nearest.to.assign <-apply(distances(ig.parent,ring.atom),
+                                         1,function(z){
+                                           zz <- names(z)[which(z==1)]
+                                           zz[!zz%in% (na.omit(this.mapv))]
+                                         })%>%unlist()%>%unique()
+
+          adj <- sapply(ring.nearest.to.assign,function(x){
+            #x <- ring.nearest.to.assign
+            x.adj <- names(V(ig.parent))[distances(ig.parent,x)==1]
+            x.adj <- x.adj[x.adj%in%this.mapv & x.adj%in%ring.atom]
+            y.adj <- names(this.mapv)[match(x.adj,this.mapv)]
+            y.candi <-apply(distances(ig.product,y.adj),1,function(z){
+              zz <- names(z)[which(z==1)]
+              zz[!zz%in% names(na.omit(this.mapv))&
+                   str_extract(zz,"[:alpha:]*")==str_extract(x,"[:alpha:]*")]
+            })%>%unlist()%>%unique()
+            #message("ring nearest candi: ",length(y.candi))
+            unname(y.candi[1])
+          })
+
+          adj <- na.omit(unlist(adj))
+          this.mapv[adj] <- names(adj)
+
+
+        }
+
+      }
+
+      ### non-match nearest
+      {
+
+        if (sum(is.na(this.mapv))) {
+          non.match.to.assign <- setdiff(atom(sdf.parent),this.mapv)
+          adj <- sapply(non.match.to.assign,function(x){
+            #x <- non.match.to.assign
+            x.adj <- names(V(ig.parent))[distances(ig.parent,x)==1]
+            x.adj <- x.adj[x.adj%in%this.mapv]
+            y.adj <- names(this.mapv)[match(x.adj,this.mapv)]
+            y.candi <-apply(distances(ig.product,y.adj),1,function(z){
+              zz <- names(z)[which(z==1)]
+              zz[!zz%in% names(na.omit(this.mapv))&
+                   str_extract(zz,"[:alpha:]*")==str_extract(x,"[:alpha:]*")]
+            })%>%unlist()%>%unique()
+            #message("non match nearest candi: ",length(y.candi))
+            unname(y.candi[1])
+          })
+
+          adj <- na.omit(unlist(adj))
+          this.mapv[adj] <- names(adj)
+
+        }
+
+      }
+
+      ### bond diff
+      {
+        temp.map <- na.omit(this.mapv)
+        temp.map.t <- make_vector(names(temp.map),temp.map)
+        ig.sub <- igraph_filter_distance(ig.parent,from = temp.map,dis = 1)
+
+        m1 <- igraph::as_adjacency_matrix(ig.sub,
+                                          attr = "bond_type",sparse = F)
+        m1 <- m1+t(m1)
+        m2 <- igraph::as_adjacency_matrix(ig.product,
+                                          attr = "bond_type",sparse = F)[names(temp.map),names(temp.map)]
+        m2 <- m2 + t(m2)
+        m2 <- get_matrix_value_fill_with_NA(
+          m2,temp.map.t[rownames(m1)],temp.map.t[colnames(m1)])
+        m2[is.na(m2)] <- 0
+        bond.score[j] <- 1- sum((m1-m2)!=0)/sum(m1!=0)
+
+
+      }
+      #p<-vis_sdf_igraph_compare(ig.parent,ig.product,temp.map,names(temp.map),show.label = T)
+
+      atom.map.matrix[j,] <- this.mapv
+
+
+    }
+  }
+
+
+  ### class
+  {
+
+    atom.map.sum <- data.frame(
+      from.smiles = mol.ig.from@molecule_info$smiles,
+      to.smiles = mol.ig.to@molecule_info$smiles,
+      transfer = paste0("Atom_map",num2str(1:nrow(atom.map.matrix)))
+    )
+
+    rownames(atom.map.matrix) <- atom.map.sum$transfer
+
+
+    new("Molecule_atom_transfer",
+        transfer_def = atom.map.sum,
+        transfer_matrix = atom.map.matrix)
+
+
+
+  }
+
+}
+
+
 
 

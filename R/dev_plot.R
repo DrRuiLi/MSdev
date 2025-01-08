@@ -99,7 +99,7 @@ export_graph2pdf <- function(p ,
                              append = F,
                              ...
                              ){
-
+  dir.exists(dirname(file_path))
   if("list" %in% class(p)){
     if((!append) & file.exists(file_path)){
       pdf(file_path)

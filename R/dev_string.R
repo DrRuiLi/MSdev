@@ -77,7 +77,11 @@ str_extract_num <- function(x){
     as.numeric()
 }
 
+str_date <- function(){
 
+  format(Sys.time(),"%Y%m%d")
+
+}
 
 str_add <- function(x , n = 1, add.type = "numeric"){
 

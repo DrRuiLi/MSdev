@@ -4,7 +4,7 @@
 \alias{edit_df_in_excel}
 \title{edit_df_in_excel}
 \usage{
-edit_df_in_excel(df, rowname = T)
+edit_df_in_excel(df = data.frame(), rowname = T)
 }
 \arguments{
 \item{df}{data.frame}
