@@ -232,8 +232,8 @@ vis_add_arrow_icon <- function(vis,
 vis_igraph <- function(ig){
 
   visNetwork::visNetwork(nodes = vdata(ig),edges = edata(ig))%>%
-    visNetwork::visOptions(width = "200%",
-                           height = "200%")
+    visNetwork::visOptions(width = "100%",
+                           height = "100%")
 
 }
 

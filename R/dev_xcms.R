@@ -481,7 +481,7 @@ plot_XChromatograms <- function(xchroms ,
   color_by = match.arg(color_by)
 
   if (norm) {
-    xchroms <- normalise(xchroms)
+    xchroms <- MSnbase::normalise(xchroms)
     chrom.data <- get_chroms_data(xchroms)%>%
       dplyr::mutate(intensity = intensity*100)
   }else{
@@ -2339,7 +2339,7 @@ cbind_Chromatograms <- function(...){
                               function(x)x@.Data)
   chrom.processHistory<- sapply(chrom.list,
                               function(x)x@.processHistory)[1]
-  xchrom <-XChromatograms(chrom.Data,
+  xchrom <-xcms::XChromatograms(chrom.Data,
                      ncol = ncol(chrom.Data),
                      phenoData = chrom.phenoData)
   xchrom@featureDefinitions <- chrom.featureDefinitions

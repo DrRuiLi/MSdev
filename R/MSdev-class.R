@@ -18,7 +18,7 @@ setClass("MSdev",
 #' @importFrom xcms filepaths mzrange plotSpec noise filterFile dirname chromPeaks
 #' featureDefinitions polarity `featureDefinitions<-` featureValues featureChromatograms
 #' @importFrom MSnbase readMSData sampleNames fileNames
-#' @importFrom BiocParallel SnowParam SerialParam bpmapply bplapply snowWorkers
+#' @importFrom BiocParallel SnowParam SerialParam bpmapply bplapply snowWorkers register
 #' @importFrom tibble tibble as.tibble rownames_to_column remove_rownames
 #' @importFrom S4Vectors isEmpty
 #' @importFrom Biobase pData fData
@@ -33,7 +33,7 @@ setClass("MSdev",
 #' @importFrom plotly layout
 #' @importFrom SummarizedExperiment rowData colData assay `rowData<-` `colData<-` `assay<-`
 #' @importFrom shiny shinyApp fluidPage fluidRow
-#' checkboxInput selectInput navbarPage
+#' checkboxInput selectInput navbarPage runApp
 #' column h1 h3 h4 br wellPanel
 #' @importFrom plotly add_markers plot_ly add_pie add_segments
 #' event_data add_text add_lines

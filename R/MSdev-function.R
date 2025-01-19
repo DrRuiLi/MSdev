@@ -1948,3 +1948,75 @@ MSdev_get_feature_chrom <- function(object,feature.list =NULL){
   return(object)
 
 }
+
+
+
+get_MSdev_isotopologues_data <- function(object){
+
+
+ data.list <- list()
+
+  for (i in 0:1) {
+    pol <- ifelse(i==0,"Negative","Positive")
+    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+
+    xcms.fdf.iso <- featureDefinitions(xcms.xcms)%>%
+      as.data.frame()%>%
+      dplyr::mutate(is_seed = feature_id %in% iso_seed)%>%
+      dplyr::filter(!is.na(iso_seed))
+
+    xcms.fdf.iso[!xcms.fdf.iso$is_seed,
+                 c("compound_id","name","adduct","score",
+                   "mz_ref","rt_ref","formula","smiles")] <- NA
+
+    xcms.fdf.iso <- xcms.fdf.iso%>%
+      dplyr::group_by(iso_seed)%>%
+      dplyr::mutate(
+        is_isotopologues = !is.na(iso_seed)&any(!is.na(compound_id)),
+        formula_max_iso_count = get_formula_ele_count(formula))%>%
+      dplyr::mutate(
+        formula_max_iso_count = na.unique(formula_max_iso_count),
+        iso_seed = case_when(iso_count > formula_max_iso_count~ NA,
+                             T~iso_seed),
+        iso_count = case_when(iso_count > formula_max_iso_count~ NA,
+                              T~iso_count))%>%
+      dplyr::ungroup()%>%
+      dplyr::group_by(iso_seed)%>%
+      dplyr::mutate(
+        compound_id = na.unique(compound_id),
+        name = na.unique(name),
+        adduct = na.unique(adduct),
+        formula = na.unique(formula),
+        smiles = na.unique(smiles))%>%
+      dplyr::filter(!is.na(compound_id))
+
+    natural_prob <- mapply(iso_count = xcms.fdf.iso$iso_count,
+           C_count = xcms.fdf.iso$formula_max_iso_count,
+           FUN = iso_prob)
+    xcms.fdf.iso$natural_prob <- natural_prob
+
+    iso.fraction <- get_xcms_iso_fraction(xcms.xcms)
+    iso.fraction <- iso.fraction[xcms.fdf.iso$feature_id,]
+
+    val <- featureValues(xcms.xcms)[xcms.fdf.iso$feature_id,]
+    colnames(val) <- paste0("int_",pData(xcms.xcms)$sample.name)
+
+    frac <- iso.fraction
+    colnames(frac) <- paste0("fraction_",pData(xcms.xcms)$sample.name)
+
+    adj <- iso.fraction - natural_prob
+    adj[adj<0] <- 0
+    colnames(adj) <- paste0("fraction_adjusted_",pData(xcms.xcms)$sample.name)
+
+    data <- cbind(xcms.fdf.iso,val,frac,adj)
+    data.list[[pol]] <- data
+
+  }
+
+  do.call(rbind,data.list)
+
+
+
+}
+
+

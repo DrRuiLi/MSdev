@@ -44,9 +44,9 @@ sdf_to_Molecule_igraph <- function(sdf) {
   isotopomer.df <-  make_vector(atom.block$element,atom.block$id)%>%
     as.list()%>%
     as.data.frame()%>%
-    dplyr::mutate(isotopomer = "natural",
+    dplyr::mutate(isotopomer = "base",
                   isotopologue = "M0",
-                  label = "natural",
+                  label = "base",
                   abundance = 1,
                   .before = everything()
     )
@@ -251,9 +251,19 @@ Molecule_igraph_vis_format <- function(Molecule_igraph){
 
 
 
+#' @title Auto map atom structure
+#' @description
+#' return a matrix, column as atom of `to`, row as multiple map, value as atom of `from`
+#'
+#' @param mol.ig.from Molecule_igraph
+#' @param mol.ig.to Molecule_igraph
+#'
+#' @returns `matirx`, column as atom of `to`, row as multiple map, value as atom of `from`
+#' @export
+#'
 get_Molecule_atom_transfer_by_map <- function(mol.ig.from,
-                                              mol.ig.to){
-
+                                              mol.ig.to,
+                                              target_ele = element_table$element){
 
 
   sdf.parent <- mol.ig.from@sdf
@@ -273,9 +283,9 @@ get_Molecule_atom_transfer_by_map <- function(mol.ig.from,
   ### complement mcs map
   {
     atom.map.matrix <- matrix(nrow = length(mcs.map),
-                              ncol = length(atom(sdf.product)),
+                              ncol = length(atom(sdf.product,element = target_ele)),
                               dimnames = list(seq_along(mcs.map),
-                                              atom(sdf.product)))
+                                              atom(sdf.product,element = target_ele)))
     ring.diff <- length(rings(sdf.parent))- length(rings(sdf.product))
     bond.score <- rep(0,length(mcs.map))
     for (j in seq_along(mcs.map)) {
@@ -391,12 +401,12 @@ get_Molecule_atom_transfer_by_map <- function(mol.ig.from,
 
 
       }
-      #p<-vis_sdf_igraph_compare(ig.parent,ig.product,temp.map,names(temp.map),show.label = T)
 
-      atom.map.matrix[j,] <- this.mapv
+      atom.map.matrix[j,] <- this.mapv[atom(sdf.product,element = target_ele)]
 
 
     }
+    atom.map.matrix <- unique(atom.map.matrix)
   }
 
 
@@ -421,6 +431,75 @@ get_Molecule_atom_transfer_by_map <- function(mol.ig.from,
   }
 
 }
+
+
+vis_Molecule_atom_transfer <- function(mat,id = 1){
+
+  ### mol.ig
+  {
+    smiles.from <- unique(mat@transfer_def$from.smiles)
+    smiles.to<- unique(mat@transfer_def$to.smiles)
+
+    mig.from <- get_Molecule_igraph_from_smiles(smiles.from)
+    mig.to <- get_Molecule_igraph_from_smiles(smiles.to)
+
+  }
+
+  ### transfer
+  {
+    #get_Molecule_atom_transfer_by_map(mig.from,mig.to)
+    transfer <- mat@transfer_matrix[id,]
+    transfer <- transfer[!is.na(transfer)]
+  }
+
+  ### highlight
+  {
+    mig.from <- mig.from%>%
+      Molecule_igraph_vis_format()%>%
+      sdf_igraph_add_background_color(value = make_vector(0.5,transfer))
+    mig.to <- mig.to%>%
+      Molecule_igraph_vis_format()%>%
+      sdf_igraph_add_background_color(value = make_vector(0.5,names(transfer)))
+  }
+
+
+  ### merge graph
+  {
+
+    ig.merge <- sdf_igraph_merge(mig.from,mig.to)
+
+    for (atom in names(transfer)) {
+      ig.merge <- igraph::add_edges(ig.merge,
+                                    edges = c(paste0("A_",transfer[atom] ),
+                                      paste0("B_",atom)) ,
+                                    attr = list(smooth.enabled = T,
+                                                smooth.type = "dynamic",
+                                                group = "atom_transfer",
+                                                width = 8,
+                                                #color = "rgba(88, 203, 202, 0.5)",
+                                                color = "#54BFBF",
+                                                arrows.to = T,
+                                                smooth.roundness = 0.5,
+                                                shadow = T,
+                                                dashes = I(list(c(10,20))))
+                                    )
+    }
+
+  }
+
+
+  ### Vis
+
+
+  vis_igraph(ig.merge)
+
+
+
+
+}
+
+
+
 
 
 

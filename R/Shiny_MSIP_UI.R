@@ -125,7 +125,7 @@ MSIP_shiny_ui <- function() {
                 label = "Possible fragment structure",
                 choices = NULL
               ),
-              fluidRow(align = "center", textOutput(outputId = "frag_formula")),
+              fluidRow(align = "center", shiny::textOutput(outputId = "frag_formula")),
               visNetwork::visNetworkOutput(outputId = "frag_graph")
             ))
           ),
@@ -233,6 +233,65 @@ MSIP_shiny_Acq_ui <- function() {
       )
     )
 
+
+  )
+
+}
+
+
+
+MFN_manul_Shiny_ui <- function(){
+
+
+  fluidPage(
+    title = "Mannual Atom transfer",
+    fluidRow(verbatimTextOutput(outputId = "test_output")),
+    fluidRow(
+
+      column(6,
+             visNetwork::visNetworkOutput(
+               outputId = "Metabolic_flux_network_vis",
+               height = "800px", width = "100%"
+             ),
+             tags$style(
+               HTML("
+          #Metabolic_flux_network_vis {
+            border: 3px solid #000; /* Black border */
+            border-radius: 10px;    /* Rounded corners */
+            padding: 5px;          /* Optional padding */
+          }
+        ")
+             )
+      ),
+      column(6,
+             fluidRow(
+               selectInput(inputId = "Atom_transfer_id",
+                           label = "Select a transfer",
+                           choices = "")
+             ),
+             fluidRow(
+               visNetwork::visNetworkOutput(
+                 outputId = "Atom_transfer_vis",
+                 height = "400px", width = "100%"
+               )
+             ),
+             fluidRow(
+               verbatimTextOutput("Reaction_info")
+             ),
+             fluidRow(
+               actionButton(inputId = "save_buttion",label = "Export")
+             ),
+             tags$style(
+               HTML("
+          #Atom_transfer_vis {
+            border: 3px solid #000; /* Black border */
+            border-radius: 10px;    /* Rounded corners */
+            padding: 5px;          /* Optional padding */
+          }
+        ")
+             )
+      )
+    )
 
   )
 

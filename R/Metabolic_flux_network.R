@@ -81,7 +81,8 @@ Metabolic_flux_network_get_atom_transfer <- function(Metabolic_flux_network){
   mfn.transfer <- plyr::mlply(mfn.e,.fun = function(from,to,...){
     get_Molecule_atom_transfer_by_map(
       V(Metabolic_flux_network@metabolic_network)[[from]]$Molecule_igraph,
-      V(Metabolic_flux_network@metabolic_network)[[to]]$Molecule_igraph
+      V(Metabolic_flux_network@metabolic_network)[[to]]$Molecule_igraph,
+      target_ele = "C"
     )
   },
   .progress = "text")
@@ -98,9 +99,22 @@ Metabolic_flux_network_get_atom_transfer <- function(Metabolic_flux_network){
 
 
 
-Metabolic_flux_set_tracer <- function(Metabolic_flux_network){
+Metabolic_flux_set_tracer <-
+  function(Metabolic_flux_network){
+
 
 
 
 }
+
+
+
+load_MFN <- function(path = "C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/Metabolic_flux_network/"){
+
+  mfn.files <- dir(path,full.names = T)%>%
+    file.info()%>%
+    dplyr::slice_max(mtime)
+  readRDS(rownames(mfn.files))
+}
+
 

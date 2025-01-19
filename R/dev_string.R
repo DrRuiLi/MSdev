@@ -83,6 +83,12 @@ str_date <- function(){
 
 }
 
+str_time <- function(){
+
+  format(Sys.time(),"%Y%m%d%H%M%S")
+
+}
+
 str_add <- function(x , n = 1, add.type = "numeric"){
 
   if (add.type == "numeric") {

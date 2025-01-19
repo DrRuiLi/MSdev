@@ -688,3 +688,163 @@ MSIP_shiny_Acq_server <- function(object){
   }
 
 }
+
+
+
+
+MFN_manul_Shiny_server <- function(object){
+
+
+  function(input, output, session){
+
+
+    ### test
+    {
+      output$test_output <- renderPrint({
+
+
+        input$Atom_transfer_id
+      })
+    }
+
+
+    ### MFN save and export
+    {
+      MFN.new <- reactiveVal(object)
+
+      observeEvent(input$save_buttion,{
+
+
+
+
+        save.dir <- "C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/Metabolic_flux_network/"
+        saveRDS(MFN.new(),
+                file = paste0(save.dir,"MFN_",str_time(),".rds"))
+
+      })
+    }
+
+
+    ### MFN update
+    {
+      observeEvent(input$Atom_transfer_vis_edited ,{
+
+        message_with_time("Atom_transfer_vis_edited: ",input$Atom_transfer_vis_edited)
+        visNetworkProxy(
+          "Atom_transfer_vis"
+        )%>%
+          visGetEdges()
+
+        MFN.new({
+
+          mfn <- MFN.new()
+
+          edge.selected <- Metabolic_flux_network_vis_selected_edge()
+          mat <- E(mfn@metabolic_network)[edge.selected]$atom_transfer[[1]]
+
+
+
+        })
+      })
+
+    }
+
+    output$Metabolic_flux_network_vis <- visNetwork::renderVisNetwork({
+
+      vis_igraph(object)%>%
+        visEdges(arrows = "to", width = 5)%>%
+        visEvents(selectEdge = "function(properties) {
+        Shiny.onInputChange('Metabolic_flux_network_vis_selected_edge', properties.edges);
+      }")%>%
+        visOptions(width = "100%",height = "100%",
+                   manipulation = T )%>%
+        visInteraction(selectConnectedEdges  = F)
+
+    })
+
+    ### Metabolic_flux_network_vis select edge
+    ### 1. update Metabolic_flux_network_vis_selected_edge()
+    ### 2. updateSelectInput Atom_transfer_id
+    {
+      Metabolic_flux_network_vis_selected_edge <- reactiveVal()
+      Atom_transfer_id_selected <- reactiveVal()
+      observe({
+        message_with_time("Metabolic_flux_network_vis_selected_edge")
+
+        edge.selected <- input$Metabolic_flux_network_vis_selected_edge
+        if (is.null(edge.selected)) edge.selected <- 1
+        Metabolic_flux_network_vis_selected_edge( edge.selected)
+
+        mat <- E(object@metabolic_network)[edge.selected]$atom_transfer[[1]]
+        mat.id <- rownames(mat@transfer_matrix)
+        Atom_transfer_id_selected(mat.id[1])
+        updateSelectInput(inputId = "Atom_transfer_id",
+                          choices = mat.id,
+                          selected = mat.id[1])
+      })
+
+
+    }
+
+    output$Reaction_info <- renderText({
+
+      edge.selected <- Metabolic_flux_network_vis_selected_edge()
+      edge <- E(object@metabolic_network)[edge.selected]
+      paste0("Reaction ID: ",edge$REACTION_id,"\n",
+             "Reaction Name: ",edge$REACTION_name,"\n",
+             "Reaction Formula: ",edge$equation,"\n",
+             "Reaction Enzyme: ",edge$ENZYME,"\n"
+             )
+
+    })
+
+
+
+
+
+    output$Atom_transfer_vis <- visNetwork::renderVisNetwork({
+      message_with_time("Atom_transfer_vis")
+
+
+      edge.selected <- Metabolic_flux_network_vis_selected_edge()
+      mat <- E(object@metabolic_network)[edge.selected]$atom_transfer[[1]]
+      vis_Molecule_atom_transfer(mat,id = input$Atom_transfer_id)%>%
+        visOptions(manipulation = list(
+          enabled = TRUE,
+          addEdge = htmlwidgets::JS(
+            "function(data, callback) {
+            Shiny.onInputChange('Atom_transfer_vis_edited', new Date().getTime() )
+            // Check if edge is valid
+            if (data.from === data.to) {
+              alert('Edges cannot connect a node to itself.');
+              return;
+            }
+            // Set custom attributes for the edge
+            data.color = {color: '#54BFBF'};  // Set edge color
+            data.dashes = [10, 20];       // Dashed pattern
+            data.label = 'Custom Transfer'; // Edge label
+            data.width = 10;
+            callback(data);              // Finalize the edge addition
+          }"
+          ),
+          deleteEdge = htmlwidgets::JS(
+            "function(data, callback) {
+            Shiny.onInputChange('Atom_transfer_vis_edited', new Date().getTime() )
+            callback(data);              // Finalize the edge addition
+          }"
+          ),
+          editEdge = htmlwidgets::JS(
+            "function(data, callback) {
+            Shiny.onInputChange('Atom_transfer_vis_edited', new Date().getTime() )
+            callback(data);              // Finalize the edge addition
+          }"
+          ),
+          addNode = F,deleteNode  = F,editNode = F
+
+        ))
+
+    })
+
+
+  }
+}

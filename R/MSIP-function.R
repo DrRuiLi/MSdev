@@ -384,6 +384,8 @@ MSIP_get_isotopologues_data <- function(object,
 }
 
 
+
+
 get_MSdev_iso_ele <- function(object){
   iso_ele <- object@sampleInfo$isotope_tracer
   iso_ele <- unique(na.omit(iso_ele))
@@ -600,6 +602,13 @@ get_isotopologues_Spectra_process <- function(iso.list){
 
 }
 
+iso_prob <- function(iso_count=1,C_count = 5){
+
+  M0 <- dbinom(0,C_count,0.0107)
+  Mn <- dbinom(iso_count,C_count,0.0107)
+  Mn/M0
+
+}
 
 
 
@@ -1223,3 +1232,48 @@ get_MSIP_weight_fun <- function(object){
   return(.intensity_weight)
 
 }
+
+
+
+
+
+MSIP_get_Molecule_igraph<- function(object){
+
+  isotopologues_datas <- object@statData$MSIP$isotopologues_data
+  dm <- list(names(isotopologues_datas),unique(object@sampleInfo$sample.source))
+  Molecule_igraph_matrix <- matrix(list(),
+                                   nrow = lengths(dm)[1],
+                                   ncol =lengths(dm)[2],dimnames = dm
+  )
+  for (i in seq_along(isotopologues_datas)) {
+    isotopologues_data <- isotopologues_datas[[i]]
+    ratio_matrix <- isotopologues_data$compound_info$ratio_matrix
+    for (j in colnames(Molecule_igraph_matrix)  ) {
+
+      mol.ig <- get_Molecule_igraph_from_smiles(isotopologues_data$compound_info$smiles)
+      for (k in names(isotopologues_data$MSIP_result)) {
+
+        message_with_time("i ",i," j ",j," k ",k)
+        msip.core <- isotopologues_data$MSIP_result[[k]][[j]]
+        if (is.null(msip.core)) next
+        isotopomers.ele <- msip.core@solve$MSIPIsotopomerMap@isotopomer.defination
+        isotopomers.prob <- msip.core@solve$MSIPIsotopomerMap@isotopomer.probability
+        isotopomers.abundance <- isotopomers.prob * ratio_matrix[k,j]
+
+        isotopomers.ele <- lapply(isotopomers.ele,function(x){make_vector("[13]C",x)})
+        for (ii in seq_along(isotopomers.ele)) {
+          mol.ig <- Molecule_igraph_add_isotopomer(
+            mol.ig,
+            iso_vec = isotopomers.ele[[ii]],
+            abundance = isotopomers.abundance[[ii]])
+        }
+
+      }
+      Molecule_igraph_matrix[i,j] <- list(mol.ig)
+    }
+
+  }
+
+
+}
+
