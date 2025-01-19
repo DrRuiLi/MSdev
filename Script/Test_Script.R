@@ -133,5 +133,70 @@ glu.mi <- Molecule_igraph_add_isotopomer(glu.mi,
 vis_Molecule_igraph(glu.mi)
 glu.mi@isotopomer
 
+# Wed Jan  8 13:45:59 2025 ------------------------------
+Metabolic_flux_network <- readRDS("temp/20250106Glucose_glutamate.MFN.rds")
+
+
+test.xlsx <- tempfile(fileext = ".xlsx")
+test.data <- rep(list(adducts),1000)
+names(test.data) <- 1:1000
+xlsx.write.list(test.data,  test.xlsx)
+open_file(test.xlsx)
+
+# Thu Jan  9 22:32:37 2025 ------------------------------
+a <- c(glu.mi,glu.mi,glu.mi,glu.mi)
+am <- matrix(a,nrow = 2)
+Glutamate <- Molecule_igraph_matrix[17,]
+Glutamate <- Molecule_igraph_matrix[16,]
+
+p.pie.list <- list()
+data.list <- list()
+for (i.sample  in names(Glutamate)) {
+
+  mol.ig <- Glutamate[[i.sample]]
+  isotopomer.data <- mol.ig@isotopomer%>%
+    dplyr::arrange(isotopologue)%>%
+    dplyr::mutate(abundance = abundance/sum(abundance),
+                  label = factor(label,levels = label))
+  data.list[[i.sample]] <- isotopomer.data
+
+
+  plot.data <- isotopomer.data%>%
+    dplyr::slice_max(abundance,n = 10,with_ties = F)
+
+  p <- ggplot(plot.data)+
+    geom_bar(aes( x= 1, y = abundance,fill = label,group = isotopologue),stat = "identity")+
+    ggsci::scale_fill_npg()+
+    labs( title = sub("FS_",i.sample,replacement = ""))+
+    coord_polar(theta = "y")+
+    theme_void()+
+    theme(plot.title = element_text(hjust = 0.5))
+  p
+  p.pie.list[[i.sample]] <- p
+
+}
+
+p <- ggplot_sum_patchwork(p.pie.list)
+open_plot_win(p,16,9)
+
+
+# Wed Jan 15 10:07:51 2025 Atom transfer shiny------------------------------
+{
+
+  Metabolic_flux_network <- readRDS("temp/20250106Glucose_glutamate.MFN.rds")
+  MFN_manul_Shiny(Metabolic_flux_network)
+  Metabolic_flux_network <- Metabolic_flux_network_get_atom_transfer(Metabolic_flux_network)
+
+
+  #edata(Metabolic_flux_network)$id<- edata(Metabolic_flux_network)$name
+  MFN_manul_Shiny(Metabolic_flux_network)
+
+}
+
+
+# Thu Jan 16 00:09:58 2025 ------------------------------
+Metabolic_flux_network <- load_MFN()
+MFN_manul_Shiny(Metabolic_flux_network)
+
 
 
