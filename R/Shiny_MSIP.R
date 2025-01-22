@@ -47,7 +47,7 @@ MSIP_shiny_Acq <- function(object){
 
 
 
-test_fun <- function(input){
+shiny_test_fun <- function(input){
 
   print(names(input))
   print("\n")

@@ -37,7 +37,8 @@ setClass("MSdev",
 #' column h1 h3 h4 br wellPanel
 #' @importFrom plotly add_markers plot_ly add_pie add_segments
 #' event_data add_text add_lines
-#' @importFrom visNetwork visNetwork visLayout
+#' @importFrom visNetwork visNetwork visLayout visOptions visInteraction
+#' visEvents visEdges
 #' @importFrom igraph as_adjacency_matrix distances edge.attributes
 #' degree V E
 #' @importFrom ComplexHeatmap draw Legend rowAnnotation

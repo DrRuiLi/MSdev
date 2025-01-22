@@ -36,6 +36,7 @@ sdf_to_Molecule_igraph <- function(sdf) {
     as.data.frame() %>%
     dplyr::mutate(from = atom.block$id[C1],
                   to = atom.block$id[C2],
+                  id = paste0(from,"_",to), ### identifier for visNet
                   bond_type = C3,
                   .before = C1)
 
@@ -252,7 +253,7 @@ Molecule_igraph_vis_format <- function(Molecule_igraph){
 
 
 #' @title Auto map atom structure
-#' @description
+#' @describeIn Molecule_atom_transfer
 #' return a matrix, column as atom of `to`, row as multiple map, value as atom of `from`
 #'
 #' @param mol.ig.from Molecule_igraph
@@ -261,7 +262,7 @@ Molecule_igraph_vis_format <- function(Molecule_igraph){
 #' @returns `matirx`, column as atom of `to`, row as multiple map, value as atom of `from`
 #' @export
 #'
-get_Molecule_atom_transfer_by_map <- function(mol.ig.from,
+get_Molecule_atom_transfer_by_atom_map <- function(mol.ig.from,
                                               mol.ig.to,
                                               target_ele = element_table$element){
 
@@ -416,7 +417,8 @@ get_Molecule_atom_transfer_by_map <- function(mol.ig.from,
     atom.map.sum <- data.frame(
       from.smiles = mol.ig.from@molecule_info$smiles,
       to.smiles = mol.ig.to@molecule_info$smiles,
-      transfer = paste0("Atom_map",num2str(1:nrow(atom.map.matrix)))
+      transfer = paste0("Atom_map",num2str(1:nrow(atom.map.matrix))),
+      source = "Atom_map"
     )
 
     rownames(atom.map.matrix) <- atom.map.sum$transfer
@@ -433,7 +435,7 @@ get_Molecule_atom_transfer_by_map <- function(mol.ig.from,
 }
 
 
-vis_Molecule_atom_transfer <- function(mat,id = 1){
+vis_Molecule_atom_transfer <- function(mat,id = 1,show_id = F){
 
   ### mol.ig
   {
@@ -447,7 +449,7 @@ vis_Molecule_atom_transfer <- function(mat,id = 1){
 
   ### transfer
   {
-    #get_Molecule_atom_transfer_by_map(mig.from,mig.to)
+
     transfer <- mat@transfer_matrix[id,]
     transfer <- transfer[!is.na(transfer)]
   }
@@ -466,15 +468,18 @@ vis_Molecule_atom_transfer <- function(mat,id = 1){
   ### merge graph
   {
 
-    ig.merge <- sdf_igraph_merge(mig.from,mig.to)
+    ig.merge <- sdf_igraph_merge(mig.from,mig.to)%>%
+      sdf_igraph_show_id(show_id)
+    edata(ig.merge)$connect_type <- "bond"
 
     for (atom in names(transfer)) {
       ig.merge <- igraph::add_edges(ig.merge,
-                                    edges = c(paste0("A_",transfer[atom] ),
-                                      paste0("B_",atom)) ,
-                                    attr = list(smooth.enabled = T,
+                                    edges = c(paste0("F_",transfer[atom] ),
+                                      paste0("T_",atom)) ,
+                                    attr = list(id = paste0("F_",transfer[atom],"-","T_",atom ),
+                                                smooth.enabled = T,
                                                 smooth.type = "dynamic",
-                                                group = "atom_transfer",
+                                                connect_type = "atom_transfer",
                                                 width = 8,
                                                 #color = "rgba(88, 203, 202, 0.5)",
                                                 color = "#54BFBF",
@@ -500,7 +505,52 @@ vis_Molecule_atom_transfer <- function(mat,id = 1){
 
 
 
+Molecule_atom_transfer_remove_duplicate <- function(mat,
+                                          target_ele = element_table$element){
 
+
+  ### filter target_ele
+  {
+
+    smiles.to<- unique(mat@transfer_def$to.smiles)
+    mig.to <- get_Molecule_igraph_from_smiles(smiles.to)
+    target_atom <- atom(mig.to,target_ele)
+  }
+
+
+  ### duplicate
+  {
+    target_atom <- intersect(target_atom,colnames(mat@transfer_matrix))
+    is.diplicate <- duplicated(mat@transfer_matrix[,target_atom,drop = F])
+    mat@transfer_def <- mat@transfer_def %>%
+      dplyr::filter(!is.diplicate)
+    mat@transfer_matrix <- mat@transfer_matrix [mat@transfer_def$transfer,,drop = F]
+  }
+
+
+  return(mat)
+
+}
+
+
+get_mat_from_visGetEdges <- function(mat,id,visGetEdges){
+
+  edge.data <- lapply(visGetEdges,`[`,c("from","to","id","connect_type"))%>%
+    rbindlist(fill = T)
+  edge.data <- edge.data%>%
+    dplyr::filter(connect_type%in% c("atom_transfer","custom_atom_transfer"),
+                  str_extract(from,"[FT]") =="F",
+                  str_extract(to,"[FT]") =="T")
+
+  atom.trans <- make_vector(x = sub("^F_", "", edge.data$from),
+                            name =  sub("^T_", "", edge.data$to))
+  atoms <- union(names(atom.trans),colnames(mat@transfer_matrix))
+  x <- get_matrix_value_fill_with_NA(mat@transfer_matrix,colnames_vec = atoms)
+  x[id,atoms] <- atom.trans[atoms]
+  mat@transfer_matrix <- x
+  mat <- Molecule_atom_transfer_remove_duplicate(mat)
+  return(mat)
+}
 
 
 

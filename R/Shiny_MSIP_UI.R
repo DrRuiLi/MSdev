@@ -267,7 +267,7 @@ MFN_manul_Shiny_ui <- function(){
              fluidRow(
                selectInput(inputId = "Atom_transfer_id",
                            label = "Select a transfer",
-                           choices = "")
+                           choices = "Atom_map1")
              ),
              fluidRow(
                visNetwork::visNetworkOutput(

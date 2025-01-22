@@ -710,77 +710,140 @@ MFN_manul_Shiny_server <- function(object){
 
     ### MFN save and export
     {
-      MFN.new <- reactiveVal(object)
+      MFN.update <- reactiveVal(object)
 
       observeEvent(input$save_buttion,{
 
 
-
-
         save.dir <- "C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/Metabolic_flux_network/"
-        saveRDS(MFN.new(),
+        saveRDS(MFN.update(),
                 file = paste0(save.dir,"MFN_",str_time(),".rds"))
 
       })
     }
 
 
-    ### MFN update
+    ### Atom_transfer update
     {
-      observeEvent(input$Atom_transfer_vis_edited ,{
 
-        message_with_time("Atom_transfer_vis_edited: ",input$Atom_transfer_vis_edited)
-        visNetworkProxy(
-          "Atom_transfer_vis"
-        )%>%
+      mat_for_vis <- reactiveVal(E(object@metabolic_network)[[1]]$atom_transfer)
+      mat_for_update <- reactiveVal(E(object@metabolic_network)[[1]]$atom_transfer)
+      observeEvent(input$Atom_transfer_vis_edited,{
+        message_with_time("Atom_transfer_update")
+        visNetworkProxy("Atom_transfer_vis")%>%
           visGetEdges()
 
-        MFN.new({
-
-          mfn <- MFN.new()
-
-          edge.selected <- Metabolic_flux_network_vis_selected_edge()
-          mat <- E(mfn@metabolic_network)[edge.selected]$atom_transfer[[1]]
-
-
-
-        })
       })
+
+      observeEvent(input$Atom_transfer_vis_edges,{
+        message_with_time("Atom_transfer_update_record")
+
+        ### reactiveVal
+        {
+          mat <- mat_for_update()
+          mat.id <- input$Atom_transfer_id
+          visGetEdges <- input$Atom_transfer_vis_edges
+        }
+        mat <- get_mat_from_visGetEdges(mat = mat,id = mat.id,visGetEdges =  visGetEdges )
+        print(mat.id)
+        print(mat@transfer_matrix)
+
+
+        mat_for_update(mat)
+      })
+
 
     }
 
+
     output$Metabolic_flux_network_vis <- visNetwork::renderVisNetwork({
 
-      vis_igraph(object)%>%
-        visEdges(arrows = "to", width = 5)%>%
+      message_with_time("render_Metabolic_flux_network_vis")
+
+      vis_Metabolic_flux_network(object)%>%
         visEvents(selectEdge = "function(properties) {
         Shiny.onInputChange('Metabolic_flux_network_vis_selected_edge', properties.edges);
       }")%>%
         visOptions(width = "100%",height = "100%",
-                   manipulation = T )%>%
+                   manipulation = list(
+                     enabled = TRUE,
+                     addEdge = htmlwidgets::JS(
+                       "function(data, callback) {
+
+            // Set custom attributes for the edge
+            data.color = {color: '#54BFBF'};  // Set edge color
+            data.dashes = [10, 20];       // Dashed pattern
+            data.label = 'Custom Transfer'; // Edge label
+            data.width = 8;
+            data.arrows = 'to';
+            data.connect_type = 'custom_atom_transfer';
+            callback(data);              // Finalize the edge addition
+          }"
+                     ),
+                     deleteEdge = T,
+                     editEdge = T,
+                     addNode = F,deleteNode  = T,editNode = F
+
+
+                   ))%>%
         visInteraction(selectConnectedEdges  = F)
 
     })
 
     ### Metabolic_flux_network_vis select edge
-    ### 1. update Metabolic_flux_network_vis_selected_edge()
-    ### 2. updateSelectInput Atom_transfer_id
     {
-      Metabolic_flux_network_vis_selected_edge <- reactiveVal()
-      Atom_transfer_id_selected <- reactiveVal()
-      observe({
+      Metabolic_flux_network_vis_selected_edge <- reactiveVal(1)
+      Atom_transfer_id_selected <- reactiveVal(1)
+
+      observeEvent(input$Metabolic_flux_network_vis_selected_edge,{
+
         message_with_time("Metabolic_flux_network_vis_selected_edge")
 
-        edge.selected <- input$Metabolic_flux_network_vis_selected_edge
-        if (is.null(edge.selected)) edge.selected <- 1
-        Metabolic_flux_network_vis_selected_edge( edge.selected)
+        ### update mat_for_update to MFN
+        {
+          if (!identical( mat_for_update(), mat_for_vis() )) {
+            print("update mat_for_update to MFN")
+              MFN.update({
+                mfn <- MFN.update()
+                eid <- Metabolic_flux_network_vis_selected_edge()
+                mat <- mat_for_update()
+                E(mfn@metabolic_network)[[eid]]$atom_transfer <- mat
+                mfn
+              })
+              #shiny_test_fun(mfn)
+          }
 
-        mat <- E(object@metabolic_network)[edge.selected]$atom_transfer[[1]]
+        }
+
+
+        Metabolic_flux_network_vis_selected_edge(input$Metabolic_flux_network_vis_selected_edge)
+
+
+      })
+
+      observeEvent(Metabolic_flux_network_vis_selected_edge(),{
+        message_with_time("Metabolic_flux_network_vis_selected_edge_update_MAT")
+
+        ### reactiveVal
+        {
+          MFN <- MFN.update()
+          edge.selected <- Metabolic_flux_network_vis_selected_edge()
+        }
+
+        if (is.null(edge.selected)) edge.selected <- 1
+        mat <- E(MFN@metabolic_network)[[edge.selected]]$atom_transfer
         mat.id <- rownames(mat@transfer_matrix)
         Atom_transfer_id_selected(mat.id[1])
         updateSelectInput(inputId = "Atom_transfer_id",
                           choices = mat.id,
                           selected = mat.id[1])
+
+        ### reactiveVal update
+        {
+          mat_for_vis(mat)
+          mat_for_update(mat)
+
+        }
       })
 
 
@@ -803,12 +866,14 @@ MFN_manul_Shiny_server <- function(object){
 
 
     output$Atom_transfer_vis <- visNetwork::renderVisNetwork({
-      message_with_time("Atom_transfer_vis")
+      message_with_time("render_Atom_transfer_vis")
+      ### reactiveVal
+      {
+        mat <- mat_for_vis()
+        mat.id <- input$Atom_transfer_id
+      }
 
-
-      edge.selected <- Metabolic_flux_network_vis_selected_edge()
-      mat <- E(object@metabolic_network)[edge.selected]$atom_transfer[[1]]
-      vis_Molecule_atom_transfer(mat,id = input$Atom_transfer_id)%>%
+      vis_Molecule_atom_transfer(mat,id = mat.id)%>%
         visOptions(manipulation = list(
           enabled = TRUE,
           addEdge = htmlwidgets::JS(
@@ -823,7 +888,9 @@ MFN_manul_Shiny_server <- function(object){
             data.color = {color: '#54BFBF'};  // Set edge color
             data.dashes = [10, 20];       // Dashed pattern
             data.label = 'Custom Transfer'; // Edge label
-            data.width = 10;
+            data.width = 8;
+            data.arrows = 'to';
+            data.connect_type = 'custom_atom_transfer';
             callback(data);              // Finalize the edge addition
           }"
           ),

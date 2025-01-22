@@ -191,7 +191,7 @@ sdf_igraph_show_id <- function(sdf.igraph,show_id){
   if (show_id) {
     vdata(sdf.igraph)$label <-   vdata(sdf.igraph)$id%>%
       str_format_len()
-    vdata(sdf.igraph)$font.size <- 20
+    vdata(sdf.igraph)$font.size <- vdata(sdf.igraph)$font.size * 0.5
 
   }else{
     vdata(sdf.igraph)$label <-  paste0(" ",vdata(sdf.igraph)$atom," ")
@@ -209,11 +209,14 @@ sdf_igraph_merge <- function(sdf.igraphA,sdf.igraphB){
   vdata(sdf.igraphA)$x <- xa-max(xa)-diff(range(xa))/5
   vdata(sdf.igraphB)$x <- xb- min(xb)+diff(range(xb))/5
 
-  vdata(sdf.igraphA)$name <- paste0("A_",vdata(sdf.igraphA)$name)
-  vdata(sdf.igraphB)$name <- paste0("B_",vdata(sdf.igraphB)$name)
+  vdata(sdf.igraphA)$name <- paste0("F_",vdata(sdf.igraphA)$name)
+  vdata(sdf.igraphB)$name <- paste0("T_",vdata(sdf.igraphB)$name)
 
-  vdata(sdf.igraphA)$id <- paste0("A_",vdata(sdf.igraphA)$id)
-  vdata(sdf.igraphB)$id <- paste0("B_",vdata(sdf.igraphB)$id)
+  vdata(sdf.igraphA)$id <- paste0("F_",vdata(sdf.igraphA)$id)
+  vdata(sdf.igraphB)$id <- paste0("T_",vdata(sdf.igraphB)$id)
+
+  edata(sdf.igraphA)$id <- paste0("F_",edata(sdf.igraphA)$id)
+  edata(sdf.igraphB)$id <- paste0("T_",edata(sdf.igraphB)$id)
 
   nodes <- bind_rows(
     vdata(sdf.igraphA),
