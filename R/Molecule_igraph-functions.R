@@ -22,11 +22,13 @@ get_Molecule_igraph_from_sdf <- function(sdf = sdfsample) {
 sdf_to_Molecule_igraph <- function(sdf) {
 
 
+  bond.data <- bonds(sdf)
+  bond.data <- bond.data[rownames(bond.data)!="0",,drop = F]
   atom.block <- atomblock(sdf) %>%
     as.data.frame() %>%
     rownames_to_column("id") %>%
     dplyr::mutate(name = id,
-                  bonds(sdf),
+                  bond.data,
                   element = atom,
                   x = C1,
                   y = C2,
@@ -530,6 +532,31 @@ Molecule_atom_transfer_remove_duplicate <- function(mat,
 
   return(mat)
 
+}
+
+Molecule_atom_transfer_reverse <- function(mat){
+
+  mat@transfer_def <- mat@transfer_def %>%
+    dplyr::mutate(tmp = to.smiles,
+                  to.smiles = from.smiles,
+                  from.smiles = tmp)%>%
+    dplyr::select(!tmp)
+
+
+  m <- mat@transfer_matrix
+  m.list <- list()
+  for (i in 1:nrow(m)) {
+
+    x <- m[i,]
+    x <- na.omit(x)
+    m.list[[i]] <- make_vector(x = names(x),name = x)
+
+  }
+  m <- do.call(bind_rows,m.list)%>%as.matrix()
+  rownames(m) <-rownames( mat@transfer_matrix)
+  mat@transfer_matrix <- m
+
+  return(mat)
 }
 
 

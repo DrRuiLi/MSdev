@@ -249,6 +249,13 @@ MFN_manul_Shiny_ui <- function(){
     fluidRow(
 
       column(6,
+             fluidRow(
+               column(6,
+                      textInput(inputId = "save_name",label = NULL,value = "Metabolic_flux_network",width = "50%")),
+               column(6,
+                      actionButton(inputId = "reverse_edge",label = "Reverse",width = "30%"))
+
+             ),
              visNetwork::visNetworkOutput(
                outputId = "Metabolic_flux_network_vis",
                height = "800px", width = "100%"
@@ -276,10 +283,27 @@ MFN_manul_Shiny_ui <- function(){
                )
              ),
              fluidRow(
-               verbatimTextOutput("Reaction_info")
+               column(9,
+                      verbatimTextOutput("Reaction_info")
+
+                      ),
+               column(3,
+                      actionButton(inputId = "save_buttion",label = "Export",
+                                   width = "100%")
+                      )
              ),
              fluidRow(
-               actionButton(inputId = "save_buttion",label = "Export")
+               column(6,
+                      tableOutput(
+                        "Metabolite_isotopomer_statu_table"
+                      )
+                      ),
+               column(6,
+                 visNetwork::visNetworkOutput(
+                   outputId = "Metabolite_isotopomer_statu_vis",
+                   height = "400px", width = "100%"
+                 )
+               )
              ),
              tags$style(
                HTML("

@@ -38,7 +38,7 @@ setClass("MSdev",
 #' @importFrom plotly add_markers plot_ly add_pie add_segments
 #' event_data add_text add_lines
 #' @importFrom visNetwork visNetwork visLayout visOptions visInteraction
-#' visEvents visEdges
+#' visEvents visEdges visGetEdges visNetworkProxy visUpdateEdges
 #' @importFrom igraph as_adjacency_matrix distances edge.attributes
 #' degree V E
 #' @importFrom ComplexHeatmap draw Legend rowAnnotation

@@ -195,8 +195,53 @@ open_plot_win(p,16,9)
 
 
 # Thu Jan 16 00:09:58 2025 ------------------------------
-Metabolic_flux_network <- load_MFN()
+Metabolic_flux_network <- load_MFN(name = "GLN")
 MFN_manul_Shiny(Metabolic_flux_network)
 
+
+visGetEdges <- readRDS("d:/temp/edges_20250121150706.rds")
+
+
+
+# Thu Jan 23 01:27:19 2025 	5. Initialize a network from KEGG  ------------------------------
+{
+  kegg.net <- get_KEGG_Reaction_network()
+  kegg.pathway.df <- MSdb:::get_KEGG_compound_pathway_df()
+  kegg.selected <- kegg.pathway.df %>%
+    dplyr::filter(ENTRY %in% c("hsa00010",### glycolysis
+                               "hsa00020",### TCA
+                               "hsa00250",### glutamate
+                               "hsa00480" ### GSH
+    ))%>%
+    dplyr::pull(COMPOUND.ID)%>%
+    unique()%>%
+    setdiff(c("C00005","C00006","C00014"))
+
+  kegg.net.selected <- igraph_filter_vertex(
+    kegg.net,names(V(kegg.net)) %in% kegg.selected
+  )
+
+  kegg.net.selected.vda <- vdata(kegg.net.selected)
+  kegg.net.selected.cid <- webchem::get_cid(kegg.net.selected.vda$PubChem,
+                                            from = "sid",domain = "substance")
+  pubchem.retrive <- webchem::pc_prop(kegg.net.selected.cid$cid)
+  vdata(kegg.net.selected)$smiles <- pubchem.retrive$IsomericSMILES
+
+  kegg.net.selected.filter <- igraph_filter_vertex(
+    kegg.net.selected,get_formula_ele_count(vdata(kegg.net.selected)$Formula,"C")>0
+  )
+  vdata(kegg.net.selected.filter)$Molecule_igraph  <- get_Molecule_igraph_from_smiles(
+    vdata(kegg.net.selected.filter)$smiles  )
+
+  mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net.selected.filter)
+  mfn <- Metabolic_flux_network_get_atom_transfer(mfn)
+  edata(mfn)$id <- edata(mfn)$name
+  MFN_manul_Shiny(mfn)
+}
+
+
+# Tue Feb  4 13:53:59 2025 ------------------------------
+Metabolic_flux_network <- load_MFN(name = "GSH")
+MFN_manul_Shiny(mfns)
 
 

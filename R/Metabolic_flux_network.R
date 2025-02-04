@@ -98,21 +98,13 @@ Metabolic_flux_network_get_atom_transfer <- function(Metabolic_flux_network){
 }
 
 
-
-Metabolic_flux_set_tracer <-
-  function(Metabolic_flux_network){
-
-
-
-
-}
-
-
-
-load_MFN <- function(path = "C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/Metabolic_flux_network/"){
+load_MFN <- function(path = "C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/Metabolic_flux_network/",
+                     name = "."){
 
   mfn.files <- dir(path,full.names = T)%>%
     file.info()%>%
+    dplyr::mutate(basename = basename(rownames(.)))%>%
+    dplyr::filter(grepl(name,basename))%>%
     dplyr::slice_max(mtime)
   readRDS(rownames(mfn.files))
 }
@@ -143,5 +135,83 @@ vis_Metabolic_flux_network <- function(mfn){
 
 }
 
+
+Metabolic_flux_network_reverse <- function(mfn,edge.id){
+
+  mfn@metabolic_network <- igraph::reverse_edges(mfn@metabolic_network,edge.id)
+  mat <- E(mfn@metabolic_network)[[edge.id]]$atom_transfer%>%
+    Molecule_atom_transfer_reverse()
+  mat -> E(mfn@metabolic_network)[[edge.id]]$atom_transfer
+  return(mfn)
+}
+
+Metabolic_flux_network_update_from_visGetEdges <- function(mfn,visGetEdges){
+
+
+  ### edges assigment
+  {
+    eda <- edata(mfn)
+    edge.delete <- setdiff(eda$id,names(visGetEdges))
+    edge.add <- setdiff(names(visGetEdges),eda$id)
+
+  }
+
+
+  ### delete
+  {
+
+    mfn@metabolic_network <-
+      igraph::delete_edges(mfn@metabolic_network,edge.delete)
+
+
+  }
+
+
+  ### add
+  {
+    edge.add.data <- visGetEdges[edge.add][[1]]
+    #names(edge.add.data) <- paste0("AR",str_time(),num2str(1:length(edge.add.data)))
+    #edges.to.add <- lapply(edge.add.data, function(x) c(x$from,x$to))%>%do.call(c,.)
+    edges.to.add <- c(edge.add.data$from,edge.add.data$to)
+    attr.to.add <- list(id = edge.add.data$id ,
+                        name = edge.add.data$id ,
+                        atom_transfer = list(
+                          get_Molecule_atom_transfer_by_atom_map(
+                            mol.ig.from = V(mfn@metabolic_network)[[edge.add.data$from]]$Molecule_igraph,
+                            mol.ig.to = V(mfn@metabolic_network)[[edge.add.data$to]]$Molecule_igraph,
+                            target_ele = "C"
+                          )
+                        )
+                        )
+    mfn@metabolic_network <- igraph::add_edges(mfn@metabolic_network ,
+                           edges = edges.to.add,
+                           attr  = attr.to.add
+                           )
+  }
+
+
+
+
+  return(mfn)
+
+
+
+}
+
+Metabolic_flux_network_simplify <- function(mfn){
+
+  mfn@metabolic_network <- igraph::simplify(mfn@metabolic_network ,remove.loops = F,edge.attr.comb = "first")
+  mfn
+}
+
+
+Metabolic_flux_set_tracer <-
+  function(Metabolic_flux_network,
+           nid = 1 ){
+
+
+
+
+  }
 
 
