@@ -118,6 +118,16 @@ Molecule_igraph_add_isotopomer <- function(
 
 }
 
+Molecule_igraph_remove_isotopomer <-function(
+  Molecule_igraph , isotopomer = NULL){
+
+  x <- isotopomer
+  Molecule_igraph@isotopomer <- Molecule_igraph@isotopomer%>%
+    dplyr::filter(!isotopomer %in% x)
+
+  return(Molecule_igraph)
+}
+
 
 get_Molecule_igraph_MS1 <- function(Molecule_igraph,polarity=1,adduct = NULL){
 
@@ -195,6 +205,8 @@ get_Molecule_igraph_MS2 <- function(Molecule_igraph,cfmd){
 
 Molecule_igraph_get_C_order <- function(Molecule_igraph){
 
+  message("this function uncompleted")
+
   dism <- igraph::distances(Molecule_igraph@igraph)
   ele <- element(Molecule_igraph)
   ele.dis.R <- apply(dism,1,function(x){
@@ -223,6 +235,28 @@ vis_Molecule_igraph <- function(Molecule_igraph,show_id = F){
 
 }
 
+
+vis_Molecule_igraph_isotopomer <- function(Molecule_igraph,show_id = F,isotopomer = 1){
+
+  Molecule_igraph.formated <- Molecule_igraph%>%
+    Molecule_igraph_vis_format()%>%
+    sdf_igraph_show_id(show_id)
+
+
+  isotopomer.atoms <- Molecule_igraph@isotopomer[isotopomer,atom(Molecule_igraph)]%>%
+    unlist()
+  isotopomer.atoms <- isotopomer.atoms[is.isotope(isotopomer.atoms)]
+  labeled.atoms <-  make_vector(x = rep(1,length(is.isotope(isotopomer.atoms))),
+                                names(isotopomer.atoms))
+
+
+  Molecule_igraph.formated%>%
+    sdf_igraph_add_background_color(value = labeled.atoms)%>%
+    vis_igraph() %>%
+    visNetwork::visPhysics(enabled = F) %>%
+    visNetwork::visOptions(width = "100%", height = "100%")
+
+}
 
 Molecule_igraph_vis_format <- function(Molecule_igraph){
 

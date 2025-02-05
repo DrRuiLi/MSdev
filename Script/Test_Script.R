@@ -240,8 +240,44 @@ visGetEdges <- readRDS("d:/temp/edges_20250121150706.rds")
 }
 
 
-# Tue Feb  4 13:53:59 2025 ------------------------------
+# Tue Feb  4 13:53:59 2025 start shiny------------------------------
 Metabolic_flux_network <- load_MFN(name = "GSH")
-MFN_manul_Shiny(mfns)
+MFN_manul_Shiny(Metabolic_flux_network)
+
+
+# Wed Feb  5 13:12:22 2025 set tracer ------------------------------
+{
+  mfn.v <- vdata(Metabolic_flux_network)
+  glucose.smiles <- "C([C@@H]1[C@H]([C@@H]([C@H]([C@H](O1)O)O)O)O)O"
+  glucose.mig <- get_Molecule_igraph_from_smiles(glucose.smiles)
+
+  Glu_1_2.mig <- Molecule_igraph_add_isotopomer(Molecule_igraph = glucose.mig,
+                                 isotopomer = "Tracer",
+                                 iso_vec = c("C_6" = "[13]C","C_10" = "[13]C") ,
+                                 abundance = 1)
+  Glu_1_2.mig <- Molecule_igraph_remove_isotopomer(Glu_1_2.mig,"base")
+
+  Metabolic_flux_network <- Metabolic_flux_network_set_tracer(Metabolic_flux_network,
+                            "C00267",Glu_1_2.mig)
+
+
+
+  MFN_manul_Shiny(Metabolic_flux_network)
+}
+
+# Wed Feb  5 15:33:51 2025 reaction tracing ------------------------------
+{
+
+
+  edata <- edata(Metabolic_flux_network)
+  edge.selected <- 78
+  mat <- edata$atom_transfer[[edge.selected]]
+  mol.ig.from <-  V(Metabolic_flux_network@metabolic_network)[[edata$from[edge.selected]]]$Molecule_igraph
+  mol.ig.to <-  V(Metabolic_flux_network@metabolic_network)[[edata$to[edge.selected]]]$Molecule_igraph
+
+
+
+}
+
 
 

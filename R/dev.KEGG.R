@@ -3,13 +3,14 @@ get_KEGG_Reaction_network <- function(kegg.rdata ){
 
   kegg.rawdata <- MSdb:::get_KEGG_rawdata()
   kegg.rdata <-  kegg.rawdata$Reaction_rawdata
-  kegg.rdata <- lapply(kegg.rdata,KEGG_parse_REACTION)
-  ig.krn <- KEGG_reaction_to_network(kegg.rdata)
+  kegg.rdata <- lapply(kegg.rdata,KEGG_parse_REACTION,parse_by = "EQUATION")
+  #ig.krn <- KEGG_reaction_to_network_RCLASS(kegg.rdata)
+  ig.krn <- KEGG_reaction_to_network_EQUATION(kegg.rdata)
 
-  kegg.mdata <- kegg.rawdata$Module_rawdata
-  ig.krn <- KEGG_reaction_get_direction_from_module(ig.krn,kegg.mdata)
-  ig.krn <- igraph_sort_direction(ig.krn)
-  ig.krn <- KEGG_Reaction_network_filter_by_emzyme(ig.krn,"hsa")
+  #kegg.mdata <- kegg.rawdata$Module_rawdata
+  #ig.krn <- KEGG_reaction_get_direction_from_module(ig.krn,kegg.mdata)
+  #ig.krn <- igraph_sort_direction(ig.krn)
+  ig.krn.filter <- KEGG_Reaction_network_filter_by_emzyme(ig.krn,"hsa")
   ig.krn <- KEGG_Reaction_network_remove_nonformat_node(ig.krn)
   return(ig.krn)
 
@@ -57,6 +58,19 @@ KEGG_parse_REACTION <- function(reaction.data,
   }
 
 
+  ### EQUATION
+  {
+
+    if(parse_by=="EQUATION"){
+
+      #reaction.data <- kegg.rdata[[1]]
+      EQUATION_data <- KEGG_parse_REACTION_EQUATION(reaction.data[["EQUATION"]])
+      reaction.data$EQUATION_data <- EQUATION_data
+    }
+
+
+  }
+
 
   return(reaction.data)
 
@@ -103,7 +117,7 @@ KEGG_parse_REACTION_RCLASS <- function(RCLASS){
 
 }
 
-KEGG_reaction_to_network <- function(kegg.rdata){
+KEGG_reaction_to_network_RCLASS <- function(kegg.rdata){
 
 
 
@@ -176,6 +190,94 @@ KEGG_reaction_to_network <- function(kegg.rdata){
                       KEGG_id %in% rcn.edges.df$to)
 
     rcn.nodes.df <- kegg.cp%>%
+      dplyr::mutate(id= KEGG_id,
+                    name = KEGG_id,
+                    label = Name)
+
+
+
+  }
+
+
+  ### ig
+  {
+    kegg.reaction.ig <- igraph::graph_from_data_frame(
+      rcn.edges.df,
+      vertices = rcn.nodes.df)
+
+  }
+
+  return(kegg.reaction.ig)
+
+}
+
+
+KEGG_reaction_to_network_EQUATION <- function(kegg.rdata){
+
+
+
+  ### edge
+  {
+    rcn.edges <- plyr::llply(
+      kegg.rdata,
+      function(reaction.data){
+
+        if (!"EQUATION_data" %in% names(reaction.data)) {
+          return(invisible())
+        }
+        if (any(lengths(reaction.data$EQUATION_data[1:2])<1)) {
+          return(invisible())
+        }
+        rda1 <- data.frame(
+          from = reaction.data[["EQUATION_data"]]$from,
+          to = reaction.data$ENTRY
+        )
+        rda2 <- data.frame(
+          from = reaction.data$ENTRY ,
+          to = reaction.data[["EQUATION_data"]]$to
+        )
+        rda <- rbind(rda1,rda2)%>%
+          dplyr::mutate(REACTION_id = reaction.data$ENTRY)
+
+        return(rda)
+
+      },.progress = "text"
+    )
+    rcn.edges.df <-do.call(bind_rows,rcn.edges)%>%
+      dplyr::select(from,to,everything())%>%
+      dplyr::mutate(name = paste0("UR",num2str(1:n())))
+
+  }
+
+  ### node
+  {
+
+    kegg.cp <- MSdb:::get_KEGG_compound_df()%>%
+      as.data.frame()%>%
+      dplyr::filter(KEGG_id %in% rcn.edges.df$from|
+                      KEGG_id %in% rcn.edges.df$to)%>%
+      dplyr::mutate(node.type = "Compound")
+
+    kegg.reaction <- plyr::llply(
+      kegg.rdata,
+      function(reaction.data){
+
+        list(KEGG_id = reaction.data$ENTRY,
+                   Name = reaction.data$NAME,
+          equation = reaction.data$EQUATION ,
+          definition = reaction.data$DEFINITION,
+          enzyme = paste0(reaction.data$ENZYME,collapse   = ";")
+          )
+
+      },.progress = "text")
+
+    kegg.reaction <- do.call(bind_rows,kegg.reaction)%>%
+      dplyr::filter(KEGG_id %in% rcn.edges.df$from|
+                      KEGG_id %in% rcn.edges.df$to)%>%
+      dplyr::mutate(node.type = "Reaction")
+
+
+    rcn.nodes.df <- bind_rows(kegg.cp,kegg.reaction)%>%
       dplyr::mutate(id= KEGG_id,
                     name = KEGG_id,
                     label = Name)

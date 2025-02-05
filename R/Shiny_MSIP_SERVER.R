@@ -806,8 +806,7 @@ MFN_manul_Shiny_server <- function(object){
           visGetEdges <- input$Atom_transfer_vis_edges
         }
         mat <- get_mat_from_visGetEdges(mat = mat,id = mat.id,visGetEdges =  visGetEdges )
-        print(mat.id)
-        print(mat@transfer_matrix)
+
 
 
         mat_for_update(mat)
@@ -904,10 +903,6 @@ MFN_manul_Shiny_server <- function(object){
           edge.selected <- Metabolic_flux_network_vis_selected_edge()
         }
 
-        print(edge.selected)
-        print(E(MFN@metabolic_network)$id)
-
-        print(edge.selected%in% E(MFN@metabolic_network)$id)
         if (is.null(edge.selected)) edge.selected <- 1
         mat <- E(MFN@metabolic_network)[[edge.selected]]$atom_transfer
         mat.id <- rownames(mat@transfer_matrix)
@@ -1013,7 +1008,7 @@ MFN_manul_Shiny_server <- function(object){
         mol.ig <- mol.ig.selected()
       }
 
-      vis_Molecule_igraph(mol.ig)
+      vis_Molecule_igraph_isotopomer(mol.ig)
 
     })
 

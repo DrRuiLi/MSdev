@@ -205,13 +205,24 @@ Metabolic_flux_network_simplify <- function(mfn){
 }
 
 
-Metabolic_flux_set_tracer <-
+Metabolic_flux_network_set_tracer <-
   function(Metabolic_flux_network,
-           nid = 1 ){
+           vid = 1,
+           Molecule_igraph ){
+
+    V(Metabolic_flux_network@metabolic_network)[[vid]]$Molecule_igraph <-Molecule_igraph
 
 
-
+    return(Metabolic_flux_network)
 
   }
 
+
+Metabolic_flux_atom_transfer <- function(mat,
+                                         mol.ig.from,
+                                         mol.ig.to
+                                         ){
+
+
+}
 
