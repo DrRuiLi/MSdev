@@ -1,15 +1,16 @@
-get_Molecule_igraph_from_sdf <- function(sdf = sdfsample) {
+get_Molecule_igraph_from_sdf <- function(sdf = sdfsample,
+                                         id = paste0("CP",num2str(1:length(sdf)))) {
 
 
   if (class(sdf) == "SDF")
-    Molecule_igraphs <- sdf_to_Molecule_igraph(sdf)
+    Molecule_igraphs <- sdf_to_Molecule_igraph(sdf,id = id)
 
 
   if (class(sdf) == "SDFset") {
     Molecule_igraphs <- list()
     sdf.valid <- validSDF(sdf)
     for (i in 1:length(sdf)) {
-      Molecule_igraphs[[i]] <- sdf_to_Molecule_igraph(sdf[[i]])
+      Molecule_igraphs[[i]] <- sdf_to_Molecule_igraph(sdf[[i]],id = id[i])
     }
     names(Molecule_igraphs) <- cid(sdf)
   }
@@ -19,7 +20,7 @@ get_Molecule_igraph_from_sdf <- function(sdf = sdfsample) {
 }
 
 
-sdf_to_Molecule_igraph <- function(sdf) {
+sdf_to_Molecule_igraph <- function(sdf,id ) {
 
 
   bond.data <- bonds(sdf)
@@ -57,14 +58,15 @@ sdf_to_Molecule_igraph <- function(sdf) {
   Molecule_igraph <- new("Molecule_igraph",
                          sdf = sdf, igraph = sdf.igraph,isotopomer = isotopomer.df)
   Molecule_igraph@molecule_info$smiles <- unname(as.character(get_sdf_smiles(sdf)))
+  Molecule_igraph@molecule_info$id <- id
   return(Molecule_igraph)
 }
 
 
-get_Molecule_igraph_from_smiles <- function(smiles) {
+get_Molecule_igraph_from_smiles <- function(smiles,id ) {
   sdf <- get_smiles_sdf(smiles)
   if (length(sdf)==1) sdf <- sdf[[1]]
-  get_Molecule_igraph_from_sdf(sdf)
+  get_Molecule_igraph_from_sdf(sdf,id = id)
 }
 
 
@@ -467,6 +469,62 @@ get_Molecule_atom_transfer_by_atom_map <- function(mol.ig.from,
 
 
   }
+
+}
+
+get_Reaction_atom_transfer_by_atom_map <- function(mol.ig.from,
+                                                   mol.ig.to,
+                                                   target_ele = element_table$element,
+                                                   equation){
+
+
+
+  ### atom index
+  {
+    atom.from <- lapply(1:length(mol.ig.from),function(x){
+      paste0(names(mol.ig.from)[x],"_",atom(mol.ig.from[[x]],element = target_ele))
+    })%>%unlist()%>%unname
+
+    atom.to<- lapply(1:length(mol.ig.to),function(x){
+      paste0(names(mol.ig.to)[x],"_",atom(mol.ig.to[[x]],element = target_ele))
+    })%>%unlist()%>%unname
+
+  }
+
+
+  ### atom map
+  {
+    mat.df <- expand.grid(from = names(mol.ig.from),
+                          to = names(mol.ig.to))
+    plyr::mlply(mat.df,function(from,to){
+      get_Molecule_atom_transfer_by_atom_map(
+        mol.ig.from = mol.ig.from[[from]],
+        mol.ig.to = mol.ig.to[[to]],
+        target_ele = target_ele
+      )
+    })->mats
+
+    mats.map <- sapply(1:nrow(mat.df),function(i){
+      x <- mats[[i]]@transfer_matrix
+      colnames(x) <- paste0( mat.df$to[i],"_" , colnames(x))
+      x <- matrix(ifelse(is.na(x), NA, paste0(mat.df$from[i],"_", x)),
+                  nrow = nrow(x), dimnames = dimnames(x))
+    })
+
+    combs <- sapply(mats,function(x){1:length(x)})%>%do.call(expand.grid,.)
+    lapply(1:nrow(combs),function(i){
+
+      maps <- sapply(1:ncol(combs),function(j) na.omit(mats.map[[j]][combs[i,j],]))
+      map <- do.call(bind_rows,maps)
+
+      return(map)
+    })->a
+  }
+
+
+
+
+
 
 }
 

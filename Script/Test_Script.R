@@ -216,22 +216,25 @@ visGetEdges <- readRDS("d:/temp/edges_20250121150706.rds")
     dplyr::pull(COMPOUND.ID)%>%
     unique()%>%
     setdiff(c("C00005","C00006","C00014"))
-
   kegg.net.selected <- igraph_filter_vertex(
-    kegg.net,names(V(kegg.net)) %in% kegg.selected
+    kegg.net,names(V(kegg.net)) %in% kegg.selected|V(kegg.net)$node.type=="Reaction"
   )
 
   kegg.net.selected.vda <- vdata(kegg.net.selected)
-  kegg.net.selected.cid <- webchem::get_cid(kegg.net.selected.vda$PubChem,
+  cp.node <- which(kegg.net.selected.vda$node.type=="Compound")
+  kegg.net.selected.cid <- webchem::get_cid(kegg.net.selected.vda$PubChem[cp.node],
                                             from = "sid",domain = "substance")
   pubchem.retrive <- webchem::pc_prop(kegg.net.selected.cid$cid)
-  vdata(kegg.net.selected)$smiles <- pubchem.retrive$IsomericSMILES
+  vdata(kegg.net.selected)$smiles <- NA
+  vdata(kegg.net.selected)$smiles[cp.node] <- pubchem.retrive$IsomericSMILES
 
-  kegg.net.selected.filter <- igraph_filter_vertex(
-    kegg.net.selected,get_formula_ele_count(vdata(kegg.net.selected)$Formula,"C")>0
-  )
-  vdata(kegg.net.selected.filter)$Molecule_igraph  <- get_Molecule_igraph_from_smiles(
-    vdata(kegg.net.selected.filter)$smiles  )
+ # kegg.net.selected.filter <- igraph_filter_vertex(
+ #   kegg.net.selected,get_formula_ele_count(vdata(kegg.net.selected)$Formula,"C")>0
+ # )
+  kegg.net.selected.filter <- kegg.net.selected
+  vdata(kegg.net.selected.filter)$Molecule_igraph  <- NA
+  vdata(kegg.net.selected.filter)$Molecule_igraph[cp.node] <- get_Molecule_igraph_from_smiles(
+    pubchem.retrive$IsomericSMILES  )
 
   mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net.selected.filter)
   mfn <- Metabolic_flux_network_get_atom_transfer(mfn)
@@ -281,3 +284,27 @@ MFN_manul_Shiny(Metabolic_flux_network)
 
 
 
+
+# Wed Feb  5 20:29:27 2025 Initialize a network from KEGG, reaction as node------------------------------
+{
+  kegg.net <- get_KEGG_Reaction_network()
+  mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net)
+  kegg.pathway.df <- MSdb:::get_KEGG_compound_pathway_df()
+  kegg.selected <- kegg.pathway.df %>%
+    dplyr::filter(ENTRY %in% c("hsa00010",### glycolysis
+                               "hsa00020",### TCA
+                               "hsa00250",### glutamate
+                               "hsa00480" ### GSH
+    ))%>%
+    dplyr::pull(COMPOUND.ID)%>%
+    unique()%>%
+    setdiff(c("C00005","C00006","C00014","C00080"))%>%
+    intersect(names(V(kegg.net)))
+  mfn <- Metabolic_flux_network_select_compound(mfn,kegg.selected)
+  mfn <-  Metabolic_flux_network_get_compound_data_from_cid(mfn)
+  mfn <- Metabolic_flux_network_clean_reactions(mfn)
+  mfn <- Metabolic_flux_network_get_Reaction_atom_transfer(mfn)
+  edata(mfn)$id <- edata(mfn)$name
+  MFN_manul_Shiny(mfn)
+
+}

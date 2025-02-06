@@ -11,8 +11,8 @@ get_KEGG_Reaction_network <- function(kegg.rdata ){
   #ig.krn <- KEGG_reaction_get_direction_from_module(ig.krn,kegg.mdata)
   #ig.krn <- igraph_sort_direction(ig.krn)
   ig.krn.filter <- KEGG_Reaction_network_filter_by_emzyme(ig.krn,"hsa")
-  ig.krn <- KEGG_Reaction_network_remove_nonformat_node(ig.krn)
-  return(ig.krn)
+  ig.krn.filter <- KEGG_Reaction_network_remove_nonformat_node(ig.krn.filter)
+  return(ig.krn.filter)
 
 
 }
@@ -507,8 +507,9 @@ KEGG_Reaction_network_merge_path <- function(kegg.rig){
 KEGG_Reaction_network_remove_nonformat_node <- function(kegg.rig){
 
   vda <- vdata(kegg.rig)%>%
-    dplyr::mutate(formate_formula = MSCC::chemform_formate(Formula))
-  kegg.rig<- igraph_filter_vertex(kegg.rig,!is.na(vda$formate_formula))
+    dplyr::mutate(formate_formula = MSCC::chemform_formate(Formula),
+                  remain = !is.na(formate_formula)|node.type == "Reaction")
+  kegg.rig<- igraph_filter_vertex(kegg.rig,vda$remain)
 
 
   return(kegg.rig)
@@ -520,9 +521,13 @@ KEGG_Reaction_network_filter_by_emzyme <- function(ig.krn ,org = "hsa"){
 
   enz.link <- KEGGREST::keggLink("enzyme",org)%>%
     sub(pattern = 'ec:',x = . , replacement = "")
-  eda <- edata(ig.krn)
-  ig <- igraph_filter_edge(ig.krn,which(eda$ENZYME%in% enz.link))
-  return(ig)
+  vda <- vdata(ig.krn)
+  ig.krn.filter <- igraph_filter_vertex(ig.krn,
+                       which(vda$node.type== "Compound" | vda$enzyme %in% enz.link))
+
+  ig.krn.filter <- igraph_filter_vertex(ig.krn.filter,
+                                        degree(ig.krn.filter)>0)
+  return(ig.krn.filter)
 }
 
 get_KRN_edge <- function(KRN){
