@@ -1041,7 +1041,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
         }
       }
       if (is.null(refSpec)) return(NULL)
-      scorem <- Spectra::compareSpectra(expSpec,refSpec,...)
+      scorem <- Spectra::compareSpectra(expSpec,refSpec,,FUN = rdot_product, m = 2)
       dim(scorem) <- c(length(expSpec),length(refSpec))
       scorem[is.infinite(scorem)|is.na(scorem )] <- 0
       scores <- apply(scorem,2,max,na.rm=T)
@@ -1069,6 +1069,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
 
 xcms_get_feature_isopattern_score <- function(xcms.xcms,
                                               ppm = 10,
+                                              calc_isopattern_score = T,
                                               BPPARAM = SerialParam(progressbar = T)){
 
   ### data to calc isopattern
@@ -1080,6 +1081,9 @@ xcms_get_feature_isopattern_score <- function(xcms.xcms,
 
   ### calculate iso-pattern score
   {
+
+    if (calc_isopattern_score) {
+
 
    iso.score <- bplapply(seq_len(nrow(xcms.se)),
              FUN = function(i,xcms.se,ppm){
@@ -1097,6 +1101,8 @@ xcms_get_feature_isopattern_score <- function(xcms.xcms,
                                     ppm = ppm)
              },xcms.se=xcms.se,ppm=ppm,
              BPPARAM =BPPARAM)
+
+    }else{iso.score <- 0}
 
 
 

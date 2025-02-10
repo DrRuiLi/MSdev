@@ -393,3 +393,18 @@ get_formula_from_lm <- function(lm_fit) {
 
   return(formula_string)
 }
+
+
+rdot_product <- function(x,y,...){
+
+  ids <- intersect(which(!is.na(x[,1])),
+                   which(!is.na(y[,1])))
+  if(length(ids)){
+    a <- x[ids,2]
+    b <- y[ids,2]
+    return(sum(a*b,na.rm = T)/
+             sqrt(sum(a^2,na.rm = T))/sqrt(sum(b^2,na.rm = T)))
+  }else{
+    return(0)
+  }
+}

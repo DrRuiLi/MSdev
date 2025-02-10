@@ -1589,6 +1589,7 @@ MSdev_match_Spectra_to_feature <- function(object,
 
 MSdev_annotation <- function(object,
                              cpdb_path,
+                             calc_isopattern_score = F,
                              ppm = 10,
                              ...){
 
@@ -1612,6 +1613,7 @@ MSdev_annotation <- function(object,
     message_with_time("Calculate isopattern score...")
     xcms.xcms <- xcms_get_feature_isopattern_score(xcms.xcms,
                                                    ppm = 10,
+                                                   calc_isopattern_score = calc_isopattern_score,
                                                    BPPARAM = SerialParam(
                                                      #workers = 6,
                                                      progressbar = T

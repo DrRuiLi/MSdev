@@ -29,7 +29,7 @@ setClass("MSdev",
 #' @importFrom ChemmineR atomcountMA MF `cid<-` cid validSDF canonicalize
 #' atomblock bonds bondblock rings
 #' @importFrom MSCC chemform_adduct_check
-#' @importFrom stringr str_extract
+#' @importFrom stringr str_extract str_split
 #' @importFrom plotly layout
 #' @importFrom SummarizedExperiment rowData colData assay `rowData<-` `colData<-` `assay<-`
 #' @importFrom shiny shinyApp fluidPage fluidRow
@@ -40,7 +40,7 @@ setClass("MSdev",
 #' @importFrom visNetwork visNetwork visLayout visOptions visInteraction
 #' visEvents visEdges visGetEdges visNetworkProxy visUpdateEdges
 #' @importFrom igraph as_adjacency_matrix distances edge.attributes
-#' degree V E
+#' degree V E `V<-` `E<-`
 #' @importFrom ComplexHeatmap draw Legend rowAnnotation
 #' @importFrom grid gpar grid.rect grid.circle
 MSdev <- function(rawDataDir =

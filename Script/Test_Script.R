@@ -308,3 +308,109 @@ MFN_manul_Shiny(Metabolic_flux_network)
   MFN_manul_Shiny(mfn)
 
 }
+# Mon Feb 10 10:33:09 2025 RXNMAPPER ------------------------------
+{
+  library()
+  rxnmp <- import("rxnmapper")
+  rxn_mapper = rxnmp$RXNMapper()
+  rxns = c('CC(C)S.CN(C)C=O.Fc1cccnc1F.O=C([O-])[O-].[K+].[K+]>>CC(C)Sc1ncccc1F',
+           'C>>C')
+  x <- rxn_mapper$get_attention_guided_atom_maps(rxns,detailed_output=T)
+
+  'CC(C)S.CN(C)C=O.Fc1cccnc1F.O=C([O-])[O-].[K+].[K+]>>CC(C)Sc1ncccc1F'%>%
+    get_Molecule_igraph_from_smiles()%>%
+    vis_Molecule_igraph()->a
+
+
+
+  mfn <- load_MFN()
+  edata(mfn@metabolic_network)[1,c("from","to","equation")]
+
+  x <- rep(from,times = equation.coef[from])
+  from.smiles <- V(mfn@metabolic_network)[x]$smiles
+  from.smiles <- paste0(from.smiles,collapse = ".")
+
+
+  x <- rep(to,times = equation.coef[to])
+  to.smiles <- V(mfn@metabolic_network)[x]$smiles
+  to.smiles <- paste0(to.smiles,collapse = ".")
+
+  req <- paste0(from.smiles, ">>",to.smiles)
+  rxns <- c(req,"C>>C")
+  x <- rxn_mapper$get_attention_guided_atom_maps(rxns)
+  x
+
+}
+
+# Mon Feb 10 15:41:02 2025 demo------------------------------
+{
+  rid <- "R00258"
+  #kegg.net <- get_KEGG_Reaction_network()
+  kegg.net <- readRDS("temp/kegg.net.rds")
+  mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net)
+  kegg.selected <- edata(mfn) %>%
+    dplyr::filter(REACTION_id == rid
+    )
+  kegg.selected <- c(kegg.selected$from,kegg.selected$to)%>%
+    unique()%>%
+    setdiff(c("C00005","C00006","C00014","C00080",rid))%>%
+    intersect(names(V(kegg.net)))
+  mfn <- Metabolic_flux_network_select_compound(mfn,kegg.selected)
+  mfn <-  Metabolic_flux_network_get_compound_data_from_cid(mfn)
+
+
+  vda <- vdata(mfn)%>%
+    dplyr::filter(id == rid
+    )
+
+  from.id <- c("C00041","C00026")
+  to.id <- c("C00022","C00025")
+
+  from.smiles <- V(mfn@metabolic_network)[from.id]$smiles
+  to.smiles <- V(mfn@metabolic_network)[to.id]$smiles
+
+
+  from.string <- paste0(from.smiles,collapse = ".")
+  to.string <- paste0(to.smiles,collapse = ".")
+
+  req <- paste0(from.string, ">>",to.string)
+  rxns <- c(req,"C>>C")
+
+
+  rxn.result <- RXNMapper(rxns)[[1]]
+  rxn.result.split <- str_split(rxn.result$mapped_rxn,">>")[[1]]%>%
+    sapply(function(x){
+      str_split(x,"\\.")
+    })
+
+
+  smi.rxn <- rxn.result.split[[2]][2]
+  smi.rxn
+  #smi.rxn%>%get_smiles_sdf(canonicalize = F)%>%sdf2smiles()
+
+
+  can = T
+
+  to.smiles[2]%>%
+    get_smiles_sdf(canonicalize = can)%>%
+    get_Molecule_igraph_from_sdf()%>%
+    `[[`(1)%>%
+    atom()
+
+  smi.rxn%>%
+    get_smiles_sdf(canonicalize = can)%>%
+    get_Molecule_igraph_from_sdf()%>%
+    `[[`(1)%>%
+    atom()
+
+
+}
+# Mon Feb 10 19:37:01 2025 DEMO------------------------------
+{
+  from.smiles <- c("C[C@@H](C(=O)O)N","C(CC(=O)O)C(=O)C(=O)O")
+  to.smiles <- c("CC(=O)C(=O)O","C(CC(=O)O)[C@@H](C(=O)O)N")
+
+
+
+}
+

@@ -118,7 +118,9 @@ get_sdf_formula <- function(sdf){
 #'
 #' @return sdf
 #' @export
-get_smiles_sdf <- function(smiles,smiles.id = NULL){
+get_smiles_sdf <- function(smiles,
+                           smiles.id = NULL,
+                           canonicalize = T){
 
   if (is.null(names(smiles))) {
     if (is.null(smiles.id)) {
@@ -135,7 +137,11 @@ get_smiles_sdf <- function(smiles,smiles.id = NULL){
     which(smiles==id)
     suppressWarnings(smiles.sdf[smiles==id] <- MSdev::smiles_map[[id]])
   }
-  smiles.sdf <-canonicalize(smiles.sdf)
+
+
+  if (canonicalize) {
+    smiles.sdf <-canonicalize(smiles.sdf)
+  }
   return(smiles.sdf)
 
 }
@@ -606,4 +612,7 @@ is.isotope <- function(atoms){
   dimnames(m) <- dimnames(atoms)
   return(m)
 }
+
+
+
 

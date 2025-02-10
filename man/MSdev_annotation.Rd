@@ -4,7 +4,7 @@
 \alias{MSdev_annotation}
 \title{MSdev annotation}
 \usage{
-MSdev_annotation(object, cpdb_path, ppm = 10, ...)
+MSdev_annotation(object, cpdb_path, calc_isopattern_score = F, ppm = 10, ...)
 }
 \arguments{
 \item{object}{MSdev}

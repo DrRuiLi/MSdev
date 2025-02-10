@@ -63,7 +63,7 @@ sdf_to_Molecule_igraph <- function(sdf,id ) {
 }
 
 
-get_Molecule_igraph_from_smiles <- function(smiles,id ) {
+get_Molecule_igraph_from_smiles <- function(smiles,id ="A") {
   sdf <- get_smiles_sdf(smiles)
   if (length(sdf)==1) sdf <- sdf[[1]]
   get_Molecule_igraph_from_sdf(sdf,id = id)
