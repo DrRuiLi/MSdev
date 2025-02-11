@@ -238,6 +238,13 @@ vis_Molecule_igraph <- function(Molecule_igraph,show_id = F){
 }
 
 
+vis_Molecule_igraph_smiles <- function(smiles){
+  mig <- smiles%>%
+    get_Molecule_igraph_from_smiles()
+    vis_Molecule_igraph(mig)
+}
+
+
 vis_Molecule_igraph_isotopomer <- function(Molecule_igraph,show_id = F,isotopomer = 1){
 
   Molecule_igraph.formated <- Molecule_igraph%>%
@@ -528,6 +535,76 @@ get_Reaction_atom_transfer_by_atom_map <- function(mol.ig.from,
 
 }
 
+get_Reaction_atom_transfer_by_RXNmapper <- function(mol.ig.from,
+                                                    mol.ig.to,
+                                                    target_ele = element_table$element,
+                                                    equation){
+
+  ### RXNmapper
+  {
+
+    rxn.result <- RXNMapper_map(from.smiles = sapply(mol.ig.from,function(x)x@molecule_info$smiles),
+                  to.smiles = sapply(mol.ig.to,function(x)x@molecule_info$smiles))
+
+    rxn.atom.id <- RXNMapper_mapped_rxn_parse(rxn.result)
+  }
+
+
+  ### make atom_transfer
+  {
+    from.df <- lapply( names(mol.ig.from), function(i){
+      make_vector(x = rxn.atom.id$from[[i]],
+                  name = paste0(i,"_",atom(mol.ig.from[[i]])))
+      data.frame(
+        from.compound.id = mol.ig.from[[i]]@molecule_info$id,
+        from.molecule.id = i,
+        from.atom.id = atom(mol.ig.from[[i]]),
+        from.rxn.id = rxn.atom.id$from[[i]]
+      )%>%
+        dplyr::filter(element(mol.ig.from[[i]]) %in% target_ele)
+    })%>%do.call(bind_rows,.)
+
+    to.df <- lapply( names(mol.ig.to), function(i){
+
+      data.frame(
+        to.compound.id = mol.ig.to[[i]]@molecule_info$id,
+        to.molecule.id = i,
+        to.atom.id = atom(mol.ig.to[[i]]),
+        to.rxn.id = rxn.atom.id$to[[i]]
+      )%>%
+        dplyr::filter(element(mol.ig.to[[i]]) %in% target_ele)
+    })%>%do.call(bind_rows,.)
+
+    idx <- intersect(from.df$from.rxn.id,to.df$to.rxn.id)%>%sort()
+    atom_transfer <- cbind(from.df[match(idx,from.df$from.rxn.id),],
+          to.df[match(idx,to.df$to.rxn.id),])
+    rownames(atom_transfer) <- NULL
+  }
+
+
+  ### make Reactuion_atom_transfer
+  {
+
+    rat <- Reactuion_atom_transfer()
+    rat@atom_transfer <- atom_transfer
+
+
+  }
+
+  return(rat)
+
+
+}
+
+canonicalize_smiles <- function(smiles){
+
+  smiles.sdf <- get_smiles_sdf(smiles,canonicalize = T)
+  smiles.canonicalized <-  ChemmineR::sdf2smiles(smiles.sdf)%>%
+    as.character()
+  names(smiles.canonicalized) <- names(smiles)
+  return(smiles.canonicalized)
+}
+
 
 vis_Molecule_atom_transfer <- function(mat,id = 1,show_id = F){
 
@@ -672,4 +749,92 @@ get_mat_from_visGetEdges <- function(mat,id,visGetEdges){
 }
 
 
+vis_Reaction_atom_transfer <- function(rat){
+
+
+  ### mol.ig
+  {
+    from.migs <- get_smiles_sdf(rat@reaction_info$from.smiles)%>%
+      get_Molecule_igraph_from_sdf(id = names(rat@reaction_info$from.smiles))
+    to.migs <- get_smiles_sdf(rat@reaction_info$to.smiles)%>%
+      get_Molecule_igraph_from_sdf(id = names(rat@reaction_info$to.smiles))
+
+  }
+
+  ### transfer
+  {
+    transfer <- rat@atom_transfer%>%
+      dplyr::mutate(
+        from.id = paste0(from.molecule.id,"_",from.atom.id),
+        to.id = paste0(to.molecule.id,"_",to.atom.id)
+      )
+  }
+
+  ### merge graph
+  {
+    from.mig <- sdf_igraph_merge_all(from.migs)
+    to.mig <- sdf_igraph_merge_all(to.migs)
+
+    ### merge from and to
+    {
+      xa <-vdata(from.mig)$x
+      xb <- vdata(to.mig)$x
+
+      vdata(from.mig)$x <- xa-max(xa)-diff(range(xa))/5
+      vdata(to.mig)$x <- xb- min(xb)+diff(range(xb))/5
+
+      nodes <- bind_rows(
+        vdata(from.mig),
+        vdata(to.mig)
+      )
+      #nodes$size <- 20
+      edges <- rbind(
+        edata(from.mig),
+        edata(to.mig)
+      )
+      ig.merge <- igraph::graph_from_data_frame(edges,
+                                                  vertices = nodes)%>%
+        Molecule_igraph_vis_format%>%
+        sdf_igraph_add_background_color(value = make_vector(0.5,
+                                                            c(transfer$from.id,transfer$to.id)))
+    }
+
+    ### add transfer edge
+    {
+      for (i in 1:nrow(transfer)) {
+
+        ig.merge <- igraph::add_edges(ig.merge,
+                                      edges = c(transfer$from.id[i],
+                                                transfer$to.id[i]) ,
+                                      attr = list(id = paste0(
+                                        transfer$from.id[i],"_",
+                                        transfer$to.id[i]            ),
+                                                  smooth.enabled = T,
+                                                  smooth.type = "dynamic",
+                                                  connect_type = "atom_transfer",
+                                                  width = 8,
+                                                  #color = "rgba(88, 203, 202, 0.5)",
+                                                  color = "#54BFBF",
+                                                  arrows.to = T,
+                                                  smooth.roundness = 0.5,
+                                                  shadow = T,
+                                                  dashes = I(list(c(10,20))))
+        )
+      }
+
+    }
+
+
+
+  }
+
+
+
+
+  ### Vis
+  vis_igraph(ig.merge)
+
+
+
+}
 

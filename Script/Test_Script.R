@@ -391,7 +391,7 @@ MFN_manul_Shiny(Metabolic_flux_network)
 
   can = T
 
-  to.smiles[2]%>%
+  to.smiles[1]%>%
     get_smiles_sdf(canonicalize = can)%>%
     get_Molecule_igraph_from_sdf()%>%
     `[[`(1)%>%
@@ -410,7 +410,45 @@ MFN_manul_Shiny(Metabolic_flux_network)
   from.smiles <- c("C[C@@H](C(=O)O)N","C(CC(=O)O)C(=O)C(=O)O")
   to.smiles <- c("CC(=O)C(=O)O","C(CC(=O)O)[C@@H](C(=O)O)N")
 
+  rxn.map <- RXNMapper_map(from.smiles = from.smiles,
+                           to.smiles = to.smiles)
+
+}
+# Tue Feb 11 10:57:07 2025 implement RXN into Metabolic flux network------------------------------
+{
+
+
+  kegg.net <- get_KEGG_Reaction_network()
+  mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net)
+  kegg.pathway.df <- MSdb:::get_KEGG_compound_pathway_df()
+  kegg.selected <- kegg.pathway.df %>%
+    dplyr::filter(ENTRY %in% c("hsa00010",### glycolysis
+                               "hsa00020",### TCA
+                               "hsa00250",### glutamate
+                               "hsa00480" ### GSH
+    ))%>%
+    dplyr::pull(COMPOUND.ID)%>%
+    unique()%>%
+    setdiff(c("C00005","C00006","C00014","C00080"))%>%
+    intersect(names(V(kegg.net)))
+  mfn <- Metabolic_flux_network_select_compound(mfn,kegg.selected)
+  mfn <-  Metabolic_flux_network_get_compound_data_from_cid(mfn)
+  mfn <- Metabolic_flux_network_clean_reactions(mfn)
+  mfn <- Metabolic_flux_network_get_Reaction_atom_transfer(mfn)
+
+
+  MFN_manul_Shiny(mfn)
 
 
 }
+
+# Tue Feb 11 19:06:33 2025 ------------------------------
+from.smiles[1]%>%
+  vis_Molecule_igraph_smiles()
+
+from.smiles[1]%>%
+  sub(pattern = "\\.","-",.)%>%
+  canonicalize_smiles()%>%
+  vis_Molecule_igraph_smiles()
+
 

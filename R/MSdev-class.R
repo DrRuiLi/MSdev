@@ -29,7 +29,7 @@ setClass("MSdev",
 #' @importFrom ChemmineR atomcountMA MF `cid<-` cid validSDF canonicalize
 #' atomblock bonds bondblock rings
 #' @importFrom MSCC chemform_adduct_check
-#' @importFrom stringr str_extract str_split
+#' @importFrom stringr str_extract str_split str_extract_all
 #' @importFrom plotly layout
 #' @importFrom SummarizedExperiment rowData colData assay `rowData<-` `colData<-` `assay<-`
 #' @importFrom shiny shinyApp fluidPage fluidRow
@@ -43,6 +43,7 @@ setClass("MSdev",
 #' degree V E `V<-` `E<-`
 #' @importFrom ComplexHeatmap draw Legend rowAnnotation
 #' @importFrom grid gpar grid.rect grid.circle
+#' @import data.table rbindlist
 MSdev <- function(rawDataDir =
                     "C:/Users/91879/OneDrive/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data",
                   projectDir = dirname(rawDataDir),

@@ -464,7 +464,7 @@ DEP.plot.heatmap <- function(data.se,
       data.se <- DEP::add_rejections(data.se)
 
     } else{
-      data.se <- add_rejections_no_p.adj(data.se,lfc = lfc)
+      data.se <- DEP_add_rejections(data.se,p.adjust = F)
     }
   }
 

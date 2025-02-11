@@ -104,8 +104,9 @@ Metabolic_flux_network_get_Reaction_atom_transfer <- function(mfn){
   mfn.v.r <- mfn.v %>%
     dplyr::filter(node.type == "Reaction")
 
-  mfn.transfer <- plyr::l_ply( mfn.v.r$id ,.fun = function(rid,...){
+  mfn.transfer <- plyr::llply( mfn.v.r$id ,.fun = function(rid,...){
 
+    message_with_time(rid)
     from <- mfn.e%>%
       dplyr::filter(to == rid)%>%
       dplyr::pull(from)
@@ -134,21 +135,26 @@ Metabolic_flux_network_get_Reaction_atom_transfer <- function(mfn){
     mol.ig.to <- V(mfn@metabolic_network)[to]$Molecule_igraph
     names(mol.ig.to) <- paste0(x,"_",sapply(equation.coef[to], function(x) seq(1, x))%>%unlist())
 
-    get_Reaction_atom_transfer_by_atom_map(
+    rat <-  get_Reaction_atom_transfer_by_RXNmapper(
       mol.ig.from,
       mol.ig.to,
       target_ele = "C"
     )
+
+    ### rat info
+    {
+      rat@reaction_info$reaction_id <- rid
+      rat@reaction_info$from.smiles <- sapply(mol.ig.from,function(x)x@molecule_info$smiles)
+      rat@reaction_info$to.smiles <- sapply(mol.ig.to,function(x)x@molecule_info$smiles)
+    }
+
+    return(rat)
   },
   .progress = "text")
-  names(mfn.transfer) <- mfn.e$name
-  attributes(mfn.transfer)$split_labels <- NULL
-  attributes(mfn.transfer)$split_type <- NULL
-  Metabolic_flux_network@metabolic_network <-
-    igraph::set_edge_attr(Metabolic_flux_network@metabolic_network,
-                          name = "atom_transfer",value =mfn.transfer
-    )
-  return(Metabolic_flux_network)
+  names(mfn.transfer) <- mfn.v.r$id
+
+  V(mfn@metabolic_network)[mfn.v.r$id]$Reaction_atom_transfer  <- mfn.transfer
+  return(mfn)
 
 }
 
@@ -175,7 +181,9 @@ vis_Metabolic_flux_network <- function(mfn){
 
     vda <- vdata(mfn)%>%
       dplyr::mutate(#shape = "circle",
-                    color.background = "white")
+                    color.background = "white")%>%
+      dplyr::select(name,id,label,color.background)
+
     eda <- edata(mfn)%>%
       dplyr::mutate(color.color = "rgba(84,126,158,0.5)",
                     color.highlight = "rgba(84,126,158,1)",
@@ -344,3 +352,20 @@ Metabolic_flux_atom_transfer <- function(mat,
 
 }
 
+
+
+setClass("Reactuion_atom_transfer",
+         slots = list(
+           "reaction_info" = "list",
+           "atom_transfer" = "data.frame"
+         )
+         )
+
+setMethod("show",
+          "Reactuion_atom_transfer",definition = function(object){
+            print(paste0("Reaction ",nrow(object@atom_transfer)
+                         ," atom transfer"))
+          })
+Reactuion_atom_transfer <- function(){
+  new("Reactuion_atom_transfer")
+}

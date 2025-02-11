@@ -233,6 +233,76 @@ sdf_igraph_merge <- function(sdf.igraphA,sdf.igraphB){
 }
 
 
+sdf_igraph_merge_all <- function(...,vertical = T){
+
+
+  ### id for input mig
+  {
+    ig.list <- c(...)
+    if (is.null(names(ig.list))) {
+      names(ig.list) <- paste0("CP",1:length(ig.list))
+    }
+  }
+
+  ### new id and name
+  {
+    ig.list <- sapply(names(ig.list),function(id){
+      ig <- ig.list[[id]]
+      vdata(ig)$name <- paste0(id,"_",vdata(ig)$name)
+      vdata(ig)$id <- paste0(id,"_",vdata(ig)$id)
+      edata(ig)$id <- paste0(id,"_",edata(ig)$id)
+      ig
+    }, USE.NAMES =T)
+  }
+
+
+  ### new position
+  {
+    ig.size <- sapply(names(ig.list),function(id){
+
+      ig <- ig.list[[id]]
+      s <- c(x = diff(range(vdata(ig)$x)),
+                 y = diff(range(vdata(ig)$y) ))
+      if (vertical) {
+        return(unname(s["y"]))
+      }else{
+        return(unname(s["x"]))
+      }})
+
+    for (i in seq_along(ig.list)) {
+
+      if (vertical) {
+        vdata(ig.list[[i]])$y <- vdata(ig.list[[i]])$y +cumsum(ig.size)[i]
+        vdata(ig.list[[i]])$x <- vdata(ig.list[[i]])$x - mean(vdata(ig.list[[i]])$x)
+
+      }else{
+        vdata(ig.list[[i]])$x <- vdata(ig.list[[i]])$x +cumsum(ig.size)[i]
+        vdata(ig.list[[i]])$y <- vdata(ig.list[[i]])$y - mean(vdata(ig.list[[i]])$y)
+      }
+    }
+
+
+
+  }
+
+
+  ### combine
+  {
+    nodes <- lapply(ig.list,vdata)%>%
+      do.call(bind_rows,.)
+    edges <- lapply(ig.list,edata)%>%
+      do.call(bind_rows,.)
+
+    new.igraph <- igraph::graph_from_data_frame(edges,
+                                                vertices = nodes)
+  }
+
+  return(new.igraph)
+
+
+}
+
+
 
 .get_vis_col <- function(sdf.igraph,prob,colramp = colramp(),na.col = "#AAAAAA"){
 

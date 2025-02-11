@@ -463,7 +463,7 @@ if (!"diff"%in%colnames(pathway.table)) {
    ggplot(pathway.table)+
      geom_bar(aes(x = pathway.name , y = enrich.ratio , fill = log10p),
               col ="black",stat = "identity",size = 0.1)+
-     scale_fill_gradient2(low = "white" ,mid = "yellow",high = "#DC0000",
+     scale_fill_gradient2(low = "white" ,mid = "#3A7DA8",high = "#A01326",
                           midpoint = median(-log10(x = pathway.table$p.value)))+
      labs(x = NULL ,y = "Enrich Ratio", fill = "-Log10(P)")+
      coord_flip()+
