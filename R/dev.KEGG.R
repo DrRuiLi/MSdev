@@ -546,3 +546,43 @@ get_KEGG_MODULE_reaction_direction_stat <- function(kegg.mdata){
 
 }
 
+
+
+KEGG_get_cp_linked_gene <- function(cp.id){
+
+  cp.link <- KEGGREST::keggLink("compound","enzyme")
+  cp.link <- sub(x = cp.link,pattern = "cpd:",replacement = "")
+  names(cp.link) <- sub(x = names(cp.link),pattern = "ec:",replacement = "")
+
+
+  cp.link <- cp.link[cp.link%in% cp.id]
+
+  map <- clusterProfiler::bitr(names(cp.link),fromType = "ENZYME",
+                        toType = "PMID",OrgDb = org.Hs.eg.db)
+  map.matched <- map%>%
+    dplyr::mutate(cp.id = cp.link[ENZYME])
+
+
+  symbol <- sapply(cp.id,function(x){
+    if (is.na(x)) {
+      return(NA)
+    }
+    paste0(map.matched$SYMBOL[map.matched$cp.id==x],collapse  = ";")
+
+  })
+
+  enzyme <- sapply(cp.id,function(x){
+    if (is.na(x)) {
+      return(NA)
+    }
+    paste0( names(cp.link)[cp.link==x],collapse  = ";")
+
+  })
+
+  data.frame(SYMBOL = symbol,
+             ENZYME = enzyme) %>%
+    return()
+
+
+
+}

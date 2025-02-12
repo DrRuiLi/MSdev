@@ -272,12 +272,16 @@ sdf_igraph_merge_all <- function(...,vertical = T){
     for (i in seq_along(ig.list)) {
 
       if (vertical) {
-        vdata(ig.list[[i]])$y <- vdata(ig.list[[i]])$y +cumsum(ig.size)[i]
+
         vdata(ig.list[[i]])$x <- vdata(ig.list[[i]])$x - mean(vdata(ig.list[[i]])$x)
+        vdata(ig.list[[i]])$y <- vdata(ig.list[[i]])$y - mean(vdata(ig.list[[i]])$y)
+        vdata(ig.list[[i]])$y <- vdata(ig.list[[i]])$y +cumsum(ig.size)[i]
 
       }else{
-        vdata(ig.list[[i]])$x <- vdata(ig.list[[i]])$x +cumsum(ig.size)[i]
+
+        vdata(ig.list[[i]])$x <- vdata(ig.list[[i]])$x - mean(vdata(ig.list[[i]])$x)
         vdata(ig.list[[i]])$y <- vdata(ig.list[[i]])$y - mean(vdata(ig.list[[i]])$y)
+        vdata(ig.list[[i]])$x <- vdata(ig.list[[i]])$x +cumsum(ig.size)[i]
       }
     }
 

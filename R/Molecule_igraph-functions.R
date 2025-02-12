@@ -582,10 +582,10 @@ get_Reaction_atom_transfer_by_RXNmapper <- function(mol.ig.from,
   }
 
 
-  ### make Reactuion_atom_transfer
+  ### make Reaction_atom_transfer
   {
 
-    rat <- Reactuion_atom_transfer()
+    rat <- Reaction_atom_transfer()
     rat@atom_transfer <- atom_transfer
 
 

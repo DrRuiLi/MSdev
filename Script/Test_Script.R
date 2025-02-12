@@ -443,12 +443,40 @@ MFN_manul_Shiny(Metabolic_flux_network)
 }
 
 # Tue Feb 11 19:06:33 2025 ------------------------------
-from.smiles[1]%>%
-  vis_Molecule_igraph_smiles()
+{
+  from.smiles[1]%>%
+    vis_Molecule_igraph_smiles()
 
-from.smiles[1]%>%
-  sub(pattern = "\\.","-",.)%>%
-  canonicalize_smiles()%>%
-  vis_Molecule_igraph_smiles()
+  from.smiles[1]%>%
+    sub(pattern = "\\.","-",.)%>%
+    canonicalize_smiles()%>%
+    vis_Molecule_igraph_smiles()
 
 
+}
+
+# Wed Feb 12 14:55:01 2025 shiny update------------------------------
+{
+
+  MFN_manul_Shiny(mfn)
+
+}
+
+
+# Wed Feb 12 15:58:50 2025 tracing------------------------------
+{
+  glucose.smiles <- "C([C@@H]1[C@H]([C@@H]([C@H]([C@H](O1)O)O)O)O)O"
+  glucose.mig <- get_Molecule_igraph_from_smiles(glucose.smiles)
+
+  Glu_1_2.mig <- Molecule_igraph_add_isotopomer(Molecule_igraph = glucose.mig,
+                                                isotopomer = "Tracer",
+                                                iso_vec = c("C_6" = "[13]C","C_10" = "[13]C") ,
+                                                abundance = 1)
+  Glu_1_2.mig <- Molecule_igraph_remove_isotopomer(Glu_1_2.mig,"base")
+
+  mfn <- Metabolic_flux_network_set_tracer(mfn,
+                                           "C00267",Glu_1_2.mig)
+
+
+
+}

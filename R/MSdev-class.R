@@ -43,7 +43,7 @@ setClass("MSdev",
 #' degree V E `V<-` `E<-`
 #' @importFrom ComplexHeatmap draw Legend rowAnnotation
 #' @importFrom grid gpar grid.rect grid.circle
-#' @import data.table rbindlist
+#' @importFrom data.table rbindlist
 MSdev <- function(rawDataDir =
                     "C:/Users/91879/OneDrive/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data",
                   projectDir = dirname(rawDataDir),

@@ -1691,6 +1691,9 @@
                      width = 3,height = 3)
 
 
+    maped.genes <- KEGG_get_cp_linked_gene(rowData(data.se)$kegg_id)
+    edit_df_in_excel(maped.genes)
+
     ### Plot TIC
     {
       p1 <- plot_xcms_TIC(msdev.LE@xcmsData$PositiveMS1)+
@@ -1774,6 +1777,8 @@
                      width = 3,height = 3)
 
 
+    maped.genes <- KEGG_get_cp_linked_gene(rowData(data.se)$kegg_id)
+    edit_df_in_excel(maped.genes)
     ### Plot TIC
     {
       p1 <- plot_xcms_TIC(msdev.LE@xcmsData$PositiveMS1)+

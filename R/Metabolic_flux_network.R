@@ -126,14 +126,23 @@ Metabolic_flux_network_get_Reaction_atom_transfer <- function(mfn){
         make_vector(x.coef,x.id)
       },USE.NAMES = F)
 
-    x <- rep(from,times = equation.coef[from])
-    mol.ig.from <- V(mfn@metabolic_network)[x]$Molecule_igraph
-    names(mol.ig.from) <- paste0(x,"_",sapply(equation.coef[from], function(x) seq(1, x))%>%unlist())
 
+    ### mol ig
+    {
 
-    x <- rep(to,times = equation.coef[to])
-    mol.ig.to <- V(mfn@metabolic_network)[to]$Molecule_igraph
-    names(mol.ig.to) <- paste0(x,"_",sapply(equation.coef[to], function(x) seq(1, x))%>%unlist())
+      x <- rep(from,times = equation.coef[from])
+      mol.ig.from <- V(mfn@metabolic_network)[x]$Molecule_igraph
+      names(mol.ig.from) <- paste0(x,"_",sapply(equation.coef[from], function(x) seq(1, x))%>%unlist())
+      idx <- order(sapply(mol.ig.from,formula)%>%get_formula_ele_count())
+      mol.ig.from <- mol.ig.from[idx]
+
+      x <- rep(to,times = equation.coef[to])
+      mol.ig.to <- V(mfn@metabolic_network)[to]$Molecule_igraph
+      names(mol.ig.to) <- paste0(x,"_",sapply(equation.coef[to], function(x) seq(1, x))%>%unlist())
+      idx <- order(sapply(mol.ig.to,formula)%>%get_formula_ele_count())
+      mol.ig.to <- mol.ig.to[idx]
+
+      }
 
     rat <-  get_Reaction_atom_transfer_by_RXNmapper(
       mol.ig.from,
@@ -354,7 +363,7 @@ Metabolic_flux_atom_transfer <- function(mat,
 
 
 
-setClass("Reactuion_atom_transfer",
+setClass("Reaction_atom_transfer",
          slots = list(
            "reaction_info" = "list",
            "atom_transfer" = "data.frame"
@@ -362,10 +371,10 @@ setClass("Reactuion_atom_transfer",
          )
 
 setMethod("show",
-          "Reactuion_atom_transfer",definition = function(object){
+          "Reaction_atom_transfer",definition = function(object){
             print(paste0("Reaction ",nrow(object@atom_transfer)
                          ," atom transfer"))
           })
-Reactuion_atom_transfer <- function(){
-  new("Reactuion_atom_transfer")
+Reaction_atom_transfer <- function(){
+  new("Reaction_atom_transfer")
 }
