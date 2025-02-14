@@ -923,14 +923,6 @@ MFN_manul_Shiny_server <- function(object){
       mfn_for_vis <- reactiveVal(object)
       mfn_for_update <- reactiveVal(object)
 
-      observeEvent(input$save_buttion,{
-
-
-        save.dir <- "C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/Metabolic_flux_network/"
-        saveRDS(mfn_for_update(),
-                file = paste0(save.dir,input$save_name,"_",str_time(),".rds"))
-
-      })
     }
 
 
@@ -1099,25 +1091,56 @@ MFN_manul_Shiny_server <- function(object){
       message_with_time("Metabolite_isotopomer_statu_vis")
       {
         mol.ig <- mig_for_vis()
+        iso.select <- selected.isotopomer()
       }
 
-      vis_Molecule_igraph_isotopomer(mol.ig)
+      vis_Molecule_igraph_isotopomer(mol.ig,isotopomer = iso.select)
 
     })
 
 
-    output$Metabolite_isotopomer_statu_table <- renderTable({
+    output$Metabolite_isotopomer_statu_table <- DT::renderDataTable({
 
       message_with_time("Metabolite_isotopomer_statu_table")
       {
-        mol.ig <- mol.ig.selected()
+        mol.ig <- mig_for_vis()
       }
 
 
-      dt <- mol.ig@isotopomer[,1:4,drop = F]
-      dt$Reaction_Path <- ""
-      dt
+      dt <- mol.ig@isotopomer[,c("isotopomer","isotopologue","label","path"),drop = F]
+      dt%>%
+        DT::datatable(selection =list(mode = "single", selected = 1))
     })
+
+
+    ### update selected.isotopomer() when select in Metabolite_isotopomer_statu_table
+    {
+      selected.isotopomer <- reactiveVal(1)
+      observeEvent(input$Metabolite_isotopomer_statu_table_rows_selected,{
+        selected.isotopomer(input$Metabolite_isotopomer_statu_table_rows_selected)
+      })
+
+    }
+
+
+
+    ### save MFN to files
+    {
+
+      observeEvent(input$save_buttion,{
+
+        message("save_buttion")
+
+        save.dir <- "C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Data/Metabolic_flux_network/"
+        saveRDS(mfn_for_update(),
+                file = paste0(save.dir,input$save_name,"_",str_time(),".rds"))
+
+
+        message("MFN_saved")
+
+      })
+    }
+
 
 
   }

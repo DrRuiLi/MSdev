@@ -10,8 +10,8 @@ get_KEGG_Reaction_network <- function(kegg.rdata ){
   #kegg.mdata <- kegg.rawdata$Module_rawdata
   #ig.krn <- KEGG_reaction_get_direction_from_module(ig.krn,kegg.mdata)
   #ig.krn <- igraph_sort_direction(ig.krn)
-  ig.krn.filter <- KEGG_Reaction_network_filter_by_emzyme(ig.krn,"hsa")
-  ig.krn.filter <- KEGG_Reaction_network_remove_nonformat_node(ig.krn.filter)
+  #ig.krn.filter <- KEGG_Reaction_network_filter_by_emzyme(ig.krn,"hsa")
+  ig.krn.filter <- KEGG_Reaction_network_remove_nonformat_node(ig.krn)
   return(ig.krn.filter)
 
 

@@ -149,6 +149,7 @@ Metabolic_flux_network_get_Reaction_atom_transfer <- function(mfn){
       mol.ig.to,
       target_ele = "C"
     )
+    if (is.na(rat)) return(NA)
 
     ### rat info
     {
@@ -163,6 +164,9 @@ Metabolic_flux_network_get_Reaction_atom_transfer <- function(mfn){
   names(mfn.transfer) <- mfn.v.r$id
 
   V(mfn@metabolic_network)[mfn.v.r$id]$Reaction_atom_transfer  <- mfn.transfer
+  mfn@metabolic_network <- igraph_filter_vertex(mfn@metabolic_network,
+                       !vdata(mfn@metabolic_network)$id%in%names(which(is.na(mfn.transfer)))
+                       )
   return(mfn)
 
 }
@@ -185,13 +189,30 @@ load_MFN <- function(path = "C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.
 vis_Metabolic_flux_network <- function(mfn){
 
 
+  ### labeled
+  {
+
+
+    mfn.c <- vdata(mfn)%>%
+      dplyr::filter(node.type == "Compound")
+    idx.labeled <- mfn.c$id[sapply(mfn.c$Molecule_igraph,is_labeled)]
+  }
+
+
   ### vis formate
   {
 
     vda <- vdata(mfn)%>%
       dplyr::mutate(#shape = "circle",
-                    color.background = "white")%>%
-      dplyr::select(name,id,label,color.background)
+        size = case_when(
+          node.type == "Compound"~50,
+          node.type == "Reaction"~30
+        ),
+                    color.background = case_when(
+                      id %in% idx.labeled ~"#FD3018",
+                      T~"#FFFFFF"
+                    ))%>%
+      dplyr::select(name,id,label,color.background,size)
 
     eda <- edata(mfn)%>%
       dplyr::mutate(color.color = "rgba(84,126,158,0.5)",
@@ -247,16 +268,17 @@ Metabolic_flux_network_get_compound_data_from_cid <- function(mfn){
   cp.cid <- webchem::get_cid(cp.node.data$PubChem,
                                             from = "sid",domain = "substance")
   pubchem.retrive <- webchem::pc_prop(cp.cid$cid)
-
+  cp.node.data <- cp.node.data%>%
+    dplyr::mutate(pubchem.retrive)%>%
+    dplyr::filter(!is.na(CanonicalSMILES))
 
   V(mfn@metabolic_network)$smiles <- NA
-  V(mfn@metabolic_network)[cp.node.data$name]$smiles <- pubchem.retrive$IsomericSMILES
-
+  V(mfn@metabolic_network)[cp.node.data$name]$smiles <- cp.node.data$CanonicalSMILES
 
 
   V(mfn@metabolic_network)$Molecule_igraph  <- NA
   V(mfn@metabolic_network)[cp.node.data$name]$Molecule_igraph <- get_Molecule_igraph_from_smiles(
-    pubchem.retrive$IsomericSMILES ,id = cp.node.data$name )
+    cp.node.data$CanonicalSMILES ,id = cp.node.data$name )
 
 
 
@@ -277,6 +299,18 @@ Metabolic_flux_network_clean_reactions <- function(mfn){
   mfn@metabolic_network <- igraph_filter_vertex(mfn@metabolic_network,x)
 
   return(mfn)
+}
+
+
+Metabolic_flux_network_filter_reactions <- function(mfn,rid){
+
+  mfn.r <- vdata(mfn)%>%
+    dplyr::filter(node.type=="Reaction",
+                  id %in% rid)
+
+  mfn@metabolic_network <- igraph_filter_distance(mfn@metabolic_network,mfn.r$id)
+  return(mfn)
+
 }
 
 Metabolic_flux_network_update_from_visGetEdges <- function(mfn,visGetEdges){
@@ -353,11 +387,69 @@ Metabolic_flux_network_set_tracer <-
   }
 
 
-Metabolic_flux_atom_transfer <- function(mat,
-                                         mol.ig.from,
-                                         mol.ig.to
-                                         ){
 
+Metabolic_flux_tracing <- function(mfn){
+
+
+
+  mfn.r <- vdata(mfn)%>%
+    dplyr::filter(node.type == "Reaction")
+
+  for (i in (1:10)+length(mfn@Molecule_igraphs)) {
+
+    mfn.c <- vdata(mfn)%>%
+      dplyr::filter(node.type == "Compound")
+    idx.labeled <- mfn.c$id[sapply(mfn.c$Molecule_igraph,is_labeled)]
+    message_with_time("Round ",i)
+    message_with_time(length(idx.labeled)," Compound labeled")
+
+    ### cycle control
+    {
+      mfn@Molecule_igraphs[[i]] <- list()
+      mfn@Molecule_igraphs[[i]][["compound"]] <- idx.labeled
+      #if (i>1) idx.labeled <- setdiff(idx.labeled, mfn@Molecule_igraphs[[i-1]]$compound)
+    }
+
+    for (i.labeled in idx.labeled) {
+
+      rid.linked <- igraph_get_nodes_distance(mfn@metabolic_network,i.labeled,1)
+      ### cycle control
+      {
+        mfn@Molecule_igraphs[[i]]$reaction <- c( mfn@Molecule_igraphs[[i]]$reaction,rid.linked)
+        #if (i>1) rid.linked <- setdiff(rid.linked, mfn@Molecule_igraphs[[i-1]]$reaction)
+      }
+      message_with_time("--",i.labeled)
+
+      for ( i.rid in rid.linked) {
+        message_with_time("---",i.rid)
+
+        rat <- mfn.r[[i.rid ,"Reaction_atom_transfer"]]
+        if (!i.labeled %in%  rat@atom_transfer$from.compound.id) {
+          rat <- Reaction_atom_transfer_reverse(rat)
+        }
+
+        cid.linked <- igraph_get_nodes_distance(mfn@metabolic_network,i.rid,1)
+
+        mol.igs <- V(mfn@metabolic_network)[cid.linked]$Molecule_igraph
+        names(mol.igs) <- cid.linked
+
+        to.mol.igs <- Metabolic_flux_atom_transfer_by_reaction(rat,mol.igs)
+
+        test_fun(to.mol.igs)
+        V(mfn@metabolic_network)[names(to.mol.igs)]$Molecule_igraph <- to.mol.igs
+
+      }
+
+
+    }
+
+  }
+
+
+  idx.labeled <- mfn.c$id[sapply(mfn.c$Molecule_igraph,is_labeled)]
+  mig.labeld <- mfn.c[idx.labeled,"Molecule_igraph"]
+
+  return(mfn)
 
 }
 

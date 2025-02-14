@@ -6,14 +6,19 @@ setClass("Molecule_igraph",
            isotopomer = "data.frame"
          ))
 
-
+Molecule_igraph <- function(){
+  new("Molecule_igraph")
+}
 
 
 setMethod(
   "show",
   "Molecule_igraph",
   definition = function(object) {
-    print(paste0("Molecule_igraph: ", unname(MF(object@sdf, addH =  T))))
+    print(paste0("Molecule_igraph: ", unname(MF(object@sdf, addH =  T))," ",
+                 nrow(object@isotopomer)," isotopomers"
+                 ))
+
   }
 )
 

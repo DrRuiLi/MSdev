@@ -1700,7 +1700,8 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
                                cpdb = cpdb)
     rda <- rda%>%
       dplyr::mutate(db.info,.after = rtmed,
-                    KEGG_get_cp_linked_gene(kegg_id))
+                    #KEGG_get_cp_linked_gene(kegg_id)
+                    )
 
     rowData(feature.se) <- rda
 

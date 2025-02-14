@@ -474,9 +474,84 @@ MFN_manul_Shiny(Metabolic_flux_network)
                                                 abundance = 1)
   Glu_1_2.mig <- Molecule_igraph_remove_isotopomer(Glu_1_2.mig,"base")
 
+
+  #mfn <- load_MFN()
   mfn <- Metabolic_flux_network_set_tracer(mfn,
                                            "C00267",Glu_1_2.mig)
 
+  mfn <- Metabolic_flux_tracing(mfn)
+  MFN_manul_Shiny(mfn)
 
+
+}
+
+# Thu Feb 13 21:30:13 2025 a simple MFN for test ------------------------------
+{
+
+  kegg.net <- get_KEGG_Reaction_network()
+  #kegg.net <- readRDS("temp/kegg.net.rds")
+  mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net)
+  kegg.pathway.df <- MSdb:::get_KEGG_compound_pathway_df()
+  kegg.selected <- kegg.pathway.df %>%
+    dplyr::filter(ENTRY %in% c("hsa00010",### glycolysis
+                               "hsa00020"### TCA
+    ))%>%
+    dplyr::pull(COMPOUND.ID)%>%
+    unique()%>%
+    intersect(names(V(kegg.net)))
+
+  mfn <- Metabolic_flux_network_select_compound(mfn,kegg.selected)
+  mfn <- Metabolic_flux_network_clean_reactions(mfn)
+  mfn <-  Metabolic_flux_network_get_compound_data_from_cid(mfn)
+  mfn <- Metabolic_flux_network_get_Reaction_atom_transfer(mfn)
+  #mfn <- Metabolic_flux_tracing(mfn)
+  #"R01063" %in% vdata(mfn)$id
+
+  MFN_manul_Shiny(mfn)
+
+}
+# Fri Feb 14 02:05:56 2025 ------------------------------
+
+rxns.bak -> rxns
+rxns <- gsub(pattern = "#","",rxns)
+rxns
+rxn.result <- RXNMapper(rxns,detailed_output = T)[[1]]
+
+# Fri Feb 14 10:36:33 2025 TCA MFN TEST------------------------------
+{
+  glucose.smiles <- "C([C@@H]1[C@H]([C@@H]([C@H]([C@H](O1)O)O)O)O)O"
+  glucose.mig <- get_Molecule_igraph_from_smiles(glucose.smiles)
+
+  Glu_1_2.mig <- Molecule_igraph_add_isotopomer(Molecule_igraph = glucose.mig,
+                                                isotopomer = "Tracer",
+                                                iso_vec = c("C_6" = "[13]C","C_10" = "[13]C") ,
+                                                abundance = 1)
+  Glu_1_2.mig <- Molecule_igraph_remove_isotopomer(Glu_1_2.mig,"base")
+
+
+  #mfn <- load_MFN()
+  mfn <- Metabolic_flux_network_set_tracer(mfn,
+                                           "C00267",Glu_1_2.mig)
+
+  mfn <- Metabolic_flux_tracing(mfn)
+  MFN_manul_Shiny(mfn)
+
+
+}
+# Fri Feb 14 13:41:57 2025 selected reaction ------------------------------
+{
+ # kegg.net <- get_KEGG_Reaction_network()
+  kegg.net <- readRDS("temp/kegg.net.no.filter.hsa.rds")
+  mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net)
+  rid <- link.pathway.reaction[names(link.pathway.reaction )%in% c("path:map00010","path:map00020")]%>%
+    sub("rn:","",x=.)
+  mfn <- Metabolic_flux_network_filter_reactions(mfn,rid)
+  mfn <- Metabolic_flux_network_get_compound_data_from_cid(mfn)
+  mfn <- Metabolic_flux_network_get_Reaction_atom_transfer(mfn)
+  mfn <- Metabolic_flux_network_set_tracer(mfn,
+                                           "C00267",Glu_1_2.mig)
+  mfn <- Metabolic_flux_tracing(mfn)
+
+  MFN_manul_Shiny(mfn)
 
 }

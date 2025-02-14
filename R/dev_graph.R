@@ -300,3 +300,13 @@ igraph_import <- function(file){
   edata <- readxl::read_excel(file,sheet = "edata")
   igraph::graph.data.frame(edata,vertices = vdata)
 }
+
+
+igraph_get_nodes_distance <- function(ig,from,dis){
+
+  dist <- distances(ig,from)
+
+  id.dis <- which(apply(dist,2,function(x){any(x<=dis)}))
+  setdiff(names(id.dis),from)
+
+}

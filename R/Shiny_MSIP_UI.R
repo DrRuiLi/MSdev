@@ -293,17 +293,13 @@ MFN_manul_Shiny_ui <- function(){
                       )
              ),
              fluidRow(
-               column(6,
-                      tableOutput(
+                      DT::DTOutput(
                         "Metabolite_isotopomer_statu_table"
-                      )
                       ),
-               column(6,
                  visNetwork::visNetworkOutput(
                    outputId = "Metabolite_isotopomer_statu_vis",
                    height = "400px", width = "100%"
                  )
-               )
              ),
              tags$style(
                HTML("

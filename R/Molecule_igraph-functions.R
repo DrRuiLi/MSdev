@@ -52,6 +52,7 @@ sdf_to_Molecule_igraph <- function(sdf,id ) {
                   isotopologue = "M0",
                   label = "base",
                   abundance = 1,
+                  path = "",
                   .before = everything()
     )
   rownames(isotopomer.df) <- isotopomer.df$isotopomer
@@ -64,7 +65,7 @@ sdf_to_Molecule_igraph <- function(sdf,id ) {
 
 
 get_Molecule_igraph_from_smiles <- function(smiles,id ="A") {
-  sdf <- get_smiles_sdf(smiles)
+  sdf <- get_smiles_sdf(smiles,smiles.id = id)
   if (length(sdf)==1) sdf <- sdf[[1]]
   get_Molecule_igraph_from_sdf(sdf,id = id)
 }
@@ -82,16 +83,13 @@ get_Molecule_igraph_from_smiles <- function(smiles,id ="A") {
 #' @export
 #'
 Molecule_igraph_add_isotopomer <- function(
-    Molecule_igraph , isotopomer = NULL,iso_vec = NULL,abundance=NA){
+    Molecule_igraph , isotopomer = NULL,iso_vec = NULL,abundance=NA,path = NA){
 
   if (identical(iso_vec,"all_C")) {
     iso_vec <- make_vector("[13]C",atom(glu.mi,"C"))
   }
 
-  iso_label <- split(names(iso_vec),iso_vec)
-  iso_label <- sapply(seq_along(iso_label),function(x){
-    paste0("(",paste0(iso_label[[x]],collapse = ","),")",names(iso_label)[x])
-  })%>%paste0(collapse = ";")
+  iso_label <- get_isotopomer_name(iso_vec)
   ele_vec <-make_vector(vdata(Molecule_igraph)$element,
                         atom(Molecule_igraph))
   ele_vec[names(iso_vec)] <- iso_vec
@@ -108,7 +106,8 @@ Molecule_igraph_add_isotopomer <- function(
   to.add <- data.frame(isotopomer = isotopomer,
                        isotopologue = isotopologue,
                        label = iso_label ,
-                       abundance = abundance
+                       abundance = abundance,
+                       path = path
                        )
   rownames(to.add) <- to.add$isotopomer
   isotopomer.df[isotopomer,names(to.add)] <- to.add
@@ -117,6 +116,18 @@ Molecule_igraph_add_isotopomer <- function(
   isotopomer.df -> Molecule_igraph@isotopomer
   return(Molecule_igraph)
 
+
+}
+
+
+get_isotopomer_name <- function(iso_vec){
+
+  iso_vec <- iso_vec[is.isotope(iso_vec)]
+  if (!length(iso_vec)) return("base")
+  iso_label <- split(names(iso_vec),iso_vec)
+  iso_label <- sapply(seq_along(iso_label),function(x){
+    paste0("(",paste0(iso_label[[x]],collapse = ","),")",names(iso_label)[x])
+  })%>%paste0(collapse = ";")
 
 }
 
@@ -204,6 +215,9 @@ get_Molecule_igraph_MS2 <- function(Molecule_igraph,cfmd){
 
 }
 
+test_fun <- function(x){
+  x
+}
 
 Molecule_igraph_get_C_order <- function(Molecule_igraph){
 
@@ -545,7 +559,7 @@ get_Reaction_atom_transfer_by_RXNmapper <- function(mol.ig.from,
 
     rxn.result <- RXNMapper_map(from.smiles = sapply(mol.ig.from,function(x)x@molecule_info$smiles),
                   to.smiles = sapply(mol.ig.to,function(x)x@molecule_info$smiles))
-
+    if (all(is.na((rxn.result)))) return(NA)
     rxn.atom.id <- RXNMapper_mapped_rxn_parse(rxn.result)
   }
 
@@ -837,4 +851,21 @@ vis_Reaction_atom_transfer <- function(rat){
 
 
 }
+
+is_labeled <- function(mol.ig,target_ele = "C"){
+
+  isotopomers.data <- mol.ig@isotopomer
+  isotopomers.matrix <- isotopomers.data[,atom(mol.ig,target_ele)]%>%
+    as.matrix()
+
+
+  labeled.matrix <- is.isotope(isotopomers.matrix)
+  any(apply(labeled.matrix,1,sum,na.rm = T)>0)
+
+
+}
+
+
+
+
 

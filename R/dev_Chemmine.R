@@ -119,7 +119,7 @@ get_sdf_formula <- function(sdf){
 #' @return sdf
 #' @export
 get_smiles_sdf <- function(smiles,
-                           smiles.id = NULL,
+                           smiles.id = names(smiles),
                            canonicalize = T){
 
   if (is.null(names(smiles))) {
@@ -131,17 +131,34 @@ get_smiles_sdf <- function(smiles,
 
   }
   smiles.sdf <- suppressWarnings(
-    ChemmineR::smiles2sdf(smiles)
+  ChemmineR::smiles2sdf(smiles)
   )
+
+ #sdfs <- plyr::llply(smiles,.progress = "text",.fun = function(x){
+ #  if (is.na(x)) return(NA)
+ #  #print(x)
+ #  ChemmineR::smiles2sdf(x)[[1]]
+ #})
+ #smiles.sdf <- ChemmineR::SDFset(sdfs)
+
   for (id in ChemmineR::cid(smiles_map)) {
     which(smiles==id)
     suppressWarnings(smiles.sdf[smiles==id] <- MSdev::smiles_map[[id]])
+
   }
 
 
   if (canonicalize) {
-    smiles.sdf <-canonicalize(smiles.sdf)
+
+    #sdfs <- plyr::llply(a,.progress = "text",.fun = function(x){
+    #  if (is.na(x)) return(NA)
+    #  #print(x)
+    #  ChemmineR::canonicalize(x)
+    #})
+    #smiles.sdf <- ChemmineR::SDFset(sdfs)
+    smiles.sdf <- ChemmineR::canonicalize(smiles.sdf)
   }
+  #cid(smiles.sdf) <- smiles.id
   return(smiles.sdf)
 
 }

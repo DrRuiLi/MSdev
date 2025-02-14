@@ -1,3 +1,4 @@
+
 get_RXNMapper <- function(){
 
   rxnmp <- reticulate::py_suppress_warnings(
@@ -21,7 +22,17 @@ RXNMapper_map  <- function(from.smiles ,
 
   req <- paste0(from.string, ">>",to.string)
   rxns <- c(req,"C>>C")
+  if (any(grepl("#",x = rxns))) {
+    message(crayon::red("RXNMapper_map parsing with ###, remove it"))
+    rxns <- gsub(pattern = "#","",rxns)
+    from.smiles <- gsub(pattern = "#","",from.smiles)
+    to.smiles <- gsub(pattern = "#","",to.smiles)
 
+  }
+  if (nchar(req)>511) {
+    message(crayon::red("Reaction SMILES has 517 tokens, should be at most 512."))
+    return(NA)
+  }
 
   rxn.result <- RXNMapper(rxns,detailed_output = T)[[1]]
   rxn.result$from <- from.smiles
