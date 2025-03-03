@@ -205,19 +205,32 @@ vis_Metabolic_flux_network <- function(mfn){
     vda <- vdata(mfn)%>%
       dplyr::mutate(#shape = "circle",
         size = case_when(
-          node.type == "Compound"~50,
-          node.type == "Reaction"~30
+          node.type == "Compound"~30,
+          node.type == "Reaction"~20
         ),
-                    color.background = case_when(
-                      id %in% idx.labeled ~"#FD3018",
+        shape =  case_when(
+          node.type == "Compound"~"dot",
+          node.type == "Reaction"~"diamond",
+          T~"square"
+        ),
+        color.border =  case_when(
+          node.type == "Compound"~"#649FEF",
+          node.type == "Reaction"~"#229342",
+          T~"#649FEF"
+        ),
+        borderWidth = 2,
+        color.background = case_when(
+                      id %in% idx.labeled ~"#C43E1C",
+                      #id %in% idx.labeled ~"#FFFFFF",
                       T~"#FFFFFF"
                     ))%>%
-      dplyr::select(name,id,label,color.background,size)
+      dplyr::select(name,id,borderWidth,label,color.background,size,shape,color.border)
 
     eda <- edata(mfn)%>%
       dplyr::mutate(color.color = "rgba(84,126,158,0.5)",
                     color.highlight = "rgba(84,126,158,1)",
                     width = 8,
+                    length = 200,
                     selectionWidth  = 12,
                     #arrows.to = T,
                     arrows.middle = T,
@@ -395,7 +408,13 @@ Metabolic_flux_tracing <- function(mfn){
   mfn.r <- vdata(mfn)%>%
     dplyr::filter(node.type == "Reaction")
 
-  for (i in (1:10)+length(mfn@Molecule_igraphs)) {
+  labeled.stat <- data.frame(
+    round = 1:100,
+    labeled.cp = NA,
+    isotopomers.count = NA
+  )
+
+  for (i in (1:30)+length(mfn@Molecule_igraphs)) {
 
     mfn.c <- vdata(mfn)%>%
       dplyr::filter(node.type == "Compound")
@@ -410,6 +429,8 @@ Metabolic_flux_tracing <- function(mfn){
       #if (i>1) idx.labeled <- setdiff(idx.labeled, mfn@Molecule_igraphs[[i-1]]$compound)
     }
 
+
+    isotopomer.count  <- 0
     for (i.labeled in idx.labeled) {
 
       rid.linked <- igraph_get_nodes_distance(mfn@metabolic_network,i.labeled,1)
@@ -441,10 +462,31 @@ Metabolic_flux_tracing <- function(mfn){
       }
 
 
+      ### cycle record
+      {
+
+        mol.ig.i.labeled <- V(mfn@metabolic_network)[[i.labeled]]$Molecule_igraph
+        isotopomer.count  <- isotopomer.count +length(unique(mol.ig.i.labeled@isotopomer$label))
+
+      }
+
+
+    }
+
+    ### cycle record
+    {
+      labeled.stat$labeled.cp[i] <- length(idx.labeled)
+      labeled.stat$isotopomers.count[i] <- isotopomer.count
+
+
     }
 
   }
 
+
+
+  mfn.c <- vdata(mfn)%>%
+    dplyr::filter(node.type == "Compound")
 
   idx.labeled <- mfn.c$id[sapply(mfn.c$Molecule_igraph,is_labeled)]
   mig.labeld <- mfn.c[idx.labeled,"Molecule_igraph"]
@@ -469,4 +511,23 @@ setMethod("show",
           })
 Reaction_atom_transfer <- function(){
   new("Reaction_atom_transfer")
+}
+
+
+Metabolic_flux_remove_tracing <- function(mfn){
+
+  mfn.c <- vdata(mfn)%>%
+    dplyr::filter(node.type == "Compound")
+  for (i in mfn.c$id) {
+    mol.ig <- V(mfn@metabolic_network)[[i]]$Molecule_igraph
+    idx <- mol.ig@isotopomer$isotopomer%in%c("base","Tracer")
+    mol.ig@isotopomer <- mol.ig@isotopomer[idx,,drop = F]
+    mol.ig -> V(mfn@metabolic_network)[[i]]$Molecule_igraph
+  }
+
+
+  mfn@Molecule_igraphs <- list()
+
+  return(mfn)
+
 }

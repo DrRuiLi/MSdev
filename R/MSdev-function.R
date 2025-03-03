@@ -1708,7 +1708,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
 
     ### adjust
     feature.se <- se_adjuset_by_weight(feature.se)
-
+    feature.se <- DEP_impute_mean(feature.se)
 
 
 

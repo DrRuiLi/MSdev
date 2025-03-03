@@ -594,7 +594,7 @@ DEP_pathway_enrich <- function(data.se,
   }
   if (method == "GlobalTest") {
 
-    data.se <- data.se[!is.na(rowData(data.se)$kegg.id),
+    data.se <- data.se[!is.na(rowData(data.se)$kegg_id),
                        data.se$condition%in% strsplit(contrast,"_vs_")[[1]]]
     pathway.matrix <- assay(data.se)
     rownames(pathway.matrix) <- rowData(data.se)$kegg_id
@@ -709,3 +709,14 @@ DEP_plot_single_bar <- function(data.se,
 
 
 
+DEP_impute_mean <- function(data.se){
+
+
+  se.data <- assay(data.se)
+  se.data <- apply(se.data,2,function(x){
+    x[is.na(x)] <- mean(x,na.rm = T)
+    return(x)
+  })
+  se.data -> assay(data.se)
+  return(data.se)
+}

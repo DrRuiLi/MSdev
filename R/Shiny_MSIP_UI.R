@@ -272,38 +272,50 @@ MFN_manul_Shiny_ui <- function(){
       ),
       column(6,
              fluidRow(
-               selectInput(inputId = "Atom_transfer_id",
-                           label = "Select a transfer",
-                           choices = "Atom_map1")
+               column(6,
+                 selectInput(inputId = "Atom_transfer_id",
+                             label = "Select a transfer",
+                             choices = "Atom_map1"),
+               ),
+               column(3,
+                      actionButton(inputId = "save_buttion",label = "Export",
+                                   width = "100%")
+               )
              ),
              fluidRow(
-               visNetwork::visNetworkOutput(
-                 outputId = "Atom_transfer_vis",
-                 height = "400px", width = "100%"
-               )
+               column(8,
+                      visNetwork::visNetworkOutput(
+                        outputId = "Atom_transfer_vis",
+                        height = "400px", width = "100%"
+                      )),
+               column(4,
+                      visNetwork::visNetworkOutput(
+                        outputId = "Metabolite_isotopomer_statu_vis",
+                        height = "400px", width = "100%"
+                      )
+                      )
+
              ),
              fluidRow(
                column(9,
                       verbatimTextOutput("Reaction_info")
 
-                      ),
-               column(3,
-                      actionButton(inputId = "save_buttion",label = "Export",
-                                   width = "100%")
                       )
              ),
              fluidRow(
                       DT::DTOutput(
-                        "Metabolite_isotopomer_statu_table"
-                      ),
-                 visNetwork::visNetworkOutput(
-                   outputId = "Metabolite_isotopomer_statu_vis",
-                   height = "400px", width = "100%"
-                 )
+                        "Metabolite_isotopomer_statu_table",
+                        height = "400px"
+                      )
              ),
              tags$style(
                HTML("
           #Atom_transfer_vis {
+            border: 3px solid #000; /* Black border */
+            border-radius: 10px;    /* Rounded corners */
+            padding: 5px;          /* Optional padding */
+          }
+          #Metabolite_isotopomer_statu_vis {
             border: 3px solid #000; /* Black border */
             border-radius: 10px;    /* Rounded corners */
             padding: 5px;          /* Optional padding */

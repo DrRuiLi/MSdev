@@ -20,6 +20,7 @@ Metabolic_flux_atom_transfer_by_reaction <- function(rat,
       dplyr::distinct(from.compound.id,from.molecule.id)%>%
       dplyr::pull(from.compound.id,from.molecule.id)
     from.id <- names(rat@reaction_info$from.smiles)
+    from.id <- from.id[from.id%in% names(cp.mol)]
     available.isotopomers <- lapply(from.id,
            function(m.id){
              cp.id <- cp.mol[m.id]
@@ -92,8 +93,8 @@ Metabolic_flux_atom_transfer_by_reaction <- function(rat,
           dplyr::pull(atom.type,to.atom.id)
         if (any(is.isotope(iso_vec))) {
           iso.name <- get_isotopomer_name(iso_vec)
-          if (any(this.mig@isotopomer$label==iso.name &
-                  this.mig@isotopomer$path ==this.path,na.rm = T)) {
+          if (any(this.mig@isotopomer$label==iso.name #&this.mig@isotopomer$path ==this.path
+                  ,na.rm = T)) {
 
           }else{
             this.mig <- Molecule_igraph_add_isotopomer(

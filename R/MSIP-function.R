@@ -1275,5 +1275,8 @@ MSIP_get_Molecule_igraph<- function(object){
   }
 
 
+  return(Molecule_igraph_matrix)
+
+
 }
 

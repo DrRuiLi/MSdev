@@ -459,7 +459,7 @@ if (!"diff"%in%colnames(pathway.table)) {
     dplyr::ungroup()
 
  if (method == "set1") {
-   ### for global test plot
+
    ggplot(pathway.table)+
      geom_bar(aes(x = pathway.name , y = enrich.ratio , fill = log10p),
               col ="black",stat = "identity",size = 0.1)+
@@ -479,9 +479,10 @@ if (!"diff"%in%colnames(pathway.table)) {
            axis.ticks.x = element_line(size = 0.1),
            axis.ticks.y = element_line(colour = NA),
            panel.background = element_blank())->p
+   p
    return(p)
-
  }
+
   if (method == "set2") {
     ### for hyper test, and distinct up and down
     pathway.table <- pathway.table%>%
@@ -519,7 +520,22 @@ if (!"diff"%in%colnames(pathway.table)) {
 
 
   }
+  if (method == "bubble") {
+    ### for global test plot
+    ggplot(pathway.table)+
+      geom_point(aes(x = pathway.name , y = enrich.ratio ,size = Hit, col = log10p),
+                 stat = "identity")+
+      scale_color_gradient2(low = "#1E01E7" ,mid = "#1E01E7",high = "#FC0017",
+                            midpoint = median(pathway.table$log10p)
+      )+
+      #scale_size(range = c(30,100))+
+      labs(x = NULL ,y = "Enrich Ratio", col = "-Log10(P)",size = "Count")+
+      coord_flip()+
+      theme_bw()->p
+    p
+    return(p)
 
+  }
 
 
 }
@@ -575,7 +591,10 @@ plot_cor_density <- function(x,y,xlab = "x",ylab = "y"){
     scale_y_continuous(expand = c(0,0))+
     theme_void()->p.y
 
-
+  p.x+plot_spacer()+
+    p.cor+p.y+
+    plot_layout(widths = c(9,1),
+                heights = c(1,9))
 
 }
 

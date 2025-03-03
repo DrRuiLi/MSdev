@@ -382,7 +382,7 @@ MSIP_shiny_server <- function(object){
             #print(x)
             x <- shiny_update_msip_core_data(msip.core.data(),fg.include())
             x <- shiny_DT_fg_include(x)
-            DT::datatableProxy("include_fragment_group")%>%
+            DT::dataTableProxy("include_fragment_group")%>%
               replaceData(x,resetPaging = F,clearSelection ="none" )
           }
 
@@ -533,8 +533,8 @@ MSIP_shiny_Acq_server <- function(object){
         acq.selected()[[input$select_polarity]]
       ))
 
-      DT::datatableProxy("feature_tab")%>%
-        showCols(show = 1:6,reset = T)
+      DT::dataTableProxy("feature_tab")%>%
+        DT::showCols(show = 1:6,reset = T)
 
       ratio_matrix(object@statData$MSIP$isotopologues_matrix$ratio_to_seed
                    [[input$select_polarity]]    )
@@ -565,9 +565,9 @@ MSIP_shiny_Acq_server <- function(object){
         acq.list[[input$select_polarity]],
         acq.selected()[[input$select_polarity]]
       )
-      DT::datatableProxy("feature_tab")%>%
+      DT::dataTableProxy("feature_tab")%>%
         replaceData(x,resetPaging = F,clearSelection ="none" )%>%
-        showCols(show = 1:6,reset = T)
+        DT::showCols(show = 1:6,reset = T)
 
 
     })

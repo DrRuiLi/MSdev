@@ -555,3 +555,284 @@ rxn.result <- RXNMapper(rxns,detailed_output = T)[[1]]
   MFN_manul_Shiny(mfn)
 
 }
+
+# Wed Feb 19 19:16:03 2025 ------------------------------
+{
+
+  plot.data <- msdev.13C1@statData[["MSIP"]][["isotopologues_table"]][["Positive"]]
+  plot.data <- plot.data%>%
+    dplyr::mutate(peakwidth = rtmax-rtmin,
+                  peakwidth = case_when(peakwidth>50~50,
+                                        T~peakwidth))%>%
+    dplyr::filter(is_labeled)
+
+  ggplot(plot.data)+
+    geom_point(aes(x = rtmed,y= mzmed,
+                   size = peakwidth),pch= 21,
+               fill = "#4DBBD5",col = "black",alpha = 0.5)+
+    labs(x = "Retention time",y = "m/z",size = "Peak width")+
+    theme_bw()->p1
+
+
+  p2 <-  ggplot(plot.data[rep(1:nrow(plot.data),5),])+
+    geom_histogram(aes(x = rtmed),binwidth = 5)+
+    labs(x ="Retention time", y = "Scan count in 5s window")+
+    theme_bw()
+
+  p <- p1/p2+
+    plot_layout(guides = "collect")
+  open_plot_win(p,8,6)
+
+}
+
+# Thu Feb 20 14:45:34 2025 combined isotopomers for GSH------------------------------
+{
+
+
+  GSH <- Molecule_igraph_matrix[40,]
+
+  p.pie.list <- list()
+  data.list <- list()
+  for (i.sample  in names(GSH)[2:3]) {
+
+    mol.ig <- GSH[[i.sample]]
+    isotopomer.data <- mol.ig@isotopomer%>%
+      dplyr::arrange(isotopologue)%>%
+      dplyr::mutate(abundance = abundance/sum(abundance),
+                    label = factor(label,levels = label))
+    data.list[[i.sample]] <- isotopomer.data
+
+
+    plot.data <- isotopomer.data%>%
+      dplyr::slice_max(abundance,n = 10,with_ties = F)
+
+    p <- ggplot(plot.data)+
+      geom_bar(aes( x= 1, y = abundance,fill = label,group = isotopologue),stat = "identity")+
+      ggsci::scale_fill_npg()+
+      labs( title = gsub("[FS_]",i.sample,replacement = " "),fill = "Isotopomers")+
+      coord_polar(theta = "y")+
+      theme_void()+
+      theme(plot.title = element_text(hjust = 0.5))
+    p
+    p.pie.list[[i.sample]] <- p
+
+  }
+
+  p <- ggplot_sum_patchwork(p.pie.list)
+  open_plot_win(p,16,9)
+  export_graph2pdf(p,"d:/temp/temp.pdf",
+                   width = 16,height= 9)
+
+
+}
+
+# Thu Feb 20 19:08:47 2025 MSIP STAT TABLE------------------------------
+{
+  EVA <- MSIP_solve_computation_evaluate(msdev.M1)%>%
+    dplyr::filter(FSIS.count>0)
+
+
+  EVA%>%
+    dplyr::filter(samples=="Con")%>%
+    dplyr::pull(feature_id)%>%
+    unique()%>%
+    length()
+
+  EVA%>%
+    dplyr::filter(samples=="Liver")%>%
+    nrow()
+
+  EVA%>%
+    dplyr::filter(samples=="Liver")%>%
+    dplyr::pull(FSIS.count)%>%
+    sum(na.rm = T)
+
+
+  cp.table <- get_MSIP_compound_info(msdev.M1,vars= "all")
+  cp.df <- MSdb:::get_CompoundDB_Compound()
+  cp.table$kegg.id <-  cp.df$kegg_id[ match(cp.table$compound_id, cp.df$compound_id)]
+
+  path.table <- analyzePathwayHyperTest(cp.table$kegg.id)
+  plot.data <- path.table%>%
+    dplyr::mutate(ratio = Hit/Total,
+                  label = case_when(ratio >0.23|Hit>10~pathway.name))%>%
+    dplyr::filter(grepl(x = pathway.class,pattern = "Metabolism"))
+
+  ggplot(plot.data)+
+    geom_point(aes(x = Hit, y = ratio ,
+                   fill = ratio,size = ratio),pch = 21)+
+    ggrepel::geom_text_repel(aes(x = Hit, y = ratio ,label = label),
+                             nudge_y  = 0.1 , size =3) +
+    scico::scale_fill_scico(direction = 1,palette = "vikO")+
+    scale_size(range = c(0,10))+
+    labs(x = "Number of labled metabolites", y = "Ratio")+
+    theme_classic()+
+    theme(legend.position = "none")->p
+  p
+  open_plot_win(p,5,4)
+}
+
+
+
+# Thu Feb 20 22:34:55 2025 MFN  reaction------------------------------
+{
+
+  mfn <- load_MFN(name = "TCA_20250214153408")
+  MFN_manul_Shiny(mfn)
+  mfn.filter <- Metabolic_flux_network_filter_reactions(mfn,"R00014")
+  MFN_manul_Shiny(mfn)
+
+
+  vis_Reaction_atom_transfer(rat)%>%
+    #visOptions(width = "200%")%>%
+    open_visNet()
+
+
+  mfn <- load_MFN(name = "TCA_20250214153408")
+  mfn <- Metabolic_flux_remove_tracing(mfn)
+  MFN_manul_Shiny(mfn)
+  Metabolic_flux_tracing(mfn)
+
+
+  plot.data <- labeled.stat%>%
+    dplyr::filter(labeled.cp>0)
+  ggplot(plot.data)+
+    geom_bar(aes(x = round, y = labeled.cp ),stat = "identity",alpha = 0.8,
+             color = "black",fill = "#4DBBD5",width = 0.8)+
+    geom_point(aes(x = round, y = isotopomers.count/35),alpha = 1,
+               col = "#E64B35",size = 3)+
+    geom_line(aes(x = round, y = isotopomers.count/35),alpha = 0.8,
+              col = "#E64B35",size = 1)+
+    scale_y_continuous(name = "Count of labeled metabolites",sec.axis = sec_axis(~.*35,name = "Count of isotopomers"))+
+    labs(x = "Round")+
+    theme_bw()->p1
+  p1
+  open_plot_win(p1,6,3)
+
+
+  mfn.c <- vdata(mfn)%>%
+    dplyr::filter(node.type == "Compound")
+
+  cp.stat <- data.frame(
+    id = mfn.c$id,
+    isotopomer.count = NA,
+    total.count = NA
+  )
+  for (i in 1:nrow(mfn.c)) {
+
+    formula <- mfn.c$Formula[i]
+    c.count <- get_formula_ele_count(formula)
+
+    cp.stat$isotopomer.count[i] <- nrow(mfn.c$Molecule_igraph[[i]]@isotopomer)
+    cp.stat$total.count[i] <- sum(choose(c.count,0:c.count))
+
+  }
+
+
+
+  plot.data <- cp.stat%>%
+    dplyr::mutate(
+      isotopomer.count = case_when(isotopomer.count > total.count~total.count,
+                                   T~isotopomer.count),
+      ratio = isotopomer.count/total.count)
+
+  ggplot(plot.data)+
+    geom_jitter(aes(x =isotopomer.count, y =  log10(total.count) ,
+                   size = ratio,fill = ratio),stroke = 1,
+               alpha = 0.5,pch = 21)+
+    scale_size(range = c(3,10))+
+    scico::scale_fill_scico(direction = -1,palette = "batlow")+
+    guides(
+      fill = guide_legend(title = "Isotopomers\nRatio"),
+      size = guide_legend(title = "Isotopomers\nRatio")
+    )+
+    labs(x = "Count of detected isotopmers",
+         y = "Log10 count of theoritical isotopomers")+
+    theme_bw()->p
+
+  open_plot_win(p)
+
+
+}
+
+
+# Fri Feb 21 19:03:41 2025 ------------------------------
+{
+
+
+  gln.mol.ig <- Molecule_igraph_matrix[17,]
+
+
+
+
+}
+
+# Fri Feb 21 19:43:00 2025 MFN to glutamate------------------------------
+{
+  kegg.net <- readRDS("temp/kegg.net.rds")
+  mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net)
+  link.pathway.reaction <- KEGGREST::keggLink("reaction","pathway")
+  rid <- link.pathway.reaction[names(link.pathway.reaction )%in% c("path:map00010","path:map00020","path:map00250")]%>%
+    sub("rn:","",x=.)
+  mfn <- Metabolic_flux_network_filter_reactions(mfn,rid)
+  mfn <- Metabolic_flux_network_get_compound_data_from_cid(mfn)
+  mfn <- Metabolic_flux_network_get_Reaction_atom_transfer(mfn)
+
+
+
+  ###
+  {
+    glucose.smiles <- "C([C@@H]1[C@H]([C@@H]([C@H]([C@H](O1)O)O)O)O)O"
+    glucose.mig <- get_Molecule_igraph_from_smiles(glucose.smiles)
+
+    Glu_1_2.mig <- Molecule_igraph_add_isotopomer(Molecule_igraph = glucose.mig,
+                                                  isotopomer = "Tracer",
+                                                  iso_vec = c("C_6" = "[13]C","C_10" = "[13]C") ,
+                                                  abundance = 1)
+    Glu_1_2.mig <- Molecule_igraph_remove_isotopomer(Glu_1_2.mig,"base")
+
+
+    #mfn <- load_MFN()
+    mfn <- Metabolic_flux_remove_tracing(mfn)
+    mfn <- Metabolic_flux_network_set_tracer(mfn,
+                                             "C00267",Glu_1_2.mig)
+
+    mfn <- Metabolic_flux_tracing(mfn)
+  }
+
+  MFN_manul_Shiny(mfn)
+
+
+}
+
+# Sun Feb 23 15:22:20 2025 ------------------------------
+{
+  time.df <- a%>%
+    pivot_longer(2:4)%>%
+    dplyr::mutate(times = as.character(times))
+
+  ggplot(time.df)+
+    geom_bar(aes(x = times, y = value,fill = name),
+             position = "dodge",
+             stat = "identity")+
+    ggsci::scale_fill_nejm()+
+    labs(x = "Count of calulation",
+         y = "Time consume",
+         fill = "Calculation\ntype")+
+    theme_bw()->p
+
+  open_plot_win(p,4,3)
+
+
+}
+# Tue Feb 25 11:42:20 2025 ------------------------------
+citation("MSnbase")
+
+
+# Sun Mar  2 16:37:14 2025 ------------------------------
+{
+
+
+
+}
+

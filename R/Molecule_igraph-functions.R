@@ -64,8 +64,8 @@ sdf_to_Molecule_igraph <- function(sdf,id ) {
 }
 
 
-get_Molecule_igraph_from_smiles <- function(smiles,id ="A") {
-  sdf <- get_smiles_sdf(smiles,smiles.id = id)
+get_Molecule_igraph_from_smiles <- function(smiles,id ="A",canonicalize= T) {
+  sdf <- get_smiles_sdf(smiles,smiles.id = id,canonicalize = canonicalize)
   if (length(sdf)==1) sdf <- sdf[[1]]
   get_Molecule_igraph_from_sdf(sdf,id = id)
 }
@@ -126,7 +126,9 @@ get_isotopomer_name <- function(iso_vec){
   if (!length(iso_vec)) return("base")
   iso_label <- split(names(iso_vec),iso_vec)
   iso_label <- sapply(seq_along(iso_label),function(x){
-    paste0("(",paste0(iso_label[[x]],collapse = ","),")",names(iso_label)[x])
+    y <- iso_label[[x]]
+    y <- sort(y)
+    paste0("(",paste0(y,collapse = ","),")",names(iso_label)[x])
   })%>%paste0(collapse = ";")
 
 }
@@ -290,12 +292,11 @@ Molecule_igraph_vis_format <- function(Molecule_igraph){
       x =  ( x-mean(x))*100,
       y = ( y-mean(y)) *100,
       font.size = 30,
-      borderWidth = 20,
       font.vadjust = 5,
       font.align = "center",
       color.border = "#AAAAAA",
       color.background = "#FFFFFF",
-      borderWidth = 5,
+      borderWidth = 2,
       shape = "circle",
       physics = F)%>%
     dplyr::ungroup()
