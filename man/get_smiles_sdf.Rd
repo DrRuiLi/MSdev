@@ -4,7 +4,7 @@
 \alias{get_smiles_sdf}
 \title{get_smile_sdf}
 \usage{
-get_smiles_sdf(smiles, smiles.id = NULL, canonicalize = T)
+get_smiles_sdf(smiles, smiles.id = names(smiles), canonicalize = T)
 }
 \arguments{
 \item{smiles}{smiles}

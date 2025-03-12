@@ -15,7 +15,7 @@ setClass("MSdev",
 
 #' @importFrom magrittr `%>%` `%<>%`
 #' @import  tidyverse dplyr ggplot2 patchwork
-#' @importFrom xcms filepaths mzrange plotSpec noise filterFile dirname chromPeaks
+#' @importFrom xcms filepaths mzrange plotSpec noise filterFile dirname chromPeaks intensity mz
 #' featureDefinitions polarity `featureDefinitions<-` featureValues featureChromatograms
 #' @importFrom MSnbase readMSData sampleNames fileNames
 #' @importFrom BiocParallel SnowParam SerialParam bpmapply bplapply snowWorkers register
@@ -30,7 +30,7 @@ setClass("MSdev",
 #' atomblock bonds bondblock rings
 #' @importFrom MSCC chemform_adduct_check
 #' @importFrom stringr str_extract str_split str_extract_all
-#' @importFrom plotly layout
+#' @importFrom plotly layout add_bars
 #' @importFrom SummarizedExperiment rowData colData assay `rowData<-` `colData<-` `assay<-`
 #' @importFrom shiny shinyApp fluidPage fluidRow
 #' checkboxInput selectInput navbarPage runApp

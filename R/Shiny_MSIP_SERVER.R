@@ -6,6 +6,10 @@ MSIP_shiny_server <- function(object){
 
   function(input, output, session) {
 
+
+    # Trigger the pop-up when the app starts
+    #session$sendCustomMessage("openPopup", "https://drruili.github.io/MSIP/articles/toclg.html")
+
     output$test_info <- renderPrint({
       FSIS_selected()
     })
@@ -58,7 +62,8 @@ MSIP_shiny_server <- function(object){
 
         message_with_time("metabolite_table")
         get_MSIP_compound_info(object.temp)%>%
-          DT::datatable(options = list(columns =list(orderable = F)),
+          DT::datatable(options = list(columns =list(orderable = F),
+                                       pageLength = 25),
                     selection = list(
             mode = 'single', selected =1
           ))})
@@ -292,7 +297,7 @@ MSIP_shiny_server <- function(object){
           shiny_vis_sdf_igraph(mol.ig(),
                          show_id = input$show_atom_id,
                          prob.border =  mol.atom.map(),
-                         prob.fill=mol.atom.c.prob())
+                         prob.fill= 0)
         }
       )
 
@@ -310,7 +315,8 @@ MSIP_shiny_server <- function(object){
           message_with_time("frag_graph")
           shiny_vis_sdf_igraph(frag.ig(),
                          show_id = input$show_atom_id,
-                       prob.border  = frag.atom.map() )
+                        prob.border  = frag.atom.map() ,
+                        prob.fill= 0)
         }
       )
 
@@ -383,7 +389,7 @@ MSIP_shiny_server <- function(object){
             x <- shiny_update_msip_core_data(msip.core.data(),fg.include())
             x <- shiny_DT_fg_include(x)
             DT::dataTableProxy("include_fragment_group")%>%
-              replaceData(x,resetPaging = F,clearSelection ="none" )
+              DT::replaceData(x,resetPaging = F,clearSelection ="none" )
           }
 
         })
@@ -435,7 +441,7 @@ MSIP_shiny_server <- function(object){
 
 
 
-    ### isotopomers
+    ### FSIS
     {
       FSIS_table <- reactiveVal()
       message_with_time("shiny_get_FSIS_table")
@@ -476,9 +482,56 @@ MSIP_shiny_server <- function(object){
       })
 
 
+
+
     }
 
 
+    ### isotopomer
+    {
+      isotopomer_table <- reactiveVal()
+      observeEvent(msip.core.data(),{
+        message_with_time("shiny_get_isotopomer_table")
+        isotopomer_table(shiny_get_isotopomer_table(msip.core.data()))
+      })
+
+      output$isotopomer_table <- DT::renderDT({
+
+        message_with_time("isotopomer_table")
+        isotopomer_table()%>%
+          DT::datatable(options = list(
+            columns =list(orderable = F),
+            dom = 't',   # 't' means only the table body is displayed
+            paging = FALSE,  # Disable pagination
+            searching = FALSE,  # Disable search box
+            info = FALSE  # Disable table information
+          ),
+          selection = list(
+            mode = 'single', selected =1
+          ))
+      })
+
+      isotopomer_selected <- reactiveVal()
+      observeEvent(input$isotopomer_table_rows_selected,{
+
+        isotopomer_selected(
+          isotopomer_table()$Isotopomer[input$isotopomer_table_rows_selected]
+        )
+
+
+      })
+
+
+      output$Vis_isotopomer <- visNetwork::renderVisNetwork({
+        message_with_time("Vis_isotopomer")
+        vis_MSIPcore_isotopomer(msip.core.data(),
+                                   mol.ig(),isotopomer_selected())
+      })
+
+
+
+
+    }
 
   }
 
@@ -566,7 +619,7 @@ MSIP_shiny_Acq_server <- function(object){
         acq.selected()[[input$select_polarity]]
       )
       DT::dataTableProxy("feature_tab")%>%
-        replaceData(x,resetPaging = F,clearSelection ="none" )%>%
+        DT::replaceData(x,resetPaging = F,clearSelection ="none" )%>%
         DT::showCols(show = 1:6,reset = T)
 
 

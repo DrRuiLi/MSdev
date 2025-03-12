@@ -601,6 +601,8 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
     }
   }else cellfun <- NULL
 
+  lgint <- round(log10(MSIPFragmentMap@FG.data$int_sum),1)
+  lgint <- c(lgint,0)
   h2 <- ComplexHeatmap::Heatmap(frag.ratio.matrix,
                                 na_col  ="#999999",
                                 cell_fun = cellfun,
@@ -610,7 +612,7 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
                                 col = circlize::colorRamp2(breaks = c(0,0.5,1),
                                                            c("white","#F7844F","#B20C26")),
                                 right_annotation  = rowAnnotation(
-                                  intensity = ComplexHeatmap::anno_numeric(round(log10(MSIPFragmentMap@FG.data$int_sum),1),
+                                  intensity = ComplexHeatmap::anno_numeric(lgint,
                                                            bg_gp = gpar(fill = "#AFAFAF", col = "black")),
                                   width  = unit(0.8,"inch"),
                                   annotation_label = list(intensity = "Log10\nIntensity"),
@@ -1122,6 +1124,32 @@ vis_MSIPcore_isotopoer_set <- function(msip.core,
     sdf_igraph_add_border_color(make_vector(1,names(atom.prob)),
                                 color.ramp =
                                   colramp(colors = c("grey","white","#000000")))%>%
+    vis_sdf_igraph()
+
+}
+
+
+
+vis_MSIPcore_isotopomer <- function(msip.core,
+                                       mol.ig,
+                                       is.idx = 1){
+
+  if (is.null(is.idx)) {
+    return(NULL)
+  }
+  if (class(is.idx)=="character") {
+    is.idx <- match(is.idx,names(msip.core@solve$MSIPIsotopomerMap@isotopomer.defination))
+  }
+  is.prob <- msip.core@solve$MSIPIsotopomerMap@isotopomer.probability[[is.idx]]
+  isotopomer.idx <-is.idx
+  isotopomer.list <- msip.core@solve$MSIPIsotopomerMap@isotopomer.defination[isotopomer.idx]
+  iso_count <- unique( lengths(isotopomer.list))
+  atom.prob <- table(unlist(isotopomer.list))/length(isotopomer.list)*is.prob
+  mol.ig%>%
+    sdf_igraph_add_background_color(atom.prob)%>%
+    sdf_igraph_add_border_color(make_vector(1,names(atom.prob)),
+                                color.ramp =
+                                  colramp(colors = c("grey","white","#1485EE")))%>%
     vis_sdf_igraph()
 
 }

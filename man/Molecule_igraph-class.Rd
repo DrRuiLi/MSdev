@@ -8,7 +8,8 @@ Molecule_igraph_add_isotopomer(
   Molecule_igraph,
   isotopomer = NULL,
   iso_vec = NULL,
-  abundance = NA
+  abundance = NA,
+  path = NA
 )
 }
 \arguments{

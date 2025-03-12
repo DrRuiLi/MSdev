@@ -5,7 +5,7 @@
 #' @return NULL
 #' @export
 
-MSIP_shiny_start <- function(object){
+MSIP_shiny_start <- function(object,port = NULL){
 
 
   ### Start Shiny APP
@@ -13,7 +13,7 @@ MSIP_shiny_start <- function(object){
     shinyApp(ui = MSIP_shiny_ui(),
              server = MSIP_shiny_server(object),
              options = list(host = "0.0.0.0",
-                            #port = 6548,
+                            port = port,
                             launch.browser = T))
     }
 

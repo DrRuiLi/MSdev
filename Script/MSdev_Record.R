@@ -2005,3 +2005,341 @@
 
 
 }
+
+
+# Fri Mar  7 20:34:07 2025 Lipidomics------------------------------
+{
+  msdev.LE <- MSdev("d:/20250306.LE/LXM_LIP/LXM_Lipid/")
+  msdev.LE <- load_as_var("d:/20250306.LE/LXM_LIP/MSdev_2025_03_07.Rdata")
+  msdev.LE <- MSdev_msConvert(msdev.LE)
+  msdev.LE <- MSdev_checkSampleInfo(msdev.LE)
+  msdev.LE <- MSdev_xcmsProcessing(msdev.LE)
+  msdev.LE <- MSdev_extract_Spectra(msdev.LE)
+  msdev.LE <- MSdev_match_Spectra_to_feature(msdev.LE)
+  msdev.LE <- MSdev_annotation(msdev.LE,
+                               expand_adduct= T,
+                               cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast.sqlite",
+                               selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
+  msdev.LE <- MSdev_get_Stat(msdev.LE,QC_RSD = Inf)
+  MSdev_export(msdev.LE)
+  MSdev_save(msdev.LE)
+
+
+
+
+  ### figure
+  {
+
+    proj.dir <- msdev.LE@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(msdev.LE,from = "metabolite")
+    #data.se <- data.se[,grepl(data.se$group,pattern = "Tumor") ]
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3)
+
+
+    ### Plot TIC
+    {
+      p1 <- plot_xcms_TIC(msdev.LE@xcmsData$PositiveMS1)+
+        labs(title = "Positive TIC")
+      p2 <- plot_xcms_TIC(msdev.LE@xcmsData$NegativeMS1)+
+        labs(title = "Negative TIC")
+      p <- p1+p2+plot_layout(ncol = 1)
+      export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 8,append = T)
+    }
+
+
+    ### sample_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank","A0")]
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 5,height = 5,append = T)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 5,height = 5,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+    #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+    hm <- DEP.plot.heatmap(data.diff,p.adjust = T)
+    export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 6,height = 120,append = T)
+
+
+  }
+
+
+}
+
+# Fri Mar  7 20:34:07 2025  LE Lipidomics 2------------------------------
+{
+  msdev.LE <- MSdev("d:/20250306.LE/Zafar_Lipid/Zafar_Lipid/")
+  msdev.LE <- load_as_var("d:/20250306.LE/Zafar_Lipid/MSdev_2025_03_07.Rdata")
+  msdev.LE <- MSdev_msConvert(msdev.LE)
+  msdev.LE <- MSdev_checkSampleInfo(msdev.LE)
+  msdev.LE <- MSdev_xcmsProcessing(msdev.LE)
+  msdev.LE <- MSdev_extract_Spectra(msdev.LE)
+  msdev.LE <- MSdev_match_Spectra_to_feature(msdev.LE)
+  msdev.LE <- MSdev_annotation(msdev.LE,
+                               expand_adduct= T,
+                               cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast.sqlite",
+                               selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
+  msdev.LE <- MSdev_get_Stat(msdev.LE,QC_RSD = Inf)
+  MSdev_export(msdev.LE)
+  MSdev_save(msdev.LE)
+
+
+
+  ### figure
+  {
+
+    proj.dir <- msdev.LE@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(msdev.LE,from = "metabolite")
+    #data.se <- data.se[,grepl(data.se$group,pattern = "Tumor") ]
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3)
+
+
+    ### Plot TIC
+    {
+      p1 <- plot_xcms_TIC(msdev.LE@xcmsData$PositiveMS1)+
+        labs(title = "Positive TIC")
+      p2 <- plot_xcms_TIC(msdev.LE@xcmsData$NegativeMS1)+
+        labs(title = "Negative TIC")
+      p <- p1+p2+plot_layout(ncol = 1)
+      export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 8,append = T)
+    }
+
+
+    ### sample_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank","A0")]
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 5,height = 5,append = T)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 5,height = 5,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+    #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+    hm <- DEP.plot.heatmap(data.diff,p.adjust = T)
+    export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 6,height = 80,append = T)
+
+
+  }
+
+
+}
+# Fri Mar  7 20:34:07 2025 LE Metabolomics -----------------------------
+{
+  msdev.LE <- MSdev("d:/20250306.LE/LXM_META/LXM_Meta/")
+  msdev.LE <- load_as_var("d:/20250306.LE/LXM_META/MSdev_2025_03_08.Rdata")
+  msdev.LE <- MSdev_msConvert(msdev.LE)
+  msdev.LE <- MSdev_checkSampleInfo(msdev.LE)
+  msdev.LE <- MSdev_xcmsProcessing(msdev.LE)
+  msdev.LE <- MSdev_extract_Spectra(msdev.LE)
+  msdev.LE <- MSdev_match_Spectra_to_feature(msdev.LE)
+  msdev.LE <- MSdev_annotation(msdev.LE,
+                               expand_adduct= T,
+                               cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+  msdev.LE <- MSdev_get_Stat(msdev.LE,QC_RSD = Inf)
+  MSdev_export(msdev.LE)
+  MSdev_save(msdev.LE)
+
+
+
+  {
+
+    proj.dir <- msdev.LE@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(msdev.LE,from = "metabolite")
+    #data.se <- data.se[,grepl(data.se$group,pattern = "Tumor") ]
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3)
+
+
+    #maped.genes <- KEGG_get_cp_linked_gene(rowData(data.se)$kegg_id)
+    #edit_df_in_excel(maped.genes)
+
+    ### Plot TIC
+    {
+      p1 <- plot_xcms_TIC(msdev.LE@xcmsData$PositiveMS1)+
+        labs(title = "Positive TIC")
+      p2 <- plot_xcms_TIC(msdev.LE@xcmsData$NegativeMS1)+
+        labs(title = "Negative TIC")
+      p <- p1+p2+plot_layout(ncol = 1)
+      export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 8,append = T)
+    }
+
+
+
+    ### sample_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank","A0")]
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+    #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+    hm <- DEP.plot.heatmap(data.diff)
+    export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 6,height = 60,append = T)
+
+
+    data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
+    p.list <- lapply(names(data.path),
+                     function(x){
+                       p <- plotPathwayEnrichment(data.path[[x]],method = "bubble",title = x)
+                     })
+    p <- ggplot_sum_patchwork(p.list)
+    export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 20,height = 10,append = T)
+    xlsx.write.list(
+      data.path,
+      file =paste0(proj.dir,"/Statistic/pathway.xlsx")
+    )
+  }
+
+
+}
+# Fri Mar  7 20:34:07 2025 LE Metabolomics 2 -----------------------------
+{
+  msdev.LE <- MSdev("d:/20250306.LE/Zafar_Meta/Zafar_Meta/")
+  msdev.LE <- load_as_var("d:/20250306.LE/Zafar_Meta/MSdev_2025_03_08.Rdata")
+  msdev.LE <- MSdev_msConvert(msdev.LE)
+  msdev.LE <- MSdev_checkSampleInfo(msdev.LE)
+  msdev.LE <- MSdev_xcmsProcessing(msdev.LE)
+  msdev.LE <- MSdev_extract_Spectra(msdev.LE)
+  msdev.LE <- MSdev_match_Spectra_to_feature(msdev.LE)
+  msdev.LE <- MSdev_annotation(msdev.LE,
+                               expand_adduct= T,
+                               cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+  msdev.LE <- MSdev_get_Stat(msdev.LE,QC_RSD = Inf)
+  MSdev_export(msdev.LE)
+  MSdev_save(msdev.LE)
+
+
+
+  {
+
+    proj.dir <- msdev.LE@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(msdev.LE,from = "metabolite")
+    #data.se <- data.se[,grepl(data.se$group,pattern = "Tumor") ]
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3)
+
+
+    #maped.genes <- KEGG_get_cp_linked_gene(rowData(data.se)$kegg_id)
+    #edit_df_in_excel(maped.genes)
+    ### Plot TIC
+    {
+      p1 <- plot_xcms_TIC(msdev.LE@xcmsData$PositiveMS1)+
+        labs(title = "Positive TIC")
+      p2 <- plot_xcms_TIC(msdev.LE@xcmsData$NegativeMS1)+
+        labs(title = "Negative TIC")
+      p <- p1+p2+plot_layout(ncol = 1)
+      export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 8,append = T)
+    }
+
+
+
+    ### sample_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank","A0")]
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+    #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+    hm <- DEP.plot.heatmap(data.diff)
+    export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 6,height = 60,append = T)
+
+    data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
+    p.list <- lapply(names(data.path),
+                     function(x){
+                       p <- plotPathwayEnrichment(data.path[[x]],method = "bubble",title = x)
+                     })
+    p <- ggplot_sum_patchwork(p.list)
+    export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 20,height = 10,append = T)
+    xlsx.write.list(
+      data.path,
+      file =paste0(proj.dir,"/Statistic/pathway.xlsx")
+    )
+  }
+
+
+}

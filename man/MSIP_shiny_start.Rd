@@ -4,7 +4,7 @@
 \alias{MSIP_shiny_start}
 \title{Title}
 \usage{
-MSIP_shiny_start(object)
+MSIP_shiny_start(object, port = NULL)
 }
 \arguments{
 \item{object}{MSIP obj}

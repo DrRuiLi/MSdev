@@ -435,7 +435,7 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
 
 }
 
-plotPathwayEnrichment <- function(pathway.table,top = 20 , method = "set1"){
+plotPathwayEnrichment <- function(pathway.table,top = 20 , method = "set1",title= NULL){
 
 if (!"diff"%in%colnames(pathway.table)) {
   pathway.table$diff <- "NA"
@@ -529,7 +529,7 @@ if (!"diff"%in%colnames(pathway.table)) {
                             midpoint = median(pathway.table$log10p)
       )+
       #scale_size(range = c(30,100))+
-      labs(x = NULL ,y = "Enrich Ratio", col = "-Log10(P)",size = "Count")+
+      labs(x = NULL ,y = "Enrich Ratio", col = "-Log10(P)",size = "Count",title = title)+
       coord_flip()+
       theme_bw()->p
     p

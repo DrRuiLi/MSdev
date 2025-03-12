@@ -102,7 +102,7 @@ shiny_plotly_iso_data_spectra <- function(sp.data,
                                               ".1e",
                                               "0"),
                           range = c(-ymax,ymax),
-                          title = "Relative intensity"))%>%
+                          title = "Labeled MS2          Unlabeled MS2"))%>%
       plotly::event_register("plotly_click")
 
   }
@@ -944,6 +944,30 @@ shiny_get_FSIS_table <- function(msip.core){
     dplyr::mutate(
       prob = str_digit(prob,3)
     )%>%
+    remove_rownames()
+
+}
+
+
+shiny_get_isotopomer_table <- function(msip.core){
+
+
+  x <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set
+  x <- make_vector(rep(names(x),lengths(x)),unlist(x))
+  data.frame(
+    Isotopomer = names(msip.core@solve$MSIPIsotopomerMap@isotopomer.probability),
+    Probability = msip.core@solve$MSIPIsotopomerMap@isotopomer.probability
+  )%>%
+    #dplyr::filter(prob>0.001)%>%
+    dplyr::mutate(
+      FSIS = x[Isotopomer],
+      Probability = str_digit(Probability,3)
+    )%>%
+    dplyr::group_by(FSIS)%>%
+    dplyr::mutate(
+      Mixed_isotopomers = n()
+    )%>%
+    dplyr::ungroup()%>%
     remove_rownames()
 
 }

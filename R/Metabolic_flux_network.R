@@ -1,7 +1,12 @@
 setClass("Metabolic_flux_network",
          slots = list(
            metabolic_network = "ANY",
+           diffusion = "ANY",
            Molecule_igraphs = "list" ))
+
+mfn <- function(){
+  new("Metabolic_flux_network")
+}
 
 
 setMethod("show",signature = "Metabolic_flux_network",
@@ -54,6 +59,7 @@ setClass("Molecule_atom_transfer",
            "transfer_def" = "data.frame",
            "transfer_matrix" = "matrix"
          ))
+
 
 
 setMethod("show",

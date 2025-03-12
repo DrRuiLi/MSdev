@@ -826,13 +826,137 @@ rxn.result <- RXNMapper(rxns,detailed_output = T)[[1]]
 
 }
 # Tue Feb 25 11:42:20 2025 ------------------------------
-citation("MSnbase")
-
-
-# Sun Mar  2 16:37:14 2025 ------------------------------
 {
+  citation("MSnbase")
+
+
+}
+
+# Thu Mar  6 16:49:44 2025 ------------------------------
+{
+  mfn <- load_MFN()
+
+
+}
+
+
+# Wed Mar 12 14:51:41 2025 shiny------------------------------
+{
+  library(shiny)
+
+  ui <- fluidPage(
+    titlePanel("My Shiny App"),
+    mainPanel(
+      tags$iframe(
+        src = "https://drruili.github.io/MSIP/index.html",
+        width = "100%",
+        height = "600px",
+        style = "border:none;"
+      )
+    )
+  )
+
+  server <- function(input, output, session) {}
+
+  shinyApp(ui, server)
+
+}
+
+{
+  library(shiny)
+
+  ui <- fluidPage(
+    titlePanel("My Shiny App"),
+    mainPanel(
+      actionButton("show_modal", "Open GitHub Page")
+    )
+  )
+
+  server <- function(input, output, session) {
+    observeEvent(input$show_modal, {
+      showModal(
+        modalDialog(
+          title = "GitHub Page",
+          HTML('<iframe src="https://drruili.github.io/MSIP/index.html" width="100%" height="500px" style="border:none;"></iframe>'),
+          easyClose = TRUE,
+          footer = modalButton("Close"),
+          size = "l"  # Large modal for better viewing
+        )
+      )
+    })
+  }
+
+  shinyApp(ui, server)
+
+}
+{
+  library(shiny)
+
+  ui <- fluidPage(
+    titlePanel("My Shiny App"),
+    mainPanel(
+      p("Welcome to my Shiny app!")
+    ),
+
+    # JavaScript to open a new pop-up window
+    tags$script(HTML("
+    Shiny.addCustomMessageHandler('openPopup', function(url) {
+      window.open(url, '_blank', 'width=1000,height=600,scrollbars=yes,resizable=yes');
+    });
+  "))
+  )
+
+  server <- function(input, output, session) {
+    # Trigger the pop-up when the app starts
+    session$sendCustomMessage("openPopup", "https://drruili.github.io/MSIP/index.html")
+  }
+
+  shinyApp(ui, server)
+
+}
+
+# Wed Mar 12 16:38:20 2025 Glu structure------------------------------
+{
+
+  glucose.smiles <- "C(C1C(C(C(C(O1)O)O)O)O)O"
+  glucose.mig <- get_Molecule_igraph_from_smiles(glucose.smiles)
+  glucose.mig <- Molecule_igraph_add_isotopomer(glucose.mig,
+                                 iso_vec = c("C_6"="[13]C"))
+  glucose.mig <- Molecule_igraph_add_isotopomer(glucose.mig,
+                                                iso_vec = c("C_10"="[13]C"))
+  glucose.mig <- Molecule_igraph_add_isotopomer(glucose.mig,
+                                                iso_vec = c("C_8"="[13]C"))
+  vis_Molecule_igraph_isotopomer(glucose.mig,isotopomer = 4,show_id = F)
 
 
 
 }
 
+# Wed Mar 12 22:28:08 2025 ------------------------------
+{
+
+  h2 <- ComplexHeatmap::Heatmap(frag.ratio.matrix,
+                                na_col  ="#999999",
+                                cell_fun = cellfun,
+                                # width = unit( ncol(frag.ratio.matrix)*length.unit,cell.unit),
+                                # height =unit( nrow(frag.atom.matrix)*length.unit,cell.unit),
+                                name = "Isotope labeled\nratio",
+                                col = circlize::colorRamp2(breaks = c(0,0.5,1),
+                                                           c("white","#F7844F","#B20C26")),
+                                right_annotation  = rowAnnotation(
+                                  intensity = ComplexHeatmap::anno_numeric(c(6,5),
+                                                                           bg_gp = gpar(fill = "#AFAFAF", col = "black")),
+                                  width  = unit(0.8,"inch"),
+                                  annotation_label = list(intensity = "Log10\nIntensity"),
+                                  annotation_name_rot  = 0,
+                                  annotation_name_side  = "top"),
+                                cluster_columns = F,
+                                row_names_side  = "left",
+                                column_names_side = "top",
+                                column_names_rot = 0.5,
+                                column_names_centered = T,
+                                rect_gp =  grid::gpar(lwd=2,col = "black"),
+                                cluster_rows = F)
+
+  open_plot_win(h2)
+}
