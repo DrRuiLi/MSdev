@@ -960,3 +960,28 @@ rxn.result <- RXNMapper(rxns,detailed_output = T)[[1]]
 
   open_plot_win(h2)
 }
+
+# Fri Mar 14 14:29:57 2025 ------------------------------
+a <- r_bg(func = function(){
+
+  msdev.13C1 <- MSdev::load_as_var(
+    "C:/Users/91879/OneDrive/Code/R/data/MSIP_data/240701_FS_ONE_POSITION/MSdev_2024_07_04.Rdata"
+  )
+  MSIP_shiny_start(msdev.13C1,port = 8303)
+})
+
+
+# Run an R script using system2() function
+
+
+# Tue Mar 18 12:55:21 2025 RXNMapper------------------------------
+{
+
+
+  mfn <- load_MFN()
+  MFN_manul_Shiny(mfn)
+
+
+
+
+}

@@ -206,8 +206,8 @@ DEP_plot_volcano <- function(data.se,
 
   x.max <- max(abs(volcano.data$log2_fold_change))
   y.max <- max(volcano.data$y)
-  x.max <- 2
-  y.max <- 3
+ # x.max <- 2
+ # y.max <- 3
 
   if (y.max==0 ) y.max <- 1
 
@@ -251,7 +251,7 @@ DEP_plot_volcano <- function(data.se,
 
     p <- p+
       ggrepel::geom_text_repel(data = filter(volcano.data, significant),
-                               aes(label = label), size = 1,
+                               aes(label = label), size = 2.4,
                                box.padding = unit(0.1, "lines"),
                                point.padding = unit(0.1, "lines"),
                                segment.size = 0.1)

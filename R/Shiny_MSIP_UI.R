@@ -1,4 +1,5 @@
 MSIP_shiny_ui <- function() {
+  tags <- shiny::tags
   fluidPage(
     title = "MSIP",
     tags$style(
@@ -9,12 +10,25 @@ MSIP_shiny_ui <- function() {
         padding: 10px;             /* Space inside the border */
 
       }
+
+
     ")
     ),
     column(
       width = 5,
-      #shinythemes::themeSelector(),
-      h1("MSIP"),
+      fluidRow(
+        column(width = 10,
+               h1("MSIP"),
+               h3("Mass Spectrometry based Isotopomers Parsing")
+               ),
+        column(width = 2,
+               div(
+                 shiny::actionLink("help_act", "Help", icon = icon("external-link"), style = "font-size: 20px; color: #000000;"),
+                 style = "font-size: 20px; color: black; text-align: center;
+                          justify-content: center; align-items: center;display: flex;height: 80px;"
+               )
+               )
+      ),
       wellPanel(DT::DTOutput(outputId = "metabolite_table",height = "200%"))
     ),
     br(),
@@ -63,140 +77,157 @@ MSIP_shiny_ui <- function() {
       ),
       navbarPage(
         title = NULL,
-        shiny::tabPanel(
-          "Atom map",
+        {
+          shiny::tabPanel(
+            "Atom map",
 
-          fluidRow(
-            column(width = 6,
-                   h3("Molecule structure and atom map")
-                   ),
-            column(width = 6,
-                   column(width = 6,
-                          fluidRow(align = "left",
-                                   selectInput(
-                                     inputId = "select_fragment_id",
-                                     label = "Possible fragment structure",
-                                     choices = NULL
-                                   )
+            fluidRow(
+              column(width = 6,
+                     h3("Molecule structure and atom map")
+              ),
+              column(width = 6,
+                     column(width = 6,
+                            fluidRow(align = "left",
+                                     selectInput(
+                                       inputId = "select_fragment_id",
+                                       label = "Possible fragment structure",
+                                       choices = NULL
+                                     )
 
-                          )),
-                   column(width = 6,
-                          div(
-                            shiny::textOutput(outputId = "frag_formula")),
+                            )),
+                     column(width = 6,
+                            div(
+                              shiny::textOutput(outputId = "frag_formula")),
                             style = "font-size: 20px; color: black; text-align: center;
                           justify-content: center; align-items: center;display: flex;height: 60px;"
-                          )
-                   )
-          ),
-          fluidRow(
-            column(
-              width = 6,
-              div(class = "visnet-container",
-                  visNetwork::visNetworkOutput(outputId = "mol_graph_atom_map")
+                     )
               )
             ),
-            column(
-              width = 6,
-              div(class = "visnet-container",
-                  visNetwork::visNetworkOutput(outputId = "frag_graph")
-              )
-
-            ))
-        ),
-        shiny::tabPanel(
-          "FAR map",
-          fluidRow(
             fluidRow(
-              column(width = 5,
-                     shiny::sliderInput(inputId = "int_thresh",
-                                        label = "Intensity threshold (log10)",
-                                        ticks  = F,step = 0.01,
-                                        min = 0,max = 10,value = 3 )
-              ),
-              column(width = 5,
-                     shiny::sliderInput(inputId = "certainty_thresh",
-                                        label = "Certainty threshold",
-                                        ticks  = F,step = 0.01,
-                                        min = 0,max = 1,value = 0.8)),
-              column(width = 2,
-                     shiny::actionButton(
-                       inputId = "Re_calc_button",
-                       label = "Re calculate")
-              )
-            ),
-            shiny::plotOutput(
-              outputId = "heatmap_fg_map",
-              height = "500px",
-              width = "800px"
-            )
-          )
-        ),
-
-        shiny::tabPanel(
-          title = "Isotopomers",
-          fluidPage(
-            column(
-              width = 6,
-              #DT::DTOutput(outputId = "FSIS_table")
-              DT::DTOutput(outputId = "isotopomer_table")
-            ),
-            column(
-              width = 6,
-              div(class = "visnet-container",
-                  #visNetwork::visNetworkOutput(outputId = "Vis_isotopomer_set")
-                  visNetwork::visNetworkOutput(outputId = "Vis_isotopomer")
-              )
-
-            )
-          )
-        ),
-
-        shiny::tabPanel("Atom label probability", fluidRow(#h2("Molecule Structrue"),
-          fluidPage(
-            column(
-              width = 3,
-              wellPanel(
-                checkboxInput(
-                  inputId = "show_atom_id",
-                  label = "Show Atom ID"
-                ),
-                br(),
-                shiny::tableOutput(outputId = "atom_prob_table")
-              )
-              ),
-            column(
-              width = 8,
-              #h5("Atom labeled probability"),
-              fluidRow(
-                align = "right",
-                shiny::plotOutput(
-                  outputId = "atom_prob_legend",
-                  inline = F,
-                  width = "200px",
-                  height  = "70px"
-                )
-              ),
-              fluidRow(
+              column(
+                width = 6,
                 div(class = "visnet-container",
-                    visNetwork::visNetworkOutput(outputId = "mol_graph_atom_prob")
+                    visNetwork::visNetworkOutput(outputId = "mol_graph_atom_map")
                 )
-               )
-            ),
+              ),
+              column(
+                width = 6,
+                div(class = "visnet-container",
+                    visNetwork::visNetworkOutput(outputId = "frag_graph")
+                )
 
-          ))),
-
-
-
-        shiny::tabPanel(
-          title = "Natural distribution",
-          fluidRow(
-            plotly::plotlyOutput(
-              outputId = "pred_nat_prob"
+              ))
+          )
+        },### ATOM MAP
+        {
+          shiny::tabPanel(
+            "FAR map",
+            fluidRow(
+              fluidRow(
+                column(width = 5,
+                       shiny::sliderInput(inputId = "int_thresh",
+                                          label = "Intensity threshold (log10)",
+                                          ticks  = F,step = 0.01,
+                                          min = 0,max = 10,value = 3 )
+                ),
+                column(width = 5,
+                       shiny::sliderInput(inputId = "certainty_thresh",
+                                          label = "Certainty threshold",
+                                          ticks  = F,step = 0.01,
+                                          min = 0,max = 1,value = 0.8)),
+                column(width = 2,
+                       shiny::actionButton(
+                         inputId = "Re_calc_button",
+                         label = "Re calculate")
+                )
+              ),
+              shiny::plotOutput(
+                outputId = "heatmap_fg_map",
+                height = "800px",
+                width = "800px"
+              )
             )
           )
+        },### FAR MAP
+        {
+          shiny::tabPanel(
+            title = "Isotopomers",
+            fluidPage(
+              column(
+                width = 7,
+                #DT::DTOutput(outputId = "FSIS_table")
+                DT::DTOutput(outputId = "isotopomer_table")
+              ),
+              column(
+                width = 5,
+                div(class = "visnet-container",
+                    #visNetwork::visNetworkOutput(outputId = "Vis_isotopomer_set")
+                    visNetwork::visNetworkOutput(outputId = "Vis_isotopomer")
+                )
+
+              )
+            )
+          )
+        },### isotopomer
+        {
+          shiny::tabPanel("Atom label probability", fluidRow(#h2("Molecule Structrue"),
+            fluidPage(
+              column(
+                width = 3,
+                br(),
+                br(),
+                br(),
+                br(),
+                wellPanel(
+                  checkboxInput(
+                    inputId = "show_atom_id",
+                    label = "Show Atom ID"
+                  ),
+                  br(),
+                  shiny::tableOutput(outputId = "atom_prob_table")
+                )
+              ),
+              column(
+                width = 8,
+                #h5("Atom labeled probability"),
+                fluidRow(
+                  align = "right",
+                  shiny::plotOutput(
+                    outputId = "atom_prob_legend",
+                    inline = F,
+                    width = "200px",
+                    height  = "70px"
+                  )
+                ),
+                fluidRow(
+                  div(class = "visnet-container",
+                      visNetwork::visNetworkOutput(outputId = "mol_graph_atom_prob")
+                  )
+                )
+              ),
+
+            )))
+        },###
+        {
+          shiny::tabPanel(
+            title = "Natural distribution",
+            fluidRow(
+              plotly::plotlyOutput(
+                outputId = "pred_nat_prob",
+                width = "600px",
+                height = "600px",
+              )
+            )
 
 
-        )
+          )
+        }
+
+
+
+
+
+
       )
     ),
     tags$script(HTML("
@@ -277,7 +308,7 @@ MFN_manul_Shiny_ui <- function(){
 
   fluidPage(
     title = "Mannual Atom transfer",
-    fluidRow(verbatimTextOutput(outputId = "test_output")),
+    #fluidRow(verbatimTextOutput(outputId = "test_output")),
     fluidRow(
 
       column(6,

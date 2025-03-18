@@ -32,9 +32,9 @@ setClass("MSdev",
 #' @importFrom stringr str_extract str_split str_extract_all
 #' @importFrom plotly layout add_bars
 #' @importFrom SummarizedExperiment rowData colData assay `rowData<-` `colData<-` `assay<-`
-#' @importFrom shiny shinyApp fluidPage fluidRow
+#' @importFrom shiny shinyApp fluidPage fluidRow HTML div
 #' checkboxInput selectInput navbarPage runApp
-#' column h1 h3 h4 br wellPanel
+#' column h1 h3 h4 br wellPanel icon
 #' @importFrom plotly add_markers plot_ly add_pie add_segments
 #' event_data add_text add_lines
 #' @importFrom visNetwork visNetwork visLayout visOptions visInteraction

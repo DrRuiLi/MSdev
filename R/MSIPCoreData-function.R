@@ -590,7 +590,7 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
                                 row_names_side  = "left",
                                 column_names_rot = -45,
                                 column_names_centered = F,
-                                column_names_gp = grid::gpar(fontsize = 8),
+                                #column_names_gp = grid::gpar(fontsize = 8),
                                 row_names_gp = gpar(col = ifelse(frag.include,"black","grey")),
                                 #rect_gp =  grid::gpar(lwd=2,col = "white"),
                                 cluster_rows = F)
@@ -918,7 +918,7 @@ plotly_MSIPCore_pred_nature_prob  <- function(MSIPCoreData){
   p <- plot_ly(df)%>%
     add_markers(x = ~natural.prob,y = ~predict.prob,size = I(100))%>%
     add_lines(x = c(0,1),y= c(0,1),color = I("grey"))%>%
-    add_text(x = 0.1,y=0.9,text = paste0("R2 = ",str_digit(r2,4),"\n",
+    add_text(x = 0.3,y=0.9,text = paste0("R2 = ",str_digit(r2,4),"\n",
                                          "RMSE = ",str_digit(rmse,4)
                                          ))%>%
     layout(

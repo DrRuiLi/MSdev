@@ -54,7 +54,7 @@ shiny_test_fun <- function(input){
   return(0)
 }
 
-MFN_manul_Shiny <- function(object){
+MFN_manul_Shiny <- function(object,port = NULL){
 
   ### Start Shiny APP
   {
@@ -62,7 +62,7 @@ MFN_manul_Shiny <- function(object){
              server = MFN_manul_Shiny_server(object),
              options = list(host = "0.0.0.0",
                             launch.browser = T,
-                            port = 6548))%>%
+                            port = port))%>%
       runApp()->object
 
 

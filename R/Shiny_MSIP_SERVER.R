@@ -8,10 +8,14 @@ MSIP_shiny_server <- function(object){
 
 
     # Trigger the pop-up when the app starts
-    #session$sendCustomMessage("openPopup", "https://drruili.github.io/MSIP/articles/toclg.html")
+    session$sendCustomMessage("openPopup", "https://drruili.github.io/MSIP/articles/msip_shiny_demo.html")
 
     output$test_info <- renderPrint({
       FSIS_selected()
+    })
+
+    observeEvent(input$help_act, {
+      browseURL("https://drruili.github.io/MSIP/articles/msip_shiny_demo.html")  # Replace with your URL or local file
     })
 
 
@@ -188,7 +192,6 @@ MSIP_shiny_server <- function(object){
           shiny_get_fg(sp.data = iso.sp.data(),
                        x = sp.x.clicked()))
 
-        message_with_time(fragment_group_selected())
       })
 
 
@@ -348,8 +351,9 @@ MSIP_shiny_server <- function(object){
 
         message_with_time("shiny_heatmap_fgmap")
         shiny_heatmap_fgmap(msip.core.data())
-
-      })
+      },
+      height = reactive(nrow(msip.core.data()@FG_map@FG.atom.matrix)*50+50)
+      )
 
 
       if(F){
@@ -498,8 +502,12 @@ MSIP_shiny_server <- function(object){
       output$isotopomer_table <- DT::renderDT({
 
         message_with_time("isotopomer_table")
-        isotopomer_table()%>%
-          DT::datatable(options = list(
+        x <- isotopomer_table()
+        colnames(x)[4] <- "Mixed\nisotopomers"
+        x%>%
+          DT::datatable(
+            rownames = FALSE,
+            options = list(
             columns =list(orderable = F),
             dom = 't',   # 't' means only the table body is displayed
             paging = FALSE,  # Disable pagination
@@ -783,7 +791,7 @@ MFN_manul_Shiny_server <- function(object){
 
       message_with_time("render_Metabolic_flux_network_vis")
       mfn <- mfn_for_vis()
-
+      show_modal_spinner(spin = "circle", color = "#007bff")  # Show spinner
       vis_Metabolic_flux_network(mfn)%>%
         visOptions(width = "100%",height = "100%",
                    #nodesIdSelection = list(enabled=T, selected= "C00631" ),
@@ -799,6 +807,9 @@ MFN_manul_Shiny_server <- function(object){
         visEvents(
           selectNode = "function(properties) {
         Shiny.onInputChange('Metabolic_flux_network_vis_selected_node', properties.nodes);
+      }",
+          stabilizationIterationsDone = "function() {
+        Shiny.setInputValue('network_ready', true, {priority: 'event'});
       }"
         )%>%
         visInteraction(selectConnectedEdges  = T)
@@ -806,7 +817,9 @@ MFN_manul_Shiny_server <- function(object){
     })
 
 
-
+    observeEvent(input$network_ready, {
+      remove_modal_spinner()  # Hide the modal spinner when the network is ready
+    })
     ### Metabolic_flux_network_vis select node
     {
 

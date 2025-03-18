@@ -30,7 +30,7 @@ RXNMapper_map  <- function(from.smiles ,
 
   }
   if (nchar(req)>511) {
-    message(crayon::red("Reaction SMILES has 517 tokens, should be at most 512."))
+    message(crayon::red("Reaction SMILES has too many tokens, should be at most 512."))
     return(NA)
   }
 

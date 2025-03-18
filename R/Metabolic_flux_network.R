@@ -515,6 +515,8 @@ setMethod("show",
             print(paste0("Reaction ",nrow(object@atom_transfer)
                          ," atom transfer"))
           })
+
+
 Reaction_atom_transfer <- function(){
   new("Reaction_atom_transfer")
 }

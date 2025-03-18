@@ -417,6 +417,7 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
                           cluster_column_slices = F,
                           column_split = col.info$column_split,
                           row_split = row.info$column_split,
+                          #rect_gp = gpar(color = "black"),
 
 
                           column_labels = col.info$column_labels,
@@ -428,7 +429,7 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
 
                           show_column_dend = F,
                           show_row_dend = F,
-                          show_row_names = T
+                          show_row_names = F
                           )->p
   p
 
