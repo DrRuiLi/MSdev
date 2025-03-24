@@ -982,6 +982,43 @@ a <- r_bg(func = function(){
   MFN_manul_Shiny(mfn)
 
 
+}
+# Wed Mar 19 00:05:45 2025 Diffusion button------------------------------
+{
+  kegg.net <- get_KEGG_Reaction_network()
+  mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net)
+  kegg.pathway.df <- MSdb:::get_KEGG_compound_pathway_df()
+  kegg.selected <- kegg.pathway.df %>%
+    dplyr::filter(ENTRY %in% c("hsa00010",### glycolysis
+                               "hsa00020",### TCA
+                               "hsa00250",### glutamate
+                               "hsa00480" ### GSH
+    ))%>%
+    dplyr::pull(COMPOUND.ID)%>%
+    unique()%>%
+    setdiff(c("C00005","C00006","C00014","C00080"))%>%
+    intersect(names(V(kegg.net)))
+  mfn <- Metabolic_flux_network_select_compound(mfn,kegg.selected)
+  mfn <-  Metabolic_flux_network_get_compound_data_from_cid(mfn)
+
+  mfn <- Metabolic_flux_network_clean_reactions(mfn)
+  mfn <- Metabolic_flux_network_get_Reaction_atom_transfer(mfn)
+  edata(mfn)$id <- edata(mfn)$name
+  MFN_manul_Shiny(mfn)
+
+
 
 
 }
+
+
+
+
+# Sun Mar 23 23:59:14 2025 ------------------------------
+{
+  BiocManager::install(c("e1071",
+                         "globaltest ",
+                         "ropls "
+                         ))
+
+  }

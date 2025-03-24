@@ -599,4 +599,47 @@ plot_cor_density <- function(x,y,xlab = "x",ylab = "y"){
 
 }
 
+plot_cor_density_grouped <- function(x,y,group.f,x.title = "x",y.title = "y",group.title = "group"){
 
+  plot.data <- data.frame(
+    x,y,group.f
+  )%>%
+    dplyr::mutate(x = as.numeric(x),
+                  y = as.numeric(y),
+                  var = "a")%>%
+    dplyr::filter(!is.na(x),!is.na(y))
+
+  ggplot(plot.data,aes(x = x,y = y,colour = group.f))+
+    geom_point(alpha = 0.5)+
+    stat_smooth(method = "lm")+
+    ggpubr::stat_cor(label.y.npc = 1)+
+    scale_x_continuous(expand = c(0.1,0))+
+    scale_y_continuous(expand = c(0.1,0))+
+    ggsci::scale_color_npg()+
+    labs(x = x.title,
+         y = y.title,
+         col = group.title)+
+    theme_bw()+
+    theme(plot.margin = unit(c(0,0,0,0),"inch"))->p.cor
+  p.cor
+  ggplot(plot.data)+
+    geom_density(aes(x = x,colour = group.f),
+                 fill = "grey",alpha = 0.5,show.legend = F)+
+    scale_x_continuous(expand = c(0,0))+
+    scale_y_continuous(expand = c(0,0))+
+    ggsci::scale_color_npg()+
+    theme_void()->p.x
+  ggplot(plot.data)+
+    geom_density(aes(y=y,colour = group.f),
+                 fill = "grey",alpha = 0.5,show.legend = F)+
+    scale_x_continuous(expand = c(0,0))+
+    scale_y_continuous(expand = c(0,0))+
+    ggsci::scale_color_npg()+
+    theme_void()->p.y
+
+  p.x+plot_spacer()+
+    p.cor+p.y+
+    plot_layout(widths = c(9,1),
+                heights = c(1,9),guides = "collect")
+
+}

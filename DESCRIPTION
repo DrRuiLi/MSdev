@@ -6,31 +6,96 @@ Authors@R:
            comment = c(ORCID = "0000-0002-3199-287X"))
 Description: MS data basic manipulate and advanced algorithm
 License: MIT + file LICENSE
-Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
-Suggests: 
-    knitr,
-    rmarkdown,
-    testthat (>= 3.0.0)
-Config/testthat/edition: 3
-Imports: 
-    data.table,
-    BiocParallel,
-    enviPat,
-    Spectra,
-    plotly,
-    ChemmineR,
-    shiny,
-    SummarizedExperiment,
-    webchem,
-    igraph,
-    ChemmineR,
-    magrittr,
-    tidyverse,
-    xcms,
-    MSnbase
 Depends:
     R (>= 3.5.0)
+Imports: 
+    Biobase,
+    BiocParallel,
+    ChemmineR,
+    circlize,
+    cli,
+    clusterProfiler,
+    ComplexHeatmap,
+    CompoundDb,
+    corrplot,
+    crayon,
+    data.table,
+    DEP,
+    dplyr,
+    DT,
+    e1071,
+    enrichR,
+    epiDisplay,
+    export,
+    FELLA,
+    fmcsR,
+    fpc,
+    ggbreak,
+    ggimage,
+    ggplot2,
+    ggpubr,
+    ggrepel,
+    ggsci,
+    globaltest,
+    grid,
+    htmlwidgets,
+    igraph,
+    irr,
+    KEGGREST,
+    lsa,
+    magrittr,
+    MetaboSignal,
+    MsBackendMgf,
+    MsBackendMsp,
+    MSCC,
+    MSconvertR,
+    MsCoreUtils,
+    MSdb,
+    MSnbase,
+    mzR,
+    openxlsx,
+    parallel,
+    patchwork,
+    pathview,
+    plotly,
+    plyr,
+    pROC,
+    ProtGenerics,
+    qpdf,
+    quadprog,
+    R.utils,
+    randomcoloR,
+    RCurl,
+    readr,
+    readxl,
+    reticulate,
+    Rglpk,
+    rlang,
+    ropls,
+    rstudioapi,
+    S4Vectors,
+    scales,
+    shiny,
+    shinybusy,
+    Spectra,
+    stats,
+    stringr,
+    SummarizedExperiment,
+    survminer,
+    tibble,
+    tidyr,
+    tidyverse,
+    VennDiagram,
+    visNetwork,
+    webchem,
+    xcms
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: 
+    knitr
+Config/testthat/edition: 3
+Encoding: UTF-8
 LazyData: true
-VignetteBuilder: knitr
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2

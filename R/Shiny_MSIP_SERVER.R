@@ -791,7 +791,7 @@ MFN_manul_Shiny_server <- function(object){
 
       message_with_time("render_Metabolic_flux_network_vis")
       mfn <- mfn_for_vis()
-      show_modal_spinner(spin = "circle", color = "#007bff")  # Show spinner
+      shinybusy::show_modal_spinner(spin = "circle", color = "#007bff")  # Show spinner
       vis_Metabolic_flux_network(mfn)%>%
         visOptions(width = "100%",height = "100%",
                    #nodesIdSelection = list(enabled=T, selected= "C00631" ),
@@ -818,7 +818,7 @@ MFN_manul_Shiny_server <- function(object){
 
 
     observeEvent(input$network_ready, {
-      remove_modal_spinner()  # Hide the modal spinner when the network is ready
+      shinybusy::remove_modal_spinner()  # Hide the modal spinner when the network is ready
     })
     ### Metabolic_flux_network_vis select node
     {
