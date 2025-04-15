@@ -219,6 +219,11 @@ match_path <- function(p1,p2){
 }
 
 
+which.na <- function(x){
+  which(is.na(x))
+}
+
+
 get_matrix_value_fill_with_NA <- function(mat,
                                           rownames_vec = rownames(mat),
                                           colnames_vec = colnames(mat),

@@ -689,14 +689,16 @@ DEP_plot_single_bar <- function(data.se,
                                 id){
 
   plot.data <- data.frame(
-    group = data.se$group,
+    group = data.se$condition,
     val = assay(data.se)[id,]
-  )
+  )%>%
+    dplyr::filter(val >-2)
 
   ggplot(plot.data ,
-         aes(x = group , y = val) )+
+         aes(x = group , y = val,col = group) )+
     #geom_bar(stat = "summary",fun  = mean)+
     geom_boxplot()+
+    geom_jitter()+
     #ggsignif::geom_signif(
     #  comparisons = apply(combn(names(col.groups),2),2
     #                      ,c,simplify = F),
@@ -719,4 +721,15 @@ DEP_impute_mean <- function(data.se){
   })
   se.data -> assay(data.se)
   return(data.se)
+}
+
+
+DEP_preprocess <- function(data.se){
+
+  data_filt <- DEP::filter_missval(data.se,
+                                   thr = min(table(cda$group))*0.3)
+  data_norm <- DEP::normalize_vsn(data_filt)
+  data_imp <- DEP::impute(data_norm, fun = "MinProb")
+
+  return(data_imp)
 }

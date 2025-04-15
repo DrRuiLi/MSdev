@@ -106,7 +106,7 @@ get_sdf_formula <- function(sdf){
 
   sdf.checked <- check_sdf(sdf)
   sdf.formula <- character()
-  sdf.formula[sdf.checked] <- MF(sdf[sdf.checked],addH=T)
+  sdf.formula[sdf.checked] <- MF2(sdf[sdf.checked],addH=T)
   sdf.formula <- MSCC::chemform_formate(sdf.formula)
   return(sdf.formula)
 }
@@ -628,6 +628,36 @@ is.isotope <- function(atoms){
   dim(m) <- dim(atoms)
   dimnames(m) <- dimnames(atoms)
   return(m)
+}
+
+
+
+
+MF2 <- function (x, ...){
+
+  if (class(x) == "SDF")
+    x <- as(x, "SDFset")
+  propma <- atomcountMA(x, ...)
+  propma <- propma[c(1, seq(along = propma[, 1])), ,drop = F]
+  hillorder <- colnames(propma)
+  names(hillorder) <- hillorder
+  hillorder <- na.omit(unique(hillorder[c("C", "H", sort(hillorder))]))
+  propma <- propma[, hillorder,drop = F]
+  propma[propma == 1] <- ""
+  MF <- paste(colnames(propma), t(propma), sep = "")
+  propma <- matrix(MF, nrow = length(propma[, 1]), ncol = length(propma[1,
+  ]), dimnames = list(rownames(propma), colnames(propma)),
+  byrow = TRUE)
+  MF <- seq(along = propma[, 1])
+  names(MF) <- rownames(propma)
+  zeroma <- matrix(grepl("[\\*A-Za-z]0$", propma), nrow = length(propma[,
+                                                                        1]), ncol = length(propma[1, ]), dimnames = list(rownames(propma),
+                                                                                                                         colnames(propma)))
+  propma[zeroma] <- ""
+  for (i in seq(along = MF)) {
+    MF[i] <- paste(propma[i, ], collapse = "")
+  }
+  return(MF[-1])
 }
 
 

@@ -989,7 +989,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
 
       x <- xcms.fdf$ms2_id[[i]]
       if (!length(x)) return(NULL)
-      sp.ms2[x]
+      sp.ms2[match(x,spectraNames(sp.ms2))]
       #if (length(x)==0) {
       #  sp <- makeSpectra(xcms.fdf$mzmed[i],
       #                    xcms.fdf$rtmed[i])

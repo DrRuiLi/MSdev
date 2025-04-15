@@ -266,6 +266,10 @@ extractFeature <- function(object){
 get_MSdev_param <- function(object){
 
 
+  if (!is.null(object@processingInfo$MSdevParam )) {
+    return(object@processingInfo$MSdevParam )
+  }
+
   if (object@experimentInfo@General$Name == "Metabolomics_YLF") {
 
     fpp <- xcms::MassifquantParam(ppm = 5,
@@ -302,6 +306,20 @@ get_MSdev_param <- function(object){
 
 
 }
+
+MSdev_set_param <- function(object,
+                            findChromPeaks = xcms::CentWaveParam(),
+                            groupChromPeaks = xcms::PeakDensityParam("A")
+                            ){
+
+  msdev.param <- list(findChromPeaks = findChromPeaks,
+                      groupChromPeaks = groupChromPeaks)
+  object@processingInfo$MSdevParam  <- msdev.param
+
+  return(object)
+
+}
+
 
 
 get_MSdev_xcms_param_by_exp <- function(object){
@@ -1513,6 +1531,13 @@ MSdev_extract_Spectra <- function(object,
   }
 
 
+  ### assign to feature
+  {
+
+    object <-  MSdev_match_Spectra_to_feature(object)
+  }
+
+
   return(object)
 
 }
@@ -1708,7 +1733,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
 
     ### adjust
     feature.se <- se_adjuset_by_weight(feature.se)
-    feature.se <- DEP_impute_mean(feature.se)
+    #feature.se <- DEP_impute_mean(feature.se)
 
 
 
@@ -1845,12 +1870,9 @@ get_MSdev_DEP_se <- function(object,
   rowData(data.se) <- rda%>%S4Vectors::DataFrame()
 
   assay(data.se) <- log2(assay(data.se))
-  data_filt <- DEP::filter_missval(data.se,
-                                   thr = min(table(cda$group))*0.3)
-  data_norm <- DEP::normalize_vsn(data_filt)
-  data_imp <- DEP::impute(data_norm, fun = "MinProb")
 
-  return(data_imp)
+
+  return(data.se)
 }
 
 

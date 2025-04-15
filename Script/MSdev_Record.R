@@ -2343,3 +2343,92 @@
 
 
 }
+# Thu Apr  3 14:25:40 2025 CityU NS------------------------------
+{
+  msdev.NS <- MSdev("d:/2025.04.02.CityU.NS/data/")
+  msdev.NS <- load_as_var("d:/2025.04.02.CityU.NS/MSdev_2025_04_04.Rdata")
+  msdev.NS <- MSdev_msConvert(msdev.NS)
+  msdev.NS <- MSdev_checkSampleInfo(msdev.NS)
+  msdev.NS <- MSdev_set_param(msdev.NS)
+  msdev.NS <- MSdev_xcmsProcessing(msdev.NS)
+  msdev.NS <- MSdev_extract_Spectra(msdev.NS)
+  msdev.NS <- MSdev_annotation(msdev.NS,
+                               expand_adduct= T,
+                               cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+  msdev.NS <- MSdev_get_Stat(msdev.NS,QC_RSD = Inf)
+  MSdev_export(msdev.NS)
+  MSdev_save(msdev.NS)
+
+
+
+  {
+
+    proj.dir <- msdev.NS@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(msdev.NS,from = "metabolite")
+    #data.se <- data.se[,grepl(data.se$group,pattern = "Tumor") ]
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3)
+
+
+    #maped.genes <- KEGG_get_cp_linked_gene(rowData(data.se)$kegg_id)
+    #edit_df_in_excel(maped.genes)
+    ### Plot TIC
+    {
+      p1 <- plot_xcms_TIC(msdev.NS@xcmsData$PositiveMS1)+
+        labs(titNS = "Positive TIC")
+      p2 <- plot_xcms_TIC(msdev.NS@xcmsData$NegativeMS1)+
+        labs(titNS = "Negative TIC")
+      p <- p1+p2+plot_layout(ncol = 1)
+      export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 8,append = T)
+    }
+
+
+
+    ### sampNS_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank","A0")]
+    data.se.SampNS_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.SampNS_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    data.diff <- DEP_test_diff(data.se.SampNS_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    tabNS.diff <- DEP_get_diff_tabNS(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(tabNS.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+    data.diff <- DEP_test_diff(data.se.SampNS_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+    #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+    hm <- DEP.plot.heatmap(data.diff)
+    export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 6,height = 60,append = T)
+
+    data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
+    p.list <- lapply(names(data.path),
+                     function(x){
+                       p <- plotPathwayEnrichment(data.path[[x]],method = "bubbNS",titNS = x)
+                     })
+    p <- ggplot_sum_patchwork(p.list)
+    export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 20,height = 10,append = T)
+    xlsx.write.list(
+      data.path,
+      fiNS =paste0(proj.dir,"/Statistic/pathway.xlsx")
+    )
+  }
+
+
+}

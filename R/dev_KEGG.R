@@ -3,23 +3,27 @@ get_KEGG_Reaction_network <- function(kegg.rdata ){
 
   kegg.rawdata <- MSdb:::get_KEGG_rawdata()
   kegg.rdata <-  kegg.rawdata$Reaction_rawdata
-  kegg.rdata <- lapply(kegg.rdata,KEGG_parse_REACTION,parse_by = "EQUATION")
+  kegg.rdata <- KEGG_parse_REACTION(kegg.rdata,parse_by = "EQUATION")
   #ig.krn <- KEGG_reaction_to_network_RCLASS(kegg.rdata)
+  #kegg.reaction.check <- KEGG_EQUATION_data_check(kegg.rdata)
+
   ig.krn <- KEGG_reaction_to_network_EQUATION(kegg.rdata)
 
   #kegg.mdata <- kegg.rawdata$Module_rawdata
   #ig.krn <- KEGG_reaction_get_direction_from_module(ig.krn,kegg.mdata)
   #ig.krn <- igraph_sort_direction(ig.krn)
   #ig.krn.filter <- KEGG_Reaction_network_filter_by_emzyme(ig.krn,"hsa")
-  ig.krn.filter <- KEGG_Reaction_network_remove_nonformat_node(ig.krn)
+  #ig.krn.filter <- KEGG_Reaction_network_remove_nonformat_node(ig.krn)
+  ig.krn.filter <- ig.krn
   return(ig.krn.filter)
 
 
 }
 
 
-KEGG_parse_REACTION <- function(reaction.data,
-                                parse_by = "RCLASS" ){
+
+KEGG_parse_REACTION <- function(kegg.rdata,
+                                parse_by = "EQUATION" ){
 
   vars <- c("ENTRY",
             "NAME",
@@ -30,19 +34,91 @@ KEGG_parse_REACTION <- function(reaction.data,
   )
 
 
-
-  ### edit
+  ### EQUATION
   {
-    #reaction.data <- reaction.data[vars]
-    #reaction.data[sapply(reaction.data,is.null)]<- NA
-    # names(reaction.data) <- vars
+
+    if(parse_by=="EQUATION"){
+
+      #reaction.data <- kegg.rdata[[1]]
+      message_with_time("Parsing EQUATION...")
+      ### MAP
+      {
+        kegg.gly.cp.map <- KEGGREST::keggLink("compound","glycan")
+        names(kegg.gly.cp.map) <- sub(x = names(kegg.gly.cp.map),pattern = "gl:",replacement = "")
+        kegg.gly.cp.map <- sub(x = (kegg.gly.cp.map),pattern = "cpd:",replacement = "")
+
+        kegg.cp <- MSdb:::get_KEGG_compound_df()
+        kegg.formula <- make_vector(kegg.cp$Formula,kegg.cp$KEGG_id)
+      }
+      kegg.rdata <- plyr::llply(kegg.rdata,function(reaction.data){
+
+        ### data process
+        {
+          ENTRY <- unname(reaction.data$ENTRY)
+          EQUATION_data <- KEGG_parse_REACTION_EQUATION(reaction.data[["EQUATION"]])
+          if (is.null(EQUATION_data)) return(reaction.data)
+
+          EQUATION_data$id <- ifelse(EQUATION_data$id%in% names(kegg.gly.cp.map),
+                                     kegg.gly.cp.map[EQUATION_data$id],
+                                     EQUATION_data$id)
+
+        }
+
+        ### edge df
+        {
+          from.df <- EQUATION_data%>%
+            dplyr::filter(side =="from")
+          to.df<- EQUATION_data%>%
+            dplyr::filter(side =="to")
+          rda1 <- data.frame(
+            from = from.df$id,
+            to = ENTRY
+          )
+          rda2 <- data.frame(
+            from = ENTRY ,
+            to = to.df$id
+          )
+          edge.df <- rbind(rda1,rda2)%>%
+            dplyr::mutate(REACTION_id = reaction.data$ENTRY)
+
+        }
+
+        ### Reaction node
+        {
+          node.reaction.data <- list(
+            KEGG_id = ENTRY,
+            Name = reaction.data$NAME[1],
+            EQUATION = reaction.data$EQUATION,
+            equation.format = paste0(
+              paste0(from.df$coef," ",from.df$id,collapse = " + ")," <=> ",
+              paste0(to.df$coef," ",to.df$id,collapse = " + ")
+            ),
+            equation.formula = paste0(
+              paste0(from.df$coef," ",kegg.formula[from.df$id],collapse = " + ")," <=> ",
+              paste0(to.df$coef," ",kegg.formula[to.df$id],collapse = " + ")
+            ),
+            definition = reaction.data$DEFINITION,
+            enzyme = paste0(reaction.data$ENZYME,collapse   = ";")
+          )
+
+        }
 
 
-    reaction.data[["ENTRY"]] <- reaction.data[["ENTRY"]]%>%unname()
-    reaction.data[["NAME"]]<- reaction.data[["NAME"]][1]
+        reaction.data$EQUATION_data <- EQUATION_data
+        reaction.data$NODE_data <- node.reaction.data
+        reaction.data$EDGE_data <- edge.df
+        reaction.data
+
+
+
+      },.progress = "text")
+
+    }
 
 
   }
+
+
 
   ### RCLASS
   {
@@ -52,50 +128,83 @@ KEGG_parse_REACTION <- function(reaction.data,
       #reaction.data <- kegg.rdata[[1]]
       RCLASS_data <- KEGG_parse_REACTION_RCLASS(reaction.data[["RCLASS"]])
       reaction.data$RCLASS_data <- RCLASS_data
+
     }
 
 
   }
 
 
-  ### EQUATION
-  {
 
-    if(parse_by=="EQUATION"){
+  return(kegg.rdata)
 
-      #reaction.data <- kegg.rdata[[1]]
-      EQUATION_data <- KEGG_parse_REACTION_EQUATION(reaction.data[["EQUATION"]])
-      reaction.data$EQUATION_data <- EQUATION_data
+}
+
+
+
+KEGG_EQUATION_data_check <- function(kegg.rdata){
+
+
+  kegg.stat <- lapply(kegg.rdata,function(reaction.data){
+
+    if (anyNA(reaction.data)) {
+      return(NULL)
     }
 
-
-  }
-
-
-  return(reaction.data)
-
+    data.frame(
+      ENTRY = unname(reaction.data$ENTRY),
+      EQUATION = reaction.data$EQUATION,
+      from.count = sum(reaction.data$EQUATION_data$side=="from",na.rm = T),
+      to.count = sum(reaction.data$EQUATION_data$side=="to",na.rm = T),
+      na.count = sum(is.na(reaction.data$EQUATION_data$id),na.rm = T)
+    )%>%
+      dplyr::mutate(
+        error = case_when(
+          from.count==0|to.count ==0~"From or to missing",
+          na.count > 0 ~ "Char no recongnized",
+          grepl( "m|n",EQUATION) ~ "m or n coef",
+          T ~ NA
+        )
+      )
+  })
+  kegg.stat <- do.call(rbind,kegg.stat)
+  return(kegg.stat)
 }
 
 KEGG_parse_REACTION_EQUATION <- function(EQUATION){
 
 
+  if (grepl("m|n",EQUATION)) {
+    return(NULL)
+  }
+
   eq.syn <- str_extract(pattern = "[<=>]+",EQUATION)
-  dir<- switch (eq.syn,
-                "<=>" = 2,
-                "=>" = 1,
-                "<=" = -1
-  )
+ # dir <- switch (eq.syn,
+ #               "<=>" = 0,
+ #               "=>" = 1,
+ #               "<=" = -1
+ # )
 
-  eq.split <- str_split(EQUATION,eq.syn)[[1]]
-  eq.l <-  stringr::str_extract_all(eq.split[1],"C[0-9]{5}")[[1]]
-  eq.r <-  stringr::str_extract_all(eq.split[2],"C[0-9]{5}")[[1]]
+  eq.split <- str_split(EQUATION,eq.syn)[[1]]%>%
+    lapply(function(y){
+      str_split(y,"\\+",simplify = T)%>%
+        gsub(" ","",.)%>%
+        lapply(function(x){
+          x.coef <- str_extract(x,"^[:digit:]+")
+          x.coef <- ifelse(is.na(x.coef),1,x.coef)
+          x.coef <- as.numeric(x.coef)
+          x.id <- str_extract(x,"[CG][0-9]{5}")
+          #make_vector(x.coef,x.id)
+          data.frame(id = x.id,
+                     coef = x.coef)
+        })%>%do.call(rbind,.)
+    })
+  names(eq.split) <- c("from","to")
+  equation.df <- data.table::rbindlist(eq.split,idcol = "side")
 
 
-  return(list(
-    from = eq.l,
-    to = eq.r,
-    direction = dir
-  ))
+
+  return(equation.df)
 
 
 }
@@ -218,6 +327,7 @@ KEGG_reaction_to_network_EQUATION <- function(kegg.rdata){
 
   ### edge
   {
+    message_with_time("Generate Edges...")
     rcn.edges <- plyr::llply(
       kegg.rdata,
       function(reaction.data){
@@ -225,21 +335,7 @@ KEGG_reaction_to_network_EQUATION <- function(kegg.rdata){
         if (!"EQUATION_data" %in% names(reaction.data)) {
           return(invisible())
         }
-        if (any(lengths(reaction.data$EQUATION_data[1:2])<1)) {
-          return(invisible())
-        }
-        rda1 <- data.frame(
-          from = reaction.data[["EQUATION_data"]]$from,
-          to = reaction.data$ENTRY
-        )
-        rda2 <- data.frame(
-          from = reaction.data$ENTRY ,
-          to = reaction.data[["EQUATION_data"]]$to
-        )
-        rda <- rbind(rda1,rda2)%>%
-          dplyr::mutate(REACTION_id = reaction.data$ENTRY)
-
-        return(rda)
+        return(reaction.data$EDGE_data )
 
       },.progress = "text"
     )
@@ -249,46 +345,61 @@ KEGG_reaction_to_network_EQUATION <- function(kegg.rdata){
 
   }
 
+
+
   ### node
   {
-
-    kegg.cp <- MSdb:::get_KEGG_compound_df()%>%
-      as.data.frame()%>%
-      dplyr::filter(KEGG_id %in% rcn.edges.df$from|
-                      KEGG_id %in% rcn.edges.df$to)%>%
-      dplyr::mutate(node.type = "Compound")
-
-    kegg.reaction <- plyr::llply(
-      kegg.rdata,
-      function(reaction.data){
-
-        list(KEGG_id = reaction.data$ENTRY,
-                   Name = reaction.data$NAME,
-          equation = reaction.data$EQUATION ,
-          definition = reaction.data$DEFINITION,
-          enzyme = paste0(reaction.data$ENZYME,collapse   = ";")
-          )
-
-      },.progress = "text")
-
-    kegg.reaction <- do.call(bind_rows,kegg.reaction)%>%
-      dplyr::filter(KEGG_id %in% rcn.edges.df$from|
-                      KEGG_id %in% rcn.edges.df$to)%>%
-      dplyr::mutate(node.type = "Reaction")
+    # compound
+    {
+      message_with_time("Generate Nodes")
+      kegg.cp <- MSdb:::get_KEGG_compound_df()%>%
+        as.data.frame()%>%
+        dplyr::filter(KEGG_id %in% rcn.edges.df$from|
+                        KEGG_id %in% rcn.edges.df$to)%>%
+        dplyr::mutate(node.type = "Compound",
+                      name = KEGG_id,
+                      formula.format = MSCC::chemform_formate(Formula))
+    }
 
 
-    rcn.nodes.df <- bind_rows(kegg.cp,kegg.reaction)%>%
+    # reaction
+    {
+      kegg.reaction <- plyr::llply(
+        kegg.rdata,
+        function(reaction.data){
+
+          if (is.null(reaction.data[["EQUATION_data"]])) return(NULL)
+          return(reaction.data$NODE_data)
+
+        },.progress = "text")
+
+      kegg.reaction.df <- do.call(bind_rows,kegg.reaction)%>%
+        dplyr::filter(KEGG_id %in% rcn.edges.df$from|
+                        KEGG_id %in% rcn.edges.df$to)%>%
+        dplyr::mutate(node.type = "Reaction"  )
+
+
+    }
+
+
+    rcn.nodes.df <- bind_rows(kegg.cp,kegg.reaction.df)%>%
       dplyr::mutate(id= KEGG_id,
                     name = KEGG_id,
                     label = Name)
-
-
+   #rcn.nodes.df.miss <- data.frame(
+   #  name =unique( setdiff(c(rcn.edges.df$from,rcn.edges.df$to),rcn.nodes.df$name))
+   #)%>%
+   #  dplyr::mutate(id = name)
+   #rcn.nodes.df <- bind_rows(rcn.nodes.df,rcn.nodes.df.miss)
+    kegg.rdata.error <- kegg.rdata[which(!names(kegg.rdata)%in%kegg.reaction.df$KEGG_id)]
 
   }
 
 
   ### ig
   {
+    rcn.edges.df <- rcn.edges.df%>%
+      dplyr::filter( from %in% rcn.nodes.df$id  & to %in% rcn.nodes.df$id)
     kegg.reaction.ig <- igraph::graph_from_data_frame(
       rcn.edges.df,
       vertices = rcn.nodes.df)

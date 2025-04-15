@@ -60,7 +60,9 @@ setClass("Molecule_atom_transfer",
            "transfer_matrix" = "matrix"
          ))
 
-
+Metabolic_flux_network<- function(){
+  new("Metabolic_flux_network")
+}
 
 setMethod("show",
           "Molecule_atom_transfer",definition = function(object){
@@ -103,16 +105,103 @@ Metabolic_flux_network_get_Molecule_atom_transfer <- function(Metabolic_flux_net
 
 }
 
+
+Metabolic_flux_network_get_Reaction_data <- function(mfn){
+
+
+  ### node and edge data
+  {
+    mfn.v <- vdata(mfn)
+    mfn.e <- edata(mfn)
+    mfn.v.r <- mfn.v %>%
+      dplyr::filter(node.type == "Reaction")
+    mfn.v.c <- mfn.v %>%
+      dplyr::filter(node.type == "Compound")
+  }
+
+
+  ###
+  {
+
+    for (rid in mfn.v.r$id) {
+
+      rid <- mfn.v.r$id [13]
+      from <- mfn.e%>%
+        dplyr::filter(to == rid)%>%
+        dplyr::pull(from)
+      to <- mfn.e%>%
+        dplyr::filter(from == rid)%>%
+        dplyr::pull(to)
+
+      reaction.data <- mfn.v.r %>%
+        dplyr::filter(id == rid)
+
+
+      equation.coef <- str_split(reaction.data$equation,"\\+|<=>",simplify = T)%>%
+        sub(" ","",.)%>%
+        lapply(function(x){
+          x.coef <- str_extract(x,"^[:digit:]")
+          x.coef <- ifelse(is.na(x.coef),1,x.coef)
+          x.coef <- as.numeric(x.coef)
+          x.id <- str_extract(x,"C[:digit:]*")
+          #make_vector(x.coef,x.id)
+          data.frame(id = x.id,
+                     coef = x.coef)
+        })%>%do.call(rbind,.)
+
+      equation.df<-equation.coef %>%
+        dplyr::mutate(name = mfn.v$Name[match(id,mfn.v$id)])%>%
+        dplyr::rowwise() %>%
+        dplyr::mutate(coef = list(seq_len(coef))) %>%  # turn coef into 1:coef
+        tidyr::unnest(coef)
+
+
+
+    }
+
+
+
+
+
+  }
+
+
+
+}
+
 Metabolic_flux_network_get_Reaction_atom_transfer <- function(mfn){
 
   mfn.v <- vdata(mfn)
   mfn.e <- edata(mfn)
-  mfn.v.r <- mfn.v %>%
-    dplyr::filter(node.type == "Reaction")
+  mfn.v.r <- get_Metabolic_flux_network_reaction_df(mfn)
+  mfn.v.c <- get_Metabolic_flux_network_compound_df(mfn)
 
-  mfn.transfer <- plyr::llply( mfn.v.r$id ,.fun = function(rid,...){
-
+  mfn.transfer <- plyr::llply( mfn.v.r$id ,
+                               .fun = function(rid,...){
+    rid <- mfn.v.r$id[1]
     message_with_time(rid)
+    reaction.data <- mfn.v.r %>%
+      dplyr::filter(id == rid)
+    equation.data  <- KEGG_parse_REACTION_EQUATION(
+      reaction.data$equation.format
+    ) %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(uid = list(seq_len(coef))) %>%  # turn coef into 1:coef
+      tidyr::unnest(uid)%>%
+      dplyr::mutate(uid = paste0(id,"_",uid))
+
+
+    ###  check if mig exist
+    {
+      this.mfn.v.c <- mfn.v.c%>%
+        dplyr::filter(id %in% equation.data$id )%>%
+        dplyr::mutate(check.formula = !is.na(formula.format),
+                      check.mig = !is.na(Molecule_igraph))
+      }
+
+
+
+
     from <- mfn.e%>%
       dplyr::filter(to == rid)%>%
       dplyr::pull(from)
@@ -123,22 +212,15 @@ Metabolic_flux_network_get_Reaction_atom_transfer <- function(mfn){
     reaction.data <- mfn.v.r %>%
       dplyr::filter(id == rid)
 
-    equation.coef <- str_split(reaction.data$equation,"\\+|<=>",simplify = T)%>%
-      sapply(function(x){
-        x.coef <- str_extract(x,"^[:digit:]")
-        x.coef <- ifelse(is.na(x.coef),1,x.coef)
-        x.coef <- as.numeric(x.coef)
-        x.id <- str_extract(x,"C[:digit:]*")
-        make_vector(x.coef,x.id)
-      },USE.NAMES = F)
-
 
     ### mol ig
     {
 
-      x <- rep(from,times = equation.coef[from])
-      mol.ig.from <- V(mfn@metabolic_network)[x]$Molecule_igraph
-      names(mol.ig.from) <- paste0(x,"_",sapply(equation.coef[from], function(x) seq(1, x))%>%unlist())
+      mol.igs <- V(mfn@metabolic_network)[equation.df$id]$Molecule_igraph
+      names(mol.igs) <- equation.df$uid
+      mol.igs <- split(mol.igs,equation.df$side)
+
+      mol.ig.from <- mol.igs$from
       idx <- order(sapply(mol.ig.from,formula)%>%get_formula_ele_count())
       mol.ig.from <- mol.ig.from[idx]
 
@@ -187,6 +269,7 @@ load_MFN <- function(path = "C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.
     dplyr::mutate(basename = basename(rownames(.)))%>%
     dplyr::filter(grepl(name,basename))%>%
     dplyr::slice_max(mtime)
+  message_with_time("Load from: ",rownames(mfn.files))
   readRDS(rownames(mfn.files))
 }
 
@@ -331,6 +414,86 @@ Metabolic_flux_network_filter_reactions <- function(mfn,rid){
   return(mfn)
 
 }
+
+Metabolic_flux_network_filter_KEGG_Module <- function(mfn,mid){
+
+
+  ### get rid in module
+  {
+    kegg.rawdata <- MSdb:::get_KEGG_rawdata()
+    kegg.mdata <- kegg.rawdata$Module_rawdata
+    kegg.mdata.selected <- kegg.mdata[mid]
+    rid.selected <- lapply(kegg.mdata.selected,function(x){
+      m.r <- x[["REACTION"]]
+      if(is.null(m.r))
+        return(NULL)
+      unlist(str_split(names(m.r),","))
+    })
+    rid.selected <- unlist(rid.selected)
+
+  }
+
+  ### filter reaction
+  {
+    mfn.filtered <- Metabolic_flux_network_filter_reactions(mfn,rid.selected)
+
+
+  }
+  return(mfn.filtered)
+
+}
+
+
+Metabolic_flux_network_filter_reaction_connected <- function(mfn){
+
+  mfn.r <- get_Metabolic_flux_network_reaction_df(mfn)
+
+  for (variable in vector) {
+
+  }
+
+}
+
+Metabolic_flux_network_get_Molecule_igraph <- function(mfn){
+
+  ### filter compound with C
+  {
+    cp.node.data <- get_Metabolic_flux_network_compound_df(mfn)%>%
+      dplyr::mutate(C.count = get_formula_ele_count(Formula ,"C"))%>%
+      dplyr::filter(C.count > 0   )
+
+  }
+
+
+  ### construct mig
+  {
+
+    V(mfn@metabolic_network)$Molecule_igraph  <- NA
+    cp.node.mig <-
+      get_Molecule_igraph_from_smiles(
+        cp.node.data$smiles ,
+        id = cp.node.data$name )
+    V(mfn@metabolic_network)[names(cp.node.mig)]$Molecule_igraph <- cp.node.mig
+
+
+  }
+
+
+  {
+    cp.node<- get_Metabolic_flux_network_compound_df(mfn)
+    message(length(cp.node.mig)," of ",
+            nrow(cp.node)," Molecule_igraph constructed ")
+  }
+
+  #mfn@metabolic_network <- igraph_filter_vertex(mfn@metabolic_network,
+  #                                              !is.na(V(mfn@metabolic_network)$smiles)|V(mfn@metabolic_network)$node.type=="Reaction"
+  #)
+
+  return(mfn)
+
+
+}
+
 
 Metabolic_flux_network_update_from_visGetEdges <- function(mfn,visGetEdges){
 
@@ -537,5 +700,20 @@ Metabolic_flux_remove_tracing <- function(mfn){
   mfn@Molecule_igraphs <- list()
 
   return(mfn)
+
+}
+
+
+get_Metabolic_flux_network_compound_df <- function(mfn){
+
+  vdata(mfn)%>%
+    dplyr::filter(node.type == "Compound")
+
+}
+
+get_Metabolic_flux_network_reaction_df <- function(mfn){
+
+  vdata(mfn)%>%
+    dplyr::filter(node.type == "Reaction")
 
 }

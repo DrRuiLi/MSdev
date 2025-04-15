@@ -35,14 +35,18 @@ sdf_to_Molecule_igraph <- function(sdf,id ) {
                   y = C2,
                   .before = id)
 
+  atom.ids <- make_vector(c(atom.block$id,"NA"),
+                          c(as.character(seq_len(nrow(atom.block))),"0"
+                            ))
   bond.block  <- bondblock(sdf) %>%
     as.data.frame() %>%
-    dplyr::mutate(from = atom.block$id[C1],
-                  to = atom.block$id[C2],
+    dplyr::mutate(from = atom.ids[as.character(C1)],
+                  to = atom.ids[as.character(C2)],
                   id = paste0(from,"_",to), ### identifier for visNet
                   bond_type = C3,
                   .before = C1)
-
+  bond.block <- bond.block[!((bond.block$from=="NA")&
+                               (bond.block$to=="NA")),]
   sdf.igraph <- igraph::graph_from_data_frame(bond.block, vertices = atom.block)
 
   isotopomer.df <-  make_vector(atom.block$element,atom.block$id)%>%

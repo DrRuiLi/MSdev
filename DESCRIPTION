@@ -56,7 +56,6 @@ Imports:
     openxlsx,
     parallel,
     patchwork,
-    pathview,
     plotly,
     plyr,
     pROC,

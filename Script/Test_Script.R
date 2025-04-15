@@ -1022,3 +1022,160 @@ a <- r_bg(func = function(){
                          ))
 
   }
+
+# Mon Mar 24 11:25:22 2025 MFN button ------------------------------
+{
+
+
+  kegg.net <- get_KEGG_Reaction_network()
+  mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net)
+  mfn <- Metabolic_flux_network_filter_KEGG_Module(mfn,"M00001")
+
+  mfn <- Metabolic_flux_network_get_Molecule_igraph(mfn)
+  mfn <- Metabolic_flux_network_get_Reaction_atom_transfer(mfn)
+  edata(mfn)$id <- edata(mfn)$name
+  MFN_manul_Shiny(mfn)
+
+
+
+
+}
+
+
+# Tue Apr  1 01:21:44 2025 ------------------------------
+{
+
+  migs <- list()
+  for (i.smi in na.omit( cp.node.data$smiles)) {
+
+    migs[[i.smi]] <- get_Molecule_igraph_from_smiles(i.smi)
+
+
+  }
+
+}
+
+
+
+# Thu Apr 10 23:04:40 2025 ------------------------------
+{
+  library(ComplexHeatmap)
+  library(tibble)
+  data <- read.csv("d:/tmp/Heatmap-c57-HNF4a-metabolites.csv")%>%
+    column_to_rownames("X")%>%
+    t%>%scale%>%t
+  Heatmap(data,
+          name = "Z score",
+          rect_gp = gpar(color = "white"),
+          cluster_rows = F,
+          row_names_side = "left",
+          row_dend_side = "right")
+  export::graph2pdf(file = "d:/tmp/heatmap.c57.metabolites.pdf",
+                    width = 6,height = 5)
+
+
+  data <- read.csv("d:/tmp/Heatmap-data-HNF4a_cre-Linifanib.csv")%>%
+    column_to_rownames("X")%>%
+    t%>%scale%>%t
+  Heatmap(data,
+          name = "Z score",
+          cluster_rows = F,
+          rect_gp = gpar(color = "white"),
+          row_names_side = "left",
+          row_dend_side = "right")
+  export::graph2pdf(file = "d:/tmp/heatmap.Linifanib.pdf",
+                    width = 6,height = 5)
+
+
+}
+
+# Mon Apr 14 16:21:06 2025 2025 combined isotopomers for GSH------------------------------
+{
+
+
+  GSH <- Molecule_igraph_matrix[40,]
+
+  p.pie.list <- list()
+  data.list <- list()
+  for (i.sample  in names(GSH)[2:3]) {
+
+    mol.ig <- GSH[[i.sample]]
+    isotopomer.data <- mol.ig@isotopomer%>%
+      dplyr::arrange(isotopologue)%>%
+      dplyr::mutate(abundance = abundance/sum(abundance),
+                    label = factor(label,levels = label))
+    data.list[[i.sample]] <- isotopomer.data
+
+
+    split.col <- function(col,idx){
+
+      if(length(idx)==1) return(col)
+      col <- col[1]
+      col_fun <- circlize::colorRamp2(breaks = c(-1,max(idx)),
+                           colors = c("white",col))
+      col_fun(idx)
+    }
+
+    col.isotopologues <- make_vector(
+      ggsci::pal_npg()(10)[seq_along(unique(isotopomer.data$isotopologue))],
+      unique(isotopomer.data$isotopologue)
+    )
+    col.isotopologues["M0"] <- "#7E6148"
+    plot.data <- isotopomer.data%>%
+      dplyr::select(isotopomer,isotopologue,label,abundance)%>%
+      dplyr::slice_max(abundance,n = 10,with_ties = F)%>%
+      dplyr::mutate(abundance = abundance/sum(abundance))%>%
+      dplyr::group_by(isotopologue)%>%
+      dplyr::mutate(id = paste0(isotopologue,num2str(1:n())),
+                    col = col.isotopologues[isotopologue],
+                    col = split.col(col,1:n()))
+
+    isotpologues.data <-      plot.data%>%
+      dplyr::group_by(isotopologue)%>%
+      dplyr::summarise(abundance = sum(abundance))
+  #$data.split <- data.frame(
+  #$  isotopologue = unique(plot.data$isotopologue),
+  #$  id = paste0(unique(plot.data$isotopologue),"0"),
+  #$  abundance = 0.02,
+  #$  label = " "
+  #$)
+  #$plot.data <- bind_rows(plot.data,data.split)%>%
+  #$  dplyr::arrange(id)
+#$
+    p <- ggplot()+
+      geom_bar(aes( x= 1, y = abundance,
+                    #col = isotopologue,
+                    fill = label,group = isotopologue),
+               data = plot.data,
+               col = "white",
+               linewidth = 1,width = 0.95,
+               stat = "identity")+
+      geom_bar(aes( x= 1.7, y = abundance,
+                    #col = isotopologue,
+                    fill = isotopologue,group = isotopologue),
+               col = "black",
+               data = isotpologues.data,
+               linewidth = 1,width = 0.2,
+               stat = "identity")+
+     # ggsci::scale_fill_npg()+
+      scale_fill_manual(values = c(
+        make_vector(plot.data$col,plot.data$label),
+        col.isotopologues))+
+     # scale_color_manual(values = c("#EEEEEE","#888888","#222222"))+
+      labs( title = gsub("[FS_]",i.sample,replacement = " "),fill = "Isotopomers")+
+      xlim(c(0.3,2))+
+      coord_polar(theta = "y")+
+      theme_void()+
+      theme(plot.title = element_text(hjust = 0.5))
+    p
+    p.pie.list[[i.sample]] <- p
+
+  }
+
+  p <- ggplot_sum_patchwork(p.pie.list)
+  open_plot_win(p,16,9)
+  export::graph2ppt(p,"d:/temp.pdf",
+                   width = 16,height= 9)
+
+
+}

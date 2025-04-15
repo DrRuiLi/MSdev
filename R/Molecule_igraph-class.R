@@ -15,7 +15,7 @@ setMethod(
   "show",
   "Molecule_igraph",
   definition = function(object) {
-    print(paste0("Molecule_igraph: ", unname(MF(object@sdf, addH =  T))," ",
+    print(paste0("Molecule_igraph: ", unname(MF2(object@sdf, addH =  T))," ",
                  nrow(object@isotopomer)," isotopomers"
                  ))
 
