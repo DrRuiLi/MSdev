@@ -200,6 +200,15 @@ Metabolic_flux_network_get_Reaction_atom_transfer <- function(mfn){
       }
 
 
+    ### save to temp if any error
+    {
+      if (any(!this.mfn.v.c$check.mig|!this.mfn.v.c$check.formula)) {
+
+      }
+
+    }
+
+
 
 
     from <- mfn.e%>%

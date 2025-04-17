@@ -1730,7 +1730,10 @@ chromPeaks_Sta <- function(xcms.xcms){
 
 xcmsProcessingMS1 <- function(xcms.xcms,
                               ion_mode = NA,
-                              xcms_param = NULL,
+                              xcms_param = list(
+                                findChromPeaks = xcms::CentWaveParam(),
+                                groupChromPeaks = xcms::PeakDensityParam(sampleGroups = "A")
+                              ),
                               ...){
 
 
@@ -2358,7 +2361,7 @@ cbind_Chromatograms <- function(...){
 
 get_xcms_quantify_MSIP <- function(xcms.xcms){
 
-  xcms::quantify(xcms.xcms,missing = 1,method="max",value = "intb")
+  xcms::quantify(xcms.xcms,missing = 1,method="max",value = "into")
 
 }
 

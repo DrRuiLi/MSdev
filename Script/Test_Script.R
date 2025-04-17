@@ -1179,3 +1179,50 @@ a <- r_bg(func = function(){
 
 
 }
+
+# Mon Mar 24 11:25:22 2025 MFN button ------------------------------
+{
+
+
+  kegg.net <- get_KEGG_Reaction_network()
+  mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net)
+  mfn <- Metabolic_flux_network_filter_KEGG_Module(mfn,"M00001")
+
+  mfn <- Metabolic_flux_network_get_Molecule_igraph(mfn)
+  mfn <- Metabolic_flux_network_get_Reaction_atom_transfer(mfn)
+  edata(mfn)$id <- edata(mfn)$name
+  MFN_manul_Shiny(mfn)
+
+
+
+
+}
+
+
+
+# Wed Apr 16 21:26:06 2025 ------------------------------
+{
+
+  wyq.file <- "d:/temp/20230228-3NPH-非靶向-ZScore(1).xlsx"
+  data <- readxl::read_excel(wyq.file)
+  hmdb.df <- MSdb:::get_HMDB_Compound_DF()
+  kegg.df <- MSdb:::get_KEGG_compound_df()
+  hmdb.df$chemical_formula[match(data$`Database ID`,hmdb.df$kegg_id)]
+  data.formula<- data %>%
+    dplyr::mutate(
+      Formula = case_when(
+        grepl("HMDB",`Database ID`) ~ hmdb.df$chemical_formula[match(`Database ID`,hmdb.df$accession)],
+        grepl("C",`Database ID`) ~ kegg.df$Formula[match(`Database ID`,kegg.df$KEGG_id)]
+      ),
+      Formula.dev = MSCC::chemform_calc( Formula,"C6H5N3O1" ,return = "chemform"),
+      polarity = str_extract(data$ID...1,"^[NP]"),
+      rt = sapply(str_split(data$ID...1,"[\\|_]"),`[`,2),
+      .after = Formula
+    )
+
+  openxlsx::write.xlsx(data.formula,file = wyq.file)
+
+
+}
+
+

@@ -63,9 +63,9 @@ analyzeANOVA <- function(anova.matrix , anova.group){
 #' @export
 #'
 
-analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group ){
+analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group){
 
-  kegg.pathway <- load_as_var("C:/Users/91879/OneDrive/Code/R/data/database.for.compounds.identification/kegg.pathway.database.2022.04.10.Rda")
+  kegg.pathway <- MSdb::get_KEGG_pathway()
   pathway.matrix <-data.frame( group = groupStringFactor(pathway.group),
                                scale(pathway.matrix))
   global.test.result <- data.frame(pathway.name =0,
