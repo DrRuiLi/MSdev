@@ -1226,3 +1226,506 @@ a <- r_bg(func = function(){
 }
 
 
+
+
+
+# Tue Apr 22 15:14:31 2025 word cloud------------------------------
+{
+
+  library(pdftools)
+
+  text <- pdf_text("c:/Users/91879/OneDrive/Documents/ShanghaiTech/2025毕业/明审与答辩/明审材料/盲审意见修改/2.毕业论文_基于质谱的代谢物同位素异构体解析算法与代谢组学应用.pdf")
+  text <- paste(text, collapse = " ")
+
+
+  library(jiebaR)
+  whitel.list <- c("同位素异构体","同位素同系物","代谢组学",
+                   "代谢流","原子映射","天然同位素","MSdev",
+                   "isotopomer","isotopologue","","","","","","","","",
+                   "MSIP","PD-1",
+                   "C13","13C")
+  tpf <- tempfile()
+  writeLines(whitel.list, tpf)
+
+  cutter <- worker(user = tpf)  # 创建分词器
+  words <- segment(text, cutter)
+
+  # 过滤掉无用字符、停用词（如有）
+  words <- words[nchar(words) > 1]  # 只保留长度 >1 的词（防止很多"的"、"了"）
+  # 将所有英文统一为小写
+  words <- textstem::lemmatize_words(words)
+
+  # 去除复数（简单处理 -s 结尾）
+  words <- gsub("s$", "", words)
+  ### black list
+  black.list <- c("进行","过程","可能","提供","能够","不同","具有",
+                  "the","to","Figure","","","","","","","","","","","","",
+                  "at","of","et","for","al","and","in")
+  words <- words[!words %in% black.list]
+  # 统计词频
+  stop_words <- readLines("https://raw.githubusercontent.com/stopwords-iso/stopwords-zh/master/stopwords-zh.txt", encoding = "UTF-8")
+  words <- words[!words %in% stop_words]
+
+
+  df <- as.data.frame(table(words))
+  df <- df[order(df$Freq, decreasing = TRUE), ]
+
+  library(wordcloud2)
+
+
+  # 随机浅色
+ #wordcloud2(df, color = "random-light")
+  # 固定某种颜色（红色）
+  wordcloud2(df, size = 0.6, #minSize = 1,
+             shape = "circle",ellipticity = 0.3,
+             fontFamily = "微软雅黑", color = "#A40006")
+
+  wordcloud2(df, size =0.5, minSize = 2,gridSize = 1,
+             fontFamily = "微软雅黑", color = "random-dark")
+
+
+}
+
+# Sun Apr 27 16:39:54 2025 overlap of biobank------------------------------
+{
+  data <- readxl::read_excel("d:/temp/data.xlsx")
+
+  data.ubk <- data %>%
+    dplyr::mutate(
+      Lipid_protein =
+        case_when(grepl(pattern = "HDL",x = Metabolite)~"HDL",
+                  grepl(pattern = "LDL",x = Metabolite)~"LDL",
+                  grepl(pattern = "IDL",x = Metabolite)~"IDL")
+    )
+
+  library(ComplexHeatmap)
+  library(circlize)
+
+  ###col
+  {
+    col1 <- make_vector(
+      x= rand_color(length(unique(data.ubk$Group))),
+      name = unique(data.ubk$Group)
+    )
+    col2 <- make_vector(
+      x= rand_color(length(unique(data.ubk$Lipid_protein))),
+      name = unique(data.ubk$Lipid_protein)
+    )
+
+    col3 <- make_vector(
+      x= c("#E64340","grey"),
+      name = unique(data.ubk$LCMS)
+    )
+
+  }
+
+  {
+    circos.clear()
+    #circos.initialize(factors = rownames(hm), xlim = c(1, 88))
+    circos.heatmap(data.ubk$Group,
+                   col = col1,
+                   #split = data.l.selected$lclass,
+                   cluster = F, track.height = 0.1,
+                   rownames.side ="outside",
+                   track.margin = c(0.01, 0.01)
+    )
+
+    circos.heatmap(data.ubk$Lipid_protein,
+                   col = col2,
+                   #split = data.l.selected$lclass,
+                   cluster = F, track.height = 0.1,
+                   rownames.side ="outside",
+                   track.margin = c(0.01, 0.01)
+    )
+
+    circos.heatmap(data.ubk$LCMS,
+                   col = col3,
+                   #split = data.l.selected$lclass,
+                   cluster = F, track.height = 0.1,
+                   rownames.side ="outside",
+                   track.margin = c(0.01, 0.01)
+    )
+
+
+
+    l1 <- Legend(labels  = names(col1),title = "Metabolite Class",
+                 legend_gp = gpar(fill = col1))
+    l2 <- Legend(labels  = names(col2),title = "Lipid Protein",
+                 legend_gp = gpar(fill = col2))
+    l3 <- Legend(labels  = names(col3),title = "LCMS detected",
+                 legend_gp = gpar(fill = col3))
+    lp <- ComplexHeatmap::packLegend(l1,l2,l3)
+    draw(lp,x = unit(25, "cm"), y = unit(7, "cm"))
+  }
+
+  export::graph2pdf(file = "d:/temp/f.pdf",width = 10,height = 6)
+
+
+}
+# Tue Apr 29 14:49:09 2025 list all mz data------------------------------
+{
+
+  files.msraw <- dir("e:/",pattern = "raw$|wiff$",full.names = T,recursive = T)
+  files.msraw.info <- file.info(files.msraw)
+  files.zip <- dir("e:/",pattern = "zip$",full.names = T,recursive = T)
+  fzl <- list()
+  for (i.zip in files.zip) {
+    message_with_time(i.zip)
+    file.in.zip <- unzip(i.zip,list = T)%>%
+      dplyr::mutate(zip = i.zip)
+    fzl[[i.zip]] <- file.in.zip
+
+  }
+
+  db.files <- list(files.msraw = files.msraw.info,files.in.zip = fzl)
+  #save(db.files,file = "temp/20250429.ms.files.rda")
+
+
+  {
+    load("temp/20250429.ms.files.rda")
+
+    ### raw data
+    {
+
+      msraw <-  db.files$files.msraw%>%
+        rownames_to_column("file.path")%>%
+        dplyr::mutate(file.name = basename(file.path),
+                      file.dir = dirname(file.path))%>%
+        dplyr::filter(!grepl(pattern = "^Cal",x = file.name),
+                      !grepl(pattern = "^E_Raw",x = file.name),
+                      !grepl(pattern = "^Batch",x = file.name),
+                      !grepl(pattern = "BLK",x = file.name),
+                      !grepl(pattern = "blank",ignore.case = T,x = file.name),
+                      !grepl(pattern = "condition",x = file.name),
+                      !grepl(pattern = "BLK",x = file.name),
+                      !grepl(pattern = "BLK",x = file.name))%>%
+        dplyr::mutate(project =
+                        gsub(pattern = "e:/|YHY.Cloud/|raw data|Raw.data.from.6600|Data|Analyst |Projects|Example|Results",
+                             replacement = "",x = file.dir),
+                      project =
+                        gsub(pattern = "//*",
+                             replacement = "_",x = project)
+                      )%>%
+        dplyr::group_by(project)%>%
+        dplyr::filter(n()>3)%>%
+        dplyr::mutate(size = size,
+                      date = mtime)%>%
+        dplyr::select(project,size,date)
+
+      table(msraw$project)
+
+    }
+
+    ### zip file
+    {
+      library(tools)
+      library(stringi)
+
+      zip.files <- db.files$files.in.zip
+      zip.files <- zip.files[grepl(pattern = "e:/Raw.data.from",x=names(zip.files))]
+
+      zip.ms.files <- zip.files%>%
+        rbindlist()%>%
+        dplyr::filter(Length>0)%>%
+        dplyr::mutate(Name = stri_replace_all_regex(str = Name,"[^[:print:]]", "_"),
+                      ext = file_ext(Name))%>%
+        dplyr::filter(ext %in% c("wiff","lcd","raw"))%>%
+        dplyr::mutate(file.name = basename(Name),
+                      file.dir = paste0(zip,"/",dirname(Name)))%>%
+        dplyr::filter(!grepl(pattern = "^Cal",x = file.name),
+                      !grepl(pattern = "^E_Raw",x = file.name),
+                      !grepl(pattern = "^Batch",x = file.name),
+                      !grepl(pattern = "BLK",x = file.name),
+                      !grepl(pattern = "blank",ignore.case = T,x = file.name),
+                      !grepl(pattern = "condition",x = file.name),
+                      !grepl(pattern = "BLK",x = file.name),
+                      !grepl(pattern = "BLK",x = file.name))%>%
+        dplyr::mutate(project =
+                        gsub(pattern = "e:/|YHY.Cloud/|raw data|Raw.data.from.|Data|Analyst |Projects|Example|Results|.zip|Positive|Negative|^_|^$|8050_2021_2021|6600_2022_01_10",
+                             replacement = "",x = file.dir,ignore.case = T),
+                      project =
+                        gsub(pattern = "//*",
+                             replacement = "_",x = project),
+                      project =
+                        gsub(pattern = "8050_2021_2021|6600_2022_01_10|8050_2021.12.10.gout.volidation_|6600_2023_09_18-|6600_2021_12_28_Liangningning_|6600_2021_10_09-Liangningning_|QEPlus_2022.10.04.ESCC.Tissue.Metabolomics_",
+                             replacement = "",x = project,ignore.case = T),
+                      project = str_short(project,100)
+        )%>%
+        dplyr::group_by(project)%>%
+        dplyr::filter(n()>3)%>%
+        dplyr::ungroup()%>%
+        dplyr::mutate(size = Length,
+                      date = Date)%>%
+        dplyr::select(Name,project,size,date)
+
+
+
+      table(zip.ms.files$project)
+
+
+    }
+
+
+    ### total
+    {
+      ms.files <- bind_rows(msraw,zip.ms.files)%>%
+        dplyr::distinct(project,.keep_all = T)%>%
+        dplyr::mutate(year = format(date,"%Y"))%>%
+        dplyr::filter(year>2020)
+
+
+      ggplot(ms.files,aes(x=1,group = year,fill = year))+
+        geom_bar(col = "black",position = "dodge",width = 1)+
+        geom_text(stat = "count",
+                                 aes(x=1,label = paste0(..count..,"\n(", (2021:2024)[group],")")),
+                                 position = position_dodge(width = 1),#force_pull  = 2,
+                                 color = "black", size = 5)+
+        #ggsci::scale_fill_npg()+
+        scale_fill_manual(values = colramp(colors = c("white","#FE9D71","#A40006"))(seq(0.25,1,0.25)))+
+        #xlim(c(0.55,2))+
+        ylim(c(-2,80))+
+        #coord_polar(theta = "y",direction = -1)+
+        theme_void()+
+        theme(legend.position = "none")->p
+      p
+      open_plot_win(p,4,2.5)
+
+
+
+      ggplot(ms.files,aes(x=1,group = year,fill = year))+
+        geom_bar(col = "white")+
+        ggrepel::geom_text_repel(stat = "count",
+                  aes(x=1.5,label = paste0(..count..,"\n(", (2020:2024)[group],")")),
+                  position = position_stack(vjust = 0.5),#force_pull  = 2,
+                  color = "black", size = 5)+
+        #ggsci::scale_fill_npg()+
+        scale_fill_manual(values = colramp(colors = c("white","#FE9D71","#A40006"))(seq(0,1,0.25)))+
+        xlim(c(0.55,2))+
+        #coord_polar(theta = "y",direction = -1)+
+        theme_void()+
+        theme(legend.position = "none")->p
+    p
+    open_plot_win(p,3,3)
+
+
+
+
+    }
+
+    ### proj-data
+    {
+      ms.files <- bind_rows(msraw,zip.ms.files)%>%
+        dplyr::mutate(year = format(date,"%Y"))%>%
+        dplyr::filter(year>2019)%>%
+        dplyr::count(project,name = "count")%>%
+        dplyr::arrange(count)%>%
+        dplyr::ungroup()%>%
+        dplyr::slice_max(count,n=20)%>%
+        dplyr::mutate(
+          project = sub(x = project,pattern = "^_|__$|_$",replacement = ""),
+                      project = factor(project,levels = rev(project)))
+
+      p <- ggplot(ms.files,aes(x = count, y = project,fill = count))+
+        geom_bar(
+                 col = "black",
+                 stat = "identity")+
+        geom_text(aes(x = count + 30,label = count))+
+        scale_fill_gradient(low = "white",high = "#A40006")+
+        labs(x = "Data count", y = "")+
+        theme_classic()+
+        theme(legend.position = "none",
+              axis.text.y  = element_text(face = "bold",colour = "black",family = "sans") )
+      p
+      open_plot_win(p,6,6)
+
+
+    }
+
+
+
+  }
+}
+# Wed Apr 30 02:19:44 2025 MSdev stat------------------------------
+{
+
+
+  ### parse by files
+  {
+    # 1. 创建一个新的临时环境
+    temp_env <- new.env()
+
+    # 2. 使用 source() 将 .R 文件加载到临时环境中
+    # 请替换为实际的文件路径
+    file_path <- "R/dev_CFM.R"
+    source(file_path, local = temp_env)
+
+    # 3. 获取临时环境中的所有对象
+    all_objects <- ls(envir = temp_env)
+
+    # 4. 过滤出函数
+    functions <- all_objects[sapply(all_objects, function(x) is.function(get(x, envir = temp_env)))]
+
+    # 5. 统计函数的数量
+    num_functions <- length(functions)
+
+    # 6. 打印函数数量
+    print(num_functions)
+  }
+
+  ### parse by name
+  {
+    library(MSCC)
+    library(MSdb)
+    msdev.obj <- c(ls(envir = environment(MSdev)),
+                   ls(envir = environment(chemform_adduct)),
+                   ls(envir = environment(get_KEGG_pathway)))
+
+    msdev.obj.info <- data.frame(
+      name = msdev.obj
+    )%>%
+      dplyr::mutate(
+        class = case_when(
+          grepl("xcms|Feature|feature|Chromatogram|chrom|Peaks",name)~"dev-xcms",
+          grepl("MSdev|MS_Exp",name)~"MSdev",
+          grepl("^analyze|DEP",name)~"Bioinfo",
+          grepl("Spectra|spectra|sp",name)~"dev-Spectra",
+          grepl("CFM|cfm",name)~"MSCC",
+          grepl("MSCC|atom|bond|smile|sdf|chemform|formula",name)~"MSCC",
+          grepl("dplyr|str",name)~"Base",
+          grepl("MSIP|Metabolic_flux_network|MFN|iso|frag|Molecule|shiny|flux|mfn",name)~"MSIP",
+          grepl("graph|node|edge|vis",name)~"MSgraph",
+          grepl("KEGG|HMDB|MSDB|MSdb|msdb|Compound",name)~"MSdb",
+          grepl("ggplot|plot|fella",name)~"Bioinfo",
+          T~"Unclassified",
+          T~"aaaa"
+        )
+      )%>%
+      dplyr::group_by(class)%>%
+      dplyr::mutate(count = n())%>%
+      dplyr::ungroup()%>%
+      dplyr::arrange(count)%>%
+      dplyr::mutate(class = factor(class,levels = unique(class)))
+
+    table(msdev.obj.info$class)
+
+    ggplot(msdev.obj.info)+
+      geom_bar(aes(x = 1,fill = class),position = "stack",col = "white")+
+      ggsci::scale_fill_npg()+
+      coord_polar(theta = "y",direction = -1)+
+      labs(fill = "Function")+
+      xlim(c(-0.5,2))+
+      theme_void()+
+      theme(legend.position = "bottom")->p
+
+    open_plot_win(p,5.5,4)
+  }
+
+
+  ### code line stat
+  {
+    r.files <- c(dir("R/",pattern = "R$",full.names = T),
+      dir("../MSCC/R/",pattern = "R$",full.names = T),
+      dir("../MSconvertR/R/",pattern = "R$",full.names = T),
+      dir("../MSdb/R/",pattern = "R$",full.names = T))
+
+    r.stat.list <- list()
+    for (i in r.files) {
+      r.txt <- readLines(i)
+      data.frame(
+        r.file = basename(i),
+        nchar = sum(nchar(r.txt)  ),
+        nline = length(r.txt)
+      )->r.stat.list[[i]]
+    }
+    r.stat <- rbindlist(r.stat.list)
+
+
+  }
+
+  ### plot
+  {
+
+    d <- tibble(value   = c(1,     2,     3,     5,     6,     7,     8,     9),
+                s1 = c(TRUE,  FALSE, TRUE,  TRUE,  FALSE, TRUE,  FALSE, TRUE),
+                s2= c(TRUE,  FALSE, FALSE, TRUE,  FALSE, FALSE, FALSE, TRUE),
+                s3 = c(TRUE,  TRUE,  FALSE, FALSE, FALSE, FALSE, TRUE,  TRUE),
+                s4 = c(FALSE, FALSE, FALSE, FALSE, TRUE,  TRUE,  FALSE, FALSE))
+
+    library(ggvenn)
+    ggplot(d)+
+      geom_venn(aes(A = s1,B=s2,C = s3),
+                text_size = 0,
+                set_name_size = 0,
+                fill_color  = ggsci::pal_aaas(alpha = 0.1)(3),
+                fill_alpha  = 0.2,
+                stroke_color  = "white")+
+      annotate("text",x = 0,y=-1,label = "26730\nCode Lines")+
+      annotate("text",x = -1,y=1,label = "713\nFunction")+
+      annotate("text",x = 1,y=1,label = "13\nClass")+
+      theme_void()->p
+    open_plot_win(p,1.5,1.5)
+
+
+
+
+
+
+
+  }
+
+
+
+
+  ### git commit
+  {
+
+    # 按天统计提交次数
+    daily_commits <- df %>%
+      mutate(date = as.Date(commit_time)) %>%
+      group_by(date) %>%
+      summarise(commit_count = n())
+
+    # 绘制按天统计的提交密度图
+    ggplot(daily_commits, aes(x = date, y = commit_count)) +
+      geom_bar(stat = "identity",color = "#B02B1C") +
+      labs(title = "Commit Frequency by Day",
+           x = "Date", y = "Number of Commits") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+    # 按月分组并统计每月提交次数
+    monthly_commits <- df %>%
+      mutate(month = floor_date(commit_time, "month")) %>%
+      group_by(month) %>%
+      summarise(commit_count = n())
+
+    # 检查按月统计的结果
+    head(monthly_commits)
+
+    ggplot(monthly_commits, aes(x = month, y = commit_count)) +
+      geom_bar(stat = "identity",fill = "#B02B1C") +
+      #labs(title = "Update Frequency of MSdev",
+      #     x = "Date", y = "Number of Commits") +
+      labs(x = NULL,,y=NULL)+
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            )->p
+
+    ggplot(monthly_commits, aes(x = month, y = commit_count)) +
+      geom_bar(stat = "identity",fill = "#B02B1C") +
+      labs(title = "Update Frequency of MSdev",
+           x = "Date", y = "Number of Commits") +
+      labs(x = NULL,,y=NULL)+
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+      )->p
+
+    open_plot_win(p,4,3)
+
+  }
+
+
+
+}
+
+
