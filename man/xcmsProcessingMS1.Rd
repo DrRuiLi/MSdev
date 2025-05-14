@@ -4,7 +4,13 @@
 \alias{xcmsProcessingMS1}
 \title{xcmsProcessingMS1}
 \usage{
-xcmsProcessingMS1(xcms.xcms, ion_mode = NA, xcms_param = NULL, ...)
+xcmsProcessingMS1(
+  xcms.xcms,
+  ion_mode = NA,
+  xcms_param = list(findChromPeaks = xcms::CentWaveParam(), groupChromPeaks =
+    xcms::PeakDensityParam(sampleGroups = "A")),
+  ...
+)
 }
 \arguments{
 \item{ion_mode}{to filter ion_mode, 1: positive, 0: negative, import when scans with both pos and neg}
