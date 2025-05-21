@@ -20,7 +20,7 @@ igraph_filter_vertex <- function(ig,v){
 
   if (is.numeric(v)|is.logical(v)|is.character(v))
     v <- igraph::V(ig)[v]
-  igraph::delete.vertices(ig,setdiff(igraph::V(ig),v))
+  igraph::delete.vertices(ig,setdiff(names(V(ig)),names(v)))
 
 }
 

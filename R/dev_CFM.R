@@ -998,7 +998,8 @@ get_CFM_data_trans_map <- function(cfmd,trans_id,iso_ele="[13]C"){
   sdf.parent <- fragment.sdf[[fragment.trans$from[trans_id]]]
   sdf.product <- fragment.sdf[[fragment.trans$to[trans_id]]]
 
-  maps <- get_atom_map(sdf.parent ,sdf.product ,ig.parent ,ig.product ,iso_ele=iso_ele)
+  maps <- get_atom_map(sdf.parent ,sdf.product ,
+                       ig.parent ,ig.product ,iso_ele=iso_ele)
   return(maps)
 }
 

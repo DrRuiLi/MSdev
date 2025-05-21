@@ -1729,3 +1729,10 @@ a <- r_bg(func = function(){
 }
 
 
+
+# Wed May 21 16:16:39 2025 CFMD fix------------------------------
+{
+
+  a <- get_CFM_data_from_smiles()
+
+}

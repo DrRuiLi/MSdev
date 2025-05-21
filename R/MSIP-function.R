@@ -291,7 +291,9 @@ MSIP_get_isotopologues_data <- function(object,
 
       ### Spectra split
       {
-        this.sp <-  lapply(this.fdf$ms2_id,function(x) sp.ms2[x])
+        this.sp <-  lapply(this.fdf$ms2_id,function(x){
+          get_spectra_by_name(sp.ms2,x)
+        })
         #message(i_seed_id," ",lengths(this.fdf$ms2_id))
         #this.sp <- lapply(this.sp,combineSpectra_groupby_ce)
         names(this.sp) <- paste0("M", this.fdf$iso_count[ match(names(this.sp),
@@ -830,14 +832,21 @@ MSIP_solve_computation_evaluate <- function(object,
                                                     str_isotope2_num(iso_count),
                                                     paste0(samples)),
                     solved = F,
-                    FSIS.count = NA)%>%
+                    FSIS.count = NA,
+                    sp.consistency.icc= NA,
+                    sp.consistency.cos= NA)%>%
       dplyr::ungroup()%>%
       dplyr::filter(!is.na(ms2.count))
   for (j in 1:nrow(comp.eval)) {
     msip.core <- iso.data[[i]][["MSIP_result"]][[str_isotope2_num(comp.eval$iso_count[j])]][[
       comp.eval$samples[j]]]
     comp.eval$solved[j] <-!is.null(msip.core)
+
+
     if (comp.eval$solved[j]) {
+      comp.eval$sp.consistency.icc[j] <- mean(msip.core@FG_map@FG.data$icc,na.rm = T)
+      comp.eval$sp.consistency.cos[j] <- mean(msip.core@FG_map@FG.data$cos,na.rm = T)
+
       if(!isEmpty(msip.core@solve$MSIPIsotopomerMap)){
         #length(msip.core@solve$MSIPIsotopomerMap@)
         comp.eval$FSIS.count[j] <-length(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set)

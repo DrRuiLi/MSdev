@@ -610,7 +610,7 @@ plot_cor_density_grouped <- function(x,y,group.f,x.title = "x",y.title = "y",gro
     dplyr::filter(!is.na(x),!is.na(y))
 
   ggplot(plot.data,aes(x = x,y = y,colour = group.f))+
-    geom_point(alpha = 0.5)+
+    geom_point(alpha = 0.1)+
     stat_smooth(method = "lm")+
     ggpubr::stat_cor(label.y.npc = 1)+
     scale_x_continuous(expand = c(0.1,0))+

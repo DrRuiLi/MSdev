@@ -1332,3 +1332,12 @@ get_spectra_ion_purity <- function(sp,ion_mz,ppm = 10,isolation_half_window = 0.
   return(ion.purity)
 
 }
+
+
+get_spectra_by_name <- function(sp,sp.name){
+
+  idx <- match(sp.name,spectraNames(sp))
+
+  sp[idx]
+
+}
