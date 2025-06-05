@@ -4,7 +4,7 @@
 \alias{MSdev_msConvert}
 \title{msConvert_MSdev}
 \usage{
-MSdev_msConvert(object)
+MSdev_msConvert(object, format.to = "mzML")
 }
 \arguments{
 \item{object}{}
