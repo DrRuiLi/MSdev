@@ -54,7 +54,8 @@ get_MSinfo_mzR<- function(msDataFiles){
       next
 
     }
-    msmzR <- mzR::openMSfile(msDataFiles[i])
+    tr <- try(msmzR <- mzR::openMSfile(msDataFiles[i]),silent  = T)
+    if (is.character(tr)&&grepl("Error",tr)) next
     msrunInfo <- mzR::runInfo(msmzR)
     msinstru <- mzR::instrumentInfo(msmzR)
     msheader <- mzR::header(msmzR)
@@ -67,6 +68,7 @@ get_MSinfo_mzR<- function(msDataFiles){
     msdata$model[i] <- msinstru$model
 
     mzR::close(msmzR)
+
   }
   return(msdata)
 

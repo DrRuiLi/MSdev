@@ -17,6 +17,14 @@ str_short <- function(x , n = 10){
 }
 
 
+str_duplicate_suffix <- function(x) {
+  counts <- ave(seq_along(x), x, FUN = seq_along)
+  dup_mask <- duplicated(x) | duplicated(x, fromLast = TRUE)
+  x[dup_mask] <- paste0(x[dup_mask], "_", counts[dup_mask])
+  return(x)
+}
+
+
 
 #' @title groupStringFactor
 #' @description convert a vector to a factor,

@@ -47,13 +47,14 @@ MSdev_save <- function(object){
 
 
 
-get_MSdev_MSinfo <- function(object){
+MSdev_get_MSinfo <- function(object){
 
 
   ### define acquire Type
   ### note, these model string are identified by mzR
   {
-    HRMS <- c("Q Exactive Plus","TripleTOF 6600","Orbitrap Exploris 480","Orbitrap Astral")
+    HRMS <- c("Q Exactive Plus","TripleTOF 6600","Orbitrap IQ-X",
+              "Orbitrap Exploris 480","Orbitrap Astral")
     TQMS <- c("TSQ Quantis")
     model.df <- data.frame(
       model = c(HRMS,TQMS),
@@ -151,7 +152,7 @@ MSdev_xcmsProcessing <- function(object,...){
     return(object)
   }
 
-
+  return(object)
 
 
 
@@ -1114,7 +1115,7 @@ get_MS_sampleinfo <- function(raw.data.dir,
                                             T~"Sample"),
                     .before = sample.labels)%>%
       dplyr::mutate(msData.files = case_when(is.na(raw.files)~raw.files,
-                                             T~paste0(dirname(raw.files),"/mzML/",ms.name,".mzML")))%>%
+                                             T~paste0(dirname(raw.files),"/msData/",ms.name)))%>%
       dplyr::arrange(analysis.time)%>%
       dplyr::mutate(no = 1:nrow(.),
                     group = case_when(sample.type=="Sample"~gsub(
@@ -1385,7 +1386,10 @@ MSdev_xcms_group_features <- function(object,
 
 MSdev_checkSampleInfo <- function(object){
 
-  sampleInfo <- object@sampleInfo
+  sampleInfo <- object@sampleInfo%>%
+    dplyr::group_by(polarity)%>%
+    dplyr::mutate(sample.name = str_duplicate_suffix(sample.name))%>%
+    dplyr::ungroup()
   sampleInfo <- edit_df_in_excel(sampleInfo,rowname = F)
   ### save
   {
@@ -1411,23 +1415,26 @@ MSdev_checkSampleInfo <- function(object){
 
 #'
 
-MSdev_msConvert<- function(object){
+MSdev_msConvert<- function(object,format.to = "mzML"){
 
 
   ### filter files
   {
     sample.info <- object@sampleInfo%>%
-      dplyr::mutate(raw.exist = file.exists(raw.files),
-                    ms.exist = file.exists(msData.files))%>%
+      dplyr::mutate(
+        msData.files = paste0(dirname(raw.files),"/msData/",ms.name,".",format.to),
+        raw.exist = file.exists(raw.files),
+        ms.exist = file.exists(msData.files))%>%
       dplyr::filter(raw.exist,!ms.exist)
-
   }
 
   ### convert
   if (nrow(sample.info)) {
-    MSconvertR::msConvert2mzML(raw.files  = sample.info$raw.files,
-                               mzML.files = sample.info$msData.files,
-                               BPPARAM = SnowParam(workers =parallel::detectCores()-1,
+    MSconvertR::msConvert(
+      raw.files  = sample.info$raw.files,
+      ms.data.names = sample.info$msData.files,
+      format.to = format.to,
+      BPPARAM = SnowParam(workers =parallel::detectCores()-1,
                                                    progressbar = T))
 
 
@@ -1436,13 +1443,15 @@ MSdev_msConvert<- function(object){
   ### filter non converted
   {
     sample.info <- object@sampleInfo%>%
-      dplyr::mutate(raw.exist = file.exists(raw.files),
-                    ms.exist = file.exists(msData.files))
-    object@sampleInfo <- object@sampleInfo[sample.info$ms.exist,]
+      dplyr::mutate(
+        msData.files = paste0(dirname(raw.files),"/msData/",ms.name,".",format.to),
+        raw.exist = file.exists(raw.files),
+        ms.exist = file.exists(msData.files))
+    object@sampleInfo <- sample.info[sample.info$ms.exist,]
 
   }
 
-  object <- get_MSdev_MSinfo(object)
+  object <- MSdev_get_MSinfo(object)
   object <- .updateProjectInfoFromSampleInfo(object)
 
   ### return
@@ -1733,7 +1742,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
 
     ### adjust
     feature.se <- se_adjuset_by_weight(feature.se)
-    #feature.se <- DEP_impute_mean(feature.se)
+    feature.se <- DEP_impute_mean(feature.se)
 
 
 

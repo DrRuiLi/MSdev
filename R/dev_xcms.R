@@ -267,7 +267,7 @@ get_xcms_chromatogram <- function(object,
                                   ...){
 
 
-  xcms.split <- sapply(seq_along(filepaths(object)),
+  xcms.split <- sapply(seq_along(fileNames(object)),
                        function(x) filterFile(object,x))
 
   xcms.chrom <- bplapply(xcms.split,
