@@ -1404,6 +1404,7 @@ CFM_spectra_data_merge <- function(sp.data,iso_count){
 
 
   }
+
   return(sp.data.weighted)
 }
 

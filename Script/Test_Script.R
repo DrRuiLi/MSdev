@@ -1734,5 +1734,49 @@ a <- r_bg(func = function(){
 {
 
   a <- get_CFM_data_from_smiles()
+  6999 * (1-0.02-0.02-0.05)
+  6598 * (1-0.02)
+
+}
+
+# Sat Jun  7 15:24:27 2025 MSIP ------------------------------
+{
+
+  msip.test <- MSdev("d:/MSIP_Test/FS/",
+                     experimentInfo = MS_Experiment[10] )
+  msip.test <- MSdev_msConvert(msip.test)
+  msip.test <- MSdev_checkSampleInfo(msip.test)
+  msip.test <- MSdev_xcmsProcessing(msip.test)
+
+
+  MSdev_save(msip.test)
+}
+# Sun Jun  8 23:54:41 2025 plot_MSIPCore_spectra_consistency------------------------------
+{
+  cfmd <- msdev.13C1@statData$MSIP$isotopologues_data$FT00988_Negative$CFM_annotation
+  MSIPCoreData <- msdev.13C1@statData$MSIP$isotopologues_data$FT12034_Positive$MSIP_result$M1$FS_3_13C
+  sp.data <- MSIPCoreData@Spectra_data
+
+  plot_MSIPCore_spectra_consistency(MSIPCoreData)
+
+  ratio.annotated.peaks <- sp.data %>%
+    dplyr::filter(!merged)%>%
+    dplyr::mutate(
+      annotated = !is.na(fragment_group)
+    )%>%
+    dplyr::group_by(annotated)%>%
+    dplyr::summarise(int_sum = sum(intensity))%>%
+    dplyr::ungroup()%>%
+    dplyr::mutate(ratio = int_sum/sum(int_sum))%>%
+    dplyr::filter(annotated )%>%
+    dplyr::pull(ratio)
+
+
+
+
+}
+
+# Mon Jun  9 20:56:40 2025 MSIP SP Merge------------------------------
+{
 
 }

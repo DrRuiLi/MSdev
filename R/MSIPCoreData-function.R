@@ -1012,6 +1012,42 @@ MSIPCore_merge <- function(MSIPCoreData1,
 
 }
 
+plot_MSIPCore_spectra_consistency <- function(MSIPCoreData){
+
+
+  plot.data <- MSIPCoreData@Spectra_data%>%
+    dplyr::filter(!is.na(fragment_group),!merged)%>%
+    dplyr::mutate(name = paste0(fragment_group,"_",iso_count),
+                  log_int = log10(intensity))
+
+  label.data <-MSIPCoreData@Spectra_data%>%
+    dplyr::filter(!is.na(fragment_group),merged)%>%
+    dplyr::mutate(name = paste0(fragment_group,"_",iso_count),
+                  icc = format(icc,digit=2),
+                  cos = format(cos,digit=2),
+                  label = paste0("icc = ",icc,";cos = ",cos))
+
+  ggplot(plot.data,aes(x = ratio , y = name ))+
+    geom_boxplot(outliers = F)+
+    geom_jitter(aes(col = log_int),width = 0,height = 0.2)+
+    geom_text(data = label.data,hjust = 0,
+              aes(x = 1.05 , y = name ,label = label))+
+    scale_color_gradient2(
+      low = "white",      # start color
+      mid = "orange",      # same as low to skip the midpoint transition
+      high = "red",        # end color
+      midpoint = 4,
+      limits = c(0,7),
+      name = "Log\nintenstiy"
+    )+
+    xlim(c(0,1.5))+
+    labs(x = "Ratio", y = NULL)+
+    theme_classic()->p
+  #open_plot_win(p,6,3)
+  return(p)
+}
+
+
 MSIPCore_FG_suffix <- function(MSIPCoreData,
                                suffix = "suffix"){
   ### Spectra_data
@@ -1084,6 +1120,43 @@ get_MSIPCore_isotopomer_data <- function(MSIPCoreData){
                   name = isotopomer.def.formate[isotopomer],
                   iso_count = isotopomer.iso_count
                   )
+
+}
+
+
+MSIPCore_get_spectra_coverage <-
+  function(MSIPCoreData,cfmd){
+
+
+    ### peaks intensity, annotated peaks / total peaks
+    {
+      sp.data <- MSIPCoreData@Spectra_data
+
+      coverage.peaks <- sp.data %>%
+        dplyr::filter(!merged)%>%
+        dplyr::mutate(
+          annotated = !is.na(fragment_group)
+        )%>%
+        dplyr::group_by(annotated)%>%
+        dplyr::summarise(int_sum = sum(intensity))%>%
+        dplyr::ungroup()%>%
+        dplyr::mutate(ratio = int_sum/sum(int_sum))%>%
+        dplyr::filter(annotated )%>%
+        dplyr::pull(ratio)
+
+    }
+
+    ### FG Count, detected FG/ total FG
+    {
+      fg.total <- (cfmd@fragment_group$fragment_group)
+      fg.detected <- sp.data$fragment_group%>%unique()
+      coverage.fg <- sum(fg.detected %in% fg.total)/length(fg.total)
+    }
+
+    MSIPCoreData@solve$coverage_peak <- coverage.peaks
+    MSIPCoreData@solve$coverage_FG <- coverage.fg
+
+    return(MSIPCoreData)
 
 }
 

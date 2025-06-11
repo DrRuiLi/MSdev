@@ -13,8 +13,16 @@ MSdev_save <- function(object){
   if (!dir.exists(save.dir)) {
     dir.create(save.dir,recursive = T)
   }
-  save(MSdev, file =  object@projectInfo$MSdevFile)
+  #save(MSdev, file =  object@projectInfo$MSdevFile)
+  qs::qsave(MSdev, file =  object@projectInfo$MSdevFile)
   invisible(MSdev)
+}
+
+MSdev_load <- function(file_to_load){
+
+  qs::qread(file_to_load)
+
+
 }
 
 .updateProjectInfoFromSampleInfo <- function(object){

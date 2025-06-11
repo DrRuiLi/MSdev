@@ -89,17 +89,23 @@ message_with_time <- function(...){
 #' @return null
 #' @export
 #'
+setGeneric("open_dir",
+           def = function(x = getwd()){
 
-open_dir <- function(dir = getwd()){
+             if (!file.info(x)$isdir) {
+               x <- dirname(x)
 
-  if (!file.info(dir)$isdir) {
-    dir <- dirname(dir)
+             }
+             system(sprintf("open %s", shQuote(x)))
+             return(x)
 
-  }
-  system(sprintf("open %s", shQuote(dir)))
-  return(dir)
+           })
 
-}
+
+setMethod("open_dir",signature = "MSdev",
+          definition = function(x){
+            open_dir(x@projectInfo$projectDir)
+          })
 
 open_dir_ActivedFilePath <- function(){
   path <- dirname(rstudioapi::getSourceEditorContext()$path)
