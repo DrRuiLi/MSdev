@@ -1014,33 +1014,6 @@ a <- r_bg(func = function(){
 
 
 
-# Sun Mar 23 23:59:14 2025 ------------------------------
-{
-  BiocManager::install(c("e1071",
-                         "globaltest ",
-                         "ropls "
-                         ))
-
-  }
-
-# Mon Mar 24 11:25:22 2025 MFN button ------------------------------
-{
-
-
-  kegg.net <- get_KEGG_Reaction_network()
-  mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net)
-  mfn <- Metabolic_flux_network_filter_KEGG_Module(mfn,"M00001")
-
-  mfn <- Metabolic_flux_network_get_Molecule_igraph(mfn)
-  mfn <- Metabolic_flux_network_get_Reaction_atom_transfer(mfn)
-  edata(mfn)$id <- edata(mfn)$name
-  MFN_manul_Shiny(mfn)
-
-
-
-
-}
-
 
 # Tue Apr  1 01:21:44 2025 ------------------------------
 {
@@ -1180,23 +1153,6 @@ a <- r_bg(func = function(){
 
 }
 
-# Mon Mar 24 11:25:22 2025 MFN button ------------------------------
-{
-
-
-  kegg.net <- get_KEGG_Reaction_network()
-  mfn <- new("Metabolic_flux_network",metabolic_network = kegg.net)
-  mfn <- Metabolic_flux_network_filter_KEGG_Module(mfn,"M00001")
-
-  mfn <- Metabolic_flux_network_get_Molecule_igraph(mfn)
-  mfn <- Metabolic_flux_network_get_Reaction_atom_transfer(mfn)
-  edata(mfn)$id <- edata(mfn)$name
-  MFN_manul_Shiny(mfn)
-
-
-
-
-}
 
 
 
@@ -1753,12 +1709,14 @@ a <- r_bg(func = function(){
 }
 # Sun Jun  8 23:54:41 2025 plot_MSIPCore_spectra_consistency------------------------------
 {
-  cfmd <- msdev.13C1@statData$MSIP$isotopologues_data$FT00988_Negative$CFM_annotation
-  MSIPCoreData <- msdev.13C1@statData$MSIP$isotopologues_data$FT12034_Positive$MSIP_result$M1$FS_3_13C
+  cfmd <- msdev.13C1@statData$MSIP$isotopologues_data$FT01592_Positive$CFM_annotation
+  MSIPCoreData <- msdev.13C1@statData$MSIP$isotopologues_data$FT01592_Positive$MSIP_result$M3$FS_1_13C
   sp.data <- MSIPCoreData@Spectra_data
 
-  plot_MSIPCore_spectra_consistency(MSIPCoreData)
-
+  p <- plot_MSIPCore_spectra_consistency(MSIPCoreData)
+  open_plot_win(p,12,8)
+  p <- plot_MSIPCore_spectra_consistency_hm(MSIPCoreData)
+  open_plot_win(p,17,24)
   ratio.annotated.peaks <- sp.data %>%
     dplyr::filter(!merged)%>%
     dplyr::mutate(
@@ -1772,11 +1730,90 @@ a <- r_bg(func = function(){
     dplyr::pull(ratio)
 
 
+  process.info <- MSIP_solve_computation_evaluate(
+    msdev.13C1,
+    show_message = F)
+  process.info <- process.info%>%
+    dplyr::filter(iso_count > 0)
+  for (i in 1:nrow(process.info)) {
+
+    msip.core <- msdev.13C1@statData$MSIP$isotopologues_data[[
+      process.info$feature_id[i]
+    ]]$MSIP_result[[str_isotope2_num(process.info$iso_count[i])]][[process.info$samples[i]]]
+    if (nrow(msip.core@FG_map@FG.ratio.matrix)<3) {
+      next
+    }
+    p <- plot_MSIPCore_spectra_consistency_hm(msip.core,
+                                              title = paste0(process.info$name[i],"\n",
+                                                             process.info$samples[i],"\n",
+                                                             str_isotope2_num(process.info$iso_count[i])
+                                                             ))
+
+    export_graph2pdf(p,
+                     file_path = "d:/temp/sp.cons.pdf",
+                     width = 15,height = 1+0.5*length(unique(msip.core@Spectra_data$sp.id)),
+                     append = T)
+  }
 
 
 }
 
-# Mon Jun  9 20:56:40 2025 MSIP SP Merge------------------------------
+# Fri Jun 13 14:54:34 2025 MFNA Simulate PDHi------------------------------
 {
 
+
+  mfn <- load_MFN()
+
+  ### WT
+  {
+    glucose.smiles <- "C([C@@H]1[C@H]([C@@H]([C@H]([C@H](O1)O)O)O)O)O"
+    glucose.mig <- get_Molecule_igraph_from_smiles(glucose.smiles)
+
+    Glu_full.mig <- Molecule_igraph_add_isotopomer(Molecule_igraph = glucose.mig,
+                                                  isotopomer = "Tracer",
+                                                  iso_vec = make_vector("[13]C",atom(glucose.mig,"C")) ,
+                                                  abundance = 1)
+    Glu_full.mig <- Molecule_igraph_remove_isotopomer(Glu_full.mig,"base")
+
+
+    #
+    mfn.wt <- Metabolic_flux_network_set_tracer(mfn,
+                                             "C00267",Glu_full.mig)
+    mfn.wt <- Metabolic_flux_remove_tracing(mfn.wt)
+    mfn.wt <- Metabolic_flux_tracing(mfn.wt)
+    MFN_manul_Shiny(mfn.wt,port = 9991)
+
+
+  }
+
+  ### PDHi
+  {
+    glucose.smiles <- "C([C@@H]1[C@H]([C@@H]([C@H]([C@H](O1)O)O)O)O)O"
+    glucose.mig <- get_Molecule_igraph_from_smiles(glucose.smiles)
+
+    Glu_full.mig <- Molecule_igraph_add_isotopomer(Molecule_igraph = glucose.mig,
+                                                   isotopomer = "Tracer",
+                                                   iso_vec = make_vector("[13]C",atom(glucose.mig,"C")) ,
+                                                   abundance = 1)
+    Glu_full.mig <- Molecule_igraph_remove_isotopomer(Glu_full.mig,"base")
+
+
+    #
+    mfn.pdhi <- Metabolic_flux_network_set_tracer(mfn,
+                                                "C00267",Glu_full.mig)
+    mfn.pdhi <- Metabolic_flux_network_filter_reactions(mfn.pdhi,
+                                                        rid = setdiff(vdata(mfn.pdhi)$id,"R00014"))
+
+    mfn.pdhi <- Metabolic_flux_remove_tracing(mfn.pdhi)
+    mfn.pdhi <- Metabolic_flux_tracing(mfn.pdhi)
+    MFN_manul_Shiny(mfn.pdhi,port=9992)
+
+  }
+
 }
+
+
+
+
+ts
+  

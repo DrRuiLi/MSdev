@@ -1048,6 +1048,56 @@ plot_MSIPCore_spectra_consistency <- function(MSIPCoreData){
 }
 
 
+
+plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = ""){
+
+
+  plot.data <- MSIPCoreData@Spectra_data%>%
+    dplyr::filter(!is.na(fragment_group),!merged)%>%
+    dplyr::mutate(name = paste0(fragment_group,"_",iso_count),
+                  log_int = log10(intensity))
+
+  label.data <-MSIPCoreData@Spectra_data%>%
+    dplyr::filter(!is.na(fragment_group),merged)%>%
+    dplyr::mutate(name = paste0(fragment_group,"_",iso_count),
+                  icc = format(icc,digit=2),
+                  cos = format(cos,digit=2),
+                  label = paste0("icc = ",icc,";cos = ",cos))
+
+
+  hm.data <- plot.data %>%
+    dplyr::select(sp.id,name,ratio)%>%
+    dplyr::distinct(sp.id,name,.keep_all = T)%>%
+    tidyr::pivot_wider(names_from = name,values_from = ratio,values_fill = 0)%>%
+    tibble::column_to_rownames("sp.id")
+
+
+  col.data <- MSIPCoreData@Spectra_data%>%
+    dplyr::filter(!is.na(fragment_group),merged)%>%
+    dplyr::mutate(name = paste0(fragment_group,"_",iso_count),
+                  log_int = log10(intensity))%>%
+    dplyr::distinct(name,.keep_all = T)%>%
+    dplyr::arrange(name)
+
+  hm.data <- hm.data[,col.data$name]
+  ComplexHeatmap::Heatmap(
+    as.matrix(hm.data),name = "ratio",
+    col = colramp(),rect_gp = gpar(col = "black"),
+    column_split = col.data$fragment_group,
+    column_title = title,
+    row_names_side = "left",
+    top_annotation = columnAnnotation(
+      df =col.data[,c("cos","icc")],
+      col = list(cos= colramp(colors = c("white","#C7F1D4","#36810A")),
+                 icc= colramp(colors = c("white","#E2E7F0","#4D75A5")))
+    ),
+    cluster_columns = F,
+    cluster_rows = F)
+
+
+}
+
+
 MSIPCore_FG_suffix <- function(MSIPCoreData,
                                suffix = "suffix"){
   ### Spectra_data

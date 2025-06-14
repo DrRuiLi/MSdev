@@ -224,7 +224,9 @@ Metabolic_flux_network_get_Reaction_atom_transfer <- function(mfn){
 
     ### mol ig
     {
-
+      equation.df <- equation.data
+      equation.coef <- equation.data%>%
+        dplyr::pull(coef,name = id)
       mol.igs <- V(mfn@metabolic_network)[equation.df$id]$Molecule_igraph
       names(mol.igs) <- equation.df$uid
       mol.igs <- split(mol.igs,equation.df$side)
@@ -579,7 +581,7 @@ Metabolic_flux_network_set_tracer <-
 
 
 
-Metabolic_flux_tracing <- function(mfn){
+Metabolic_flux_tracing <- function(mfn,round= 10){
 
 
 
@@ -587,12 +589,12 @@ Metabolic_flux_tracing <- function(mfn){
     dplyr::filter(node.type == "Reaction")
 
   labeled.stat <- data.frame(
-    round = 1:100,
+    round = 1:round,
     labeled.cp = NA,
     isotopomers.count = NA
   )
 
-  for (i in (1:30)+length(mfn@Molecule_igraphs)) {
+  for (i in (1:10)+length(mfn@Molecule_igraphs)) {
 
     mfn.c <- vdata(mfn)%>%
       dplyr::filter(node.type == "Compound")

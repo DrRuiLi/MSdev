@@ -1289,3 +1289,10 @@ MSIP_get_Molecule_igraph<- function(object){
 
 }
 
+
+
+MSIP_clear_previous_data <- function(object){
+
+  object@statData$MSIP$isotopologues_data <- list()
+  return(object)
+}
