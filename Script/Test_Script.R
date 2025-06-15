@@ -1815,5 +1815,22 @@ a <- r_bg(func = function(){
 
 
 
-ts
-  
+# Sun Jun 15 00:31:29 2025 MSIP Merge spectra------------------------------
+{
+  msdev.13C1 <- MSdev_load(
+    "C:/Users/91879/OneDrive/Code/R/data/MSIP_data/240701_FS_ONE_POSITION/MSdev_2024_07_04.Rdata"
+  )
+  cfmd <- msdev.13C1@statData$MSIP$isotopologues_data$FT01592_Positive$CFM_annotation
+  MSIPCoreData <- msdev.13C1@statData$MSIP$isotopologues_data$FT01592_Positive$MSIP_result$M3$FS_1_13C
+
+  sp.iso <- msdev.13C1@statData$MSIP$isotopologues_data$FT01592_Positive$Spectra$M3$FS_1_13C
+
+  msip.core <- get_MSIPCoreData(sp.iso = sp.iso,cfmd = cfmd,iso_count = 3,ppm = 10)
+
+
+  a <- MSIPCore_solve(msip.core)
+
+
+
+
+}

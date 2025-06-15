@@ -6,7 +6,7 @@ setClass(Class = "MSIPFragmentMap",
          ))
 setClass(Class = "MSIPCoreData",
          slots = list(
-           "Spectra_data" = "data.frame",
+           "Spectra_data" = "ANY",
            "FG_map" = "MSIPFragmentMap",
            "solve" = "list"
          ))

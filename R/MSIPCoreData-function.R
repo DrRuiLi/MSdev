@@ -1,20 +1,24 @@
 get_MSIPCoreData <- function(sp.iso,
                              cfmd,
-                             iso_count,
+                             iso_count_max,
+                             iso_ele = "[13]C",
                              ppm = 10){
 
-  sp.frag.data <- CFM_annotate_isotopologues(sp.iso,
-                                             cfmd  = cfmd,
-                                             ppm = ppm,
-                                             iso_count = iso_count)
-  sp.frag.data <- CFM_spectra_data_merge(sp.frag.data,iso_count)
-  fg.map <- get_MSIPFragmentMap(sp.frag.data,
+  #sp.frag.data <- CFM_annotate_isotopologues(sp.iso,
+  #                                           cfmd  = cfmd,
+  #                                           ppm = ppm,
+  #                                           iso_count = iso_count)
+  #sp.frag.data <- CFM_spectra_data_merge(sp.frag.data,iso_count)
+
+  sp.iso <- Spectra_annotate_cfmd(sp = sp.iso,cfmd = cfmd,iso_ele ,iso_count_max,ppm )
+  sp.iso <- Spectra_calculate_fragment_iso_ratio(sp.iso)
+  fg.map <- get_MSIPFragmentMap(sp.iso,
                                 cfmd,
-                                iso_count = iso_count)
+                                iso_count_max = iso_count_max)
 
 
   MSIPCoreData <- new("MSIPCoreData")
-  MSIPCoreData@Spectra_data <- sp.frag.data
+  MSIPCoreData@Spectra_data <- sp.iso
   MSIPCoreData@FG_map <- fg.map
 
   return(MSIPCoreData)
@@ -115,6 +119,7 @@ MSIPCore_solve <- function(MSIPCoreData,
   MSIPIsotopomerMap <- MSIPIsotopomerMap_set_split(MSIPIsotopomerMap,
                                        MSIPFragmentMap_reduced)
   #MSIPIsotopomerMap <- MSIPIsotopomerMap_set_solve_GLPK(MSIPIsotopomerMap)
+
   MSIPIsotopomerMap <- MSIPIsotopomerMap_set_solve_QP(MSIPIsotopomerMap,
                                                       weight_fun = weight_fun)
   MSIPCoreData@solve$MSIPIsotopomerMap <- MSIPIsotopomerMap
@@ -132,7 +137,7 @@ MSIPCore_drop <- function(MSIPCoreData){
   return(MSIPCoreData)
 }
 
-get_MSIPFragmentMap <- function(sp.frag.data,
+get_MSIPFragmentMap_to_remove <- function(sp.frag.data,
                                 cfmd,
                                 iso_ele = "[13]C",
                                 iso_count){
@@ -269,14 +274,14 @@ get_MSIPIsotopomerMap <- function(MSIPCoreData){
 
     frag.atom.matrix <- MSIPCoreData@FG_map@FG.atom.matrix
     frag.ratio.matrix <-MSIPCoreData@FG_map@FG.ratio.matrix
-    frag.max.iso <- ncol(frag.ratio.matrix)-1
+    frag.max.iso <- max(str_extract_num(colnames(frag.ratio.matrix)))
     MSIPIsotopomerMap <- new("MSIPIsotopomerMap")
     if (!nrow(frag.atom.matrix)) {
       return(MSIPIsotopomerMap)
     }
 
   }
-  ### all possible iso form
+  ### all possible isotopomers
   {
     if (frag.max.iso == 0 ) {
       message_with_time("No isotopomers")
