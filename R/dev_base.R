@@ -321,3 +321,16 @@ try_until_success <- function(func, ...) {
   return(result)
 }
 
+
+
+rm_except <- function(..., env = parent.frame()) {
+  vars <- sapply(substitute(list(...))[-1], deparse)
+  all_vars <- ls(envir = env)
+  rm_vars <- setdiff(all_vars, vars)
+  if (length(rm_vars) > 0) {
+    rm(list = rm_vars, envir = env)
+  }
+}
+
+
+

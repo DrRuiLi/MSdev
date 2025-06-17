@@ -1601,7 +1601,7 @@ get_Spectra_fg_ratio_se_merge <- function(se){
 
         # i.icc <- irr::icc(t(i.rm), model = "twoway",
         #                   type = "consistency", unit = "single")$value
-        i.icc <- calc_weighted_icc (t(i.rm),i.intsum)
+        i.icc <- weighted_icc (t(i.rm),i.intsum)
         i.cos <- lsa::cosine(i.rm.weighted,t(i.rm))
         i.cos.weight <- weighted.mean(i.cos,w = log10(i.intsum))
 

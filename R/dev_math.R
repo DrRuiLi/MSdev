@@ -408,3 +408,90 @@ rdot_product <- function(x,y,...){
     return(0)
   }
 }
+
+
+weighted_icc_lmer <- function(score_matrix, weights) {
+
+
+  # Input checks
+  if (!is.matrix(score_matrix)) stop("Input 'score_matrix' must be a matrix.")
+  if (ncol(score_matrix) != length(weights)) stop("Length of 'weights' must match number of columns (raters).")
+
+
+  # if all same
+  if (all(apply(score_matrix, 1, function(row) length(unique(row))) == 1)) {
+    if (length(unique(rowSums(score_matrix))) == 1) {
+      #message("All raters agree and all subjects have the same score. ICC is undefined (0/0), returning NA.")
+      return(NA)
+    } else {
+      #message("All raters agree. Perfect agreement. ICC = 1")
+      return(1)
+    }
+  }
+
+  # Add subject ID
+  colnames(score_matrix) <- paste0("V",1:ncol(score_matrix))
+  df <- as.data.frame(score_matrix)
+  df$Subject <- factor(seq_len(nrow(df)))
+
+  # Long format
+  long_df <- tidyr::pivot_longer(df,
+                          cols = -Subject,
+                          names_to = "Rater",
+                          values_to = "Score")
+
+  # Map weights to each rater
+  weights <- weights / sum(weights)
+  weight_df <- data.frame(Rater = colnames(score_matrix), Weight = weights)
+  long_df <- left_join(long_df, weight_df, by = "Rater")
+
+  # Fit weighted linear mixed model
+  model <- lme4::lmer(Score ~ 1 + (1 | Subject), data = long_df, weights = Weight)
+
+  # Extract variance components and compute ICC
+  vc <- as.data.frame(lme4::VarCorr(model))
+  icc <- vc$vcov[vc$grp == "Subject"] / sum(vc$vcov)
+
+  return(icc)
+}
+
+
+
+weighted_icc <- function(score_mat, weights) {
+
+  if (ncol(score_mat) != length(weights)) {
+    stop("Length of weights must match number of raters (columns in score_mat).")
+  }
+
+
+  if (all(apply(score_mat, 1, function(row) length(unique(row))) == 1)) {
+
+    if (length(unique(rowSums(score_mat))) == 1) {
+     # message("All raters agree and all subjects have the same score. ICC is undefined (0/0), returning NA.")
+      return(NA)
+    } else {
+      #message("All raters agree. Perfect agreement. ICC = 1")
+      return(1)
+    }
+  }
+
+
+  weights <- weights / sum(weights)
+
+
+  subj_mean <- as.numeric(score_mat %*% weights)
+  grand_mean <- mean(subj_mean)
+
+
+  MS_between <- sum((subj_mean - grand_mean)^2) / (nrow(score_mat) - 1)
+
+
+  MS_within <- sum(apply(score_mat, 1, function(x) sum(weights * (x - sum(weights * x))^2))) / nrow(score_mat)
+
+
+  icc <- MS_between / (MS_between + MS_within)
+
+  return(icc)
+}
+
+
