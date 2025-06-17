@@ -1054,50 +1054,90 @@ plot_MSIPCore_spectra_consistency <- function(MSIPCoreData){
 
 
 
-plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = ""){
+plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
 
 
-  plot.data <- MSIPCoreData@Spectra_data%>%
-    dplyr::filter(!is.na(fragment_group),!merged)%>%
-    dplyr::mutate(name = paste0(fragment_group,"_",iso_count),
-                  log_int = log10(intensity))
 
-  label.data <-MSIPCoreData@Spectra_data%>%
-    dplyr::filter(!is.na(fragment_group),merged)%>%
-    dplyr::mutate(name = paste0(fragment_group,"_",iso_count),
-                  icc = format(icc,digit=2),
-                  cos = format(cos,digit=2),
-                  label = paste0("icc = ",icc,";cos = ",cos))
+  sp <-  MSIPCoreData@Spectra_data
+  se <- get_Spectra_fg_ratio_se(sp,iso_count_max = max(str_extract_num(colnames(MSIPCoreData@FG_map@FG.ratio.matrix))))
 
 
-  hm.data <- plot.data %>%
-    dplyr::select(sp.id,name,ratio)%>%
-    dplyr::distinct(sp.id,name,.keep_all = T)%>%
-    tidyr::pivot_wider(names_from = name,values_from = ratio,values_fill = 0)%>%
-    tibble::column_to_rownames("sp.id")
+
+  #hm.data[is.na(hm.data)] <- NA
+
+  ### column - FG
+  {
+
+    sem <- get_Spectra_fg_ratio_se_merge(se)
+    fg.data <- rowData(sem)
+    col.data <- colData(se)%>%
+      as.data.frame()%>%
+      dplyr::mutate(
+        icc =fg.data[fragment_group,"icc"],
+        cos =fg.data[fragment_group,"cos"]
+      )
+    col.anno.df <- col.data%>%
+      dplyr::select(icc,cos)
+  }
+
+  ### row - SP
+  {
+    row.data <- rowData(se)%>%
+      as.data.frame()%>%
+      dplyr::mutate(log_int = log10(totIonCurrent))%>%
+      dplyr::arrange(collisionEnergy,rtime)
+
+    row.anno.df <- row.data%>%
+      dplyr::select(log_int,collisionEnergy)
+
+  }
 
 
-  col.data <- MSIPCoreData@Spectra_data%>%
-    dplyr::filter(!is.na(fragment_group),merged)%>%
-    dplyr::mutate(name = paste0(fragment_group,"_",iso_count),
-                  log_int = log10(intensity))%>%
-    dplyr::distinct(name,.keep_all = T)%>%
-    dplyr::arrange(name)
 
-  hm.data <- hm.data[,col.data$name]
-  ComplexHeatmap::Heatmap(
-    as.matrix(hm.data),name = "ratio",
-    col = colramp(),rect_gp = gpar(col = "black"),
-    column_split = col.data$fragment_group,
-    column_title = title,
-    row_names_side = "left",
-    top_annotation = columnAnnotation(
-      df =col.data[,c("cos","icc")],
-      col = list(cos= colramp(colors = c("white","#C7F1D4","#36810A")),
-                 icc= colramp(colors = c("white","#E2E7F0","#4D75A5")))
-    ),
-    cluster_columns = F,
-    cluster_rows = F)
+  ### hm
+  {
+    hm.data <- assay(se)
+    hm.data <- hm.data[row.data$sp_id,col.data$FG_isotopologue]
+    ComplexHeatmap::Heatmap(
+      hm.data,name = "ratio",
+      col = colramp(),
+      rect_gp = gpar(col = "black"),
+
+      column_split = col.data$fragment_group,
+      column_title = title,
+
+
+      #row_names_side = "NULL",
+      show_row_names = F,
+      row_split = row.data$collisionEnergy,
+      row_title = NULL,
+
+
+
+
+      top_annotation = ComplexHeatmap::columnAnnotation(
+        df = col.anno.df,
+        col = list(cos= colramp(colors = c("white","#C7F1D4","#36810A")),
+                   icc= colramp(colors = c("white","#E2E7F0","#4D75A5")))
+      ),
+
+      left_annotation =ComplexHeatmap::rowAnnotation(
+        df = row.anno.df,
+        #label = ComplexHeatmap::anno_text(row.anno.df$collisionEnergy),
+        col = list(collisionEnergy= colramp(c(0,25,50),colors = c("white","#B09C85","#7E6148")),
+                   log_int= colramp(breaks = c(3,5,7),colors = c("white","#FFC2B3","#E64B35"))),
+        annotation_name_side= "top",
+        annotation_label = c("Log int","CE")
+      ),
+
+      cluster_columns = F,
+      cluster_rows = F)
+
+  }
+
+
+
+
 
 
 }
@@ -1281,3 +1321,396 @@ vis_MSIPcore_isotopomer <- function(msip.core,
     vis_sdf_igraph()
 
 }
+
+
+
+Spectra_annotate_cfmd <- function(
+    sp,
+    cfmd,
+    iso_ele = "[13]C",
+    iso_count_max = 3 ,
+    ppm = 10
+){
+
+
+  ### pre-process
+  {
+
+
+    if (!"fragment_group"%in% colnames(cfmd@peak_assignment)) {
+      cfmd <- cfm_data_get_fragment_group(cfmd)
+    }
+
+    cfm.peaks.data <- cfmd@peak_assignment%>%
+      dplyr::filter(!is.na(fragment_id))%>%
+      dplyr::mutate(collisionEnergy = case_when(energy == "energy0"~10,
+                                                energy == "energy1"~20,
+                                                energy == "energy2"~40,
+      ))
+
+    if (!nrow(cfm.peaks.data))
+      cfm.peaks.data <-  cfmd@peak_assignment%>%
+      dplyr::mutate(mz = 0)
+  }
+
+
+  ### iso mz
+  {
+
+    diff.formula <- paste0(iso_ele,get_ele_uniso(iso_ele),"-1")
+    iso.mz.diff <- (0:iso_count_max)*MSCC::chemform_mz(diff.formula)
+    mz.labeled.m <- matrixSub(cfm.peaks.data$mz,-iso.mz.diff)%>%
+      `colnames<-`(paste0("M",0:iso_count_max))%>%
+      as.data.frame()%>%
+      dplyr::mutate(fragment_group=cfm.peaks.data$fragment_group)%>%
+      dplyr::distinct(M0,.keep_all = T)%>%
+      tidyr::pivot_longer(paste0("M",0:iso_count_max),
+                          names_to = "iso_count",
+                          values_to = "mz")%>%
+      dplyr::mutate(iso_count = str_extract_num(iso_count))
+
+
+  }
+
+
+  ### annotate
+  {
+
+
+
+    idx <- lapply(mz(sp),function(x){
+      match_mz(x,mz.labeled.m$mz, mz.ppm = ppm) })
+
+    sp$iso_count <- lapply(idx,function(x)mz.labeled.m$iso_count[x])#%>%as("IntegerList")
+    sp$fragment_group <- lapply(idx,function(x)mz.labeled.m$fragment_group[x])#%>%as("CharacterList")
+    sp$fragment_group_mz <- lapply(idx,function(x)mz.labeled.m$mz[x])#%>%as.array("NumericList")
+
+  }
+
+
+
+
+  return(sp)
+}
+
+
+Spectra_calculate_fragment_iso_ratio <- function(sp){
+
+  sp$fragment_group_int_sum <- lapply(1:length(sp),function(i){
+
+    fg <- sp$fragment_group[[i]]
+    isoc <- sp$iso_count[[i]]
+    mzi <- peaksData(sp)[[i]]
+    fg.i <- rep(NA,length(fg))
+
+    for (i.fg in unique(na.omit (fg))) {
+      idx <- which(fg == i.fg)
+
+      fg.i[idx] <- sum(mzi[idx,"intensity"])
+    }
+
+    return(fg.i)
+
+  })
+
+
+  sp$fragment_group_ratio <- lapply(1:length(sp),function(i){
+
+    fg <- sp$fragment_group[[i]]
+    isoc <- sp$iso_count[[i]]
+    mzi <- peaksData(sp)[[i]]
+    fg.r <- rep(NA,length(fg))
+
+    for (i.fg in unique(na.omit (fg))) {
+      idx <- which(fg == i.fg)
+
+      fg.r[idx] <- mzi[idx,"intensity"]/sp$fragment_group_int_sum[[i]][idx]
+    }
+
+    return(fg.r)
+
+  })
+
+
+  return(sp)
+
+
+}
+
+
+
+get_Spectra_fg_ratio_se <- function(sp,iso_count_max = 3){
+
+
+
+  ### ratio matrix
+  {
+    fragment_group_ratio_matrix <- lapply(1:length(sp),function(i){
+
+      fg <- sp$fragment_group[[i]]
+      isoc <- sp$iso_count[[i]]
+      fg.r <- sp$fragment_group_ratio[[i]]
+      fg.f <-  paste0(fg,"_M",isoc)
+
+      names(fg.r) <- fg.f
+      fg.r <- na.omit(fg.r)
+      fg.r <-sapply(split(fg.r,names(fg.r )),sum)
+
+      return(fg.r)
+
+
+    })
+
+    fragment_group_ratio_matrix <- do.call(bind_rows,fragment_group_ratio_matrix)%>%as.matrix()
+
+    rownames(fragment_group_ratio_matrix) <- sp$sp_id
+
+
+  }
+
+
+  ### int matrix
+  {
+
+    fragment_group_int_sum_matrix <- lapply(1:length(sp),function(i){
+
+      fg <- sp$fragment_group[[i]]
+      isoc <- sp$iso_count[[i]]
+      fg.r <- sp$fragment_group_int_sum[[i]]
+      fg.f <-  paste0(fg,"_M",isoc)
+
+      names(fg.r) <- fg.f
+      fg.r <- na.omit(fg.r)
+      fg.r <-sapply(split(fg.r,names(fg.r )),sum)
+
+      return(fg.r)
+
+
+    })
+
+    fragment_group_int_sum_matrix <- do.call(bind_rows,fragment_group_int_sum_matrix)%>%as.matrix()
+
+    rownames(fragment_group_int_sum_matrix) <- sp$sp_id
+
+
+  }
+
+
+  ### col.data
+  {
+
+
+    fg <- unique(na.omit(unlist(sp$fragment_group)))
+    cda <- expand.grid(fragment_group = fg, iso_count = 0:iso_count_max,stringsAsFactors  = F)%>%
+      dplyr::mutate(FG_isotopologue =  paste0(fragment_group,"_M",iso_count))%>%
+      dplyr::arrange(FG_isotopologue)
+
+    fragment_group_ratio_matrix <- get_matrix_value_fill_with_NA(
+      fragment_group_ratio_matrix,
+      colnames_vec = cda$FG_isotopologue
+    )
+
+    fragment_group_int_sum_matrix <- get_matrix_value_fill_with_NA(
+      fragment_group_int_sum_matrix,
+      colnames_vec = cda$FG_isotopologue
+    )
+
+
+  }
+
+
+  ### row.data
+  {
+    rda <- Spectra::spectraData(sp)%>%
+      as.data.frame()%>%
+      dplyr::select(sp_id,precursorMz,rtime,collisionEnergy,totIonCurrent)
+
+
+  }
+
+
+
+
+  ### store in se
+  {
+
+    fragment_group_ratio_matrix <- fragment_group_ratio_matrix[rda$sp_id,cda$FG_isotopologue]
+    sp.se <- SummarizedExperiment::SummarizedExperiment(
+      fragment_group_ratio_matrix,colData = cda,rowData = rda
+    )
+
+    assay(sp.se,2) <- fragment_group_int_sum_matrix
+
+  }
+
+
+  return(sp.se)
+
+
+}
+
+
+
+get_Spectra_fg_ratio_se_merge <- function(se){
+
+
+
+
+  fgs <- unique(colData(se)$fragment_group)
+  rda <- data.frame(
+    fragment_group = fgs,
+    int_sum = NA,
+    icc = NA,
+    cos = NA,
+    peaks_count = 0,
+
+    row.names = fgs
+  )
+
+  fg_ratio_list <- list()
+  for (i.fg in fgs) {
+
+    #message(i.fg)
+
+    i.se <- se[,se$fragment_group==i.fg]
+    i.rm <- assay(i.se,1)
+    i.rm[is.na(i.rm)] <- 0
+
+    i.intsum <- assay(i.se,2)%>%
+      apply(1,function(x) mean(x , na.rm = T))
+
+
+    ### exclude empty sp
+    {
+      idx <- which(!is.na(i.intsum))
+      i.rm <- i.rm[idx,,drop = F]
+      i.intsum <- i.intsum[idx]
+
+      }
+
+    ### weighted mearge
+    {
+      i.rm.weighted <- apply(i.rm,2,weighted.mean,w = i.intsum)
+      i.intsum.weighted <- weighted.mean(i.intsum,i.intsum)
+    }
+
+
+    ### consistency
+    {
+      if(length(i.intsum)>1){
+
+        # i.icc <- irr::icc(t(i.rm), model = "twoway",
+        #                   type = "consistency", unit = "single")$value
+        i.icc <- calc_weighted_icc (t(i.rm),i.intsum)
+        i.cos <- lsa::cosine(i.rm.weighted,t(i.rm))
+        i.cos.weight <- weighted.mean(i.cos,w = log10(i.intsum))
+
+      }else{
+
+        i.icc <- NA
+        i.cos.weight <- 1
+      }
+
+    }
+
+    ### data integration
+    {
+      names(i.rm.weighted) <- paste0("M",i.se$iso_count)
+      fg_ratio_list[[i.fg]] <- i.rm.weighted
+      rda[i.fg,"int_sum"] <- i.intsum.weighted
+      rda[i.fg,"icc"] <- i.icc
+      rda[i.fg,"cos"] <- i.cos.weight
+      rda[i.fg,"peaks_count"] <- length(i.intsum)
+    }
+
+
+  }
+
+
+  ### return se
+  {
+
+    fg.ratio.matrix <-do.call(bind_rows,fg_ratio_list)%>%
+      as.matrix()
+    rownames(fg.ratio.matrix) <- fgs
+    fg.se <- SummarizedExperiment::SummarizedExperiment(
+      fg.ratio.matrix,rowData =rda
+    )
+
+    return(fg.se)
+  }
+
+
+}
+
+
+get_MSIPFragmentMap <- function(sp,
+                                cfmd,
+                                iso_ele = "[13]C",
+                                iso_count_max = 3,
+                                ppm= 10){
+
+
+
+  fg.map <- new("MSIPFragmentMap")
+
+
+  ### FG - Ratio
+  {
+
+    if (!"fragment_group" %in% Spectra::spectraVariables(sp)) {
+      sp <- Spectra_annotate_cfmd(sp = sp,cfmd = cfmd,iso_ele ,iso_count_max,ppm )
+      sp <- Spectra_calculate_fragment_iso_ratio(sp)
+    }
+
+
+    fg.ratio.se <- get_Spectra_fg_ratio_se(sp,iso_count_max = iso_count_max)
+    fg.se <- get_Spectra_fg_ratio_se_merge(fg.ratio.se)
+
+  }
+
+
+  ### FG - atom
+  {
+
+    target_atoms <- get_sdf_igraph_atom(get_cfm_data_sdf_igraph(cfmd),get_ele_uniso(iso_ele))
+    frag.atom.matrix <- matrix(ncol = length(target_atoms),
+                               nrow = nrow(fg.se),
+                               dimnames = list(rownames(fg.se),
+                                               target_atoms))
+    for (i.fg in rownames(fg.se)) {
+
+      this.frag.group <- i.fg
+
+      this.frag.c <-cfmd@fragment_group_map[this.frag.group,]
+      frag.atom.matrix[this.frag.group,names(this.frag.c)] <- this.frag.c
+    }
+
+  }
+
+  ### FG data
+  {
+    fg.data <- rowData(fg.se)%>%
+      as.data.frame()
+    fg.data$include <- T
+
+    fg.data <- fg.data[rownames(frag.atom.matrix),]
+  }
+
+
+
+  fg.map@FG.atom.matrix <- frag.atom.matrix[fg.data$fragment_group,]
+  fg.map@FG.ratio.matrix <- assay(fg.se)[fg.data$fragment_group,]
+  fg.map@FG.data <- fg.data
+
+  return(fg.map)
+
+
+
+
+
+
+}
+
+
+
