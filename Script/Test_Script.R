@@ -1817,6 +1817,7 @@ a <- r_bg(func = function(){
 
 # Sun Jun 15 00:31:29 2025 MSIP Merge spectra------------------------------
 {
+
   msdev.13C1 <- MSdev_load(
     "C:/Users/91879/OneDrive/Code/R/data/MSIP_data/240701_FS_ONE_POSITION/MSdev_2024_07_04.Rdata"
   )
@@ -1825,12 +1826,49 @@ a <- r_bg(func = function(){
 
   sp.iso <- msdev.13C1@statData$MSIP$isotopologues_data$FT01592_Positive$Spectra$M3$FS_1_13C
 
-  msip.core <- get_MSIPCoreData(sp.iso = sp.iso,cfmd = cfmd,iso_count = 3,ppm = 10)
+  MSIPCoreData <- get_MSIPCoreData(sp.iso = sp.iso,cfmd = cfmd,iso_count_max  = 3,ppm = 10)
 
 
-  a <- MSIPCore_solve(msip.core)
+  plot_MSIPCore_spectra_consistency_hm(MSIPCoreData)
 
 
 
+}
+
+# Tue Jun 17 22:36:26 2025 BiocParallel test ------------------------------
+{
+
+  bplapply(1:4,FUN = function(x){
+
+    MSdev::atom(a)
+
+  },BPPARAM = SnowParam(workers = 1,progressbar = T))
+
+
+  atom(cfmd)
+
+}
+
+
+
+# Wed Jun 18 22:56:52 2025 DDA mine test------------------------------
+{
+
+  ### run after QC FS, once
+  data.dir <- "d:/DDA.mine.test/pos"
+  msdev.qe <- MSdev(rawDataDir = data.dir)
+  msdev.qe <- MSdev_load("d:/DDA.mine.test/MSdev_2025_06_18.Rdata")
+  msdev.qe <- MSdev_msConvert(msdev.qe)
+  msdev.qe <- MSdev_xcmsProcessing(msdev.qe)
+
+  msdev.qe@statData <- list()
+  msdev.qe <- MSdev_get_Inclusion_Queue(msdev.qe)
+
+  ### run after every time DDA acquired
+  msdev.qe <- MSdev_get_Inclusion_List(msdev.qe)
+  msdev.qe <- MSdev_add_sample(msdev.qe,raw.data.dir = "d:/DDA.mine.test/pos")
+  msdev.qe <- MSdev_get_MS2acquisitionStat(msdev.qe)
+
+  table(msdev.qe@statData$DDA_mine_queue_Positive$acquired)
 
 }

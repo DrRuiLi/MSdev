@@ -87,7 +87,7 @@ cluster_ion <- function(mz,rt , ppm.thresh =10, rt.tol = 15){
   }
 
   ion.df <- data.frame(mz,rt)%>%
-    dplyr::mutate(groupMz(mz,ppm = ppm.thresh))%>%
+    dplyr::mutate(mz.group = groupMz(mz,ppm = ppm.thresh))%>%
     dplyr::group_by(mz.group)%>%
     dplyr::mutate(rt.cluster = .cluster_rt(rt,rt.tol))%>%
     dplyr::group_by(mz.group,rt.cluster)%>%

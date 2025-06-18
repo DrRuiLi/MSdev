@@ -5,7 +5,7 @@
 \title{open_dir
 open dir by Windows}
 \usage{
-open_dir(dir = getwd())
+open_dir(x = getwd())
 }
 \arguments{
 \item{dir}{a path of dir or file}

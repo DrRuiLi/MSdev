@@ -141,9 +141,10 @@ get_smiles_sdf <- function(smiles,
  #})
  #smiles.sdf <- ChemmineR::SDFset(sdfs)
 
+  data(smiles_map)
   for (id in ChemmineR::cid(smiles_map)) {
     which(smiles==id)
-    suppressWarnings(smiles.sdf[smiles==id] <- MSdev::smiles_map[[id]])
+    suppressWarnings(smiles.sdf[smiles==id] <- smiles_map[[id]])
 
   }
 
@@ -624,6 +625,7 @@ make_element_table <- function(){
 
 is.isotope <- function(atoms){
 
+  data(element_table)
   m <- make_vector(element_table$is.isotope,element_table$symbol )[atoms]
   dim(m) <- dim(atoms)
   dimnames(m) <- dimnames(atoms)

@@ -167,7 +167,7 @@ plot_PCA <- function(pca.matrix,pca.group,showlabel = F){
 
   pca.pca <- ropls::opls(x = pca.matrix,
                          crossvalI = ifelse(nrow(pca.matrix)>6,7,nrow(pca.matrix)),
-                         predI = 5)
+                         predI = 3)
   pca.data <- data.frame(pca.group,
                          pca.label = rownames(pca.matrix),
                          pca.pca@scoreMN)
@@ -429,7 +429,7 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
 
                           show_column_dend = F,
                           show_row_dend = F,
-                          show_row_names = F
+                          show_row_names = T
                           )->p
   p
 
