@@ -1752,7 +1752,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   message(Sys.time()," Find peaks...")
   xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
                             param = xcms_param$findChromPeaks,
-                            BPPARAM  = BiocParallel::SnowParam(progressbar = T))
+                            BPPARAM  = BiocParallel::SnowParam(progressbar = T),...)
   xcms.xcms <- xcms_get_peak_fill(xcms.xcms)
   #mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
   #xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
@@ -1943,7 +1943,7 @@ plot_xcms_TIC <- function(xcms.xcms){
                   group = xcms.pdata$group[fileIdx])%>%
     dplyr::filter(msLevel==1)
 
-  col.scale <- c("grey","#38C291",ggsci::pal_aaas()(10))
+  col.scale <- c("grey","#38C291",ggsci::pal_aaas()(20))
   names(col.scale) <- c("Blank","QC",
                         setdiff(unique(xcms.scan$group),c("Blank","QC")))
 

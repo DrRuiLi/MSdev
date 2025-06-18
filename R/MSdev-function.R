@@ -118,7 +118,13 @@ MSdev_add_sample <- function(object,
   sample.info <- object@sampleInfo
   sample.info.new <- get_MS_sampleinfo(raw.data.dir,
                                        rawDataFormat = object@projectInfo$rawDataFormat,
-                                       verbose = T)%>%
+                                       verbose = T)
+  if (all(sample.info.new$raw.files %in% sample.info$raw.files)) {
+
+    return(object)
+
+  }
+  sample.info.new <- sample.info.new%>%
     dplyr::filter(!raw.files%in% sample.info$raw.files)%>%
     dplyr::mutate(sample.name = case_when(
       sample.name %in% sample.info$sample.name ~
@@ -1078,6 +1084,7 @@ get_MS_sampleinfo <- function(raw.data.dir,
   raw.files <- dir(path = raw.data.dir,
                    pattern = paste0(rawDataFormat,"$"),
                    full.names = T)
+  raw.files <- normalizePath(raw.files,winslash = "/")
   if (length(raw.files)==0) {
     stop("No ",rawDataFormat," files exist")
   }
@@ -1159,180 +1166,6 @@ get_MS_sampleinfo <- function(raw.data.dir,
 
 }
 
-
-get_MSdev_Inclusion_Queue <- function(object){
-
-  for (i in 0:1) {
-    polarity <-ifelse(i==0,"Negative","Positive")
-    polarity.tag <- paste0(polarity,"MS1")
-    xcms.xcms <- object@xcmsData[[polarity.tag]]
-    if (is.na(xcms.xcms)) {
-      next
-    }
-    feature.rsd <- get_features_from_xcms(xcms.xcms)@elementMetadata%>%as.data.frame()
-    feature.stat <- featureDefinitions_PeakSta(xcms.xcms)%>%
-      cbind(feature.rsd[,c("qc_rsd","sample_rsd","med_intensity")])
-    dda.mine.queue <- feature.stat%>%
-      dplyr::mutate( qc_rsd.score = (log(0.3)-log(qc_rsd)),
-                     MS1.score = qc_rsd.score*log10(peakMaxo)  )%>%
-      dplyr::arrange(-MS1.score)%>%
-      rownames_to_column("feature.id")%>%
-      dplyr::mutate(CE10=10,CE20=20,CE30=30,CE40=40,CE50=50)%>%
-      pivot_longer(CE10:CE50,names_to = "CE.tag",values_to = "collisionEnergy")%>%
-      dplyr::mutate(DDA.id= paste0(feature.id,"_",CE.tag),
-                    acquired =F,
-                    acquired.in.list = NA,
-                    queued.in.list = NA,
-                    queued.time = 0)
-
-    object@statData[[paste0("DDA_mine_queue_",polarity)]] <- dda.mine.queue
-    object@statData[[paste0("DDA_mine_list_",polarity)]] <- list()
-
-  }
-
-
-  object
-
-}
-
-get_MSdev_Inclusion_List <- function(object){
-
-  for (i in 0:1) {
-    polarity <-ifelse(i==0,"Negative","Positive")
-    DDA.queue <- object@statData[[paste0("DDA_mine_queue_",polarity)]]
-    if ( is.null(DDA.queue)) {
-      next
-    }
-    DDA.mine.list <-DDA.queue%>%
-      dplyr::ungroup()%>%
-      dplyr::filter(!acquired)%>%
-      dplyr::mutate(ion.cluster = cluster_ion(mzmed,
-                                              rtmed,
-                                              rt.tol = 60))%>%
-      dplyr::group_by(ion.cluster)%>%
-      dplyr::slice_max(MS1.score,n=1,with_ties =F)%>%
-      dplyr::ungroup()%>%
-      dplyr::slice_max(MS1.score,n=5000,with_ties =F)%>%
-      dplyr::mutate(feature.id = paste0(feature.id ,"_", CE.tag))
-
-    ### update list
-    queue.list <- object@statData[[paste0("DDA.mine.list.",polarity)]]
-    if (length(queue.list)) {
-
-      list.name =str_add( max(names(queue.list)),1)
-      queue.list <- append(queue.list,
-                            list( DDA.mine.list))
-      names(queue.list)[length(queue.list)] <-list.name
-
-    }else{
-      list.name <- "DDA.mine.list001"
-      queue.list <- list("DDA.mine.list001" = DDA.mine.list)
-
-    }
-    object@statData[[paste0("DDA.mine.list.",polarity)]] <-queue.list
-
-    DDA.mine.list.qe <- feature_def_to_QE_inclusion(DDA.mine.list,polarity = polarity)
-    write.csv(DDA.mine.list.qe,
-              file = paste0(object@projectInfo$projectDir,"/",
-                            list.name,".csv"))
-
-    ### update DDA.queue
-    DDA.queue <- DDA.queue %>%
-      dplyr::mutate(queued.in.list = case_when(
-        DDA.id %in% DDA.mine.list$feature.id ~ paste0(queued.in.list,";",list.name),
-        T~queued.in.list),
-        queued.time = case_when(
-          DDA.id %in% DDA.mine.list$feature.id ~ queued.time+1,
-          T~queued.time))
-    DDA.queue -> object@statData[[paste0("DDA.mine.queue.",polarity)]]
-
-  }
-
-
-  object
-
-}
-
-
-get_MSdev_MS2acquisitionStat <- function(object){
-
-  assign_ms2_list <- function(pmz,rt,ce ,il){
-
-    il %>%
-      dplyr::filter(abs(mzmed-pmz)/pmz < 1e-5,
-                    rtmed < rtmax,
-                    rtmed > rtmin,
-                    collisionEnergy==ce)%>%
-      dplyr::pull( DDA.id)->x
-    if (length(x)==0) {
-      return(NA)
-
-    }
-    return(paste0(x,collapse = ";"))
-
-  }
-
-  for (i in 0:1) {
-
-    polarity <-ifelse(i==0,"Negative","Positive")
-    DDA.queue <- object@statData[[paste0("DDA.mine.queue.",polarity)]]
-    if ( is.null(DDA.queue)) {
-      next
-    }
-    sample.info <- object@sampleInfo%>%
-      dplyr::filter(polarity %in% c(i,-1),
-                    msLevels %in% c(2))
-    xcms.xcms <- readMSData(sample.info$msData.files,mode = "onDisk")
-    xcms.scan <- get_xcms_scan_Stat(xcms.xcms)%>%
-      dplyr::filter(msLevel==2)%>%
-      dplyr::rowwise()%>%
-      dplyr::mutate(assigned.id = assign_ms2_list(pmz = precursorMZ,
-                                    rt = retentionTime,
-                                    ce = collisionEnergy,
-                                    il = DDA.queue))%>%
-      dplyr::filter(!is.na(assigned.id))%>%
-      dplyr::ungroup()
-    ms2.stat <- xcms.scan%>%
-      dplyr::ungroup()%>%
-      dplyr::group_by(fileIdx)%>%
-      dplyr::mutate(total.id = paste0(assigned.id,collapse = ";"))%>%
-      dplyr::distinct(fileIdx,total.id)%>%
-      dplyr::mutate(files = sampleNames(xcms.xcms)[fileIdx])
-
-    ms2.list <-lapply(ms2.stat$total.id,function(x){
-              strsplit(x,";")%>%unlist()
-            })
-    for (i in 1:length(ms2.list)) {
-      ids <- ms2.list[[i]]
-      a <-  ids%in% DDA.queue$DDA.id
-      DDA.queue <- DDA.queue%>%
-        dplyr::ungroup()%>%
-        dplyr::mutate(acquired = case_when(DDA.id %in% ids~T,
-                                           T~acquired),
-                      acquired.time = case_when(
-                        DDA.id %in% ids~paste0(acquired.time,
-                                               ";",sampleNames(xcms.xcms)[i]),
-                                                T~acquired.time))%>%
-        dplyr::ungroup()%>%
-        dplyr::mutate(fail.time = case_when(acquired~0,
-                                            T~queued.time))%>%
-        dplyr::group_by(feature.id)%>%
-        dplyr::mutate(
-          acquired = case_when(any(fail.time >3)~T,
-                                           T~acquired))
-
-    }
-
-    DDA.queue -> object@statData[[paste0("DDA.mine.queue.",polarity)]]
-
-
-
-  }
-
-
-  return(object)
-
-}
 
 
 
@@ -1750,7 +1583,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
 
     ### adjust
     feature.se <- se_adjuset_by_weight(feature.se)
-    feature.se <- DEP_impute_mean(feature.se)
+    #feature.se <- DEP_impute_mean(feature.se)
 
 
 
@@ -1796,9 +1629,11 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
       unique.score <- score*log10(intensity)
       unique.score
     }
+
     rda.filter <- rda%>%
       as.data.frame()%>%
-      dplyr::filter(#qc_rsd < QC_RSD,
+      dplyr::filter(qc_rsd < QC_RSD,
+                    score > 0.5,
                     !is.na(compound_id))%>%
       dplyr::group_by(inchikey)%>%
       dplyr::slice_max(.uniqueFeatures(score,peakMaxo))%>%
