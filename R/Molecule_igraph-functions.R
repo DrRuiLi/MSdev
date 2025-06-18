@@ -68,7 +68,7 @@ sdf_to_Molecule_igraph <- function(sdf,id ) {
 }
 
 
-get_Molecule_igraph_from_smiles <- function(smiles,id ="A",canonicalize= T) {
+get_Molecule_igraph_from_smiles <- function(smiles = "NCC(O)=O",id ="A",canonicalize= T) {
   sdf <- get_smiles_sdf(smiles,smiles.id = id,canonicalize = canonicalize)
   if (length(sdf)==1) sdf <- sdf[[1]]
   get_Molecule_igraph_from_sdf(sdf,id = id)
@@ -158,6 +158,7 @@ get_Molecule_igraph_MS1 <- function(Molecule_igraph,polarity=1,adduct = NULL){
   ### ms spectra
   {
 
+    data(element_table)
     mz.m0 <- MSCC::chemform_adduct(formula(Molecule_igraph),adduct = adduct)
     isotopomers.eles <- as.matrix(Molecule_igraph@isotopomer[,atom(Molecule_igraph)])
     ele.iso.diff <- make_vector(element_table$Mass_Dif,element_table$symbol)
@@ -195,6 +196,7 @@ get_Molecule_igraph_MS2 <- function(Molecule_igraph,cfmd){
     FG.map[FG.map>=0.5] <- 1
   }
 
+  data(element_table)
   isotopomers.eles <- as.matrix(Molecule_igraph@isotopomer[,atom(Molecule_igraph)])
   ele.iso.diff <- make_vector(element_table$Mass_Dif,element_table$symbol)
   isotopomers.mz.diff <- ele.iso.diff[isotopomers.eles]
@@ -328,8 +330,14 @@ Molecule_igraph_vis_format <- function(Molecule_igraph){
 #'
 get_Molecule_atom_transfer_by_atom_map <- function(mol.ig.from,
                                               mol.ig.to,
-                                              target_ele = element_table$element){
+                                              target_ele = "ANY"){
 
+
+  if (target_ele=="ANY") {
+
+    data(element_table)
+    target_ele <- element_table$element
+  }
 
   sdf.parent <- mol.ig.from@sdf
   sdf.product <- mol.ig.to@sdf
@@ -500,9 +508,15 @@ get_Molecule_atom_transfer_by_atom_map <- function(mol.ig.from,
 
 get_Reaction_atom_transfer_by_atom_map <- function(mol.ig.from,
                                                    mol.ig.to,
-                                                   target_ele = element_table$element,
+                                                   target_ele = "ANY",
                                                    equation){
 
+
+  if (target_ele=="ANY") {
+
+    data(element_table)
+    target_ele <- element_table$element
+  }
 
 
   ### atom index
@@ -556,8 +570,14 @@ get_Reaction_atom_transfer_by_atom_map <- function(mol.ig.from,
 
 get_Reaction_atom_transfer_by_RXNmapper <- function(mol.ig.from,
                                                     mol.ig.to,
-                                                    target_ele = element_table$element,
+                                                    target_ele = "ANY",
                                                     equation){
+
+  if (target_ele=="ANY") {
+    data(element_table)
+    target_ele <- element_table$element
+  }
+
 
   ### RXNmapper
   {
@@ -696,7 +716,14 @@ vis_Molecule_atom_transfer <- function(mat,id = 1,show_id = F){
 
 
 Molecule_atom_transfer_remove_duplicate <- function(mat,
-                                          target_ele = element_table$element){
+                                          target_ele = "ANY"){
+
+
+  if (target_ele=="ANY") {
+    data(element_table)
+    target_ele <- element_table$element
+  }
+
 
 
   ### filter target_ele

@@ -1,3 +1,9 @@
+#' MSIP_start_server
+#'
+#' @returns NULL
+#' @export
+#'
+#' @examples MSIP_start_server()
 MSIP_start_server <- function(){
 
 

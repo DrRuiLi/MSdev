@@ -30,9 +30,18 @@ setGeneric(
   }
 )
 
+#' atom
+#'
+#' @export
+#'
 setGeneric("atom",
            def = function(object,
-                          element = element_table$element){
+                          element = "ANY"){
+
+             if (element=="ANY") {
+               data(element_table)
+               element <- element_table$element
+             }
              rownames(atomblock(object))[bonds(object)$atom%in%element ]
            }
 )
@@ -42,3 +51,12 @@ setGeneric("element",
              bonds(object)$atom
            }
 )
+
+
+#' Example dataset: element_table
+#'
+#' This is a description of your dataset.
+#'
+#' @format A data frame with N rows and M columns.
+#' @source Simulated data.
+"element_table"

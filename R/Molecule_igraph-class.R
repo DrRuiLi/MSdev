@@ -84,7 +84,12 @@ setMethod(
 setMethod("atom",
           "Molecule_igraph",
           definition = function(object,
-                                element = element_table$element){
+                                element = "ANY"){
+
+            if (element=="ANY") {
+              data(element_table)
+              element <- element_table$element
+            }
             vdata(object)%>%
               dplyr::filter(element %in% !!element)%>%
               dplyr::pull(name)

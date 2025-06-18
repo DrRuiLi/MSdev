@@ -117,6 +117,7 @@ RXNMapper_mapped_rxn_parse <- function(rxn.result){
 
       ###
       {
+        data(element_table)
         spli.char <- element_table$element%>%
           setdiff("H")%>%
           union(c("c","n","o","s","p","b"))%>%
