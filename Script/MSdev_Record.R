@@ -2906,3 +2906,83 @@
 
 
 }
+
+# Thu Jun 19 15:16:10 2025 DDA Mine pos------------------------------
+{
+
+
+
+  ### run after QC FS, once
+  data.dir <- "d:/DDAmine/pos/data/"
+  msdev.qe <- MSdev(rawDataDir = data.dir)
+  msdev.qe <- MSdev_load("d:/DDAmine/pos/MSdev_2025_06_19.Rdata")
+  msdev.qe <- MSdev_msConvert(msdev.qe)
+  msdev.qe <- MSdev_xcmsProcessing(msdev.qe)
+
+  msdev.qe@statData <- list()
+  msdev.qe <- MSdev_get_Inclusion_Queue(msdev.qe)
+
+  ### run after every time DDA acquired
+  msdev.qe <- MSdev_get_Inclusion_List(msdev.qe)
+  msdev.qe <- MSdev_add_sample(msdev.qe,
+                               raw.data.dir = "d:/DDAmine/pos/data/")
+  msdev.qe <- MSdev_get_MS2acquisitionStat(msdev.qe)
+
+  table(msdev.qe@statData$DDA_mine_queue_Positive$acquired)
+
+
+
+
+}
+
+
+# Thu Jun 19 15:16:10 2025 DDA Mine neg------------------------------
+{
+
+
+
+  ### run after QC FS, once
+  data.dir <- "d:/DDAmine/neg/data/"
+  msdev.qe <- MSdev(rawDataDir = data.dir)
+  msdev.qe <- MSdev_load("d:/DDAmine/neg/MSdev_2025_06_19.Rdata")
+  msdev.qe <- MSdev_msConvert(msdev.qe)
+  msdev.qe <- MSdev_xcmsProcessing(msdev.qe)
+
+  msdev.qe@statData <- list()
+  msdev.qe <- MSdev_get_Inclusion_Queue(msdev.qe)
+
+  ### run after every time DDA acquired
+  msdev.qe <- MSdev_get_Inclusion_List(msdev.qe)
+  msdev.qe <- MSdev_add_sample(msdev.qe,raw.data.dir = "d:/DDAmine/neg/data/")
+  msdev.qe <- MSdev_get_MS2acquisitionStat(msdev.qe)
+
+  table(msdev.qe@statData$DDA_mine_queue_Negative$acquired)
+
+
+
+
+}
+
+# Thu Jun 19 22:25:32 2025 ------------------------------
+{
+
+  msdev.ddamine <- MSdev("d:/20250619_LR/data/")
+  msdev.ddamine <- MSdev_load("d:/20250619_LR/MSdev_2025_06_19.Rdata")
+  msdev.ddamine <- MSdev_msConvert(msdev.ddamine)
+  msdev.ddamine <- MSdev_checkSampleInfo(msdev.ddamine)
+  msdev.ddamine <- MSdev_xcmsProcessing(msdev.ddamine)
+  msdev.ddamine <- MSdev_extract_Spectra(msdev.ddamine)
+  msdev.ddamine <- MSdev_match_Spectra_to_feature(msdev.ddamine)
+  msdev.ddamine <- MSdev_annotation(
+    msdev.ddamine,
+    expand_adduct= T,
+    cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+
+  msdev.ddamine <- MSdev_get_Stat(msdev.ddamine)
+  MSdev_export(msdev.ddamine)
+  MSdev_save(msdev.ddamine)
+
+
+
+
+}

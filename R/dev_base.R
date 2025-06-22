@@ -142,6 +142,12 @@ open_MSIP <- function(){
 }
 
 
+open_MSIP_dir <- function(){
+
+  open_dir("C:/Users/91879/OneDrive/Code/R/data/MSIP_data")
+
+}
+
 #' split_df
 #' random split data.frame
 #'

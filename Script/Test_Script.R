@@ -1872,3 +1872,280 @@ a <- r_bg(func = function(){
   table(msdev.qe@statData$DDA_mine_queue_Positive$acquired)
 
 }
+# Sat Jun 21 17:05:31 2025 ------------------------------
+{
+
+
+  msdev.demo <- MSdev_extract_Spectra(msdev.demo)
+  msdev.demo <- MSdev_match_Spectra_to_feature(msdev.demo)
+  msdev.demo <- MSdev_annotation(
+    msdev.demo,
+    expand_adduct= T,
+    cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+
+  msdev.demo <- MSdev_get_Stat(msdev.demo)
+  MSdev_export(msdev.demo)
+  MSdev_save(msdev.demo)
+
+
+
+}
+
+# Sun Jun 22 14:04:02 2025 Compare ------------------------------
+{
+
+  msdev.dda <- MSdev_load("d:/20250619_LR/MSdev_2025_06_19.Rdata")
+  msdev.dda <- MSdev_checkSampleInfo(msdev.dda)
+  msdev.dda <- MSdev_update_xcms_pdata(msdev.dda)
+  msdev.dda <- MSdev_get_Stat(msdev.dda,candi = F)
+
+
+  msdev.demo <- load_demo()
+  msdev.demo <- MSdev_checkSampleInfo(msdev.demo)
+  msdev.demo <- MSdev_update_xcms_pdata(msdev.demo)
+  msdev.demo <- MSdev_get_Stat(msdev.demo,candi = F)
+
+
+
+
+  ### tic
+  {
+
+
+
+    p1 <- plot_xcms_TIC(msdev.dda@xcmsData$PositiveMS1,title = "Positive TOF6600")+theme(legend.position = "none")
+    p2 <- plot_xcms_TIC(msdev.demo@xcmsData$PositiveMS1,title = "Positive QE")+theme(legend.position = "none")
+
+    p <- p1/p2
+    open_plot_win(p)
+
+    p1 <- plot_xcms_TIC(msdev.dda@xcmsData$NegativeMS1,title = "Negative TOF6600")+theme(legend.position = "none")
+    p2 <- plot_xcms_TIC(msdev.demo@xcmsData$NegativeMS1,title = "Negative QE")+theme(legend.position = "none")
+    p <- p1/p2
+    open_plot_win(p)
+  }
+
+
+  ### FEATURE
+  {
+
+    cp.qe <- msdev.dda@statData$feature.se %>%rowData()
+    cp.qe <- cp.qe[which(cp.qe$qc_rsd < 0.3),]
+    cp.6600 <- msdev.demo@statData$feature.se %>%rowData()
+    cp.6600 <- cp.6600[which(cp.6600$qc_rsd < 0.3&cp.6600$peakMaxo > 1e3),]
+
+    match.df <-  match_mz_rt(mz1 = cp.qe$mzmed,
+                             rt1 = cp.qe$rtmed,
+                             mz2 = cp.6600$mzmed,
+                             rt2 = cp.6600$rtmed ,mz.ppm = 20,rt.tol = Inf )
+
+    overlap.id <- paste0("Overlap",num2str(1:nrow(match.df)))
+    qe.uid <- paste0("QE",setdiff(1:nrow(cp.qe),match.df$ion1))
+    tof.uid <- paste0("TOF",setdiff(1:nrow(cp.6600),match.df$ion2))
+
+    library(ggvenn)
+
+    p <- ggvenn(data = list("QE" =  c(qe.uid,overlap.id),
+                            "6600" =   c(tof.uid,overlap.id)),
+                fill_color = c("#E64B35",
+                               "#4DBBD5"),
+                show_outside =  "none",
+                stroke_color = "white")
+
+    open_plot_win(p,6,6)
+
+
+    cp.overlap <- match.df %>%
+      dplyr::mutate(log_int_QE = log10(cp.qe$peakMaxo)[ion1],
+                    log_int_6600 = log10(cp.6600$peakMaxo)[ion1])
+
+
+    p <- plot_cor_density(cp.overlap$log_int_QE,
+                     cp.overlap$log_int_6600,
+                     xlab = "Log10 intensity QE",
+                     ylab = "Log10 intensity 6600")
+
+
+    open_plot_win(p,5,5)
+
+
+    ### QE
+    {
+      cp.qe <- cp.qe%>%
+        dplyr::mutate(no = 1:n(),
+                      overlap = no%in% match.df$ion1,
+                      log_int = log10(peakMaxo))
+
+      p1 <- ggplot(cp.qe)+
+        geom_histogram(aes(x = log_int,colour = overlap),position = "dodge")
+
+      p2 <- ggplot(cp.qe)+
+        geom_histogram(aes(x = qc_rsd,colour = overlap),bins = 30,position = "dodge")
+
+      open_plot_win(p1/p2,8,8)
+
+
+
+    }
+
+
+
+  }
+
+
+  ### MS2
+  {
+
+    cp.qe <- msdev.dda@statData$feature.se %>%rowData()
+    cp.qe <- cp.qe[which(cp.qe$qc_rsd < 0.3),]
+    cp.6600 <- msdev.demo@statData$feature.se %>%rowData()
+    cp.6600 <- cp.6600[which(cp.6600$qc_rsd < 0.3&cp.6600$peakMaxo > 1e3),]
+
+    sum(lengths(cp.6600$score.ms2)==0)
+
+    data.frame(
+      MS2 = c(T,F),
+      count = c( sum(lengths(cp.6600$ms2_id)!=0),
+                 sum(lengths(cp.6600$ms2_id)==0))
+    )%>%
+      ggplot()+
+      geom_bar(aes(x = 1 , y = count,fill = MS2),stat = "identity",position = "stack")+
+      geom_text(aes(x = 1 , y = count * 0.8,label = count))+
+      coord_polar(theta = "y")+
+      scale_fill_npg()+
+      #labs(title = "6600")+
+      theme_void()->p1
+
+
+    data.frame(
+      MS2 = c(T,F),
+      count = c( sum(lengths(cp.qe$ms2_id)!=0),
+                 sum(lengths(cp.qe$ms2_id)==0))
+    )%>%
+      ggplot()+
+      geom_bar(aes(x = 1 , y = count,fill = MS2),stat = "identity",position = "stack")+
+      geom_text(aes(x = 1 , y = count * 0.8,label = count))+
+      coord_polar(theta = "y")+
+      scale_fill_npg()+
+      #labs(subtitle = "QE")+
+      theme_void()->p2
+
+    open_plot_win(p2/p1,5,10)
+
+
+    p1 <- plot_xcms_ms2_distribution(msdev.dda@xcmsData$NegativeMS1)
+    p2 <- plot_xcms_ms2_distribution(msdev.demo@xcmsData$NegativeMS1)
+    open_plot_win(p1/p2,10,10)
+  }
+
+
+  ### MS2 score
+  {
+
+    hist(x = cp.6600$score[which(cp.6600$score>0)])
+    hist(x = cp.qe$score[which(cp.qe$score>0)])
+
+
+
+
+  }
+
+  cp.qe <- msdev.dda@statData$feature.se %>%rowData()%>%as.data.frame()%>%
+    dplyr::filter(qc_rsd < 0.3,score > 0.6 )
+  cp.6600 <- msdev.demo@statData$feature.se %>%rowData()%>%as.data.frame()%>%
+    dplyr::filter(peakMaxo > 1e3,qc_rsd < 0.3,score > 0.6 )
+
+  length(intersect(cp.qe$compound_id,cp.6600$compound_id))
+
+  match.df <-  match_mz_rt(mz1 = cp.qe$mzmed,
+                           rt1 = cp.qe$rtmed,
+                           mz2 = cp.6600$mzmed,
+                           rt2 = cp.6600$rtmed,
+                           mz.ppm = 25,rt.tol = Inf )
+
+  overlap.id <- paste0("Overlap",num2str(1:nrow(match.df)))
+  qe.uid <- paste0("QE",setdiff(1:nrow(cp.qe),match.df$ion1))
+  tof.uid <- paste0("TOF",setdiff(1:nrow(cp.6600),match.df$ion2))
+
+  library(ggvenn)
+
+  p <- ggvenn(data = list("QE" =  c(qe.uid,overlap.id),
+                          "6600" =   c(tof.uid,overlap.id)),
+              fill_color = c("#E64B35",
+                             "#4DBBD5"),
+              show_outside =  "none",
+              stroke_color = "white")
+
+  p
+  open_plot_win(p,6,6)
+
+  cp.overlap <- cp.6600[match.df$ion2,]
+  cp.not <- cp.6600[-match.df$ion2,]
+
+
+  cp.overlap <- cp.qe[match.df$ion1,]%>%
+    dplyr::mutate(
+      kegg_id = case_when(
+        is.na(kegg_id)~cp.6600$kegg_id[match.df$ion2],
+        T~kegg_id)
+    )
+
+  cp.not <- cp.qe[-match.df$ion1,]
+
+  #cp.path <- MSdb::get_KEGG_compound_pathway_df()
+  cp.pathm <- cp.path%>%
+    dplyr::filter(grepl("Metabolism",CLASS))
+
+  sum(cp.overlap$kegg_id %in% cp.path$COMPOUND.ID)/nrow(cp.overlap)
+  sum(cp.not$kegg_id%in% cp.pathm$COMPOUND.ID)/nrow(cp.not)
+
+
+  {
+
+
+    data.frame(
+      include.in.KEGG = c(T,F),
+      count = c( sum(cp.overlap$kegg_id %in% cp.path$COMPOUND.ID),
+                 sum(!cp.overlap$kegg_id %in% cp.path$COMPOUND.ID))
+    )%>%
+      ggplot()+
+      geom_bar(aes(x = 1 , y = count,fill = include.in.KEGG),stat = "identity",position = "stack")+
+      geom_text(aes(x = 1 , y = count * 0.8,label = count))+
+      coord_polar(theta = "y")+
+      scale_fill_npg()+
+      #labs(title = "6600")+
+      theme_void()->p1
+
+
+    data.frame(
+      include.in.KEGG = c(T,F),
+      count = c( sum(cp.not$kegg_id%in% cp.pathm$COMPOUND.ID),
+                 sum(!cp.not$kegg_id%in% cp.pathm$COMPOUND.ID))
+    )%>%
+      ggplot()+
+      geom_bar(aes(x = 1 , y = count,fill = include.in.KEGG),stat = "identity",position = "stack")+
+      geom_text(aes(x = 1 , y = count * 0.8,label = count))+
+      coord_polar(theta = "y")+
+      scale_fill_npg()+
+      #labs(subtitle = "QE")+
+      theme_void()->p2
+
+    open_plot_win(p2/p1,5,7)
+  }
+
+
+  score.df <-
+    data.frame(
+      score =c(cp.overlap$score,cp.not$score),
+      overlap = c(rep(T,length(cp.overlap$score)),rep(F,length(cp.not$score)))
+    )
+  score.df$score <- score.df$score+rnorm(710,0,0.1)
+
+  ggplot(score.df)+
+    geom_histogram(aes( x = score,col = overlap),
+                   position = "dodge")
+
+
+
+
+}
