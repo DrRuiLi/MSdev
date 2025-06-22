@@ -40,12 +40,12 @@
         "\n",
         "Phase A : ",
         paste0(
-          str_c(phaseA$Concentration , phaseA$Compound, sep = " "),
+          stringr::str_c(phaseA$Concentration , phaseA$Compound, sep = " "),
           collapse = " + "
         ),
         "\nPhase B : ",
         paste0(
-          str_c(phaseB$Concentration , phaseB$Compound, sep = " "),
+          stringr::str_c(phaseB$Concentration , phaseB$Compound, sep = " "),
           collapse = " + "
         )
       )
@@ -182,7 +182,7 @@ show_MS_Exp_record <- function( i = "all"){
   if ( is.character(i)) {
     i <- which(MS_Experiment@General$MSE_id == i)
   }
-  if (is_empty(i) | i > length(MS_Experiment)) {
+  if (rlang::is_empty(i) | i > length(MS_Experiment)) {
     stop("Record not exist")
   }
   .plot_MS_Exp(MS_Experiment[i])
