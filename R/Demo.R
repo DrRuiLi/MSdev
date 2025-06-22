@@ -13,7 +13,7 @@ load_demo <- function(demo = c("MSdev",
          "Spectra" = "C:\\Users\\91879\\OneDrive\\Code\\R\\Projecct\\2022.1.8_MS.demo\\Demo/Spectra_2023_11_23.rda",
          "sp" = "C:\\Users\\91879\\OneDrive\\Code\\R\\Projecct\\2022.1.8_MS.demo\\Demo/Spectra_2023_11_23.rda"
          )
-  demo <- load_as_var(file_path)
+  demo <- MSdev_load(file_path)
 
   return(demo)
 }
