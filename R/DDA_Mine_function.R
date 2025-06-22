@@ -101,7 +101,8 @@ MSdev_get_MS2acquisitionStat <- function(object){
 
 
     idx.mz <- match_mz(pmz,il$mzmed,mz.ppm = 5)
-    rt.match <- between(rt, il$peakRtMin[idx.mz],il$peakRtMax[idx.mz])
+    rt.match <- between(rt, il$peakRtMin[idx.mz]-30,
+                        il$peakRtMax[idx.mz]+30)
 
     rt.match[!rt.match ] <-NA
     idx.mz[rt.match]

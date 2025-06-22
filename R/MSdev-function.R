@@ -349,7 +349,7 @@ get_MSdev_xcms_param_by_exp <- function(object){
 
   ### ppm
   cwp@ppm <- switch(MS.instru,
-                    "Q Exactive Plus" = 5,
+                    "Q Exactive Plus" = 10,
                     "TripleTOF 6600" = 25,
                     20)
 
@@ -364,7 +364,7 @@ get_MSdev_xcms_param_by_exp <- function(object){
                          "Thermo Quantis" = 0,
                          100)
   cwp@prefilter <- switch(MS.instru,
-                          "Q Exactive Plus" = c(5,5000),
+                          "Q Exactive Plus" = c(3,100),
                           "SCIEX TripleTOF 6600" = c(3,100),
                           "Thermo Quantis" = c(3,100),
                           c(3,100))
@@ -373,7 +373,7 @@ get_MSdev_xcms_param_by_exp <- function(object){
   {
     gpp <- xcms::PeakDensityParam(sampleGroups = "A",
                             bw = 10,
-                            minFraction = 0.7,
+                            minFraction = 0.6,
                             binSize = 0.015)
 
 
@@ -1531,7 +1531,8 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
   {
 
     sample.info <- object@sampleInfo%>%
-      dplyr::filter(polarity_paired|(!polarity_paired))
+      dplyr::filter(polarity_paired#|(!polarity_paired)
+                    )
     col.order <- sample.info%>%
       dplyr::distinct(sample.name)%>%
       dplyr::pull(sample.name)
@@ -1565,7 +1566,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
     ### sort colname
     rda <- rowData(feature.se)%>%
       as.data.frame()%>%
-      dplyr::select(feature_id,mzmed,rtmed,compound_id, adduct,mz_ref,rt_ref,score,qc_rsd,sample_rsd,peakMaxo,
+      dplyr::select(feature_id,mzmed,rtmed,compound_id, adduct,mz_ref,rt_ref,score,qc_rsd,sample_rsd,peakMaxo,#ms2_id,
                     candidate.id,candidate.adduct,candidate.mz,score.ms2)
 
     ### retrieve data
@@ -1595,15 +1596,15 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
   if (candi) {
     {
       candi.rda <- rda%>%
-        dplyr::mutate(candidate.n = sapply(candidate,length))
+        dplyr::mutate(candidate.n = sapply(candidate.id,length))
       candi.rda.split <- candi.rda[rep(candi.rda$feature_id,candi.rda$candidate.n),]%>%
         dplyr::group_by(feature_id)%>%
         dplyr::mutate(temp_id = 1:n())%>%
         dplyr::rowwise()%>%
-        dplyr::mutate(compound_id = candidate[[temp_id]],
+        dplyr::mutate(compound_id = candidate.id[[temp_id]],
                       adduct = candidate.adduct[[temp_id]],
                       mz_ref = candidate.mz[[temp_id]],
-                      score = candidate.score[[temp_id]])%>%
+                      score = score.ms2[[temp_id]])%>%
         dplyr::ungroup()
       cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
       db.info <- get_CompDb_info(compound_id = candi.rda.split$compound_id,

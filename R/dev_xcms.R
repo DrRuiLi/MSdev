@@ -1594,7 +1594,7 @@ plot_xcms_ms2_distribution <- function(xcms.xcms,plot.title = "MS2 Precursor dis
    dplyr::pull(retentionTime)
 
  ggplot(scan.data)+
-   geom_vline(xintercept = ms1.rt,linewidth = 0.05,col = "black")+
+   #geom_vline(xintercept = ms1.rt,linewidth = 0.05,col = "black")+
    geom_point(aes(x = retentionTime,y= precursorMZ,
                   col = log10(precursorIntensity)),
    )+
@@ -1612,7 +1612,7 @@ plot_xcms_ms2_distribution <- function(xcms.xcms,plot.title = "MS2 Precursor dis
    theme_bw()+
    theme(text = element_text(size = 8))->peaks.dis.plot
 
- open_ggplot_win(peaks.dis.plot,width = 25,height = 5)
+ open_plot_win(peaks.dis.plot,width = 25,height = 5)
  peaks.dis.plot
 }
 
@@ -1752,7 +1752,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   message(Sys.time()," Find peaks...")
   xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
                             param = xcms_param$findChromPeaks,
-                            BPPARAM  = BiocParallel::SnowParam(progressbar = T),...)
+                            BPPARAM  = BiocParallel::SerialParam(progressbar = T),...)
   xcms.xcms <- xcms_get_peak_fill(xcms.xcms)
   #mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
   #xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
@@ -1933,7 +1933,7 @@ xcms_get_scan_Stat <- function(xcms.xcms){
 
 
 
-plot_xcms_TIC <- function(xcms.xcms){
+plot_xcms_TIC <- function(xcms.xcms,title = "TIC"){
 
 
   xcms.pdata <- Biobase::pData(xcms.xcms)
@@ -1952,7 +1952,8 @@ plot_xcms_TIC <- function(xcms.xcms){
                   col = group,
                   group=fileIdx))+
     scale_color_manual(values = col.scale)+
-    labs(title = "TIC",x = "Retention Time", y = "Intensity", col = "")+
+    #scale_y_log10()+
+    labs(title = title,x = "Retention Time", y = "Intensity", col = "")+
     theme_classic()->p
   p
 
