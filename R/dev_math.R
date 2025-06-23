@@ -494,4 +494,6 @@ weighted_icc <- function(score_mat, weights) {
   return(icc)
 }
 
-
+rsd <- function(x, na.rm = TRUE) {
+   sd(x, na.rm = na.rm) / mean(x, na.rm = na.rm)
+}

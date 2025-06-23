@@ -702,5 +702,72 @@ get_CompDb_info <- function(cpdb,
 
 
 
+plot_MSdev_normalization <- function(object){
+
+  before_norm <- get_MSdev_DEP_se(object,"metabolite",F)
+  after_norm <- get_MSdev_DEP_se(object,"metabolite",T)
+
+  DEP::plot_normalization(before_norm,after_norm)
+
+}
 
 
+plot_MSdev_QC_RSD_hist <- function(object){
+
+  before_norm <- get_MSdev_DEP_se(object,"metabolite",F,QC_RSD = Inf)%>%
+    DEP_get_QC_RSD()%>%
+    rowData()%>%
+    as.data.frame()%>%
+    dplyr::mutate(norm = "Before Norm")%>%
+    dplyr::select(norm,qc_rsd)
+
+  after_norm <- get_MSdev_DEP_se(object,"metabolite",T,QC_RSD = 0.3)%>%
+    DEP_get_QC_RSD()%>%
+    rowData()%>%
+    as.data.frame()%>%
+    dplyr::mutate(norm = "After Norm")%>%
+    dplyr::select(norm,qc_rsd)
+
+  hist.data <- rbind(before_norm,after_norm)
+
+
+  ggplot(hist.data)+
+    geom_histogram(aes(x = qc_rsd ,
+                       fill = norm),#fill ="transparent",
+                   col = "black",
+                   position = position_dodge(),binwidth = 0.05,
+                   )+
+    scale_y_continuous(expand = expansion(0,0))+
+    xlim(c(0,1))+
+    labs(x = "QC RSD", y = "Feature Count", fill = "")+
+    theme_classic()
+
+
+}
+
+plot_MSdev_QC_RSD_CDF <- function(object){
+
+
+  before_norm <- get_MSdev_DEP_se(object,"metabolite",F,QC_RSD = Inf)%>%
+    DEP_get_QC_RSD()%>%
+    rowData()%>%
+    as.data.frame()%>%
+    dplyr::mutate(norm = "Before Norm")%>%
+    dplyr::select(norm,qc_rsd)
+
+  after_norm <- get_MSdev_DEP_se(object,"metabolite",T,QC_RSD = 0.3)%>%
+    DEP_get_QC_RSD()%>%
+    rowData()%>%
+    as.data.frame()%>%
+    dplyr::mutate(norm = "After Norm")%>%
+    dplyr::select(norm,qc_rsd)
+
+  cdf.data <- rbind(before_norm,after_norm)
+
+  ggplot(cdf.data)+
+    stat_ecdf(aes(x = qc_rsd,col = norm ))+
+    labs(x = "QC RSD", y = "Cumulative Probability", col = "")+
+    theme_classic()
+
+
+}

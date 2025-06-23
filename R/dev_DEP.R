@@ -642,16 +642,6 @@ DEP_pathway_enrich_gene <- function(data.se,
 
 }
 
-DEP_normalization <- function(data.se){
-
-  data_filt <- DEP::filter_missval(data.se,
-                                   thr = min(table(data.se$group))*0.3)
-  data_norm <- DEP::normalize_vsn(data_filt)
-  data_imp <- DEP::impute(data_norm, fun = "MinProb")
-  data_imp
-}
-
-
 se_adjuset_by_weight <- function(data.se){
 
   weight <- data.se$weight
@@ -723,13 +713,53 @@ DEP_impute_mean <- function(data.se){
   return(data.se)
 }
 
+DEP_filter_miss <- function(data.se,group.miss.ratio = 0.3 ){
 
-DEP_preprocess <- function(data.se){
 
-  data_filt <- DEP::filter_missval(data.se,
-                                   thr = min(table(cda$group))*0.3)
+  datam <- assay(data.se)
+
+  group <- data.se$group
+
+  split_mat <- split(seq_len(ncol(datam)), group)
+  split_list <- lapply(split_mat, function(cols) datam[, cols, drop = FALSE])
+  miss.ratio <- lapply(split_list,function(x){  apply(x,1,function(y) sum(is.na(y))/length(y)  )})
+
+  miss.ratio <- do.call(cbind,miss.ratio)
+  miss.ratio.min <- apply(miss.ratio,1,function(x) min(x))
+
+
+  data.se <- data.se[which(miss.ratio.min < group.miss.ratio),]
+
+  return(data.se)
+
+}
+
+DEP_filter_QC_RSD <- function(data.se,QC_RSD = 0.3){
+
+  rda <- rowData(data.se)
+  se <- data.se[which(rda$qc_rsd<QC_RSD),]
+
+  return(se)
+}
+
+
+DEP_get_QC_RSD <- function(data.se){
+
+  qc.se <- data.se[,data.se$group=="QC"]
+  rowData(data.se)$qc_rsd <- apply(2^assay(qc.se),1,rsd)
+  return(data.se)
+
+}
+
+
+DEP_preprocess <- function(data.se,group.miss.ratio =0.3,QC_RSD = 0.3){
+
+  #data_filt <- DEP::filter_missval(data.se, thr = min(table(cda$group))*0.3)
+  data_filt <- DEP_filter_miss(data.se, group.miss.ratio = group.miss.ratio)
+  data_filt <- DEP_filter_QC_RSD(data_filt, QC_RSD = QC_RSD)
   data_norm <- DEP::normalize_vsn(data_filt)
   data_imp <- DEP::impute(data_norm, fun = "MinProb")
 
   return(data_imp)
+
 }

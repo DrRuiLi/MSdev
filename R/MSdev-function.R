@@ -1622,9 +1622,9 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
 
 
 
-  ### filter metabolite
+  ###  metabolite
   {
-    ### RSD
+    ### select unique feature
     .uniqueFeatures <- function(score,intensity){
       score <- ifelse(score >0.3 , 10,1)
       unique.score <- score*log10(intensity)
@@ -1633,10 +1633,10 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
 
     rda.filter <- rda%>%
       as.data.frame()%>%
-      dplyr::filter(qc_rsd < QC_RSD,
-                    score > 0.5,
+      dplyr::filter(#qc_rsd < QC_RSD,
+                    #score > 0.5,
                     !is.na(compound_id))%>%
-      dplyr::group_by(inchikey)%>%
+      dplyr::group_by(compound_id)%>%
       dplyr::slice_max(.uniqueFeatures(score,peakMaxo))%>%
       ungroup()
 
@@ -1695,35 +1695,52 @@ MSdev_get_SE <- function(MSdev.obj){
 
 get_MSdev_DEP_se <- function(object,
                              from = c("feature.se",
-                                      "metabolite.se")){
+                                      "metabolite.se"),
+                             preprocess = T,...){
 
   from <- match.arg(from)
   data.se <- object@statData[[from]]
 
-  sampleinfo <- object@sampleInfo
-  ### col
-  cda <- colData(data.se)%>%
-    as.data.frame()%>%
-    dplyr::mutate(group = sampleinfo$group[match(sample.name,sampleinfo$sample.name)],
-                  condition = group,
-                  sample.labels = sampleinfo$sample.labels[match(sample.name,sampleinfo$sample.name)],
-                  label =sample.labels)%>%
-    dplyr::group_by(condition)%>%
-    dplyr::mutate(replicate = 1:n(),
-                  ID = paste0(condition,num2str(1:n())))
-  rownames(cda) <- cda$ID
-  colData(data.se) <- cda%>%S4Vectors::DataFrame()
+  ### format to DEP
+  {
 
-  ### row
-  rda <- rowData(data.se)%>%
-    as.data.frame()%>%
-    dplyr::mutate( label = name,
-                   name = feature_id,
-                   ID= feature_id)
-  rowData(data.se) <- rda%>%S4Vectors::DataFrame()
 
-  assay(data.se) <- log2(assay(data.se))
+    sampleinfo <- object@sampleInfo
+    ### col
+    cda <- colData(data.se)%>%
+      as.data.frame()%>%
+      dplyr::mutate(group = sampleinfo$group[match(sample.name,sampleinfo$sample.name)],
+                    condition = group,
+                    sample.labels = sampleinfo$sample.labels[match(sample.name,sampleinfo$sample.name)],
+                    label =sample.labels)%>%
+      dplyr::group_by(condition)%>%
+      dplyr::mutate(replicate = 1:n(),
+                    ID = paste0(condition,num2str(1:n())))%>%
+      dplyr::ungroup()%>%
+      as.data.frame()
+    rownames(cda) <- cda$ID
+    colData(data.se) <- cda%>%S4Vectors::DataFrame()
 
+    ### row
+    rda <- rowData(data.se)%>%
+      as.data.frame()%>%
+      dplyr::mutate( label = name,
+                     name = feature_id,
+                     ID= feature_id)
+    rowData(data.se) <- rda%>%S4Vectors::DataFrame()
+
+    assay(data.se) <- log2(assay(data.se))
+  }
+
+
+  ### pre process
+  {
+    if (preprocess) {
+      data.se <- DEP_preprocess(data.se,...)
+
+    }
+
+  }
 
   return(data.se)
 }
@@ -1819,6 +1836,8 @@ MSdev_get_feature_chrom <- function(object,feature.list =NULL){
                                          workers  = min(snowWorkers(), length(fileNames(xcms.xcms))),
                                          progressbar = T)
                                        )
+    xcms.chrom <- onDiskData(xcms.chrom,
+                             path = paste0(object@projectInfo$projectDir,"/",pol,"_Chromatograms.rds"))
     #featureValues( xcms.chrom ,value = "maxo")
     #rownames(xcms.chrom) <- fid
     object@xcmsData[[paste0(pol,"_Chromatograms")]] <- xcms.chrom

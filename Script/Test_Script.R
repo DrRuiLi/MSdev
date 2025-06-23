@@ -2149,3 +2149,17 @@ a <- r_bg(func = function(){
 
 
 }
+
+# Sun Jun 22 19:51:04 2025 Quality------------------------------
+{
+
+  msdev.demo <- load_demo()
+
+
+  msdev.demo <- MSdev_get_Stat(msdev.demo)
+  se <- get_MSdev_DEP_se(msdev.demo)
+
+  plot
+
+
+}

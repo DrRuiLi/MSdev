@@ -2984,5 +2984,12 @@
 
 
 
+  msdev.demo <- MSdev_get_Stat(msdev.demo)
+  plot_MSdev_normalization(msdev.demo)
+  plot_MSdev_QC_RSD_CDF(msdev.demo)
+  plot_MSdev_QC_RSD_hist(msdev.demo)
+
+
+
 
 }
