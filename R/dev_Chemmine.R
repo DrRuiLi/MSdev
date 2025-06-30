@@ -664,4 +664,23 @@ MF2 <- function (x, ...){
 
 
 
+format_isotopologue <- function(x,
+                                format = c("number","M","M+")){
+
+  if (format == "+") format <- "M+"
+  format <- match.arg(format,c("number","M","M+"))
+  x <- str_extract_num(x)
+
+  switch(
+    format,
+    "number" = x,
+    "M" = paste0("M",x),
+    "M+" = paste0("M+",x)
+
+  )
+
+
+
+}
+
 

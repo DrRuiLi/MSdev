@@ -440,7 +440,7 @@ plot_Spectra_Mirror<- function(sp1,sp2,show.label = "rtime"){
                                  label = format(mz,digit = 4,nsmall = 4)),
                              size =2,
                              col = "#00000088",
-                             segment.size = 0.1,
+                             #segment.size = 0.1,
                              data = label.df)+
     scale_color_manual(values = c(`FALSE` = "grey",`TRUE` = "#80B1D3"))+
     scale_alpha_manual(values = c(`FALSE` = 0,`TRUE` =1))+
@@ -489,7 +489,7 @@ plot_Spectra<- function(sp,label.top = 10){
                                  label = format(mz,digit = 4,nsmall = 4)),
                              size =2,
                              col = "#00000088",
-                             segment.size = 0.1,
+                            # segment.size = 0.1,
                              data = label.df)+
     scale_color_manual(values = c(`FALSE` = "grey",`TRUE` = "#80B1D3"))+
     scale_alpha_manual(values = c(`FALSE` = 0,`TRUE` =1))+
@@ -510,7 +510,7 @@ plot_Spectra_quality <- function(sp){
 
   plot_Spectra(sp)+
     geom_hline(yintercept = sp$noise,col = "grey")+
-    labs(subtitle  = paste0("Pre.int: ",format(precursorIntensity(sp),digit = 3,sci = T) ,"\n",
+    labs(subtitle  = paste0("Pre.int: ",format(Spectra::precursorIntensity(sp),digit = 3,sci = T) ,"\n",
                            "TIC: ", format(sp$totIonCurrent,digit = 3,sci = T) ,"\n",
                            "Base.int: ", format(sp$basePeakIntensity,digit = 3,sci = T),"\n",
                            "Noise: ", format(sp$noise,digit = 3,sci = T),"\n",
@@ -564,7 +564,7 @@ plot_Spectra_CE<-function(sp){
                                  label = format(mz,digit = 4,nsmall = 4)),
                              size =2,
                              col = "#00000088",
-                             segment.size = 0.1,
+                             #segment.size = 0.1,
                              data = label.df)+
     scale_color_manual(values = col.list)+
     scale_y_continuous(expand = expansion(0,0),lim = c(0,ymax.abs*1.05))+
@@ -617,6 +617,7 @@ plot_Spectra_product_CE_curve <- function(sp){
     geom_point()+
     geom_smooth(formula = y~x,method = "loess")+
     scale_color_random()+
+    #scale_y_log10()+
     labs(x = "Collision Energy",y = "Intensity normalized to Precursor",
          col = "Product mz")+
     guides(col = guide_legend(ncol = 3))+
@@ -647,7 +648,7 @@ plot_Spectra_RT<-function(sp){
                   y = y+ystep,
                   yend = yend + ystep,
                   rtime= factor(rtime))%>%
-    dplyr::mutate(groupMz(mz))%>%
+    dplyr::mutate(groupMz(mz,return.type = "data.frame"))%>%
     dplyr::group_by(mz.group)%>%
     dplyr::mutate( highlight = length(unique(rtime)) <
                      length(levels(rtime))*0.5,
@@ -673,7 +674,7 @@ plot_Spectra_RT<-function(sp){
                                  label = format(mz,digit = 4,nsmall = 4)),
                              size =2,
                              col = "#00000088",
-                             segment.size = 0.1,
+                             #segment.size = 0.1,
                              data = label.df)+
     scale_color_manual(values = col.list)+
     scale_y_continuous(expand = expansion(0,0),lim = c(0,ymax.abs*1.05))+
@@ -751,19 +752,19 @@ plot_Spectra_Precursor_Int <- function(sp,
     geom_point(aes(x = x, y = yend , alpha = matched,col = matched),
                show.legend = F,size = 0.5)+
     geom_hline(
-      yintercept =precursorIntensity(sp)*precursor.ratio
+      yintercept =Spectra::precursorIntensity(sp)*precursor.ratio
       #yintercept = median(sp.data$intensity)
                )+
     geom_text(aes(x = quantile(range(x),0.9),
                   y = quantile(range(yend),0.9),
-                  label = format(precursorIntensity(sp),
+                  label = format(Spectra::precursorIntensity(sp),
                                  digit = 3,scientific=T)),
               check_overlap = T)+
     ggrepel::geom_text_repel(aes(x = x, y = yend ,
                                  label = format(mz,digit = 4,nsmall = 4)),
                              size =2,
                              col = "#00000088",
-                             segment.size = 0.1,
+                             #segment.size = 0.1,
                              data = label.df)+
     scale_color_manual(values = c(`FALSE` = "grey",`TRUE` = "#80B1D3"))+
     scale_alpha_manual(values = c(`FALSE` = 0,`TRUE` =1))+
@@ -845,9 +846,9 @@ load_Spectra <- function(file) {
 
 plot_Spectra_Injection <- function(sp){
 
-  sp.data <- spectraData(sp)%>%as.data.frame()
+  sp.data <- Spectra::spectraData(sp)%>%as.data.frame()
   ggplot(sp.data)+
-    geom_point(aes(x = log10(precursorIntensity),
+    geom_point(aes(x = log10(Spectra::precursorIntensity),
                    y = log10(totIonCurrent),
                    col = injectionTime),
                shape = 19,
@@ -984,7 +985,7 @@ plotly_Spectra <- function(sp,label.top = 10){
 
   label.to.show <- paste0(
     "precursorMz = ", round(precursorMz(sp),digits = 4),"\n",
-    "precursorIntensity = ", format(precursorIntensity(sp),digits = 3,sci=T),"\n",
+    "precursorIntensity = ", format(Spectra::precursorIntensity(sp),digits = 3,sci=T),"\n",
     "collisionEnergy = ", (collisionEnergy(sp)),"\n"
   )
 

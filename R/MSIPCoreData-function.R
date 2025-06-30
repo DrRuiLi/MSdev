@@ -1439,6 +1439,36 @@ Spectra_calculate_fragment_iso_ratio <- function(sp){
 
 
 
+Spectra_filter_cfm_annotated <- function(sp){
+
+
+  pds <- peaksData(sp)
+  anno.idx <- lapply(sp$fragment_group,function(x){which(!is.na(x))})
+
+  pds2 <- lapply(seq_along(pds),function(i){ pds[[i]][anno.idx[[i]],,drop = F] })
+  sp@backend@peaksData <- pds2
+
+
+  sp$fragment_group <- lapply(seq_along(pds),function(i){ sp$fragment_group [[i]][anno.idx[[i]]] })
+  sp$iso_count <- lapply(seq_along(pds),function(i){  sp$iso_count[[i]][anno.idx[[i]]] })
+  sp$fragment_group_mz <- lapply(seq_along(pds),function(i){  sp$fragment_group_mz[[i]][anno.idx[[i]]] })
+  sp$fragment_group_int_sum <- lapply(seq_along(pds),function(i){  sp$fragment_group_int_sum[[i]][anno.idx[[i]]] })
+  sp$fragment_group_ratio <- lapply(seq_along(pds),function(i){  sp$fragment_group_ratio[[i]][anno.idx[[i]]] })
+
+  return(sp)
+}
+
+Spectra_get_totIonCurrent <- function(sp){
+
+  ints <- Spectra::intensity(sp)
+  tic <- sapply(ints,sum)
+  sp$totIonCurrent <- tic
+  return(sp)
+
+}
+
+
+
 get_Spectra_fg_ratio_se <- function(sp,iso_count_max = 3){
 
 
@@ -1455,14 +1485,14 @@ get_Spectra_fg_ratio_se <- function(sp,iso_count_max = 3){
       names(fg.r) <- fg.f
       fg.r <- na.omit(fg.r)
       fg.r <-sapply(split(fg.r,names(fg.r )),sum)
-
+      if(!length(fg.r)) fg.r <- setNames(NA,"EMPTY_SP")
       return(fg.r)
 
 
     })
 
     fragment_group_ratio_matrix <- do.call(bind_rows,fragment_group_ratio_matrix)%>%as.matrix()
-
+    fragment_group_ratio_matrix <- fragment_group_ratio_matrix[,colnames(fragment_group_ratio_matrix)!="EMPTY_SP",drop = F]
     rownames(fragment_group_ratio_matrix) <- sp$sp_id
 
 
@@ -1482,6 +1512,7 @@ get_Spectra_fg_ratio_se <- function(sp,iso_count_max = 3){
       names(fg.r) <- fg.f
       fg.r <- na.omit(fg.r)
       fg.r <-sapply(split(fg.r,names(fg.r )),sum)
+      if(!length(fg.r)) fg.r <- setNames(NA,"EMPTY_SP")
 
       return(fg.r)
 
@@ -1489,6 +1520,7 @@ get_Spectra_fg_ratio_se <- function(sp,iso_count_max = 3){
     })
 
     fragment_group_int_sum_matrix <- do.call(bind_rows,fragment_group_int_sum_matrix)%>%as.matrix()
+    fragment_group_int_sum_matrix <- fragment_group_int_sum_matrix[,colnames(fragment_group_int_sum_matrix)!="EMPTY_SP",drop = F]
 
     rownames(fragment_group_int_sum_matrix) <- sp$sp_id
 
@@ -1700,7 +1732,7 @@ get_MSIPFragmentMap <- function(sp,
 
 
   fg.map@FG.atom.matrix <- frag.atom.matrix[fg.data$fragment_group,]
-  fg.map@FG.ratio.matrix <- assay(fg.se)[fg.data$fragment_group,]
+  fg.map@FG.ratio.matrix <- assay(fg.se)[fg.data$fragment_group,,drop = F]
   fg.map@FG.data <- fg.data
 
   return(fg.map)
@@ -1713,4 +1745,66 @@ get_MSIPFragmentMap <- function(sp,
 }
 
 
+plot_MSIPCore_result <- function(msip.core){
+
+
+  solve.data <- data.frame(
+    is = names(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set),
+    Prob =msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob
+  )
+
+  is.data <- solve.data%>%
+    dplyr::filter(Prob > 0.01)
+  isotopomers.idx <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set[is.data$is]
+
+  plot.data <- lapply(isotopomers.idx,function(idx){
+    isotopomer.name <- sapply(msip.core@solve$MSIPIsotopomerMap@isotopomer.defination[idx],
+                              function(x){
+                                paste0(x,collapse = ",")
+                              })
+    data.frame(   isotopomer.name = isotopomer.name  )
+  })%>%
+    data.table::rbindlist(idcol = "is")%>%
+    dplyr::group_by(is)%>%
+    dplyr::mutate(prob = is.data$Prob[match(is,is.data$is)] ,
+                  w = case_when(n()==1 ~ 0.4,
+                                T~ 0.5))%>%
+    dplyr::ungroup()%>%
+    dplyr::arrange(desc(prob))%>%
+    dplyr::mutate(isotopomer.name=
+                    factor(isotopomer.name,level = isotopomer.name),
+                  x = 1:n(),
+                  xmin = x-w,
+                  xmax = x+w,
+                  ymin = 0 ,
+                  ymax = prob)%>%
+    dplyr::group_by(is)%>%
+    dplyr::mutate(xmin = min(xmin),
+                  xmax = max(xmax))%>%
+    dplyr::ungroup()
+  plot.data
+
+
+
+
+  p <- ggplot(plot.data)+
+    #geom_bar(aes(x = isotopomer.name  ,
+    #             y = prob,
+    #             fill = is),
+    #         width = 1,col = "black",
+    #         stat = "identity")+
+    geom_rect(aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax,fill = is), col = "black") +
+    ggsci::scale_fill_npg()+
+    scale_x_continuous(breaks = plot.data$x,labels = plot.data$isotopomer.name)+
+    ylim(c(0,1))+
+    labs(y = "Probability",x = NULL,fill = "FSIS")+
+    theme_classic()+
+    theme(#legend.position = "inside",
+          axis.text.x = element_text(angle = -45,hjust = 0),
+          legend.position.inside = c(0.7,0.8))
+  p
+  #open_plot_win(p,5,3)
+
+
+}
 

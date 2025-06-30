@@ -786,7 +786,7 @@ MSIP_update_compoundDB_from_interest_list <- function(){
 
 
 
-MSIP_solve_computation_evaluate <- function(object,
+get_MSIP_solve_computation_evaluate <- function(object,
                                             include.merged = F,
                                             show_message = F){
 
@@ -1271,6 +1271,7 @@ MSIP_get_Molecule_igraph<- function(object){
 
         isotopomers.ele <- lapply(isotopomers.ele,function(x){make_vector("[13]C",x)})
         for (ii in seq_along(isotopomers.ele)) {
+          #message(ii)
           mol.ig <- Molecule_igraph_add_isotopomer(
             mol.ig,
             iso_vec = isotopomers.ele[[ii]],
@@ -1296,3 +1297,166 @@ MSIP_clear_previous_data <- function(object){
   object@statData$MSIP$isotopologues_data <- list()
   return(object)
 }
+
+
+
+Report_MSIP <- function(object,
+                        file = "C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Figure/MSIP_Result_Report.pdf"){
+
+
+
+  ### chroms
+  {
+    chroms.list <- object@xcmsData[c("Negative_Chromatograms",
+                                "Positive_Chromatograms")]%>%
+      lapply(function(x){
+
+        x <- onDiskData_retrieve(x)
+       # pol <- ifelse(polarity(x)==0,"Negative","Positive")
+       # rownames(x) <- paste0( featureDefinitions(x)$feature_id,"_", pol)
+        return(x)
+      })
+
+
+   # chroms <- rbind(chroms.list[[1]],
+   #                 chroms.list[[2]])
+
+
+  }
+
+  comp.eval <- get_MSIP_solve_computation_evaluate(object )
+
+  comp.eval <- comp.eval%>%
+    dplyr::filter(solved,iso_count > 0)
+
+
+  {
+    file.remove(file)
+    for (i in 1:nrow(comp.eval)) {
+
+      ### retrieve data
+      {
+
+        this.fid <- comp.eval$feature_id[i]
+        this.sample <- comp.eval$samples[i]
+        this.isotopologue <- comp.eval$iso_count[i]
+
+        this.data <- object@statData$MSIP$isotopologues_data[[this.fid]]
+
+
+        this.cfmd <- this.data$CFM_annotation
+        this.msip.core <- this.data$MSIP_result[[format_isotopologue(this.isotopologue,"M")]][[this.sample]]
+        this.sp <-this.msip.core@Spectra_data
+        this.mz <- this.data$compound_info$mz + 1.003355484 * this.isotopologue
+
+
+        this.cp.name <- this.data$compound_info$name
+        this.title <- paste0(this.cp.name,", ",
+                             format_isotopologue(this.isotopologue,"+"),", ",
+                             this.sample)
+
+        this.subtitle <- paste0(this.data$compound_info$adduct,",",
+                                "mz = ",str_digit(this.mz,5))
+
+
+      }
+
+
+      ### Chrom + MS2 Acq
+      {
+        this.chroms <- chroms.list[[this.data$compound_info$polarity+1]]
+        this.chrom <- this.chroms[match(sub(x= this.fid,pattern = "_Negative|_Positive",""),featureDefinitions(this.chroms)$feature_id),]
+
+
+
+        p.chrom <- plot_XChromatograms(this.chrom,
+                                       color_f = pData(this.chrom)$sample.source,
+                                       norm = F,move = F)+
+          geom_vline(xintercept = this.data$compound_info$rt,
+                     linewidth = 5,
+                     col = "grey",alpha = 0.5)
+
+
+        this.sp.temp <- Spectra_filter_cfm_annotated(this.sp)%>%
+          Spectra_get_totIonCurrent()
+        ms2.acq <- Spectra::spectraData(this.sp.temp   )%>%
+          as.data.frame()
+
+        p.chrom+
+          geom_line(data = ms2.acq,
+                    aes(x = rtime ,
+                        y = totIonCurrent ,
+                        group = collisionEnergy,
+                    ),col = "grey")+
+          geom_point(data = ms2.acq,
+                     aes(x = rtime ,
+                         y = totIonCurrent ,
+                         fill = collisionEnergy),
+                     pch = 21)+
+          xlim(this.data$compound_info$rt+c(-60,60))+
+          scale_fill_gradient(low = "orange", high = "red")+
+          labs(title = this.title,subtitle = this.subtitle)+
+          scale_y_log10()+
+          theme(legend.position = "nonde")-> p.chrom.acq
+
+
+
+      }
+
+      ### Spectra
+      {
+
+        sp.temp <- filterSpectraIntensity(this.sp,ratio = 0.01)%>%
+          Spectra::filterIntensity(intensity = 1e3)
+        p.sp.ce <- plot_Spectra_CE(sp.temp)+
+          theme(legend.position = "none")
+
+      }
+
+      ### Fragment
+      {
+
+        p.sp.fg <- plot_MSIPCore_spectra_consistency_hm(this.msip.core)
+
+
+
+      }
+
+      ### Isotopomer result
+      {
+        p.isotopomer <- plot_MSIPCore_result(this.msip.core)+
+          labs(title = this.title,subtitle = this.subtitle)
+
+
+      }
+
+
+      ### Molecule igraph
+      {
+        this.mig <- get_Molecule_igraph_from_smiles(this.data$compound_info$smiles,canonicalize = F)
+        this.mig <- this.cfmd@fragment_sdf@SDF[[1]]%>%get_Molecule_igraph_from_sdf()
+        p.mig <- plot_Molecule_igraph(this.mig,show_id = T,size = 2)
+
+      }
+
+
+      ### export
+      {
+
+
+        p1 <- p.chrom.acq/p.sp.ce
+        export_graph2pdf(p1,file_path = file,append = T,width = 5,height = 6)
+
+        export_graph2pdf(p.sp.fg,file_path = file,append = T,width = ncol(p.sp.fg@matrix)*0.2+2,height = 6)
+
+        p3 <- p.mig+p.isotopomer+plot_layout(widths = c(2,1))
+        export_graph2pdf(p3,file_path = file,append = T,width = 15,height = 6)
+      }
+    }
+  }
+
+
+}
+
+
+

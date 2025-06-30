@@ -101,11 +101,9 @@ Molecule_igraph_add_isotopomer <- function(
   isotopologue <- paste0("M",isotopologue)
   isotopomer.df <- Molecule_igraph@isotopomer
   if (is.null(isotopomer)){
-    i <- 1
-    while(paste0(isotopologue,"_",i) %in% isotopomer.df$isotopomer){
-      i <- i+1
-    }
-    isotopomer <- paste0(isotopologue,"_",i)
+
+    isotopomer <- setdiff(paste0(isotopologue,"_",seq_along(isotopomer.df$isotopomer)),
+                         isotopomer.df$isotopomer)[1]
   }
   to.add <- data.frame(isotopomer = isotopomer,
                        isotopologue = isotopologue,
@@ -898,6 +896,19 @@ is_labeled <- function(mol.ig,target_ele = "C"){
 }
 
 
+plot_Molecule_igraph <- function(mol.ig,show_id = F,size = 2){
 
 
+  tpf <- tempfile(fileext = ".html")
+  vis <- vis_Molecule_igraph(mol.ig,show_id = show_id)
+  saveWidget(vis, tpf, selfcontained = TRUE)
+  #open_file(tpf)
+
+  tpfpng <- tempfile(fileext = ".png")
+  webshot(tpf, tpfpng,quiet = T)
+  #open_file(tpfpng)
+
+  ggplot_from_img(tpfpng,size = size)
+
+}
 

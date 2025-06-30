@@ -1969,7 +1969,7 @@ plot_xcms_adjustedRT <- function(xcms.xcms){
     dplyr::mutate(injection_order = 1:n())
   xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
   xcms.scan <- xcms.scan%>%
-    dplyr::mutate(adrt = adjustedRtime(xcms.xcms),
+    dplyr::mutate(adrt = xcms::adjustedRtime(xcms.xcms),
                   group = xcms.pdata$group[fileIdx],
                   injection_order = xcms.pdata$injection_order[fileIdx])%>%
     dplyr::filter(msLevel==1)

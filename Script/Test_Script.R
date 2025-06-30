@@ -2163,3 +2163,25 @@ a <- r_bg(func = function(){
 
 
 }
+
+# Tue Jun 24 12:41:18 2025 Get MSIP report------------------------------
+{
+
+  Report_MSIP(msip.pdh.test)
+
+
+  vis <- vis_Molecule_igraph(mig)
+
+
+  # 1. Create and save interactive plot as HTML
+  tpf <- tempfile(fileext = ".html")
+  saveWidget(vis, tpf, selfcontained = TRUE)
+  #open_file(tpf)
+  # 2. Capture it as image or PDF
+  tpfpng <- tempfile(fileext = ".png")
+  webshot(tpf, tpfpng, vwidth  = 1000, zoom = 10)
+  open_file(tpfpng)
+
+  ggplot_from_img(tpfpng,size = 1)
+
+}
