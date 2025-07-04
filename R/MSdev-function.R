@@ -1,6 +1,12 @@
 
 
-#' MSdev_save
+#' @title MSdev input and output
+#' @description
+#' save `MSdev` using `qs::qsave()` and  qs::qread()`
+#'
+#' @describeIn MSdev_IO MSdev_save
+#'
+#' this function ....
 #'
 #' @param object MSdev
 #'
@@ -18,6 +24,15 @@ MSdev_save <- function(object){
   invisible(MSdev)
 }
 
+
+
+#' @describeIn MSdev_IO load
+#'
+#' @param file_to_load file path
+#'
+#' @returns MSdev
+#' @export
+#'
 MSdev_load <- function(file_to_load){
 
   qs::qread(file_to_load)
@@ -106,7 +121,7 @@ MSdev_get_MSinfo <- function(object){
 }
 
 
-#' MSdev_add_sample
+#' @describeIn MSdev_workflow add samples
 #'
 #' @param object MSdev
 #' @param raw.data.dir file path
@@ -144,7 +159,7 @@ MSdev_add_sample <- function(object,
 }
 
 
-#' MSdev_xcmsProcessing
+#' @describeIn MSdev_workflow use xcms to Processing data
 #'
 #' @param object  MSdev
 #' @param ...
@@ -593,8 +608,8 @@ dropSpectra <- function(object){
 }
 
 
-#' @title getStaDataMSdev
-#'
+
+#' getStaDataMSdev
 #' @param object MSdev
 #' @param MSDB.keys keys
 #'
@@ -921,8 +936,7 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 
 
 
-#' Title
-#'
+#' plot_MSdev_feature_spectrum
 #' @param MSdev.obj MSdev
 #' @param feature_id feature_id
 #'
@@ -1062,7 +1076,7 @@ export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
 
 
 
-#' @title get_MS_sampleinfo
+#' get_MS_sampleinfo
 #' @description read in ms raw data from `object@projectInfo$msDataDir`
 #' and generate a table `sampleInfo`
 #' note this function read in file according to their file names, those contaion both "pos" and "neg"
@@ -1170,7 +1184,6 @@ get_MS_sampleinfo <- function(raw.data.dir,
 
 
 #' MSdev_xcms_group_features
-#'
 #' @param object MSdev
 #' @param diffRt 30
 #' @param intCor NULL
@@ -1179,7 +1192,6 @@ get_MS_sampleinfo <- function(raw.data.dir,
 #'
 #' @return MSdev
 #' @export
-#'
 #'
 MSdev_xcms_group_features <- function(object,
                                       diffRt = 5,
@@ -1217,8 +1229,8 @@ MSdev_xcms_group_features <- function(object,
 
 
 
-#' check SampleInfo in excel
-#' @description manually check sampleInfo using excel
+#' @describeIn MSdev_workflow manually check sampleInfo using excel
+#'
 #' @param object a `MSdev` object
 #'
 #' @return MSdev a `MSdev` object
@@ -1247,7 +1259,9 @@ MSdev_checkSampleInfo <- function(object){
 
 
 
-#' @title msConvert_MSdev
+#' @describeIn MSdev_workflow convert raw files
+#'
+#'
 #'
 #' @param object
 #'
@@ -1312,9 +1326,8 @@ MSdev_msConvert<- function(object,format.to = "mzML"){
 
 
 
-#' MSdev_extract_Spectra
-#' @description
-#' Extract all spectra, split to MS1 and MS2, store as `onDiskData`
+#' @describeIn MSdev_workflow  Extract all spectra, split to MS1 and MS2, store as `onDiskData`
+#'
 #'
 #' @param object  MSdev
 #'
@@ -1322,6 +1335,7 @@ MSdev_msConvert<- function(object,format.to = "mzML"){
 #' @export
 #'
 MSdev_extract_Spectra <- function(object,
+                                  rt.tol = 10,
                                   eval.noise = F,
                                   eval.ms1 = F){
 
@@ -1384,7 +1398,7 @@ MSdev_extract_Spectra <- function(object,
   ### assign to feature
   {
 
-    object <-  MSdev_match_Spectra_to_feature(object)
+    object <-  MSdev_match_Spectra_to_feature(object,rt.tol = rt.tol)
   }
 
 
@@ -1393,7 +1407,7 @@ MSdev_extract_Spectra <- function(object,
 }
 
 
-#' MSdev_match_Spectra_to_feature
+#' @describeIn MSdev_workflow assign Spectra to feature
 #'
 #' @param object MSdev
 #'
@@ -1453,12 +1467,12 @@ MSdev_match_Spectra_to_feature <- function(object,
 }
 
 #' MSdev annotation
+#' @describeIn MSdev_workflow annotation
 #'
 #' @param object MSdev
 #' @param db.path CompoundDB
 #' @param ...
 #'
-#' @return MSdev
 #' @export
 #'
 
@@ -1507,7 +1521,8 @@ MSdev_annotation <- function(object,
 }
 
 
-#' MSdev_get_Stat
+#'
+#' @describeIn MSdev_workflow
 #'
 #' extract data from xcms
 #' retrieve compound info from CompDB
