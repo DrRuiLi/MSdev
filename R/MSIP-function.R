@@ -1245,8 +1245,7 @@ get_MSIP_weight_fun <- function(object){
 
 
 
-
-MSIP_get_Molecule_igraph<- function(object){
+get_MSIP_Molecule_igraph<- function(object,fraction = 0.001){
 
   isotopologues_datas <- object@statData$MSIP$isotopologues_data
   dm <- list(names(isotopologues_datas),unique(object@sampleInfo$sample.source))
@@ -1268,8 +1267,15 @@ MSIP_get_Molecule_igraph<- function(object){
         isotopomers.ele <- msip.core@solve$MSIPIsotopomerMap@isotopomer.defination
         isotopomers.prob <- msip.core@solve$MSIPIsotopomerMap@isotopomer.probability
         isotopomers.abundance <- isotopomers.prob * ratio_matrix[k,j]
+        ### fliter
+        {
 
+          idx.filt <- which(isotopomers.abundance > fraction)
+          isotopomers.ele <- isotopomers.ele[idx.filt]
+          isotopomers.abundance <- isotopomers.abundance[idx.filt]
+        }
         isotopomers.ele <- lapply(isotopomers.ele,function(x){make_vector("[13]C",x)})
+
         for (ii in seq_along(isotopomers.ele)) {
           #message(ii)
           mol.ig <- Molecule_igraph_add_isotopomer(
@@ -1433,7 +1439,7 @@ Report_MSIP <- function(object,
 
       ### Molecule igraph
       {
-        this.mig <- get_Molecule_igraph_from_smiles(this.data$compound_info$smiles,canonicalize = F)
+        this.mig <- get_Molecule_igraph_from_smiles(this.data$compound_info$smiles)
         this.mig <- this.cfmd@fragment_sdf@SDF[[1]]%>%get_Molecule_igraph_from_sdf()
         p.mig <- plot_Molecule_igraph(this.mig,show_id = T,size = 2)
 

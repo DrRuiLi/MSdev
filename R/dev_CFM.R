@@ -1480,6 +1480,7 @@ get_CFM_data_from_smiles <- function(smiles = "NCC(O)=O",
                                      temp_dir = tempdir(),
                                      ...){
   if(check_temp){
+    if (!dir.exists(temp_dir)) dir.create(temp_dir,recursive = T,showWarnings = F)
     temp_file <- paste0(temp_dir,"/",compound_id,"_",adduct,".rds")
     if(file.exists(temp_file)){
       message_with_time("loading from temp:",temp_file)

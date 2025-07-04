@@ -75,6 +75,11 @@ get_Molecule_igraph_from_smiles <- function(smiles = "NCC(O)=O",id ="A",canonica
 }
 
 
+get_Molecule_igraph_from_cfmd <- function(cfmd,fragment.id = 1){
+
+  cfmd@fragment_igraph[[fragment.id]]
+}
+
 #'  Add isotopomer
 #' @describeIn Molecule_igraph Add isotopomer
 #'

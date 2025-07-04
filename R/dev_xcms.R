@@ -1752,7 +1752,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   message(Sys.time()," Find peaks...")
   xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
                             param = xcms_param$findChromPeaks,
-                            BPPARAM  = BiocParallel::SerialParam(progressbar = T),...)
+                            BPPARAM  = BiocParallel::SnowParam(workers = 4,progressbar = T),...)
   xcms.xcms <- xcms_get_peak_fill(xcms.xcms)
   #mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
   #xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,

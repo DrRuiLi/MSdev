@@ -2185,3 +2185,28 @@ a <- r_bg(func = function(){
   ggplot_from_img(tpfpng,size = 1)
 
 }
+
+# Mon Jun 30 09:12:42 2025 ------------------------------
+{
+
+  msip.pdh.test <- MSdev_load(
+    "C:/Users/91879/OneDrive/Code/R/data/MSIP_data/250610_FS_U13C/MSdev_2025_06_13.Rdata"
+  )
+
+  library(xcms)
+
+  xcms.xcms <- readMSData("d:/250701-MSIP-PDH/data/msData/blank01.mzML",mode = "onDisk")
+  xcms.scan <- get_xcms_scan_Stat(xcms.xcms )
+
+  xcms.xcms <- readMSData("d:/250701-MSIP-PDH/data/msData/blank02.mzML",mode = "onDisk")
+  xcms.scan <- get_xcms_scan_Stat(xcms.xcms )
+
+  xcms.xcms <- readMSData("d:/250701-MSIP-PDH/data/msData/blank03.mzML",mode = "onDisk")
+  xcms.scan <- get_xcms_scan_Stat(xcms.xcms )
+
+  xcms.xcms <- readMSData("d:/250701-MSIP-PDH/data/msData/Con_FS_pos_neg_01.mzML",mode = "onDisk")
+  xcms.scan <- get_xcms_scan_Stat(xcms.xcms )
+
+  edit_df_in_excel(xcms.scan)
+
+}
