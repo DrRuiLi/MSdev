@@ -117,7 +117,7 @@ analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group){
 #' @export
 #'
 
-analyzePathwayHyperTest <- function(kegg.id){
+analyzePathwayHyperTest <- function(kegg.id = "C00024"){
 
   kegg.pathway <- MSdb::get_KEGG_pathway()
   kegg.pathway.compound <- MSdb::get_KEGG_compound_pathway_df()
@@ -438,9 +438,9 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
 
 plotPathwayEnrichment <- function(pathway.table,top = 20 , method = "set1",title= NULL){
 
-if (!"diff"%in%colnames(pathway.table)) {
-  pathway.table$diff <- "NA"
-}
+  if (!"diff"%in%colnames(pathway.table)) {
+    pathway.table$diff <- "NA"
+  }
   pathway.table <- pathway.table%>%
     dplyr::group_by(diff)%>%
     dplyr::arrange(-p.value)%>%
@@ -536,6 +536,52 @@ if (!"diff"%in%colnames(pathway.table)) {
     p
     return(p)
 
+  }
+
+
+  if (method == "path_classify1"){
+
+    plot.data <- pathway.table%>%
+      dplyr::mutate(
+        class1 = sub(";.*", "", pathway.class),
+        class2 = sub(".*?; \\s*", "", pathway.class)
+      )%>%
+      dplyr::filter(p.value < 0.05,Hit > 0 )
+
+    title.df <-
+      data.frame(
+        pathway.name = unique(plot.data$class1),
+        class1 = unique(plot.data$class1)
+      )
+    cols <- make_vector(ggsci::pal_npg()(5),name = title.df$class1)
+    plot.data1 <- bind_rows(plot.data , title.df )%>%
+      dplyr::mutate(   )%>%
+      dplyr::arrange( class1 , Hit)%>%
+      dplyr::mutate( pathway.name = factor(pathway.name , levels = pathway.name),
+                     col = cols[class1],
+                     col = case_when( pathway.name == class1 ~"black",
+                                T ~ col),
+                     fs = case_when( pathway.name == class1 ~12,
+                                     T ~ 8) )
+
+    ggplot(plot.data1)+
+      geom_bar(aes( x = Hit, y = pathway.name , fill = class1), color = "white", stat = "identity" )+
+      geom_text(aes( x = Hit+0.32, y = pathway.name , label = Hit),fontface = "bold")+
+      ggsci::scale_fill_npg()+
+      labs(x = "Number of Metabolites", y = "")+
+      theme_bw()+
+      theme(
+        legend.position = "node",
+        panel.grid = element_blank(),
+        axis.text.x = element_text(face = "bold"),
+        axis.title.x = element_text(face = "bold"),
+        axis.text.y = element_text(colour = plot.data1$col,
+                                   face = "bold",
+                                   size =plot.data1$fs )
+      )->p
+
+    #open_plot_win(p , 7,10)
+    return(p)
   }
 
 

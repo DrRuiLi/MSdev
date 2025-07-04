@@ -2210,3 +2210,19 @@ a <- r_bg(func = function(){
   edit_df_in_excel(xcms.scan)
 
 }
+
+# Fri Jul  4 14:30:15 2025 LE Pathway------------------------------
+{
+
+  temp.data <- readxl::read_excel("d:/temp/7600_Premier_WYF_Lipid Annotation.xlsx")
+  kegg.id <- temp.data$`KEGG ID`
+  kegg.id <- kegg.id%>%na.omit()%>%
+    sapply(function(x) strsplit(x,"\\|"))%>%
+    unlist()%>%unique
+
+  pathway.table <- analyzePathwayHyperTest(kegg.id)
+  p <- plotPathwayEnrichment(pathway.table,method = "path_classify1",top = 300)
+  open_plot_win(p , 7,10)
+
+
+}
