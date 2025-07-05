@@ -436,6 +436,22 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
 
 }
 
+#' @title Bioinformatic analysis
+#' @describeIn MSdev_Bioinfo plotPathwayEnrichment
+#'
+#' @param pathway.table table from`analyzePathwayGlobalTest()` or `analyzePathwayHyperTest()`
+#' @param top top n
+#' @param method plot style
+#' @param title title of ggplot
+#'
+#' @returns ggplot
+#' @export
+#'
+#' @examples
+#' ### pathway analysis
+#' path <- analyzePathwayHyperTest()
+#' p <- plotPathwayEnrichment(path)
+#'
 plotPathwayEnrichment <- function(pathway.table,top = 20 , method = "set1",title= NULL){
 
   if (!"diff"%in%colnames(pathway.table)) {
