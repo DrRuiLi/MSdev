@@ -26,13 +26,13 @@ DEP_list_contrast <- function(data.se){
 #' @return se
 #'
 
-DEP_add_rejections <- function(data.se , p.adjust = T,lfc = 0.5){
+DEP_add_rejections <- function(data.se , p.adjust = T, p = 0.05,lfc = 0.5){
 
   if (any(grepl(pattern = "significant",names(data.se@elementMetadata@listData)))) {
     message("significant existed, skip")
     data.diff <- data.se
   }else{
-    data.diff <- DEP::add_rejections(data.se , alpha = 0.05 ,lfc )
+    data.diff <- DEP::add_rejections(data.se , alpha = p ,lfc )
   }
 
   data.diff <- DEP_p_adjust(data.diff)
@@ -42,7 +42,7 @@ DEP_add_rejections <- function(data.se , p.adjust = T,lfc = 0.5){
       n.sig <- grep(paste0("^",i,"_significant$"),names(data.diff@elementMetadata@listData))
       data.diff@elementMetadata@listData[["significant"]]<-
         data.diff@elementMetadata@listData[[n.sig]] <-
-        (data.diff@elementMetadata@listData[[paste0(i,"_p.adj")]] < 0.05 &
+        (data.diff@elementMetadata@listData[[paste0(i,"_p.adj")]] < p  &
            abs(data.diff@elementMetadata@listData[[paste0(i,"_diff")]]) > lfc)
 
     }
@@ -54,7 +54,7 @@ DEP_add_rejections <- function(data.se , p.adjust = T,lfc = 0.5){
       n.sig <- grep(paste0("^",i,"_significant$"),names(data.diff@elementMetadata@listData))
       data.diff@elementMetadata@listData[["significant"]]<-
         data.diff@elementMetadata@listData[[n.sig]] <-
-        (data.diff@elementMetadata@listData[[paste0(i,"_p.val")]] < 0.05 &
+        (data.diff@elementMetadata@listData[[paste0(i,"_p.val")]] < p  &
            abs(data.diff@elementMetadata@listData[[paste0(i,"_diff")]]) > lfc)
 
     }
@@ -116,6 +116,20 @@ DEP_test_diff <- function(data.se,type = "all",...){
 #
   #}
   data.diff
+}
+
+
+DEP_filter_significant <- function(data.se,contrast = DEP_list_contrast(data.se )[1]){
+
+
+  rd <- rowData(data.se)%>%
+    as.data.frame()
+  idx <- rd[,paste0(contrast,"_significant")]
+  data.se[idx,]
+
+
+
+
 }
 
 DEP_get_diff_table <- function(data.se,
@@ -495,7 +509,10 @@ DEP.plot.heatmap <- function(data.se,
 
 
 
-DEP_plot_heatmap <- function(data.se){
+DEP_plot_heatmap <- function(data.se,
+                             show_row_names = T,
+                             show_row_dend = F,
+                             show_column_dend = F){
 
 
 
@@ -514,7 +531,10 @@ DEP_plot_heatmap <- function(data.se){
 
 
 
-  plotHeatmap(heatmap.matrix,col.info,row.info)
+  plotHeatmap(heatmap.matrix,col.info,row.info,
+              show_row_names = show_row_names,
+              show_row_dend = show_row_dend,
+              show_column_dend = show_column_dend)
 
 
 
@@ -548,7 +568,6 @@ DEP_export_data <- function(data.se,file_path){
 DEP_plot_PCA <- function(data.se,
                          col.group =NULL,
                          showlabel = F){
-
   se.coldata <- colData(data.se)%>%
     as.data.frame()
   pca.matrix <- assay(data.se)%>%
@@ -736,6 +755,7 @@ DEP_filter_miss <- function(data.se,group.miss.ratio = 0.3 ){
 
 DEP_filter_QC_RSD <- function(data.se,QC_RSD = 0.3){
 
+  if (is.infinite(QC_RSD)) return(data.se)
   rda <- rowData(data.se)
   se <- data.se[which(rda$qc_rsd<QC_RSD),]
 
@@ -763,3 +783,35 @@ DEP_preprocess <- function(data.se,group.miss.ratio =0.3,QC_RSD = 0.3){
   return(data_imp)
 
 }
+
+
+DEP_plot_normalization <- function (se, ...)
+{
+  call <- match.call()
+  arglist <- lapply(call[-1], function(x) x)
+  var.names <- vapply(arglist, deparse, character(1))
+  arglist <- lapply(arglist, eval.parent, n = 2)
+  names(arglist) <- var.names
+  lapply(arglist, function(x) {
+    assertthat::assert_that(inherits(x, "SummarizedExperiment"),
+                            msg = "input objects need to be of class 'SummarizedExperiment'")
+    if (any(!c("label", "ID", "condition", "replicate") %in%
+            colnames(colData(x)))) {
+      stop("'label', 'ID', 'condition' and/or 'replicate' ",
+           "columns are not present in (one of) the input object(s)",
+           "\nRun make_se() or make_se_parse() to obtain the required columns",
+           call. = FALSE)
+    }
+  })
+  gather_join <- function(se) {
+    assay(se) %>% data.frame() %>% gather(ID, val) %>% left_join(.,
+                                                                 data.frame(colData(se)), by = "ID")
+  }
+  df <- map_df(arglist, gather_join, .id = "var") %>% mutate(var = factor(var,
+                                                                          levels = names(arglist)))
+  ggplot(df, aes(x = ID, y = val, fill = condition)) + geom_boxplot(notch = TRUE,
+                                                                    na.rm = TRUE) + coord_flip() + facet_wrap(~var, ncol = 1) +
+    labs(x = "", y = expression(log[2] ~ "Intensity")) +
+    theme_DEP1()
+}
+
