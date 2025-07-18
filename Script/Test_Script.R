@@ -2226,3 +2226,299 @@ a <- r_bg(func = function(){
 
 
 }
+
+# Wed Jul  9 17:09:54 2025 fix ondisk------------------------------
+{
+
+  x <- msdev.13C1@xcmsData$Positive_Chromatograms
+  x.data <- read_rds(x@path)
+  x <- onDiskData_update(x,x.data)
+
+  a <- onDiskData_retrieve(x)
+  Report_MSIP(msdev.13C1,"d:/temp/a.pdf")
+
+  get_MSIP_Molecule_igraph()
+
+
+  generate_isotopomer_matrix <- function(atom.count = 10,
+                                         labeled.count = "all") {
+
+
+    n <- 2^m
+    mat <- matrix(1L, nrow = n, ncol = m)
+    size_of(mat)
+    for (i in 1:m) {
+      repeat_size <- 2^(m - i)
+      mat[, i] <- rep(rep(c(0L, 1L), each = repeat_size), times = 2^(i - 1))
+    }
+    #size_of(mat)
+    #rownames(mat) <- apply(mat, 1, paste0, collapse = "")
+    return(mat)
+  }
+
+
+  library(Matrix)
+  library(combinat)  # for combn if not using base utils
+
+  generate_isotopomer_fixed_labels <- function(m, n) {
+    if (n > m || n < 0) stop("n must be between 0 and m")
+
+    combos <- combn(m, n)
+    total <- ncol(combos)
+
+    i <- rep(1:total, each = n)
+    j <- as.vector(combos)
+
+    sparse_mat <- Matrix::sparseMatrix(
+      i = i,
+      j = j,
+      x = 1L,
+      dims = c(total, m),
+      dimnames = list(NULL, paste0("C", seq_len(m)))
+    )
+
+    mat <- matrix(0L, nrow = total, ncol = m)
+    for (i in seq_len(total)) {
+      mat[i, combos[, i]] <- 1L
+    }
+    # Optional: add row names as binary strings
+    rownames(sparse_mat) <- apply(as.matrix(sparse_mat), 1, paste0, collapse = "")
+
+    return(sparse_mat)
+  }
+
+
+
+  system.time(a <- generate_isotopomer_matrix(20))
+  system.time(b <- generate_isotopomer_matrix_sparse(20))
+  size_of(a)
+  size_of(b)
+
+}
+
+# Sun Jul 13 12:28:33 2025 china map------------------------------
+{
+
+  library(ggplot2)
+  library(dplyr)
+  library(sf)
+  library(chinamap)
+  library(rnaturalearth)
+
+  # 获取中国地图（省级）
+  china_map <- ne_states(country = "china", returnclass = "sf")
+
+  # 查看省份名
+  unique(china_map$province)
+
+
+  sample_data <- data.frame(
+    province = c("北京", "上海", "广东", "山东"),
+    count = c(12, 30, 85, 54)
+  )
+  china_map2 <- merge(china_map, sample_data, by = "province", all.x = TRUE)
+  china_map2$count[is.na(china_map2$count)] <- 0  # 无数据的设为0
+
+  ggplot(china_map2) +
+    geom_sf(aes(fill = count), color = "white") +
+    scale_fill_gradient(low = "lightyellow", high = "red") +
+    theme_minimal() +
+    labs(title = "中国各省样本数分布", fill = "样本数")
+
+  hchinamap(name = chinadf$name, value = chinadf$value, region = "Anhui")
+
+
+}
+# Mon Jul 14 15:33:06 2025 XChromatograms test------------------------------
+{
+
+  b <- this.chroms
+  system.time( a <- b[1:5,])
+  bfd <- featureDefinitions(b)
+  bfd[,which(sapply(bfd@listData,class)=="list")] <- NULL
+  b@featureDefinitions <- bfd
+  system.time( a <- b[1:5,])
+
+
+
+}
+# Fri Jul 18 14:25:05 2025 ------------------------------
+{
+  msd <- load_demo()
+
+  mat <- matrix(rnorm(2,0),nrow = 1)
+  row.names(mat) <- "C00022"
+  #colnames(mat) <- letters[1:5]
+  plot_cpd_pathview(cpd = mat,
+                    pathway.id = "hsa00010",
+                    dir.to.save = "d:/temp/")
+
+  pathview::pathview(
+    cpd.data = "C00022",
+    pathway.id = "hsa00010",
+    kegg.dir = "D:/pathview/"
+    )
+
+  {#load data
+    data(gse16873.d)
+    data(demo.paths)
+
+    #KEGG view: gene data only
+    i <- 1
+    pv.out <- pathview(cpd.data = cpd,
+                       pathway.id = "hsa00010",
+                       kegg.dir = tempdir(),
+                       species = "hsa", out.suffix = "gse16873",
+                       kegg.native = TRUE)
+    str(pv.out)
+    head(pv.out$plot.data.gene)
+    #result PNG file in current directory
+
+    #Graphviz view: gene data only
+    pv.out <- pathview(gene.data = gse16873.d[, 1], pathway.id =
+                         demo.paths$sel.paths[i], species = "hsa", out.suffix = "gse16873",
+                       kegg.native = FALSE, sign.pos = demo.paths$spos[i])
+    #result PDF file in current directory
+
+    #KEGG view: both gene and compound data
+    sim.cpd.data=sim.mol.data(mol.type="cpd", nmol=3000)
+    i <- 3
+    print(demo.paths$sel.paths[i])
+    pv.out <- pathview(gene.data = gse16873.d[, 1], cpd.data = sim.cpd.data,
+                       pathway.id = demo.paths$sel.paths[i], species = "hsa", out.suffix =
+                         "gse16873.cpd", keys.align = "y", kegg.native = TRUE, key.pos = demo.paths$kpos1[i])
+    str(pv.out)
+    head(pv.out$plot.data.cpd)
+
+    #multiple states in one graph
+    set.seed(10)
+    sim.cpd.data2 = matrix(sample(sim.cpd.data, 18000,
+                                  replace = TRUE), ncol = 6)
+    pv.out <- pathview(gene.data = gse16873.d[, 1:3],
+                       cpd.data = sim.cpd.data2[, 1:2], pathway.id = demo.paths$sel.paths[i],
+                       species = "hsa", out.suffix = "gse16873.cpd.3-2s", keys.align = "y",
+                       kegg.native = TRUE, match.data = FALSE, multi.state = TRUE, same.layer = TRUE)
+    str(pv.out)
+    head(pv.out$plot.data.cpd)}
+
+}
+
+# Fri Jul 18 14:52:15 2025 From ME------------------------------
+{
+
+
+
+
+  msdev <- MSdev_get_Stat(msdev,
+                          score_thresh  = 0.1)
+  nrow(msdev@statData$metabolite.se)
+
+  ### data format
+  {
+    data.file <- "d:/temp/Lipidomics Result_THX_20250711.xlsx"
+    sample.info <- readxl::read_excel(data.file,sheet = "sample.info")
+    data <- readxl::read_excel(data.file,sheet = "data",skip = 1)
+
+    col.data <- sample.info%>%
+      dplyr::mutate(label = sample.name,
+                    sample.labels = label,
+                    condition = group,
+                    replicate = 1:n())
+    row.data <- data%>%
+      dplyr::mutate(
+        feature_id = paste0("FT",  num2str(1:n())),
+        id = feature_id,name = feature_id,
+                    label = Name,
+                    kegg_id =`KEGG ID`)
+
+    data_unique <- make_unique(row.data, "id", "id", delim = ";")
+    se <- make_se(data_unique,
+                  match(col.data$sample.name,colnames(data_unique)), col.data)
+
+  }
+
+
+  ### analyze
+  {
+
+    proj.dir <- "D:/DEP.test"
+    data.se <- se
+    data.se <- DEP_get_QC_RSD(data.se)
+    #data.se <- data.se[,grepl(data.se$group,pattern = "Tumor") ]
+    #p.pca <- DEP_plot_PCA(data.se)
+    #export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),     width = 3,height = 3)
+
+
+
+    ### sampXHL_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank","A0")]
+    data.se <- DEP_preprocess(data.se)
+    data.diff <- DEP_test_diff(data.se,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all",show.label = T)
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+   # open_plot_win(p.diff,10,10)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    data.diff <- DEP_test_diff(data.se)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+
+    ### heatmap
+    {
+      data.diff <- DEP_test_diff(data.se,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p = 0.05, p.adjust = T)
+      DEP_list_contrast(data.diff)
+      data.diff <- DEP_filter_significant(data.diff,
+                                          contrast = DEP_list_contrast(data.diff)[2])
+      hm <- DEP_plot_heatmap(data.diff)
+      hm
+      export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 6,height = 60,append = T)
+
+    }
+
+
+    ### pathway
+    {
+      data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
+      p.list <- lapply(names(data.path),
+                       function(x){
+                         p <- plotPathwayEnrichment(data.path[[x]],
+                                                    method = "class",title  = x)
+                       })
+      p <- ggplot_sum_patchwork(p.list)+
+        patchwork::plot_layout(ncol = 2)
+      export_graph2pdf(p ,
+                       paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 20,height = 10,append = T)
+      xlsx.write.list(
+        data.path,
+        file  = paste0(proj.dir,"/Statistic/pathway.xlsx")
+      )
+
+    }
+  }
+
+
+}
+
+
+# Fri Jul 18 16:46:00 2025 DEP------------------------------
+{
+
+
+  DEP_plot_normalization(filt, norm)
+
+}

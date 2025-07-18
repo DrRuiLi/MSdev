@@ -2829,7 +2829,9 @@
     msdev.XHL,
     expand_adduct= T,
     cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
-  msdev.XHL <- MSdev_get_Stat(msdev.XHL,QC_RSD = Inf)
+  msdev.XHL <- MSdev_get_Stat(msdev.XHL,
+                              QC_RSD = Inf,rt_bin = 30,
+                              score = 0.5)
   MSdev_export(msdev.XHL)
   MSdev_save(msdev.XHL)
 

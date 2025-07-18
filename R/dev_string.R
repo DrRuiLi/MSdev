@@ -50,7 +50,7 @@ groupStringFactor <- function(x){
 
   ### letter
  # x.new <- c(x.con,sort(x.other))
-  factor(x,levels = unique(x.new))
+  factor(x,levels = rev(unique(x.new)))
 }
 
 

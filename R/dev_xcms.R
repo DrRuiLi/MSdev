@@ -810,7 +810,10 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
     is_labeled <- apply(xcms.ratio.to.seed,1,function(x){
       any(x[sample.source.iso] > mean( x[sample.source.uniso],na.rm = T),na.rm =T)
     })
-
+    if(length(sample.source.uniso)==0) {
+      message("There are no un-traced samples, cant determine labeled features")
+      is_labeled <- NA
+    }
   }
 
 
@@ -837,6 +840,14 @@ get_xcms_isotopologues_report <- function(xcms.xcms){
 }
 
 
+#' get_xcms_iso_fraction
+#' @describeIn xcms_isotope calculate fraction of isotopic feature to seed feature, return the fraction matrix without natural adjust
+#'
+#' @param xcms.xcms xcms obj
+#'
+#' @returns matrix
+#' @export
+#'
 get_xcms_iso_fraction <- function(xcms.xcms){
 
 

@@ -136,7 +136,7 @@ open_script <- function(){
 }
 
 open_MSIP <- function(){
-  msip.file <- "c:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/main_workflow.R"
+  msip.file <- "c:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Workflow.2025.07.09.R"
   rstudioapi::documentOpen(msip.file)
   return(msip.file)
 }
@@ -337,6 +337,5 @@ rm_except <- function(..., env = parent.frame()) {
     rm(list = rm_vars, envir = env)
   }
 }
-
 
 
