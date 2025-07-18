@@ -102,13 +102,16 @@ check_smile <- function(smile){
 
 }
 
-get_sdf_formula <- function(sdf){
+get_sdf_formula <- function(sdfs){
 
-  sdf.checked <- check_sdf(sdf)
-  sdf.formula <- character()
-  sdf.formula[sdf.checked] <- MF2(sdf[sdf.checked],addH=T)
-  sdf.formula <- MSCC::chemform_formate(sdf.formula)
-  return(sdf.formula)
+  if (class(sdfs)=="SDF"    ) {
+    sdfs <- ChemmineR::SDFset(list(sdfs))
+  }
+  sdfs.checked <- check_sdf(sdfs)
+  sdfs.formula <- character()
+  sdfs.formula[sdfs.checked] <- MF2(sdfs[sdfs.checked],addH=T)
+  sdfs.formula <- MSCC::chemform_formate(sdfs.formula)
+  return(sdfs.formula)
 }
 
 #' get_smile_sdf
@@ -665,18 +668,17 @@ MF2 <- function (x, ...){
 
 
 format_isotopologue <- function(x,
-                                format = c("number","M","M+")){
-
+                                format = c("number","M","M+","+")){
+  format <- match.arg(format)
   if (format == "+") format <- "M+"
   format <- match.arg(format,c("number","M","M+"))
   x <- str_extract_num(x)
-
+  if(!length(x)) return(NULL)
   switch(
     format,
     "number" = x,
     "M" = paste0("M",x),
     "M+" = paste0("M+",x)
-
   )
 
 

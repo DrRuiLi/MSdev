@@ -292,20 +292,24 @@ get_MSIPIsotopomerMap <- function(MSIPCoreData){
       message_with_time("Isotopomers too many: ",format(1236547889,sci = T,digits = 2),", solve cancel")
       return(MSIPIsotopomerMap)
     }
-    isotopomer <- combn(colnames(frag.atom.matrix),frag.max.iso,simplify = F)
-    names(isotopomer) <- paste0("isotopomer_",num2str(1:length(isotopomer)))
+
+    isotopomer <- get_isotopomer_atom_matrix( ncol(frag.atom.matrix) , frag.max.iso)
+    colnames(isotopomer) <- sort(colnames(frag.atom.matrix))
+    #rownames(isotopomer) <- apply(isotopomer,1,paste0,collapse = "")
+    #names(isotopomer) <- paste0("isotopomer_",num2str(1:length(isotopomer)))
   }
 
 
-  ### isotopomers - labeled FG
+  ### isotopomers contributiopn - labeled FG
   {
-    isotopomer.maps <- bplapply(seq_along(isotopomer),
-                            function(if.id){
+    isotopomer.maps <- bplapply(seq_len(nrow(isotopomer)),
+                            function(itp.id){
                               #message_with_time(if.id)
                               lapply(rownames(frag.atom.matrix),function(fg.id){
 
+                                itp.atom <- names(isotopomer[itp.id,])[isotopomer[itp.id,]!=0]
                                 get_iso_prob_chatgpt(frag.atom.matrix[fg.id,],
-                                             isotopomer[[ if.id ]])
+                                                     itp.atom)
                               })->mp
                               names(mp) <- rownames(frag.atom.matrix)
                               unlist(mp)
@@ -317,7 +321,7 @@ get_MSIPIsotopomerMap <- function(MSIPCoreData){
     isotopomer.map <- isotopomer.map[!apply(isotopomer.map,1,function(x){all(x==0)}),,drop = F]
     rownames(isotopomer.map) <- sub(pattern = ".",x = rownames(isotopomer.map),
                                   replacement = "_",fixed = T)
-    colnames(isotopomer.map) <- names(isotopomer)
+    colnames(isotopomer.map) <- rownames(isotopomer)
   }
 
   ### LFG data
@@ -341,7 +345,7 @@ get_MSIPIsotopomerMap <- function(MSIPCoreData){
 
 
   MSIPIsotopomerMap@isotopomer.defination <-isotopomer
-  MSIPIsotopomerMap@isotopomer.map <-isotopomer.map
+  MSIPIsotopomerMap@isotopomer.contribution <-isotopomer.map
   MSIPIsotopomerMap@Labeled.FG.data <-Labeled.FG.data
   return(MSIPIsotopomerMap)
 
@@ -694,7 +698,7 @@ MSIPIsotopomerMap_set_split <- function(MSIPIsotopomerMap,
 
   ### Isotopomers to FSIS
   {
-    isotopomer.map <- MSIPIsotopomerMap@isotopomer.map
+    isotopomer.map <- MSIPIsotopomerMap@isotopomer.contribution
     if (approx_split) {
       bins <- seq(0,1,binwidth)
       closest_value <- function(x, values) {
@@ -1055,6 +1059,7 @@ plot_MSIPCore_spectra_consistency <- function(MSIPCoreData){
 
 
 plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
+
 
 
 
@@ -1697,6 +1702,7 @@ get_MSIPFragmentMap <- function(sp,
 
 
     fg.ratio.se <- get_Spectra_fg_ratio_se(sp,iso_count_max = iso_count_max)
+    if (any(dim(fg.ratio.se)==0)) return(fg.map)
     fg.se <- get_Spectra_fg_ratio_se_merge(fg.ratio.se)
 
   }
@@ -1731,7 +1737,7 @@ get_MSIPFragmentMap <- function(sp,
 
 
 
-  fg.map@FG.atom.matrix <- frag.atom.matrix[fg.data$fragment_group,]
+  fg.map@FG.atom.matrix <- frag.atom.matrix[fg.data$fragment_group,,drop = F]
   fg.map@FG.ratio.matrix <- assay(fg.se)[fg.data$fragment_group,,drop = F]
   fg.map@FG.data <- fg.data
 
@@ -1755,13 +1761,10 @@ plot_MSIPCore_result <- function(msip.core){
 
   is.data <- solve.data%>%
     dplyr::filter(Prob > 0.01)
-  isotopomers.idx <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set[is.data$is]
+  isotopomers <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set[is.data$is]
 
-  plot.data <- lapply(isotopomers.idx,function(idx){
-    isotopomer.name <- sapply(msip.core@solve$MSIPIsotopomerMap@isotopomer.defination[idx],
-                              function(x){
-                                paste0(x,collapse = ",")
-                              })
+  plot.data <- lapply(isotopomers,function(x){
+    isotopomer.name <- x
     data.frame(   isotopomer.name = isotopomer.name  )
   })%>%
     data.table::rbindlist(idcol = "is")%>%
@@ -1772,7 +1775,7 @@ plot_MSIPCore_result <- function(msip.core){
     dplyr::ungroup()%>%
     dplyr::arrange(desc(prob))%>%
     dplyr::mutate(isotopomer.name=
-                    factor(isotopomer.name,level = isotopomer.name),
+                    factor(isotopomer.name,level = unique(isotopomer.name)),
                   x = 1:n(),
                   xmin = x-w,
                   xmax = x+w,

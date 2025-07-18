@@ -48,8 +48,8 @@ setMethod(f = "isEmpty",signature = "MSIPFragmentMap",
 #### MSIPIsotopomerMap
 setClass(Class = "MSIPIsotopomerMap",
          slots = list(
-           "isotopomer.defination" = "list",
-           "isotopomer.map" = "matrix",
+           "isotopomer.defination" = "matrix",
+           "isotopomer.contribution" = "matrix",
            "Labeled.FG.data" = "data.frame",
            "isotopomer.probability" = "numeric",
            "solve" = "list"
@@ -60,9 +60,9 @@ setMethod(f = "show",
           "MSIPIsotopomerMap",definition = function(object){
 
             x <- paste0("Map of ",
-                        crayon::yellow(length(object@isotopomer.defination)),
+                        crayon::yellow(nrow(object@isotopomer.defination)),
                         " isotopomers, ",
-                        crayon::yellow(nrow(object@isotopomer.map)),
+                        crayon::yellow(nrow(object@isotopomer.contribution )),
                         " labeled fragment")
             message(x)
 

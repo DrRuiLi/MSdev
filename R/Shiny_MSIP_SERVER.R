@@ -8,7 +8,7 @@ MSIP_shiny_server <- function(object){
 
 
     # Trigger the pop-up when the app starts
-    session$sendCustomMessage("openPopup", "https://drruili.github.io/MSIP/articles/msip_shiny_demo.html")
+    #session$sendCustomMessage("openPopup", "https://drruili.github.io/MSIP/articles/msip_shiny_demo.html")
 
     output$test_info <- renderPrint({
       FSIS_selected()

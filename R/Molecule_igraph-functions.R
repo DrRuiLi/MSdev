@@ -20,7 +20,8 @@ get_Molecule_igraph_from_sdf <- function(sdf = sdfsample,
 }
 
 
-sdf_to_Molecule_igraph <- function(sdf,id ) {
+sdf_to_Molecule_igraph <- function(sdf,
+                                   id ) {
 
 
   bond.data <- bonds(sdf)
@@ -52,8 +53,8 @@ sdf_to_Molecule_igraph <- function(sdf,id ) {
   isotopomer.df <-  make_vector(atom.block$element,atom.block$id)%>%
     as.list()%>%
     as.data.frame()%>%
-    dplyr::mutate(isotopomer = "base",
-                  isotopologue = "M0",
+    dplyr::mutate(isotopomer = "0",
+                  isotopologue = "M+0",
                   label = "base",
                   abundance = 1,
                   path = "",
@@ -75,6 +76,8 @@ get_Molecule_igraph_from_smiles <- function(smiles = "NCC(O)=O",id ="A",canonica
 }
 
 
+
+
 get_Molecule_igraph_from_cfmd <- function(cfmd,fragment.id = 1){
 
   cfmd@fragment_igraph[[fragment.id]]
@@ -92,7 +95,7 @@ get_Molecule_igraph_from_cfmd <- function(cfmd,fragment.id = 1){
 #' @export
 #'
 Molecule_igraph_add_isotopomer <- function(
-    Molecule_igraph , isotopomer = NULL,iso_vec = NULL,abundance=NA,path = NA){
+    Molecule_igraph , isotopomer = NULL,iso_vec = NULL,abundance=NA,path = NA,FSIS = NA){
 
   if (identical(iso_vec,"all_C")) {
     iso_vec <- make_vector("[13]C",atom(glu.mi,"C"))
@@ -103,7 +106,7 @@ Molecule_igraph_add_isotopomer <- function(
                         atom(Molecule_igraph))
   ele_vec[names(iso_vec)] <- iso_vec
   isotopologue <- sum(is.isotope(ele_vec),na.rm = T)
-  isotopologue <- paste0("M",isotopologue)
+  isotopologue <- format_isotopologue(isotopologue,"+")
   isotopomer.df <- Molecule_igraph@isotopomer
   if (is.null(isotopomer)){
 
@@ -112,9 +115,11 @@ Molecule_igraph_add_isotopomer <- function(
   }
   to.add <- data.frame(isotopomer = isotopomer,
                        isotopologue = isotopologue,
+                       FSIS = FSIS,
                        label = iso_label ,
                        abundance = abundance,
                        path = path
+
                        )
   rownames(to.add) <- to.add$isotopomer
   isotopomer.df[isotopomer,names(to.add)] <- to.add
@@ -126,6 +131,31 @@ Molecule_igraph_add_isotopomer <- function(
 
 }
 
+
+Molecule_igraph_fill_isotopologues <- function(Molecule_igraph,target_ele = "[13]C"){
+
+  mol.ig.formula <- get_sdf_formula(Molecule_igraph@sdf)
+  istp.df <- Molecule_igraph@isotopomer
+
+  atom.matrix <- as.matrix(istp.df[,atom(Molecule_igraph)])
+  atom.count <- get_formula_ele_count(mol.ig.formula,get_ele_uniso(target_ele))
+
+  iso.counts <- setdiff(0:atom.count,format_isotopologue(istp.df$isotopologue))
+  atoms <- atom(Molecule_igraph,get_ele_uniso(target_ele))
+  for (i.iso.count in iso.counts) {
+
+    i.atom <- sample(atoms,i.iso.count)
+    Molecule_igraph <- Molecule_igraph_add_isotopomer(
+      Molecule_igraph,
+      iso_vec = make_vector(target_ele,name = i.atom),
+      abundance = 0,
+      FSIS = format_isotopologue(i.iso.count,"M")
+      )
+
+  }
+
+  return(Molecule_igraph)
+}
 
 get_isotopomer_name <- function(iso_vec){
 
@@ -906,11 +936,11 @@ plot_Molecule_igraph <- function(mol.ig,show_id = F,size = 2){
 
   tpf <- tempfile(fileext = ".html")
   vis <- vis_Molecule_igraph(mol.ig,show_id = show_id)
-  saveWidget(vis, tpf, selfcontained = TRUE)
+  htmlwidgets::saveWidget(vis, tpf, selfcontained = TRUE)
   #open_file(tpf)
 
   tpfpng <- tempfile(fileext = ".png")
-  webshot(tpf, tpfpng,quiet = T)
+  webshot2::webshot(tpf, tpfpng,quiet = T)
   #open_file(tpfpng)
 
   ggplot_from_img(tpfpng,size = size)
