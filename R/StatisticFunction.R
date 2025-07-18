@@ -163,7 +163,9 @@ analyzePathwayHyperTest <- function(kegg.id = "C00024"){
 #' @export
 #'
 
-plot_PCA <- function(pca.matrix,pca.group,showlabel = F){
+plot_PCA <- function(pca.matrix,pca.group,
+                     force_ellipse = T,
+                     showlabel = F){
 
   pca.pca <- ropls::opls(x = pca.matrix,
                          crossvalI = ifelse(nrow(pca.matrix)>6,7,nrow(pca.matrix)),
@@ -171,6 +173,16 @@ plot_PCA <- function(pca.matrix,pca.group,showlabel = F){
   pca.data <- data.frame(pca.group,
                          pca.label = rownames(pca.matrix),
                          pca.pca@scoreMN)
+  if (force_ellipse) {
+    to.rep <- names(which(table(pca.group)<=3))
+    to.rep.df <- pca.data%>%
+      dplyr::filter( pca.group %in% to.rep )%>%
+      dplyr::mutate(
+        p1 = p1 + rnorm(n(),sd = 0.01),
+        p2 = p2 + rnorm(n(),sd = 0.01)
+                     )
+    pca.data <- rbind(pca.data,to.rep.df)
+  }
   col.list <-
     ggsci::pal_lancet()(length(unique(pca.data$pca.group)))
   names(col.list) <- unique(pca.data$pca.group)
@@ -410,7 +422,8 @@ plotVolcano <- function(diff.table,p.adjusted = T,point.label =F){
 
 }
 
-plotHeatmap <- function(heatmap.matrix,col.info,row.info){
+plotHeatmap <- function(heatmap.matrix,col.info,row.info,
+                        show_row_names=T,show_column_dend = F,show_row_dend = F){
 
   ComplexHeatmap::Heatmap(heatmap.matrix,
                           name = "Z score",
@@ -427,9 +440,9 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
                           row_names_gp = grid::gpar(fontsize= 6),
                           column_names_gp  = grid::gpar(fontsize= 6),
 
-                          show_column_dend = F,
-                          show_row_dend = F,
-                          show_row_names = T
+                          show_column_dend = show_column_dend,
+                          show_row_dend = show_row_dend,
+                          show_row_names = show_row_names
                           )->p
   p
 
@@ -441,7 +454,7 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
 #'
 #' @param pathway.table table from`analyzePathwayGlobalTest()` or `analyzePathwayHyperTest()`
 #' @param top top n
-#' @param method plot style
+#' @param method plot style, option: "set1","set2","bubble","path_classify1"
 #' @param title title of ggplot
 #'
 #' @returns ggplot
@@ -452,8 +465,10 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info){
 #' path <- analyzePathwayHyperTest()
 #' p <- plotPathwayEnrichment(path)
 #'
-plotPathwayEnrichment <- function(pathway.table,top = 20 , method = "set1",title= NULL){
+plotPathwayEnrichment <- function(pathway.table,top = 20 ,
+                                  method = c("set1","set2","bubble","class"),title= NULL){
 
+  method <- match.arg(method)
   if (!"diff"%in%colnames(pathway.table)) {
     pathway.table$diff <- "NA"
   }
@@ -555,7 +570,7 @@ plotPathwayEnrichment <- function(pathway.table,top = 20 , method = "set1",title
   }
 
 
-  if (method == "path_classify1"){
+  if (method == "class"){
 
     plot.data <- pathway.table%>%
       dplyr::mutate(
@@ -569,7 +584,8 @@ plotPathwayEnrichment <- function(pathway.table,top = 20 , method = "set1",title
         pathway.name = unique(plot.data$class1),
         class1 = unique(plot.data$class1)
       )
-    cols <- make_vector(ggsci::pal_npg()(5),name = title.df$class1)
+    cols <- make_vector(ggsci::pal_npg()(length( title.df$class1)),
+                        name =rev( title.df$class1))
     plot.data1 <- bind_rows(plot.data , title.df )%>%
       dplyr::mutate(   )%>%
       dplyr::arrange( class1 , Hit)%>%
@@ -583,7 +599,7 @@ plotPathwayEnrichment <- function(pathway.table,top = 20 , method = "set1",title
     ggplot(plot.data1)+
       geom_bar(aes( x = Hit, y = pathway.name , fill = class1), color = "white", stat = "identity" )+
       geom_text(aes( x = Hit+0.32, y = pathway.name , label = Hit),fontface = "bold")+
-      ggsci::scale_fill_npg()+
+      scale_fill_manual(values = cols)+
       labs(x = "Number of Metabolites", y = "")+
       theme_bw()+
       theme(
