@@ -1539,6 +1539,7 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
                            keys = c("name","formula",
                                     "kegg_id",
                                     "inchikey","lipidclass"),
+                           score_thresh = 0.5,rt_bin = NA,
                            polarity_paired = T,
                            candi = F){
 
@@ -1641,19 +1642,23 @@ MSdev_get_Stat <- function(object,QC_RSD = 0.3,
   {
     ### select unique feature
     .uniqueFeatures <- function(score,intensity){
-      score <- ifelse(score >0.3 , 10,1)
+      score <- ifelse(score > 0.3 , 10,1)
       unique.score <- score*log10(intensity)
       unique.score
     }
 
+
     rda.filter <- rda%>%
       as.data.frame()%>%
-      dplyr::filter(#qc_rsd < QC_RSD,
-                    #score > 0.5,
+      dplyr::filter(score >= score_thresh,
                     !is.na(compound_id))%>%
-      dplyr::group_by(compound_id)%>%
+      dplyr::mutate( rt_bins = ceiling((rtmed)/rt_bin ),
+                     temp_id = paste0( compound_id, "_", rt_bins )
+                     )%>%
+      dplyr::group_by(temp_id)%>%
       dplyr::slice_max(.uniqueFeatures(score,peakMaxo))%>%
       ungroup()
+
 
     metabolite.se <- feature.se[rownames(feature.se)%in%rda.filter$feature_id,]
 
@@ -1828,7 +1833,9 @@ get_MSdev_ms2_Spectra <- function(object){
 #' @return MSdev
 #' @export
 #'
-MSdev_get_feature_chrom <- function(object,feature.list =NULL){
+MSdev_get_feature_chrom <- function(object,BPPARAM =  SnowParam(
+  workers  = parallel::detectCores() -1,
+  progressbar = T),feature.list = NULL){
 
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
@@ -1847,9 +1854,7 @@ MSdev_get_feature_chrom <- function(object,feature.list =NULL){
                                        features = fid,
                                        expandRt = Inf,
                                        filled = T,
-                                       BPPARAM = SnowParam(
-                                         workers  = min(snowWorkers(), length(fileNames(xcms.xcms))),
-                                         progressbar = T)
+                                       BPPARAM = BPPARAM
                                        )
     xcms.chrom <- onDiskData(xcms.chrom,
                              path = paste0(object@projectInfo$projectDir,"/",pol,"_Chromatograms.rds"))
