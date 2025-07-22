@@ -609,93 +609,6 @@ dropSpectra <- function(object){
 
 
 
-#' getStaDataMSdev
-#' @param object MSdev
-#' @param MSDB.keys keys
-#'
-#' @return data
-#' @export
-#'
-
-getStaDataMSdev <- function(object,missing = NA,
-                            MSDB.keys =c("name","adduct","formula","inchikey" ,"database_origin")
-){
-
-  sampleInfo <- object@sampleInfo%>%
-    dplyr::filter(xcmsProcessing %in% c("Both","MS1"))
-
-
-
-  annotationPos <- lapply(object@annotation$positiveAnnotation, function(x){
-    x[c( "mz"    ,
-         "rt" ,
-         "ref.mz" ,
-         "ref.rt" ,
-         "score" ,
-         "MSDB_id" )]
-  })%>%data.table::rbindlist()
-  annotationNeg <- lapply(object@annotation$negativeAnnotation, function(x){
-    x[c( "mz"    ,
-         "rt" ,
-         "ref.mz" ,
-         "ref.rt" ,
-         "score" ,
-         "MSDB_id" )]
-  })%>%data.table::rbindlist()
-
-  featurePos <- get_features_from_xcms(object@xcmsData$positiveMS1,missing = missing)
-  featurePos <- SummarizedExperiment::rowData(featurePos)%>%
-    as.data.frame()%>%
-    rownames_to_column("feature_id")%>%
-    dplyr::select(feature_id,qc_rsd,sample_rsd,med_intensity)%>%
-    dplyr::mutate(feature_id = paste0(feature_id , "_pos"),
-                  ion_mode = "positive")%>%
-    cbind(annotationPos,SummarizedExperiment::assay(featurePos))%>%
-    dplyr::rename_with( ~sub(pattern = ".mzML",replacement = "",x = .x))%>%
-    remove_rownames()
-
-  featureNeg <- get_features_from_xcms(object@xcmsData$negativeMS1,missing = missing)
-  featureNeg <- SummarizedExperiment::rowData(featureNeg)%>%
-    as.data.frame()%>%
-    rownames_to_column("feature_id")%>%
-    dplyr::select(feature_id,qc_rsd,sample_rsd,med_intensity)%>%
-    dplyr::mutate(feature_id = paste0(feature_id , "_neg"),
-                  ion_mode = "negative")%>%
-    cbind(annotationNeg,SummarizedExperiment::assay(featureNeg))%>%
-    dplyr::rename_with( ~sub(pattern = ".mzML",replacement = "",x = .x))%>%
-    remove_rownames()
-
-  featureAll <-  dplyr::bind_rows(featurePos,featureNeg)
-  featureAllanno <- MSdb:::getInfoFromMSDB(featureAll$MSDB_id,
-                                           msdb_path = object@projectInfo$MSDB_path,
-                                           keys =  MSDB.keys)
-  featureAll<- add_column(featureAll,featureAllanno[,-1],.after = "feature_id")
-  object@statData$featureRaw <-featureAll
-
-  ### adjust
-  # object <- adjustFeatureByIS(object)
-  #  object <- adjustFeatureByGQC(object,to.adjust = "featureRaw")
-  object <- adjustFeatureByweight(object,to.adjust = "featureRaw")
-
-  object@statData$feature <- object@statData$feature%>%
-    dplyr::filter(qc_rsd <0.3)%>%
-    #dplyr::filter(gqc_r2 >0.8)%>%
-    dplyr::filter()
-  .uniqueFeatures <- function(score,intensity){
-    score <- ifelse(score >0.3 , 10,1)
-    unique.score <- score*log10(intensity)
-    unique.score
-
-  }
-  object@statData$metabolites <- object@statData$feature%>%
-    dplyr::filter(!is.na(inchikey))%>%
-    dplyr::group_by(inchikey)%>%
-    dplyr::slice_max(.uniqueFeatures(score,med_intensity ))%>%
-    dplyr::ungroup()
-
-  return(object)
-}
-
 adjustFeatureByIS <-function(object,to.adjust = "featureRaw"){
 
   object <- findISMSdev(object,corr.thred = 0.3)
@@ -1535,7 +1448,7 @@ MSdev_annotation <- function(object,
 #' @return MSdev
 #' @export
 #'
-MSdev_get_Stat <- function(object,QC_RSD = 0.3,
+MSdev_get_Stat <- function(object,
                            keys = c("name","formula",
                                     "kegg_id",
                                     "inchikey","lipidclass"),
