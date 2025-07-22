@@ -253,7 +253,7 @@ MSIP_get_isotopologues_data <- function(object,
                     ele_count = get_formula_ele_count(formula,
                                           ele = get_ele_uniso(iso_ele)))%>%
       dplyr::filter(!is.na(iso_seed),
-                    iso_count < ele_count
+                    iso_count <= ele_count
                     )%>%
       dplyr::group_by(iso_seed)%>%
       dplyr::filter(#rep(any(is_labeled)),
@@ -449,7 +449,6 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
       if (!is.null(x@CompoundInfo[['CFM_annotation']])) {
         message_with_time("cfmd exist, skip")
         return(x)
-
       }
 
       CFM_result <- NA
@@ -480,6 +479,38 @@ MSIP_get_isotopologues_CFM_annotation <- function(object,
   annotated <- sapply(iso.cfm,function(x) "CFM_annotation" %in% names(x@CompoundInfo))
   object@statData$MSIP$isotopologues_data <- iso.cfm[annotated]
   object
+}
+
+
+
+MSIPMetaboliteData_get_CFM_annotation <- function(MSIPMetaboliteData,
+                                                  ppm = 20,
+                                                  check_temp = T){
+
+  if (!is.null(MSIPMetaboliteData@CompoundInfo[['CFM_annotation']])) {
+    message_with_time("cfmd exist, skip")
+    return(x)
+  }
+
+
+  CFM_result <- NA
+  try.return <- try({
+
+    CFM_result <- get_CFM_data_from_smiles(
+      smiles = MSIPMetaboliteData@CompoundInfo$smiles,
+      compound_id = MSIPMetaboliteData@CompoundInfo$compound_id,
+      ppm =  ppm,
+      adduct = switch(as.character(MSIPMetaboliteData@CompoundInfo$polarity),
+                      "0"="[M-H]-",
+                      "1"="[M+H]+"),
+      check_temp = check_temp,
+      temp_dir = paste0(object@projectInfo$CompoundDB_path,"_cfmd"))
+
+  })
+  if (class(CFM_result) !="CFM_data") return(MSIPMetaboliteData)
+
+  MSIPMetaboliteData@CompoundInfo$CFM_annotation <-CFM_result
+  return(x)
 }
 
 
@@ -669,7 +700,7 @@ MSIP_solve_isotopologues <- function(object,
                                      int_thresh = 10^3.8,
                                      certainty_thresh = 0.6,
                                      weight_fun = .intensity_weight,
-                            ppm = 10,
+                            ppm = 20,
                             timeout = 60,
                             BPPARAM = SerialParam(progressbar = T)){
 
@@ -1316,56 +1347,68 @@ get_MSIP_Molecule_igraph<- function(object,fraction = 0.001){
     ratio_adj_matrix <- ratio_matrix*(1-natural_matrix)
     ratio_adj_matrix["M0",] <- 1
     ratio_adj_matrix[ratio_adj_matrix<0] <- 0
+    ratio_adj_matrix[is.na(ratio_adj_matrix)] <- 0
     for (j in colnames(Molecule_igraph_matrix)  ) {### samples
 
       mol.ig <- get_Molecule_igraph_from_smiles(isotopologues_data@CompoundInfo$smiles)
-      for (k in names(isotopologues_data@MSIPIsotopologueDatas)) { ### isotopologues
+      for (k in rownames(ratio_matrix) ) { ### isotopologues
 
         message_with_time("i ",i," j ",j," k ",k)
         if (k=="M0") next
         msip.core <- isotopologues_data@MSIPIsotopologueDatas[[k]][[j]]
-        if (is.null(msip.core)) next
-        isotopomers.ele <- msip.core@solve$MSIPIsotopomerMap@isotopomer.defination
-        istp <- rownames(isotopomers.ele)
-        isotopomers.prob <- msip.core@solve$MSIPIsotopomerMap@isotopomer.probability[istp]
-        isotopomers.FSIS <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set%>%
-          lapply(function(x){data.frame(isotopomer = x)})%>%
-          data.table::rbindlist(idcol = "FSIS")%>%
-          dplyr::mutate(FSIS = paste0(k,"_",FSIS))%>%
-          dplyr::pull(FSIS,name = isotopomer)
-        isotopomers.FSIS <- isotopomers.FSIS[istp]
-        isotopomers.abundance <- (isotopomers.prob * ratio_adj_matrix[k,j])[istp]
-        ### fliter
-        {
+        if (isEmpty(msip.core)) {
 
-          idx.filt <- which(isotopomers.abundance > fraction)
-          isotopomers.ele <- isotopomers.ele[idx.filt,,drop = F]
-          isotopomers.FSIS <- isotopomers.FSIS[idx.filt]
-          isotopomers.abundance <- isotopomers.abundance[idx.filt]
+          ### if MSIP not data exist, simulate isotopologue
+          mol.ig <- Molecule_igraph_add_isotopologue(
+            Molecule_igraph = mol.ig,
+            isotopologue = k,
+            abundance = ratio_adj_matrix[k,j],
+            target_ele =target_ele,
+            all_isotopomers = F
+
+          )
+
+        }else{
+          isotopomers.ele <- msip.core@solve$MSIPIsotopomerMap@isotopomer.defination
+          istp <- rownames(isotopomers.ele)
+          isotopomers.prob <- msip.core@solve$MSIPIsotopomerMap@isotopomer.probability[istp]
+          isotopomers.FSIS <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set%>%
+            lapply(function(x){data.frame(isotopomer = x)})%>%
+            data.table::rbindlist(idcol = "FSIS")%>%
+            dplyr::mutate(FSIS = paste0(k,"_",FSIS))%>%
+            dplyr::pull(FSIS,name = isotopomer)
+          isotopomers.FSIS <- isotopomers.FSIS[istp]
+          isotopomers.abundance <- (isotopomers.prob * ratio_adj_matrix[k,j])[istp]
+          ### fliter
+          {
+
+            idx.filt <- which(isotopomers.abundance > fraction)
+            isotopomers.ele <- isotopomers.ele[idx.filt,,drop = F]
+            isotopomers.FSIS <- isotopomers.FSIS[idx.filt]
+            isotopomers.abundance <- isotopomers.abundance[idx.filt]
+
+          }
+          isotopomers.ele.list <- apply(isotopomers.ele,1,function(x){
+            make_vector(target_ele,
+                        colnames(isotopomers.ele)[x==1])},simplify = F)
+
+          for (ii in seq_len(nrow(isotopomers.ele))) {
+            #message(ii)
+            mol.ig <- Molecule_igraph_add_isotopomer(
+              mol.ig,
+              isotopomer = rownames(isotopomers.ele)[ii],
+              iso_vec = isotopomers.ele.list[[ii]],
+              FSIS = isotopomers.FSIS[ii],
+              abundance = isotopomers.abundance[ii])
+          }
 
         }
-        isotopomers.ele.list <- apply(isotopomers.ele,1,function(x){
-          make_vector(target_ele,
-                      colnames(isotopomers.ele)[x==1])},simplify = F)
 
-        for (ii in seq_len(nrow(isotopomers.ele))) {
-          #message(ii)
-          mol.ig <- Molecule_igraph_add_isotopomer(
-            mol.ig,
-            isotopomer = rownames(isotopomers.ele)[ii],
-            iso_vec = isotopomers.ele.list[[ii]],
-            FSIS = isotopomers.FSIS[ii],
-            abundance = isotopomers.abundance[ii])
-        }
 
       }
 
 
-      ### fill isotopologue
-      {
-        mol.ig <- Molecule_igraph_fill_isotopologues(mol.ig)
 
-      }
       Molecule_igraph_matrix[i,j] <- list(mol.ig)
     }
 
@@ -1562,70 +1605,90 @@ Report_MSIP_raw_data <- function(object,
 
 }
 
-plot_MSIP_Molecular_igraph_compare <- function(mol.igs ){
 
-  mol.igs.itpms.list <- lapply(mol.igs,function(x){
-    x@isotopomer
-  })
-  mol.igs.itpms.df <- data.table::rbindlist(mol.igs.itpms.list,idcol = "sample")%>%
-    dplyr::group_by(sample)%>%
-    dplyr::mutate(abundance = abundance/sum(abundance))%>%
-    dplyr::ungroup()%>%
-    dplyr::arrange(isotopologue , isotopomer)%>%
-    dplyr::mutate(isotopomer = factor(isotopomer,levels = unique(isotopomer))  )%>%
-    dplyr::filter(
-      #isotopomer!=0,
-      abundance > 0.01
-      )
 
-  if (length(unique(mol.igs.itpms.df$isotopomer))<2) {
-    return(NULL)
-  }
-
-  ggplot(mol.igs.itpms.df)+
-    geom_bar(
-      aes(x = isotopomer , y = abundance, fill = sample),
-      stat = "identity",position = "dodge"
-    )+
-    ggsci::scale_fill_npg()+
-    theme_bw()+
-    theme(axis.text.x = element_text(angle = -60,hjust = 0,vjust = 0))
-
-}
-
-Report_MSIP_isotopomers <- function(object,file = tempfile(fileext = ".pdf")){
+Report_MSIP_isotopomers <- function(object,
+                                    file = paste0(object@projectInfo$projectDir,"/MSIP.isotopomer.pdf")){
 
 
   MSIP.mol.igs <- object@statData$MSIP$isotopomer_Molecule_igraph
-  p.list <- list()
-  file.remove(file)
+  suppressWarnings(file.remove(file))
+  open_dir(dirname(file))
+
   for (i in 1:nrow(MSIP.mol.igs)) {
-    fid <- rownames(MSIP.mol.igs)[i]
-    cp <- object@statData$MSIP$isotopologues_data[[fid]]@CompoundInfo$name
 
-    p <- plot_MSIP_Molecular_igraph_compare(MSIP.mol.igs[i,])
-    if (is.null(p)) next
-    p <- p+
-      labs(title = cp)
-    p.list[[i]] <- p
+    ### info
+    {
+
+      fid <- rownames(MSIP.mol.igs)[i]
+      this.msip.mtblt <-  object@statData$MSIP$isotopologues_data[[fid]]
+      cp <- this.msip.mtblt@CompoundInfo$name
+
+      this.info  <-
+        paste0(fid,": ",cp,"\n",
+               "Formula: ",object@statData$MSIP$isotopologues_data[[fid]]@CompoundInfo$formula,"\n",
+               "RT: ",str_digit(object@statData$MSIP$isotopologues_data[[fid]]@CompoundInfo$rt,0),"\n",
+               "mz: ",str_digit(object@statData$MSIP$isotopologues_data[[fid]]@CompoundInfo$mz,4),"\n"
+               )
+      p.info <- ggplot()+
+        geom_text(aes(x=0,y=1,label = this.info),vjust = 1,hjust = 0)+
+        xlim(c(0,1))+
+        ylim(c(0,1))+
+        theme_void()
+
+    }
+
+    ### composition of every sample
+    {
+      mol.igs <- MSIP.mol.igs[i,]
+      p.cirs <- list()
+      for (i.mig in seq_along(mol.igs)) {
+        mig <- mol.igs[[i.mig]]
+        p.cirs[[i.mig]] <- plot_Molecular_igraph_isotopomer_circle(mig)+
+          labs(title = names(mol.igs)[i.mig])+
+          theme(plot.title = element_text(hjust = 0.5))
+      }
+      p.per.cirs <- ggplot_sum_patchwork(p.cirs)+
+        patchwork::plot_layout(nrow = 1)+
+        patchwork::plot_annotation(tag_levels  =NULL)
+    }
+
+    ### compare of samples
+    {
+      p.bar <- plot_Molecular_igraphs_isotopomer_bar(mol.igs)
+      if (is.null(p.bar)) next
+      #p.bar/p.per.cirs
+    }
 
 
-    this.mig <- get_Molecule_igraph_from_smiles(object @statData$MSIP$isotopologues_data[[fid]]@CompoundInfo$smiles)
-    this.mig <- object @statData$MSIP$isotopologues_data[[fid]]@CompoundInfo$CFM_annotation@fragment_sdf@SDF[[1]]%>%get_Molecule_igraph_from_sdf()
-    p.mig <- plot_Molecule_igraph(this.mig,show_id = T,size = 2)
+    ### Molecular structure
+    {
+      p.mig <- plot_Molecule_igraph(mol.igs[[1]],show_id = T,size = 2)
+    }
 
 
-    export_graph2pdf(p.mig + p,file , width = 10,height = 4,append = T)
+
+    ### export
+    {
+
+      export_graph2pdf(p.info+ p.mig +p.bar,file , width = 20,height = 5,append = T)
+      export_graph2pdf(p.per.cirs ,file , width = 20,height = 5,append = T)
+
+
+    }
+
+
+
   }
 
-  return(NULL)
+  return(invisible())
 
 }
 
 
-MSIP_get_Molecule_igraph <- function(object){
+MSIP_get_Molecule_igraph <- function(object,fraction = 0.001){
 
-  MSIP.mol.igs <- get_MSIP_Molecule_igraph(object)
+  MSIP.mol.igs <- get_MSIP_Molecule_igraph(object,fraction = fraction)
   object@statData$MSIP$isotopomer_Molecule_igraph <-MSIP.mol.igs
   return(object)
 
