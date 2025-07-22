@@ -2519,6 +2519,259 @@ a <- r_bg(func = function(){
 {
 
 
-  DEP_plot_normalization(filt, norm)
+  plot_normalization(filt, norm)
 
+  measurements <- data.frame(x = runif(30, 1, 80),
+                             y = runif(30, 1, 60),
+                             thing = rnorm(30))
+
+
+
+  ggplot(mapping = aes(x, y)) +
+    geom_contour(data = topography, aes(z = z, color = stat(level))) +
+    # Color scale for topography
+    scale_color_viridis_c(option = "D") +
+    # geoms below will use another color scale
+    new_scale_color() +
+    geom_point(data = measurements, size = 3, aes(color = thing)) +
+    # Color scale applied to geoms added after new_scale_color()
+    scale_color_viridis_c(option = "A")
+
+
+  ggplot(mapping = aes(x, y))+
+    geom_point(data = measurements, size = 3, aes(color = thing)) +
+    # Color scale applied to geoms added after new_scale_color()
+    scale_color_viridis_c(option = "A") +
+    # geoms below will use another color scale
+    new_scale_color() +
+    geom_contour(data = topography, aes(z = z, color = stat(level))) +
+    # Color scale for topography
+    scale_color_viridis_c(option = "D")
+
+  ggplot(mapping = aes(x, y))+
+    geom_point(data = measurements, size = 3, aes(color = thing)) +
+    # Color scale for topography
+    scale_color_viridis_c(option = "D")  +
+    # geoms below will use another color scale
+    new_scale_color() +
+    geom_contour(data = topography, aes(z = z, color = stat(level)))+
+  # Color scale applied to geoms added after new_scale_color()
+    scale_color_viridis_c(option = "A")
+
+
+  {
+    ggplot()+
+
+
+
+      geom_bar(aes( x= 1, y = abundance,
+                    #col = isotopologue,
+                    fill = isotopomer),
+               data = isotopomer.data,
+               col = "white",
+               linewidth = 1,width = 0.95,
+               stat = "identity")+
+      scale_fill_manual(
+        name = "Isotopomers",
+        values =setNames(isotopomer.data$col,isotopomer.data$isotopomer)
+      )+
+      guides(fill = guide_legend(ncol = 2,order = 1)) +
+
+
+
+
+
+      ggnewscale::new_scale_fill() +
+
+
+      geom_bar(aes( x= 1.7, y = abundance,
+                    fill = isotopologue,group = isotopologue),
+               col = "black",
+               data = isotpologues.data,
+               linewidth = 1,width = 0.2,
+               stat = "identity")+
+      scale_fill_manual(
+        name = "Isotopologues",
+        values = c(
+          setNames(plot.data$col,plot.data$label),
+          col.isotopologues))+
+      guides(fill = guide_legend(ncol = 1,order = 2)) +
+
+      xlim(c(0.3,2))+
+      coord_polar(theta = "y")+
+      theme_void()+
+      theme(plot.title = element_text(hjust = 0.5),
+            legend.box = "horizontal")
+
+
+    }
+}
+# Mon Jul 21 01:58:28 2025 evaluate intensity-consistency.cos of FG------------------------------
+{
+
+  msip.data <- msip.pdh.0703@statData$MSIP$isotopologues_data
+
+
+  fg_cos_all_list <- list()
+  for (i in seq_along(msip.data)) {
+
+    this.mtbl <- msip.data[[i]]
+    this.istpls <- names(this.mtbl@MSIPIsotopologueDatas)
+
+    for (i.istpl in  this.istpls ) {
+
+      if (format_isotopologue(i.istpl,"n") <=1) next
+      this.samples  <- names(this.mtbl@MSIPIsotopologueDatas[[i.istpl]])
+
+      for (i.sample in this.samples) {
+
+        message(paste0(i.sample,"_",i,"_",i.istpl))
+        this.msip.core <- this.mtbl@MSIPIsotopologueDatas[[i.istpl]][[i.sample]]
+        {
+          sp <-  this.msip.core@Spectra_data
+          se <- get_Spectra_fg_ratio_se(sp,
+                                        iso_count_max = format_isotopologue(i.istpl,"n"))
+          if (!ncol(se)) next
+
+          sem <- get_Spectra_fg_ratio_se_merge(se,keep_all_cos = T)
+
+          fg_cos_all_list[[
+            paste0(i.sample,"_",i,"_",i.istpl)
+          ]] <-
+          sem@metadata$fg_cos_df
+        }
+
+      }
+
+    }
+  }
+
+  fg_cos_all_df <- do.call(rbind,fg_cos_all_list)
+
+  plot.data <- fg_cos_all_df%>%
+    dplyr::filter(n_sp > 5, n_isotopologue > 3)
+
+  ggplot(plot.data)+
+    geom_point(aes(x = log10(intensity) , y = cos))
+
+  fg_cos_bins <- fg_cos_all_df %>%
+    dplyr::filter(!is.na(cos),n_sp > 5)%>%
+    dplyr::mutate(
+      log_int = log10(intensity),
+      int_bin = ceiling(log_int/0.05)*0.05
+    )%>%
+    dplyr::group_by(int_bin)%>%
+    dplyr::mutate( percent_high_cos = sum(cos > 0.95 )/n() )%>%
+    dplyr::distinct( int_bin, percent_high_cos)
+
+  ggplot(fg_cos_bins)+
+    geom_point(aes(x = int_bin, y = percent_high_cos))+
+    stat_smooth(aes(x = int_bin, y = percent_high_cos))
+
+
+
+  p <- plot_MSIP_intensity_consistency_cor(msip.pdh.0703)
+
+
+  a <- c(0.6, 0.2,0.2)
+  b <- c(0.2, 0.2,0.6)
+
+  cos_sim <- sum(a * b) / (sqrt(sum(a^2)) * sqrt(sum(b^2)))
+  euc_dist <- sqrt(sum((a - b)^2))
+  man_dist <- sum(abs(a - b))
+  pearson <- cor(a, b)
+  spearman <- cor(a, b, method = "spearman")
+  plot(a,b)
+  print(c(Cosine = cos_sim,
+          Euclidean = euc_dist,
+          Manhattan = man_dist,
+          Pearson = pearson,
+          Spearman = spearman))
+
+}
+
+# Tue Jul 22 17:37:12 2025 FG sim------------------------------
+{
+
+  # 定义函数
+  KL <- function(p, q) sum(p * log(p / q + 1e-10))
+  JS <- function(p, q) {
+    m <- (p + q) / 2
+    0.5 * KL(p, m) + 0.5 * KL(q, m)
+  }
+  JS_sim <- function(p, q) 1 - JS(p, q)
+
+  p1 <- c(0.2, 0.3, 0.5)
+  q1 <- c(0.25, 0.35, 0.4)
+
+  JS_sim(p1, q1)
+  # 输出约为：0.992
+
+  p2 <- c(0.2, 0.3, 0.5)
+  q2 <- c(0.5, 0.3, 0.2)
+
+  JS_sim(p2, q2)
+  # 输出约为：0.878
+
+
+  p3 <- c(0.9, 0.02, 0.08)
+  q3 <- c(0.2, 0.2, 0.6)
+
+  JS_sim(p3, q3)
+  # 输出约为：0.0
+
+
+  lsa::cosine(p1,q1)
+  lsa::cosine(p2,q2)
+  lsa::cosine(p3,q3)
+
+
+  a <- c(0.2,0.7,0.1)
+  b <- c(0.5,0.4,0.6)
+
+  ncos <- function(p,q) lsa::cosine(p-mean(p),q-mean(q))
+
+  simil(a,b)
+
+
+
+  {
+
+    library(philentropy)
+
+    # 示例数据：每行是一个向量（归一化的相对丰度）
+    X <- rbind(
+      c(0.1, 0.2, 0.7),
+      c(0.15, 0.25, 0.6),
+      c(0.05, 0.25, 0.7),
+      c(1, 1, 0.1)
+    )
+
+    # 确保所有行都归一化（概率分布）
+    X <- X / rowSums(X)
+    X
+    mean_vector <- colMeans(X)
+
+    # 将每个向量与均值组合起来（逐个计算）
+    js_to_mean <- apply(X, 1, function(row) {
+      distance(rbind(row, mean_vector), method = "jensen-shannon")
+    })
+
+    # 相似度形式（1 - JS距离）
+    js_similarity <- 1 - js_to_mean
+    js_similarity
+    lsa::cosine(mean_vector,t(X))
+
+    # L1 距离
+    l1_dist <- apply(X, 1, function(row) sum(abs(row - mean_vector)))
+
+    # KL散度（注意P≠Q时方向差异）
+    kl_div <- function(p, q) sum(p * log(p / q + 1e-10))
+    kl_to_mean <- apply(X, 1, function(row) kl_div(row, mean_vector))
+
+    barplot(js_similarity, main = "JS Similarity to Average Vector", col = "steelblue")
+
+    heatmap(as.matrix(distance(rbind(X, mean_vector), method = "jensen-shannon")))
+
+  }
 }

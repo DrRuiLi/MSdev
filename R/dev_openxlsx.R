@@ -11,7 +11,7 @@ df_to_wb <- function(df, sheet_name = "data",rowname=T){
 
   wb <- openxlsx::createWorkbook()
   openxlsx::addWorksheet(wb,sheetName = sheet_name)
-  openxlsx::writeData(wb ,sheet = 1, x = df,rowNames = rowname)
+  openxlsx::writeData(wb ,sheet = 1, x = df,rowNames = rowname,na.string  = NA)
   wb
 }
 

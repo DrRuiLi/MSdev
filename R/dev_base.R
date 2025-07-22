@@ -96,7 +96,7 @@ setGeneric("open_dir",
                x <- dirname(x)
 
              }
-             system(sprintf("open %s", shQuote(x)))
+             shell (sprintf("open %s", shQuote(x)))
              return(x)
 
            })
