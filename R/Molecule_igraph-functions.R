@@ -53,7 +53,7 @@ sdf_to_Molecule_igraph <- function(sdf,
   isotopomer.df <-  make_vector(atom.block$element,atom.block$id)%>%
     as.list()%>%
     as.data.frame()%>%
-    dplyr::mutate(isotopomer = "0",
+    dplyr::mutate(isotopomer = paste0(rep(0,length(atom(sdf,element = "C"))),collapse = ""),
                   isotopologue = "M+0",
                   label = "base",
                   abundance = 1,
@@ -128,6 +128,52 @@ Molecule_igraph_add_isotopomer <- function(
   isotopomer.df -> Molecule_igraph@isotopomer
   return(Molecule_igraph)
 
+
+}
+
+
+Molecule_igraph_add_isotopologue <- function(
+    Molecule_igraph, isotopologue ,abundance = 0, target_ele = "[13]C" ,all_isotopomers = F){
+
+
+  if (length(isotopologue)>1) {
+    for (i in isotopologue) {
+      Molecule_igraph <- Molecule_igraph_add_isotopologue(Molecule_igraph,
+                                                          abundance = abundance,
+                                                          isotopologue = i,
+                                                          target_ele = target_ele)
+    }
+    return(Molecule_igraph)
+  }
+
+
+  mol.ig.atoms <- atom(Molecule_igraph,element = get_ele_uniso(target_ele))
+  atom.count <- length(mol.ig.atoms)
+  iso.count <- format_isotopologue(isotopologue,"n")
+  if (all_isotopomers) {
+
+    isom <- get_isotopomer_atom_matrix(atom.count,iso.count)
+
+    for (i.isotopomer in 1:nrow(isom)) {
+      Molecule_igraph <- Molecule_igraph_add_isotopomer(Molecule_igraph,
+                                                        isotopomer = rownames(isom),
+                                                        iso_vec = make_vector(target_ele,mol.ig.atoms[isom[i,]==1]),
+                                                        abundance = abundance/nrow(isom),
+                                                        FSIS = paste0(isotopologue,"_","FSIS"))
+    }
+  }else{
+
+    Molecule_igraph <- Molecule_igraph_add_isotopomer(
+      Molecule_igraph,
+      isotopomer = paste0(isotopologue,"_","Fill"),
+      iso_vec = make_vector(target_ele,sample( mol.ig.atoms, iso.count  )),
+      abundance = abundance,
+      FSIS = paste0(isotopologue,"_","FSIS"))
+
+  }
+
+
+  return(Molecule_igraph)
 
 }
 
@@ -947,3 +993,131 @@ plot_Molecule_igraph <- function(mol.ig,show_id = F,size = 2){
 
 }
 
+
+plot_Molecular_igraphs_isotopomer_bar <- function(mol.igs){
+
+  mol.igs.itpms.list <- lapply(mol.igs,function(x){
+    x@isotopomer
+  })
+  mol.igs.itpms.df <- data.table::rbindlist(mol.igs.itpms.list,idcol = "sample")%>%
+    dplyr::group_by(sample)%>%
+    dplyr::mutate(abundance = abundance/sum(abundance))%>%
+    dplyr::ungroup()%>%
+    dplyr::arrange(isotopologue , isotopomer)%>%
+    dplyr::mutate(isotopomer = factor(isotopomer,levels = unique(isotopomer))  )%>%
+    tidyr::complete(sample,isotopomer)
+  mol.igs.itpms.df$abundance[is.na(mol.igs.itpms.df$abundance)] <- 0
+
+  if (length(unique(mol.igs.itpms.df$isotopomer))<2) {
+    return(NULL)
+  }
+
+  ggplot(mol.igs.itpms.df)+
+    geom_bar(
+      aes(x = isotopomer , y = abundance, fill = sample),
+      stat = "identity",position = "dodge"
+    )+
+    ggsci::scale_fill_aaas()+
+    theme_bw()+
+    theme(axis.text.x = element_text(angle = -60,hjust = 0,vjust = 0))
+
+}
+
+
+plot_Molecular_igraph_isotopomer_circle <- function(mol.ig, thresh = 0.001){
+
+
+
+
+  isotopomer.data <- mol.ig@isotopomer%>%
+    dplyr::select(isotopomer,isotopologue,abundance)%>%
+    dplyr::mutate(abundance = abundance/sum(abundance),
+                  r = rank(-abundance, ties.method = "random"),
+                  #others = r >topN
+                  others = abundance < thresh
+                  )%>%
+    dplyr::group_by(others)%>%
+    dplyr::mutate(
+      abundance = case_when(
+        others~sum(abundance),
+        T~abundance
+      ),
+      isotopomer = case_when(
+        others~"Others",
+        #grepl("Fill",isotopomer)~"Unknown",
+        T~ isotopomer
+      ),
+      isotopologue = case_when(
+        others~"Others",
+        T~ isotopologue
+      ),
+    )%>%
+    dplyr::ungroup()%>%
+    #dplyr::filter(r <= topN+1)%>%
+    dplyr::filter(!others)%>%
+    dplyr::arrange(isotopologue,abundance)%>%
+    dplyr::mutate(isotopomer = factor(isotopomer,levels = unique(isotopomer)))
+
+
+
+  split.col <- function(col,idx){
+
+    if(length(idx)==1) return(col)
+    col <- col[1]
+    col_fun <- circlize::colorRamp2(breaks = c(-1,max(idx)),
+                                    colors = c("white",col))
+    col_fun(idx)
+  }
+
+  all.istl <- unique(na.omit(isotopomer.data$isotopologue))
+  col.isotopologues <- make_isotopologues_col(max(format_isotopologue(isotopomer.data$isotopologue,"n"),na.rm = T))
+  col.isotopologues["Others"] <- "#999999"
+
+  isotopomer.data <- isotopomer.data%>%
+    dplyr::group_by(isotopologue)%>%
+    dplyr::mutate(id = paste0(isotopologue,num2str(1:n())),
+                  col = col.isotopologues[isotopologue],
+                  col = split.col(col,1:n()))%>%
+    dplyr::ungroup()
+
+  isotpologues.data <- isotopomer.data%>%
+    dplyr::group_by(isotopologue)%>%
+    dplyr::summarise(abundance = sum(abundance))%>%
+    dplyr::arrange(format_isotopologue(isotopologue,"n"))%>%
+    dplyr::mutate(isotopologue = factor(isotopologue,levels = unique(isotopologue)))
+
+  p <- ggplot()+
+    geom_bar(aes( x= 1.7, y = abundance,
+                  fill = isotopologue,group = isotopologue),
+             col = "black",
+             data = isotpologues.data,
+             linewidth = 1,width = 0.2,
+             stat = "identity")+
+    scale_fill_manual(
+      name = "Isotopologues",
+      values = col.isotopologues)+
+    guides(fill = guide_legend(ncol = 1,order = 1)) +
+    ggnewscale::new_scale_fill() +
+    geom_bar(aes( x= 1, y = abundance,
+                  #col = isotopologue,
+                  fill = isotopomer),
+             data = isotopomer.data,
+             col = "white",
+             linewidth = 0.1,width = 1,
+             stat = "identity")+
+    scale_fill_manual(
+      name = "Isotopomers",
+      values =setNames(isotopomer.data$col,isotopomer.data$isotopomer)
+    )+
+    #geom_vline(xintercept = c(0.525,1.475))+
+    guides(fill = guide_legend(ncol = 2)) +
+    xlim(c(0.3,2))+
+    coord_polar(theta = "y",direction = -1)+
+    theme_void(base_size  = 10)
+
+  p
+
+
+
+
+}

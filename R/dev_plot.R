@@ -33,6 +33,28 @@ open_plot_win <- function(p,width = 5,height = 4){
 }
 
 
+open_plot_pdf <- function(p,width = 5,height = 4){
+
+  temp.file <- tempfile(fileext = ".pdf")
+  if (any(c("Heatmap","HeatmapList")%in%class(p))) {
+    export::graph2png(ComplexHeatmap::draw(p),
+                      file =temp.file,
+                      width = width,height= height
+    )
+  }else if(any(c("ggplot")%in%class(p))){
+    ggplot2::ggsave(filename = temp.file,plot = p,
+                    width = width,height= height,dpi = 600)
+  }else{
+    export::graph2pdf(p,
+                      file =temp.file,
+                      width = width,height= height
+    )
+  }
+  open_file(temp.file)
+
+}
+
+
 
 
 #' @title ggplot_sum_patchwork

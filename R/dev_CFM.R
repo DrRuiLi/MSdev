@@ -1228,6 +1228,9 @@ get_cfm_data_sdf_igraph <- function(cfm_data,fragment_id = 1 ){
 
 }
 
+
+
+
 heatmap_atom_iso_prob <- function(x){
 
   ComplexHeatmap::Heatmap(x,
@@ -1497,7 +1500,6 @@ get_CFM_data_from_smiles <- function(smiles = "NCC(O)=O",
                                   ppm_mass_tol = ppm,
                                   abs_mass_tol = 0.005,
                                   param_adduct = adduct )
-  cfmd.temp.file <- tempfile(pattern = "cfmd.temp.",tmpdir = temp_dir)
   cfmd.temp.file <- paste0(temp_dir,"/cfmd.temp.",compound_id,".",adduct,".rds")
   saveRDS(cfmd,cfmd.temp.file)
   log.info["cfm.time"] <- (Sys.time()-start.time)%>%

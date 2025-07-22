@@ -637,9 +637,9 @@ xcms_get_feature_stat <- function(xcms.xcms){
 xcms_get_feature_isotopologues <- function(xcms.xcms,
                                            iso_ele = "[13]C",
                                            max_label = 10,
-                                           ppm = 5,
+                                           ppm = 10,
                                            rt.tol = 5,
-                                           net.degree.ratio = 0.5){
+                                           net.degree.ratio = 0.3){
 
 
 

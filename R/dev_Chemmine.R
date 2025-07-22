@@ -686,3 +686,14 @@ format_isotopologue <- function(x,
 }
 
 
+make_isotopologues_col <- function(n=10){
+
+
+  suppressWarnings(
+    cols <- c(ggsci::pal_npg()(10),ggsci::pal_bmj()(10))%>%na.omit()
+  )
+  #scales::show_col(cols)
+  setNames(cols[1:(n+1)],format_isotopologue(0:n,format = "+"))
+
+}
+

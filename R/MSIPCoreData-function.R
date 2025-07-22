@@ -449,6 +449,10 @@ get_MSIPFragmentMap_certainty <- function(MSIPFragmentMap){
   return(frag.certainty)
 }
 
+get_MSIPCore_ATM_certainty <- function(msip.core){
+  get_MSIPFragmentMap_certainty(msip.core@FG_map)
+}
+
 MSIPFragmentMap_merge_duplicate <- function(MSIPFragmentMap){
 
 
@@ -1148,6 +1152,137 @@ plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
 }
 
 
+#' plot_MSIP_intensity_consistency_cor
+#'
+#' Evaluate the relationship of intensity-FG.consistency
+#'
+#'
+#' @param msdev MSIP solved msdev obj
+#' @param min_sp min sp count for a FG to be counted
+#' @param min_isotopologue min isotopologue count for a FG to be counted, count > 2 for cos calculation make sense
+#' @param log_int_bw bin with to split intensity of FG
+#' @param high_cos FG with cos > `high_cos` are considered as confident
+#'
+#' @returns ggplot
+#' @export
+#'
+plot_MSIP_intensity_consistency_cor <- function(msdev,
+                                                fg_data = NULL,
+                                                min_sp = 3,
+                                                min_isotopologue = 3,
+                                                log_int_bw = 0.1,
+                                                high_cos = 0.9){
+
+  if (is.null(fg_data)) {
+
+    fg_data <- get_MSIP_intensity_consistency_cor_data(msdev,
+                                                       min_sp = min_sp,
+                                                       min_isotopologue = min_isotopologue,
+                                                       log_int_bw = log_int_bw,
+                                                       high_cos = high_cos)
+  }
+
+
+
+  fg_cos_all_df <- fg_data%>%
+    dplyr::filter(n_sp >= min_sp,
+                  n_isotopologue > min_isotopologue)
+
+  plot.data <- fg_cos_all_df
+
+  p1 <- ggplot(plot.data)+
+    geom_point(aes(x = log10(intensity) , y = cos,size = n_sp),stroke = 0, col = "black",alpha = 0.2)+
+    labs( x = "Log10(intensity)",y = paste0("Cos similarity of FG"))+
+    scale_x_continuous(breaks = seq(2,10,2),limits = c(2,8))+
+    theme_bw()+
+    theme(legend.position = "none")
+  p1
+
+  fg_cos_bins <- fg_cos_all_df %>%
+    dplyr::filter(!is.na(cos),n_sp > min_sp, n_isotopologue >= min_isotopologue )%>%
+    dplyr::mutate(
+      log_int = log10(intensity),
+      int_bin = ceiling(log_int/log_int_bw)*log_int_bw-log_int_bw/2
+    )%>%
+    dplyr::group_by(int_bin)%>%
+    dplyr::mutate( percent_high_cos = sum(cos > high_cos)/n(),
+                   count = n()
+                   )%>%
+    dplyr::ungroup()%>%
+    dplyr::distinct( int_bin, percent_high_cos ,count )%>%
+    dplyr::filter( count> nrow(fg_cos_all_df) /n()*0.05)
+
+
+  p2 <- ggplot(fg_cos_bins)+
+    geom_point(aes(x = int_bin, y = percent_high_cos))+
+    stat_smooth(aes(x = int_bin, y = percent_high_cos),col = "#222222")+
+    labs( x = "Log10(intensity)",y = paste0("Percentage of FG \n cos > ",high_cos),size = "Count")+
+    scale_x_continuous(breaks = seq(2,10,2),limits = c(2,8))+
+    ylim(c(0.5,1.02))+
+    theme_bw()
+  p2
+
+  p1+p2+
+    patchwork::plot_annotation(
+      title = msdev@projectInfo$msModel,
+      subtitle = paste0(nrow(fg_cos_all_df) ," measurements of ",
+                        length(unique(fg_cos_all_df$FG))," FG from ",
+                        length(unique(fg_cos_all_df$sp_id))," Spectra")
+    )
+
+
+}
+
+
+get_MSIP_intensity_consistency_cor_data <- function(msdev,
+                                                    min_sp = 3,
+                                                    min_isotopologue = 3){
+
+  msip.data <- msdev@statData$MSIP$isotopologues_data
+
+  fg_cos_all_list <- list()
+  for (i in seq_along(msip.data)) {
+
+    this.mtbl <- msip.data[[i]]
+    this.istpls <- names(this.mtbl@MSIPIsotopologueDatas)
+
+    for (i.istpl in  this.istpls ) {
+
+      if (format_isotopologue(i.istpl,"n") < min_isotopologue) next
+      this.samples  <- names(this.mtbl@MSIPIsotopologueDatas[[i.istpl]])
+
+      for (i.sample in this.samples) {
+
+        message(paste0(i.sample,"_",i,"_",i.istpl))
+        this.msip.core <- this.mtbl@MSIPIsotopologueDatas[[i.istpl]][[i.sample]]
+        {
+          sp <-  this.msip.core@Spectra_data
+          se <- get_Spectra_fg_ratio_se(sp,
+                                        iso_count_max = format_isotopologue(i.istpl,"n"))
+          if (!ncol(se)) next
+
+          sem <- get_Spectra_fg_ratio_se_merge(se,keep_all_cos = T)
+
+          fg_cos_all_list[[
+            paste0(i.sample,"_",i,"_",i.istpl)
+          ]] <-
+            sem@metadata$fg_cos_df%>%
+            dplyr::mutate( FG = paste0(i,i.istpl,i.sample,FG))
+        }
+
+      }
+
+    }
+  }
+
+  fg_cos_all_df <- do.call(rbind,fg_cos_all_list)
+
+
+  return(fg_cos_all_df)
+
+
+}
+
 MSIPCore_FG_suffix <- function(MSIPCoreData,
                                suffix = "suffix"){
   ### Spectra_data
@@ -1588,7 +1723,15 @@ get_Spectra_fg_ratio_se <- function(sp,iso_count_max = 3){
 
 
 
-get_Spectra_fg_ratio_se_merge <- function(se){
+#' get_Spectra_fg_ratio_se_merge
+#'
+#' Merge fragment-ratio data from multiple spectra in a intensity-weighted manner, and calculate consistency
+#'
+#' @param se SummarizedExperiment
+#'
+#' @returns se
+#'
+get_Spectra_fg_ratio_se_merge <- function(se , keep_all_cos = F){
 
 
 
@@ -1605,6 +1748,7 @@ get_Spectra_fg_ratio_se_merge <- function(se){
   )
 
   fg_ratio_list <- list()
+  fg_cos_list <- list()
   for (i.fg in fgs) {
 
     #message(i.fg)
@@ -1645,8 +1789,30 @@ get_Spectra_fg_ratio_se_merge <- function(se){
       }else{
 
         i.icc <- NA
+        i.cos <- NA
         i.cos.weight <- 1
       }
+
+    }
+
+
+    ### store all cos for intensity-consistency evaluation
+    {
+
+      if (keep_all_cos) {
+
+        fg_cos_list[[i.fg]] <-
+          data.frame(
+            sp_id = names(i.intsum)
+          )%>%
+          dplyr::mutate(FG = i.fg,
+                        intensity = i.intsum,
+                        cos = i.cos,
+                        n_isotopologue = ncol(i.rm),
+                        n_sp = length(i.cos) )
+      }
+
+
 
     }
 
@@ -1673,6 +1839,8 @@ get_Spectra_fg_ratio_se_merge <- function(se){
     fg.se <- SummarizedExperiment::SummarizedExperiment(
       fg.ratio.matrix,rowData =rda
     )
+
+    fg.se@metadata$fg_cos_df <- do.call(rbind,fg_cos_list)
 
     return(fg.se)
   }
