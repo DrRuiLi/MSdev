@@ -49,7 +49,7 @@ groupStringFactor <- function(x){
 
 
   ### letter
- # x.new <- c(x.con,sort(x.other))
+  x.new <- c(x.con,sort(x.other))
   factor(x,levels = rev(unique(x.new)))
 }
 
