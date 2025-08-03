@@ -165,6 +165,7 @@ analyzePathwayHyperTest <- function(kegg.id = "C00024"){
 
 plot_PCA <- function(pca.matrix,pca.group,
                      force_ellipse = T,
+                     show_ellipse = T,
                      showlabel = F){
 
   pca.pca <- ropls::opls(x = pca.matrix,
@@ -203,10 +204,14 @@ plot_PCA <- function(pca.matrix,pca.group,
         pch = 16
       )
   }
-    p+
-   stat_ellipse(aes(x = p1, y = p2 , fill = pca.group),
-                alpha = 0.2,
-                geom = "polygon") +
+
+  if (show_ellipse) {
+      p <- p+
+        stat_ellipse(aes(x = p1, y = p2 , fill = pca.group),
+                     alpha = 0.2,
+                     geom = "polygon")
+  }
+    p +
     scale_color_manual(values = col.list) +
     scale_fill_manual(values = col.list) +
     #xlim(-40,40)+
@@ -422,8 +427,10 @@ plotVolcano <- function(diff.table,p.adjusted = T,point.label =F){
 
 }
 
-plotHeatmap <- function(heatmap.matrix,col.info,row.info,
-                        show_row_names=T,show_column_dend = F,show_row_dend = F){
+plotHeatmap <- function(heatmap.matrix,
+                        col.info,
+                        row.info,
+                        ...){
 
   ComplexHeatmap::Heatmap(heatmap.matrix,
                           name = "Z score",
@@ -439,10 +446,8 @@ plotHeatmap <- function(heatmap.matrix,col.info,row.info,
                           row_names_side = "left",
                           row_names_gp = grid::gpar(fontsize= 6),
                           column_names_gp  = grid::gpar(fontsize= 6),
+                          ...
 
-                          show_column_dend = show_column_dend,
-                          show_row_dend = show_row_dend,
-                          show_row_names = show_row_names
                           )->p
   p
 

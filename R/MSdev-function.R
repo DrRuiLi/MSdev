@@ -1586,42 +1586,6 @@ MSdev_get_Stat <- function(object,
 }
 
 
-#' @title getSEMSdev
-#' @description extrat SummarizedExperiment::SummarizedExperiment, which combine coldata(sample info) and rowdata (metabolites/feature)
-#' and perform data filter, normalization and imputation, refer to package DEP
-#'
-#' @param MSdev.obj MSdev
-#'
-#' @return MSdev
-#' @export
-#'
-
-MSdev_get_SE <- function(MSdev.obj){
-
-  .Deprecated("get_MSdev_DEP_se")
-  return(MSdev.obj)
-  col.info <- MSdev.obj@sampleInfo%>%
-    dplyr::filter(sample.type == "Sample")%>%
-    dplyr::mutate(label = sample.name,
-                  condition = group ,
-                  replicate = 1)%>%
-    dplyr::group_by(condition)%>%
-    dplyr::mutate(replicate = 1:n())
-
-  data.unique <- DEP::make_unique(MSdev.obj@statData$metabolites ,
-                                  names ="feature_id" ,
-                                  ids = "feature_id")
-  data.colum <- which(colnames(data.unique )%in% col.info$sample.name)
-  data.se <- DEP::make_se(proteins_unique = data.unique,
-                          columns = data.colum,
-                          expdesign = col.info )
-  data_filt <- DEP::filter_missval(data.se, thr = min(table(col.info$group))*0.3)
-  data_norm <- DEP::normalize_vsn(data_filt)
-  data_imp <- DEP::impute(data_norm, fun = "MinProb")
-
-  MSdev.obj@statData$data.se$data.raw$data.raw <- data_imp
-  MSdev.obj
-}
 
 
 
@@ -1640,19 +1604,29 @@ get_MSdev_DEP_se <- function(object,
 
     sampleinfo <- object@sampleInfo
     ### col
-    cda <- colData(data.se)%>%
-      as.data.frame()%>%
-      dplyr::mutate(group = sampleinfo$group[match(sample.name,sampleinfo$sample.name)],
-                    condition = group,
-                    sample.labels = sampleinfo$sample.labels[match(sample.name,sampleinfo$sample.name)],
-                    label =sample.labels)%>%
-      dplyr::group_by(condition)%>%
-      dplyr::mutate(replicate = 1:n(),
-                    ID = paste0(condition,num2str(1:n())))%>%
-      dplyr::ungroup()%>%
-      as.data.frame()
-    rownames(cda) <- cda$ID
-    colData(data.se) <- cda%>%S4Vectors::DataFrame()
+    {
+      cda <- colData(data.se)%>%
+        as.data.frame()%>%
+        dplyr::mutate(group = sampleinfo$group[match(sample.name,sampleinfo$sample.name)],
+                      group = groupStringFactor(group),
+                      condition = group,
+                      sample.labels = sampleinfo$sample.labels[match(sample.name,sampleinfo$sample.name)],
+                      label =sample.labels)%>%
+        dplyr::group_by(condition)%>%
+        dplyr::mutate(replicate = 1:n(),
+                      ID = paste0(condition,num2str(1:n())))%>%
+        dplyr::ungroup()%>%
+        as.data.frame()
+      rownames(cda) <- cda$ID
+
+      groups <- levels(cda$group)%>%setdiff(c("QC","Blank"))
+      col.group <- setNames(ggsci::pal_npg()(length(groups)),groups)
+      col.group[c("QC","Blank")] <- c("#FF7F0E","#808180")
+      cda$group.color <- col.group[cda$group]
+
+
+      colData(data.se) <- cda%>%S4Vectors::DataFrame()
+    }
 
     ### row
     rda <- rowData(data.se)%>%
