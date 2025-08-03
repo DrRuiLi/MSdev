@@ -561,6 +561,7 @@ DEP_plot_heatmap <- function(data.se,
     column_title_gp = gpar(fill = get_DEP_se_group_color(data.se),fontsize = 8),
     ...
     )
+  hm
 
 
 
@@ -822,13 +823,17 @@ DEP_get_QC_RSD <- function(data.se){
 
 #' DEP_preprocess
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se filter miss, filter QC rsd, normalization, imputation
 #' @export
 DEP_preprocess <- function(data.se,group.miss.ratio =0.3,QC_RSD = 0.3){
 
   #data_filt <- DEP::filter_missval(data.se, thr = min(table(cda$group))*0.3)
   data_filt <- DEP_filter_miss(data.se, group.miss.ratio = group.miss.ratio)
-  data_filt <- DEP_filter_QC_RSD(data_filt, QC_RSD = QC_RSD)
+  if ("QC" %in%  data.se$condition){
+    data_filt <- DEP_filter_QC_RSD(data_filt, QC_RSD = QC_RSD)
+  }else
+    message_with_time("No QC, skip QC RSD filter")
+
   data_norm <- DEP::normalize_vsn(data_filt)
   data_imp <- DEP::impute(data_norm, fun = "MinProb")
 
@@ -837,7 +842,8 @@ DEP_preprocess <- function(data.se,group.miss.ratio =0.3,QC_RSD = 0.3){
 }
 
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+
+#' @describeIn DEP_Style_se update `plot_normalization`, add group color
 #' @export
 DEP_plot_normalization <- function (se, ...)
 {
@@ -858,15 +864,19 @@ DEP_plot_normalization <- function (se, ...)
     }
   })
   gather_join <- function(se) {
-    assay(se) %>% data.frame() %>% gather(ID, val) %>% left_join(.,
+    assay(se) %>% data.frame() %>% tidyr::gather(ID, val) %>% left_join(.,
                                                                  data.frame(colData(se)), by = "ID")
   }
-  df <- map_df(arglist, gather_join, .id = "var") %>% mutate(var = factor(var,
+  df <- purrr::map_df(arglist, gather_join, .id = "var") %>% mutate(var = factor(var,
                                                                           levels = names(arglist)))
-  ggplot(df, aes(x = ID, y = val, fill = condition)) + geom_boxplot(notch = TRUE,
-                                                                    na.rm = TRUE) + coord_flip() + facet_wrap(~var, ncol = 1) +
+  ggplot(df, aes(x = ID, y = val, fill = condition)) +
+    geom_boxplot(notch = TRUE,
+                 na.rm = TRUE) +
+    scale_fill_manual(values = get_DEP_se_group_color(se))+
+    coord_flip() +
+    facet_wrap(~var, ncol = 1) +
     labs(x = "", y = expression(log[2] ~ "Intensity")) +
-    theme_DEP1()
+    DEP::theme_DEP1()
 }
 
 #' @describeIn DEP_Style_se DEP_list_contrast
@@ -897,6 +907,9 @@ get_DEP_se_sig_feature <- function(data.diff,contrast = DEP_list_contrast(data.d
 
 
   }else{
+    if (is.numeric(contrast)) {
+      contrast <- DEP_list_contrast(data.diff)[contrast]
+    }
     fid <- DEP_get_diff_table(data.diff,contrast = contrast )%>%
       dplyr::filter(significant)%>%
       dplyr::pull(protein)
