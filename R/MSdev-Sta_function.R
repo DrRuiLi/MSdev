@@ -702,26 +702,41 @@ get_CompDb_info <- function(cpdb,
 
 
 
+#' show TIC, QC RSD, PCA
+#' @describeIn MSdev_preprocess_visualization show DEP::plot_normalization
+#'
+#' @param object MSdev
+#'
+#' @returns ggplot
+#' @export
+#'
 plot_MSdev_normalization <- function(object){
 
   before_norm <- get_MSdev_DEP_se(object,"metabolite",F)
   after_norm <- get_MSdev_DEP_se(object,"metabolite",T)
 
-  DEP::plot_normalization(before_norm,after_norm)
+  DEP_plot_normalization(before_norm,after_norm)
 
 }
 
 
+#' @describeIn MSdev_preprocess_visualization QC RSD Histograms
+#'
+#' @param object MSdev
+#'
+#' @returns ggplot
+#' @export
+#'
 plot_MSdev_QC_RSD_hist <- function(object){
 
-  before_norm <- get_MSdev_DEP_se(object,"metabolite",F,QC_RSD = Inf)%>%
+  before_norm <- get_MSdev_DEP_se(object,"meta",F,QC_RSD = Inf)%>%
     DEP_get_QC_RSD()%>%
     rowData()%>%
     as.data.frame()%>%
     dplyr::mutate(norm = "Before Norm")%>%
     dplyr::select(norm,qc_rsd)
 
-  after_norm <- get_MSdev_DEP_se(object,"metabolite",T,QC_RSD = 0.3)%>%
+  after_norm <- get_MSdev_DEP_se(object,"meta",T,QC_RSD = 0.3)%>%
     DEP_get_QC_RSD()%>%
     rowData()%>%
     as.data.frame()%>%
@@ -745,17 +760,26 @@ plot_MSdev_QC_RSD_hist <- function(object){
 
 }
 
+
+
+#' @describeIn MSdev_preprocess_visualization show cumulative distribution
+#'
+#' @param object MSdev
+#'
+#' @returns ggplot
+#' @export
+#'
 plot_MSdev_QC_RSD_CDF <- function(object){
 
 
-  before_norm <- get_MSdev_DEP_se(object,"metabolite",F,QC_RSD = Inf)%>%
+  before_norm <- get_MSdev_DEP_se(object,"meta",F,QC_RSD = Inf)%>%
     DEP_get_QC_RSD()%>%
     rowData()%>%
     as.data.frame()%>%
     dplyr::mutate(norm = "Before Norm")%>%
     dplyr::select(norm,qc_rsd)
 
-  after_norm <- get_MSdev_DEP_se(object,"metabolite",T,QC_RSD = 0.3)%>%
+  after_norm <- get_MSdev_DEP_se(object,"meta",T,QC_RSD = 0.3)%>%
     DEP_get_QC_RSD()%>%
     rowData()%>%
     as.data.frame()%>%
@@ -771,3 +795,22 @@ plot_MSdev_QC_RSD_CDF <- function(object){
 
 
 }
+
+
+plot_MSdev_TIC <- function(object){
+
+  data.se <- get_MSdev_DEP_se(object,preprocess = F)
+  col.group <- get_DEP_se_group_color(data.se)
+  p1 <- plot_xcms_TIC(object@xcmsData$PositiveMS1,col.group = col.group,title = "Positive TIC")
+  p2 <- plot_xcms_TIC(object@xcmsData$NegativeMS1,col.group = col.group,title = "Negative TIC")
+  p1/p2
+}
+
+
+plot_MSdev_PCA <- function(object){
+
+
+
+}
+
+
