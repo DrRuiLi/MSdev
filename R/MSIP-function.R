@@ -1431,7 +1431,7 @@ MSIP_clear_previous_data <- function(object){
 
 
 Report_MSIP_raw_data <- function(object,
-                        file = "C:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Figure/MSIP_Result_Report.pdf",
+                                 file = paste0(object@projectInfo$projectDir,"/MSIP.raw.data.pdf"),
                         show_chrom = F){
 
 
@@ -1621,6 +1621,7 @@ Report_MSIP_isotopomers <- function(object,
     {
 
       fid <- rownames(MSIP.mol.igs)[i]
+      message_with_time(fid)
       this.msip.mtblt <-  object@statData$MSIP$isotopologues_data[[fid]]
       cp <- this.msip.mtblt@CompoundInfo$name
 
@@ -1672,7 +1673,7 @@ Report_MSIP_isotopomers <- function(object,
     {
 
       export_graph2pdf(p.info+ p.mig +p.bar,file , width = 20,height = 5,append = T)
-      export_graph2pdf(p.per.cirs ,file , width = 20,height = 5,append = T)
+      export_graph2pdf(p.per.cirs ,file , width = 20,height = 6,append = T)
 
 
     }

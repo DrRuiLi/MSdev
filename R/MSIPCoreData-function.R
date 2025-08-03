@@ -1706,7 +1706,8 @@ get_Spectra_fg_ratio_se <- function(sp,iso_count_max = 3){
   ### store in se
   {
 
-    fragment_group_ratio_matrix <- fragment_group_ratio_matrix[rda$sp_id,cda$FG_isotopologue]
+    fragment_group_ratio_matrix <- fragment_group_ratio_matrix[rda$sp_id,cda$FG_isotopologue,drop = F]
+    fragment_group_int_sum_matrix <- fragment_group_int_sum_matrix[rda$sp_id,cda$FG_isotopologue,drop = F]
     sp.se <- SummarizedExperiment::SummarizedExperiment(
       fragment_group_ratio_matrix,colData = cda,rowData = rda
     )

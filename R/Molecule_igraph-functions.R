@@ -999,7 +999,7 @@ plot_Molecular_igraphs_isotopomer_bar <- function(mol.igs){
   mol.igs.itpms.list <- lapply(mol.igs,function(x){
     x@isotopomer
   })
-  mol.igs.itpms.df <- data.table::rbindlist(mol.igs.itpms.list,idcol = "sample")%>%
+  mol.igs.itpms.df <- data.table::rbindlist(mol.igs.itpms.list,idcol = "sample",fill = T)%>%
     dplyr::group_by(sample)%>%
     dplyr::mutate(abundance = abundance/sum(abundance))%>%
     dplyr::ungroup()%>%
