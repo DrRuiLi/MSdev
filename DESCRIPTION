@@ -1,6 +1,6 @@
 Package: MSdev
 Title: Mass spectrumetry data analysis development by Li Rui
-Version: 1.3.4
+Version: 1.3.5
 Authors@R: 
     person("Rui", "Li", , "lirui3@shanghaitech.edu.cn", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-3199-287X"))
