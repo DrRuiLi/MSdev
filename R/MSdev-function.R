@@ -1492,6 +1492,8 @@ MSdev_get_Stat <- function(object,
   ### formate
   {
 
+
+
     ### sort colname
     rda <- rowData(feature.se)%>%
       as.data.frame()%>%
@@ -1591,8 +1593,8 @@ MSdev_get_Stat <- function(object,
 
 
 get_MSdev_DEP_se <- function(object,
-                             from = c("feature.se",
-                                      "metabolite.se"),
+                             from = c("metabolite.se",
+                                      "feature.se"),
                              preprocess = T,...){
 
   from <- match.arg(from)
@@ -1629,12 +1631,14 @@ get_MSdev_DEP_se <- function(object,
     }
 
     ### row
-    rda <- rowData(data.se)%>%
-      as.data.frame()%>%
-      dplyr::mutate( label = name,
-                     name = feature_id,
-                     ID= feature_id)
-    rowData(data.se) <- rda%>%S4Vectors::DataFrame()
+    {
+      rda <- rowData(data.se)%>%
+        as.data.frame()%>%
+        dplyr::mutate( label = name,
+                       name = feature_id,
+                       ID= feature_id)
+      rowData(data.se) <- rda%>%S4Vectors::DataFrame()
+    }
 
     assay(data.se) <- log2(assay(data.se))
   }
@@ -1642,6 +1646,7 @@ get_MSdev_DEP_se <- function(object,
 
   ### pre process
   {
+    data.se <- DEP_get_QC_RSD(data.se)
     if (preprocess) {
       data.se <- DEP_preprocess(data.se,...)
 
