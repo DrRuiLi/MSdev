@@ -1944,7 +1944,7 @@ xcms_get_scan_Stat <- function(xcms.xcms){
 
 
 
-plot_xcms_TIC <- function(xcms.xcms,title = "TIC"){
+plot_xcms_TIC <- function(xcms.xcms,col.group = NULL,title = "TIC"){
 
 
   xcms.pdata <- Biobase::pData(xcms.xcms)
@@ -1954,15 +1954,17 @@ plot_xcms_TIC <- function(xcms.xcms,title = "TIC"){
                   group = xcms.pdata$group[fileIdx])%>%
     dplyr::filter(msLevel==1)
 
-  col.scale <- c("grey","#38C291",ggsci::pal_aaas()(20))
-  names(col.scale) <- c("Blank","QC",
-                        setdiff(unique(xcms.scan$group),c("Blank","QC")))
+  if (is.null(col.group)) {
+    col.group <- c("grey","#38C291",ggsci::pal_aaas()(10))
+    names(col.group) <- c("Blank","QC",
+                          setdiff(unique(xcms.scan$group),c("Blank","QC")))
+  }
 
   ggplot(xcms.scan)+
     geom_line(aes(x = retentionTime , y = tic,
                   col = group,
                   group=fileIdx))+
-    scale_color_manual(values = col.scale)+
+    scale_color_manual(values = col.group)+
     #scale_y_log10()+
     labs(title = title,x = "Retention Time", y = "Intensity", col = "")+
     theme_classic()->p
