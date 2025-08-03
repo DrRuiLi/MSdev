@@ -809,7 +809,17 @@ plot_MSdev_TIC <- function(object){
 
 plot_MSdev_PCA <- function(object){
 
+  se <- get_MSdev_DEP_se(object,"meta",keep_before_norm = T)
 
+  before_norm <- se
+  assay(before_norm) <- assay(before_norm,"before_norm")
+
+  p1 <- DEP_plot_PCA(before_norm)+
+    labs(title = "PCA Before Normalization")
+  p2 <- DEP_plot_PCA(se)+
+    labs(title = "PCA After Normalization")
+
+  p1+p2+patchwork::plot_layout(guides = "collect")
 
 }
 

@@ -825,7 +825,10 @@ DEP_get_QC_RSD <- function(data.se){
 
 #' @describeIn DEP_Style_se filter miss, filter QC rsd, normalization, imputation
 #' @export
-DEP_preprocess <- function(data.se,group.miss.ratio =0.3,QC_RSD = 0.3){
+DEP_preprocess <- function(data.se,
+                           group.miss.ratio =0.3,
+                           QC_RSD = 0.3,
+                           keep_before_norm = F){
 
   #data_filt <- DEP::filter_missval(data.se, thr = min(table(cda$group))*0.3)
   data_filt <- DEP_filter_miss(data.se, group.miss.ratio = group.miss.ratio)
@@ -834,7 +837,12 @@ DEP_preprocess <- function(data.se,group.miss.ratio =0.3,QC_RSD = 0.3){
   }else
     message_with_time("No QC, skip QC RSD filter")
 
+  assay.before <- assay(data_filt)
   data_norm <- DEP::normalize_vsn(data_filt)
+  if (keep_before_norm) {
+    SummarizedExperiment::assay(data_norm,2) <- assay.before
+    SummarizedExperiment::assayNames(data_norm) <- c("data","before_norm")
+  }
   data_imp <- DEP::impute(data_norm, fun = "MinProb")
 
   return(data_imp)
