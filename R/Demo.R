@@ -13,7 +13,17 @@ load_demo <- function(demo = c("MSdev",
          "Spectra" = "C:\\Users\\91879\\OneDrive\\Code\\R\\Projecct\\2022.1.8_MS.demo\\Demo/Spectra_2023_11_23.rda",
          "sp" = "C:\\Users\\91879\\OneDrive\\Code\\R\\Projecct\\2022.1.8_MS.demo\\Demo/Spectra_2023_11_23.rda"
          )
-  demo <- MSdev_load(file_path)
+
+  fun <- switch(demo,
+                "MSdev" = MSdev_load,
+                "XCMSnExp" = readRDS,
+                "xcms" = readRDS,
+                "SummarizedExperiment" = readRDS,
+                "data.se" = readRDS,
+                "Spectra" = readRDS,
+                "sp" = readRDS
+  )
+  demo <- fun(file_path)
 
   return(demo)
 }
