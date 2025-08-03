@@ -339,3 +339,5 @@ rm_except <- function(..., env = parent.frame()) {
 }
 
 
+show_col <- scales::show_col
+

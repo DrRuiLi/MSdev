@@ -1911,8 +1911,6 @@ a <- r_bg(func = function(){
   ### tic
   {
 
-
-
     p1 <- plot_xcms_TIC(msdev.dda@xcmsData$PositiveMS1,title = "Positive TOF6600")+theme(legend.position = "none")
     p2 <- plot_xcms_TIC(msdev.demo@xcmsData$PositiveMS1,title = "Positive QE")+theme(legend.position = "none")
 
@@ -2774,4 +2772,88 @@ a <- r_bg(func = function(){
     heatmap(as.matrix(distance(rbind(X, mean_vector), method = "jensen-shannon")))
 
   }
+}
+
+# Fri Jul 25 14:36:23 2025 ------------------------------
+{
+
+  msdev <- load_demo()
+
+  msdev <- MSdev_get_Stat(msdev)
+
+  se <- get_MSdev_DEP_se(msdev)
+
+
+
+}
+
+# Thu Jul 31 01:21:40 2025 ------------------------------
+{
+
+  ### 480
+  {
+    fg.consist.data.480 <- get_MSIP_intensity_consistency_cor_data(msip.pdh.0703,
+                                                                   min_isotopologue = 3)
+    p.480 <- plot_MSIP_intensity_consistency_cor(msip.pdh.0703,
+                                             fg_data = fg.consist.data.480,
+                                             high_cos = 0.9,
+                                             min_sp = 3,
+                                             min_isotopologue = 3)
+    open_plot_win(p.480,10,5)
+  }
+
+  ### QE
+  {
+    fg.consist.data.QE <- get_MSIP_intensity_consistency_cor_data(msdev.13C1,
+                                                                   min_isotopologue = 3)
+    p.QE <- plot_MSIP_intensity_consistency_cor(msdev.13C1,
+                                             fg_data = fg.consist.data.QE,
+                                             high_cos = 0.9,
+                                             min_sp = 3,
+                                             min_isotopologue = 3)
+    open_plot_win(p.QE,10,5)
+  }
+
+
+}
+# Sun Aug  3 16:12:46 2025 FIX data se------------------------------
+{
+
+  msdev <- load_demo()
+  msdev <- MSdev_get_Stat(msdev)
+  data.se <- get_MSdev_DEP_se(msdev)
+
+  data.diff <- DEP_test_diff(data.se)
+  data.diff <- DEP_add_rejections(data.diff)
+  get_DEP_se_sig_feature(data.diff,contrast = 1)
+  data.diff.fil <- DEP_filter_significant(data.diff)
+  DEP_plot_heatmap(data.diff)
+
+  plotMSdevPCA(msdev)
+
+
+
+}
+
+# Sun Aug  3 18:30:19 2025 Lipidomic -----------------------------
+{
+
+
+  load("C:/Users/91879/OneDrive/Code/R/Projecct/2025.07.29.ESCC/")
+  serum.lipidomic.se
+
+  MSdev.obj <- MSdev_load("d:/2025.07.25.Lipidomic/MSdev_2025_08_03.Rdata")
+  MSdev.obj <- MSdev_checkSampleInfo(MSdev.obj)
+  p <- plot_MSdev_TIC(MSdev.obj)
+  open_plot_win(p)
+  MSdev.obj <- MSdev_get_Stat(MSdev.obj,score_thresh = 0.3)
+  data.se <- get_MSdev_DEP_se(MSdev.obj,from = "fea")
+
+  rda <- rowData(data.se)
+
+  library(ggvenn)
+  ggvenn(data = list(A = str_digit(rda$mzmed,1),
+                     B = str_digit(serum.lipidomic.se@elementMetadata$mz,1)
+                       ))
+
 }
