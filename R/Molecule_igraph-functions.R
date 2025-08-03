@@ -1024,17 +1024,22 @@ plot_Molecular_igraphs_isotopomer_bar <- function(mol.igs){
 }
 
 
-plot_Molecular_igraph_isotopomer_circle <- function(mol.ig, thresh = 0.001){
+plot_Molecular_igraph_isotopomer_circle <- function(mol.ig){
 
 
 
 
-  isotopomer.data <- mol.ig@isotopomer%>%
-    dplyr::select(isotopomer,isotopologue,abundance)%>%
+  isotopomer.data <- mol.ig@isotopomer
+  if (nrow(isotopomer.data)==1) {
+    isotopomer.data$FSIS <- "M0"
+  }
+  isotopomer.data <-isotopomer.data%>%
+    dplyr::select(isotopomer,isotopologue,abundance,FSIS)%>%
     dplyr::mutate(abundance = abundance/sum(abundance),
                   r = rank(-abundance, ties.method = "random"),
-                  #others = r >topN
-                  others = abundance < thresh
+                  others = F
+                  #others = abundance < thresh
+
                   )%>%
     dplyr::group_by(others)%>%
     dplyr::mutate(
@@ -1056,7 +1061,8 @@ plot_Molecular_igraph_isotopomer_circle <- function(mol.ig, thresh = 0.001){
     #dplyr::filter(r <= topN+1)%>%
     dplyr::filter(!others)%>%
     dplyr::arrange(isotopologue,abundance)%>%
-    dplyr::mutate(isotopomer = factor(isotopomer,levels = unique(isotopomer)))
+    dplyr::mutate(isotopomer = factor(isotopomer,levels = (unique(isotopomer))))
+
 
 
 
@@ -1071,20 +1077,30 @@ plot_Molecular_igraph_isotopomer_circle <- function(mol.ig, thresh = 0.001){
 
   all.istl <- unique(na.omit(isotopomer.data$isotopologue))
   col.isotopologues <- make_isotopologues_col(max(format_isotopologue(isotopomer.data$isotopologue,"n"),na.rm = T))
-  col.isotopologues["Others"] <- "#999999"
+  #col.isotopologues["Others"] <- "#999999"
 
   isotopomer.data <- isotopomer.data%>%
     dplyr::group_by(isotopologue)%>%
-    dplyr::mutate(id = paste0(isotopologue,num2str(1:n())),
-                  col = col.isotopologues[isotopologue],
+    dplyr::mutate(col = col.isotopologues[isotopologue],
                   col = split.col(col,1:n()))%>%
     dplyr::ungroup()
+
+  fsis.data <- isotopomer.data%>%
+    dplyr::arrange(rev(isotopomer) )%>%
+    dplyr::group_by(FSIS)%>%
+    dplyr::mutate(fsis.r = sum(abundance))%>%
+    dplyr::ungroup()%>%
+    dplyr::distinct(FSIS,fsis.r)%>%
+    dplyr::mutate(x = 1,
+                  y = cumsum(fsis.r),
+                  ys = c(0,head(y,-1))
+                  )
 
   isotpologues.data <- isotopomer.data%>%
     dplyr::group_by(isotopologue)%>%
     dplyr::summarise(abundance = sum(abundance))%>%
     dplyr::arrange(format_isotopologue(isotopologue,"n"))%>%
-    dplyr::mutate(isotopologue = factor(isotopologue,levels = unique(isotopologue)))
+    dplyr::mutate(isotopologue = factor(isotopologue,levels = (unique(isotopologue))))
 
   p <- ggplot()+
     geom_bar(aes( x= 1.7, y = abundance,
@@ -1098,17 +1114,24 @@ plot_Molecular_igraph_isotopomer_circle <- function(mol.ig, thresh = 0.001){
       values = col.isotopologues)+
     guides(fill = guide_legend(ncol = 1,order = 1)) +
     ggnewscale::new_scale_fill() +
+
+
     geom_bar(aes( x= 1, y = abundance,
                   #col = isotopologue,
                   fill = isotopomer),
              data = isotopomer.data,
              col = "white",
-             linewidth = 0.1,width = 1,
+             linewidth = 0.2,width = 1,
              stat = "identity")+
     scale_fill_manual(
       name = "Isotopomers",
       values =setNames(isotopomer.data$col,isotopomer.data$isotopomer)
     )+
+    geom_rect(data = fsis.data,
+              aes(xmin =0.5,xmax = 1.5,
+                  ymin = ys, ymax = y),
+              fill = "transparent",col = "black",linewidth = 1)+
+
     #geom_vline(xintercept = c(0.525,1.475))+
     guides(fill = guide_legend(ncol = 2)) +
     xlim(c(0.3,2))+
@@ -1116,6 +1139,7 @@ plot_Molecular_igraph_isotopomer_circle <- function(mol.ig, thresh = 0.001){
     theme_void(base_size  = 10)
 
   p
+
 
 
 
