@@ -214,7 +214,9 @@ DEP_get_group_color <- function(data.se,col.group = NULL){
 #' @export
 DEP_plot_volcano <- function(data.se,
                              contrast = DEP_list_contrast(data.se )[1],
-                             show.label = T){
+                             show.label = T,
+                             label.top = 10,
+                             label.max.char = 15){
   if (length(grep("_significant", colnames(rowData(data.se))))<1) {
 
     stop("non signifcant, please run DEP_add_rejections")
@@ -228,7 +230,8 @@ DEP_plot_volcano <- function(data.se,
                                                    contrast = i_contrast,
                                                    show.label = show.label)
     }
-    return(p.vol.list)
+    p <- ggplot_sum_patchwork(p.vol.list)
+    return(p)
   }
 
 
@@ -301,7 +304,9 @@ DEP_plot_volcano <- function(data.se,
     row.data <- SummarizedExperiment::rowData(data.se)%>%
       as.data.frame()
     volcano.data <- volcano.data%>%
-      dplyr::mutate(label = row.data$label[match(protein , row.data$feature_id)])
+      dplyr::mutate(label = row.data$label[match(protein , row.data$feature_id)],
+                    label = str_short(label,label.max.char))%>%
+      dplyr::slice_max(`p_value_-log10`,n = label.top)
 
     p <- p+
       ggrepel::geom_text_repel(data = filter(volcano.data, significant),
@@ -1009,5 +1014,18 @@ get_DEP_se_from_ME_result <- function(ME_file ){
 
   data.se <- DEP_get_group_color(data.se)
   return(data.se)
+
+}
+
+#' @describeIn DEP_Style_se remove QC and Blank
+#' @export
+#'
+DEP_remove_QC <- function(data.se,remove_QC = T, remove_Blank = T){
+
+  if (remove_QC) data.se <- data.se[, !data.se$sample.type %in% "QC"]
+  if (remove_QC) data.se <- data.se[, !data.se$sample.type %in% "Blank"]
+
+  return(data.se)
+
 
 }
