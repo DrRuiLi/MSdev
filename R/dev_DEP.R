@@ -128,13 +128,16 @@ DEP_test_diff <- function(data.se,type = "all",...){
 
 #' @describeIn DEP_Style_se DEP_list_contrast
 #' @export
-DEP_filter_significant <- function(data.se,contrast = DEP_list_contrast(data.se )[1]){
+DEP_filter_significant <- function(data.se,
+                                   contrast = DEP_list_contrast(data.se )[1],
+                                   top = Inf){
 
 
-  rd <- rowData(data.se)%>%
-    as.data.frame()
-  idx <- rd[,paste0(contrast,"_significant")]
-  data.se[rd$feature_id[idx],]
+  rd <- DEP_get_diff_table(data.se,contrast = i.contra,keep.all = T)%>%
+    dplyr::slice_max(`p_value_-log10`,n = top,with_ties = F)%>%
+    dplyr::filter(significant)
+
+  data.se[rd$feature_id,]
 
 
 
@@ -182,6 +185,29 @@ DEP_get_diff_table <- function(data.se,
   }
 
   diff.table
+}
+
+
+
+DEP_get_group_color <- function(data.se,col.group = NULL){
+
+
+  if (is.null(col.group)) {
+
+    groups <- levels(data.se$group)%>%setdiff(c("QC","Blank"))
+    col.group <- setNames(ggsci::pal_npg()(length(groups)),groups)
+    col.group[c("QC","Blank")] <- c("#FF7F0E","#808180")
+
+
+  }else{
+
+  }
+
+
+  data.se$group.color <- col.group[data.se$group]
+
+  return(data.se)
+
 }
 
 #' @describeIn DEP_Style_se DEP_list_contrast
@@ -929,3 +955,59 @@ get_DEP_se_sig_feature <- function(data.diff,contrast = DEP_list_contrast(data.d
 }
 
 
+
+
+#' @describeIn DEP_Style_se import data from ME result
+#' @export
+#'
+get_DEP_se_from_ME_result <- function(ME_file ){
+
+  data.file <- "D:/temp/20250721_Plasma_Lipid_Annotation.xlsx"
+  sample.info <- readxl::read_excel(data.file,sheet = "sample.info")
+  data <- readxl::read_excel(data.file,sheet = "data")
+
+
+
+  col.data <- sample.info%>%
+    dplyr::mutate(group = groupStringFactor(group),
+                  label = sample.name,
+                  sample.labels = label,
+                  condition = group,
+                  replicate = 1:n())
+
+  row.data <- data%>%
+    dplyr::mutate(
+      feature_id = paste0("FT",  MSdev:::num2str(1:n())),# num2str
+      id = feature_id,
+      name = feature_id,
+      label = Name,
+      kegg_id =`KEGG ID`)
+
+
+  data_unique <- make_unique(row.data, "id", "id", delim = ";")
+  data.se <- make_se(data_unique,
+                     match(col.data$sample.name,colnames(data_unique)), col.data)
+
+
+  col.data <- colData(data.se)%>%
+    as.data.frame()%>%
+    dplyr::mutate(
+                  label = sample.name,
+                  sample.labels = label,
+                  sample.type = case_when(
+                    grepl("QC",ignore.case = T,x = label)~"QC",
+                    grepl("Blank|BLK",ignore.case = T,x = label)~"Blank",
+                    T~"Sample"
+                  ),
+                  group = groupStringFactor(group),
+                  condition = group,
+                  replicate = 1:n())
+
+  rownames(col.data) <- colnames(data.se)
+  colData(data.se) <- col.data %>%
+    S4Vectors::DataFrame()
+
+  data.se <- DEP_get_group_color(data.se)
+  return(data.se)
+
+}
