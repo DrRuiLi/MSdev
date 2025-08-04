@@ -1621,10 +1621,6 @@ get_MSdev_DEP_se <- function(object,
         as.data.frame()
       rownames(cda) <- cda$ID
 
-      groups <- levels(cda$group)%>%setdiff(c("QC","Blank"))
-      col.group <- setNames(ggsci::pal_npg()(length(groups)),groups)
-      col.group[c("QC","Blank")] <- c("#FF7F0E","#808180")
-      cda$group.color <- col.group[cda$group]
 
 
       colData(data.se) <- cda%>%S4Vectors::DataFrame()
@@ -1647,6 +1643,7 @@ get_MSdev_DEP_se <- function(object,
   ### pre process
   {
     data.se <- DEP_get_QC_RSD(data.se)
+    data.se <- DEP_get_group_color(data.se)
     if (preprocess) {
       data.se <- DEP_preprocess(data.se,...)
 
