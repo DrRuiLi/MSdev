@@ -1,5 +1,6 @@
 
 
+
 #' @title MSdev input and output
 #' @description
 #' save `MSdev` using `qs::qsave()` and  qs::qread()`
@@ -1592,67 +1593,7 @@ MSdev_get_Stat <- function(object,
 
 
 
-get_MSdev_DEP_se <- function(object,
-                             from = c("metabolite.se",
-                                      "feature.se"),
-                             preprocess = T,...){
 
-  from <- match.arg(from)
-  data.se <- object@statData[[from]]
-
-  ### format to DEP
-  {
-
-
-    sampleinfo <- object@sampleInfo
-    ### col
-    {
-      cda <- colData(data.se)%>%
-        as.data.frame()%>%
-        dplyr::mutate(group = sampleinfo$group[match(sample.name,sampleinfo$sample.name)],
-                      group = groupStringFactor(group),
-                      condition = group,
-                      sample.labels = sampleinfo$sample.labels[match(sample.name,sampleinfo$sample.name)],
-                      label =sample.labels)%>%
-        dplyr::group_by(condition)%>%
-        dplyr::mutate(replicate = 1:n(),
-                      ID = paste0(condition,num2str(1:n())))%>%
-        dplyr::ungroup()%>%
-        as.data.frame()
-      rownames(cda) <- cda$ID
-
-
-
-      colData(data.se) <- cda%>%S4Vectors::DataFrame()
-    }
-
-    ### row
-    {
-      rda <- rowData(data.se)%>%
-        as.data.frame()%>%
-        dplyr::mutate( label = name,
-                       name = feature_id,
-                       ID= feature_id)
-      rowData(data.se) <- rda%>%S4Vectors::DataFrame()
-    }
-
-    assay(data.se) <- log2(assay(data.se))
-  }
-
-
-  ### pre process
-  {
-    data.se <- DEP_get_QC_RSD(data.se)
-    data.se <- DEP_get_group_color(data.se)
-    if (preprocess) {
-      data.se <- DEP_preprocess(data.se,...)
-
-    }
-
-  }
-
-  return(data.se)
-}
 
 
 MSdev_update_xcms_pdata <- function(object,

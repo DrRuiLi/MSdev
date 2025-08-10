@@ -1,9 +1,74 @@
-#' @title DEP styled SummarizedExperiment and related analysis
-#' @description return contrasts in data.se from DEP::test_diff
-#' @param data.se SE
-#'
-#' @return contrast
-#' @describeIn DEP_Style_se DEP styled SummarizedExperiment and related analysis
+#' @describeIn DEP_Style_se get DEP style \code{\link[SummarizedExperiment]{SummarizedExperiment}} from MSdev
+#' @title \code{\link[DEP]{DEP}} styled \code{\link[SummarizedExperiment]{SummarizedExperiment}} and related analysis
+#' @description DEP styled SummarizedExperiment and related analysis
+#' @export
+get_MSdev_DEP_se <- function(object,
+                             from = c("metabolite.se",
+                                      "feature.se"),
+                             preprocess = T,...){
+
+  from <- match.arg(from)
+  data.se <- object@statData[[from]]
+
+  ### format to DEP
+  {
+
+
+    sampleinfo <- object@sampleInfo
+    ### col
+    {
+      cda <- colData(data.se)%>%
+        as.data.frame()%>%
+        dplyr::mutate(group = sampleinfo$group[match(sample.name,sampleinfo$sample.name)],
+                      group = groupStringFactor(group),
+                      condition = group,
+                      sample.labels = sampleinfo$sample.labels[match(sample.name,sampleinfo$sample.name)],
+                      label =sample.labels)%>%
+        dplyr::group_by(condition)%>%
+        dplyr::mutate(replicate = 1:n(),
+                      ID = paste0(condition,num2str(1:n())))%>%
+        dplyr::ungroup()%>%
+        as.data.frame()
+      rownames(cda) <- cda$ID
+
+
+
+      colData(data.se) <- cda%>%S4Vectors::DataFrame()
+    }
+
+    ### row
+    {
+      rda <- rowData(data.se)%>%
+        as.data.frame()%>%
+        dplyr::mutate( label = name,
+                       name = feature_id,
+                       ID= feature_id)
+      rowData(data.se) <- rda%>%S4Vectors::DataFrame()
+    }
+
+    assay(data.se) <- log2(assay(data.se))
+  }
+
+
+  ### pre process
+  {
+    data.se <- DEP_get_QC_RSD(data.se)
+    data.se <- DEP_get_group_color(data.se)
+    if (preprocess) {
+      data.se <- DEP_preprocess(data.se,...)
+
+    }
+
+  }
+
+  return(data.se)
+}
+
+
+
+
+
+#' @describeIn DEP_Style_se list all contrast in SummarizedExperiment
 #' @export
 DEP_list_contrast <- function(data.se){
 
@@ -16,18 +81,17 @@ DEP_list_contrast <- function(data.se){
 
 
 
-#' @title add_rejections_no_p.adj
-#' @description reference to DEP::add_rejections(),which not support significant with out p adjust,
-#' this function as supplymentary
+
+
 #' @param data.se SE
 #' @param alpha p threshold
 #' @param lfc fc threshold
 #'
 #' @return se
 #'
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se Add significant,Reference to \code{\link[DEP]{add_rejections}},which not support significant with out p adjust,
+#' this function as supplymentary
 #' @export
-
 DEP_add_rejections <- function(data.se , p.adjust = T, p = 0.05,lfc = 0.5){
 
   if (any(grepl(pattern = "significant",names(data.se@elementMetadata@listData)))) {
@@ -68,7 +132,7 @@ DEP_add_rejections <- function(data.se , p.adjust = T, p = 0.05,lfc = 0.5){
 
 }
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se multiple test
 #' @export
 DEP_p_adjust <- function(data.se , p.adjust.method = "fdr"){
 
@@ -85,8 +149,7 @@ DEP_p_adjust <- function(data.se , p.adjust.method = "fdr"){
 
 }
 
-#' @describeIn DEP_Style_se DEP_list_contrast
-#' @export
+#' @describeIn DEP_Style_se check if \code{\link[MSdev]{DEP_add_rejections}} performed
 DEP_check_sig <- function(data.se){
 
   if (length(grep("_significant", colnames(rowData(data.se))))<1) {
@@ -98,14 +161,14 @@ DEP_check_sig <- function(data.se){
 }
 
 
-#' @title DEP.test.diff
-#' @description warpper of DEP::test_diff
+
+
 #' @param data.se SE
 #'
 #' @return SE
 #'
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se warpper of DEP::test_diff
 #' @export
 DEP_test_diff <- function(data.se,type = "all",...){
 
@@ -126,7 +189,7 @@ DEP_test_diff <- function(data.se,type = "all",...){
 }
 
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se filter significant feature
 #' @export
 DEP_filter_significant <- function(data.se,
                                    contrast = DEP_list_contrast(data.se )[1],
@@ -145,7 +208,7 @@ DEP_filter_significant <- function(data.se,
 }
 
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se get differential table
 #' @export
 DEP_get_diff_table <- function(data.se,
                                contrast = DEP_list_contrast(data.se )[1],
@@ -210,7 +273,7 @@ DEP_get_group_color <- function(data.se,col.group = NULL){
 
 }
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se plot volcano
 #' @export
 DEP_plot_volcano <- function(data.se,
                              contrast = DEP_list_contrast(data.se )[1],
@@ -322,7 +385,7 @@ DEP_plot_volcano <- function(data.se,
 
 }
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se plot volcano with lipid class
 #' @export
 DEP.plot.volcano.lipidomic <- function(data.se,
                                        contrast = DEP_list_contrast(data.se )[1],
@@ -417,7 +480,7 @@ DEP.plot.volcano.lipidomic <- function(data.se,
 
 }
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se plot lfc-class
 #' @export
 DEP.plot.lfc.lipid.class <- function(data.se,
                                      contrast = DEP_list_contrast(data.se )[1],
@@ -518,7 +581,7 @@ DEP.plot.lfc.lipid.class <- function(data.se,
 
 }
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se plot heatmap
 #' @export
 DEP.plot.heatmap <- function(data.se,
                              contrast = DEP_list_contrast(data.se )[1],
@@ -561,7 +624,7 @@ DEP.plot.heatmap <- function(data.se,
 
 
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se plot heatmap
 #' @export
 DEP_plot_heatmap <- function(data.se,
                              feature_id = NULL,
@@ -599,14 +662,13 @@ DEP_plot_heatmap <- function(data.se,
 }
 
 
-#' DEP_export_data
-#' wirte coldata and rowdata to excel
+
 #'
 #' @param data.se SE
 #' @param file_path path
 #' @return null
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se export data, wirte coldata and rowdata to excel
 #' @export
 DEP_export_data <- function(data.se,file_path){
 
@@ -623,7 +685,7 @@ DEP_export_data <- function(data.se,file_path){
 }
 
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se plot PCA
 #' @export
 DEP_plot_PCA <- function(data.se,
                          col.group = get_DEP_se_group_color(data.se),
@@ -648,11 +710,14 @@ return(p.pca)
 
 }
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se plot pathway enrich
+#'
+#' @param filter_Metabolism only output pathway of Metabolism
 #' @export
 DEP_pathway_enrich <- function(data.se,
                                contrast ,
-                               method = c("HyperTest","GlobalTest")){
+                               method = c("HyperTest","GlobalTest"),
+                               filter_Metabolism =  F){
 
 
   if (contrast == "all") {
@@ -672,7 +737,7 @@ DEP_pathway_enrich <- function(data.se,
                                         keep.all = T)%>%
         dplyr::filter(significant)%>%
         dplyr::pull(kegg_id)%>%
-      analyzePathwayHyperTest()
+      analyzePathwayHyperTest(filter_Metabolism= filter_Metabolism)
 
   }
   if (method == "GlobalTest") {
@@ -681,7 +746,7 @@ DEP_pathway_enrich <- function(data.se,
                        data.se$condition%in% strsplit(contrast,"_vs_")[[1]]]
     pathway.matrix <- assay(data.se)
     rownames(pathway.matrix) <- rowData(data.se)$kegg_id
-    pathway.table <-  analyzePathwayGlobalTest(t(pathway.matrix) ,data.se$condition)
+    pathway.table <-  analyzePathwayGlobalTest(t(pathway.matrix) ,data.se$condition,filter_Metabolism= filter_Metabolism)
 
 
   }
@@ -693,7 +758,7 @@ DEP_pathway_enrich <- function(data.se,
 }
 
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se plot gene pathway enrich
 #' @export
 DEP_pathway_enrich_gene <- function(data.se,
                                contrast ,
@@ -727,7 +792,7 @@ DEP_pathway_enrich_gene <- function(data.se,
 
 }
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se adjust by weight
 #' @export
 se_adjuset_by_weight <- function(data.se){
 
@@ -746,7 +811,7 @@ se_adjuset_by_weight <- function(data.se){
 }
 
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se ANOVA test
 #' @export
 DEP_test_ANOVA <- function(data.se){
 
@@ -764,7 +829,7 @@ DEP_test_ANOVA <- function(data.se){
 
 
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se plot bar plot for feature
 #' @export
 DEP_plot_single_bar <- function(data.se,
                                 id){
@@ -792,7 +857,7 @@ DEP_plot_single_bar <- function(data.se,
 
 
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se impute with mean
 #' @export
 DEP_impute_mean <- function(data.se){
 
@@ -806,7 +871,7 @@ DEP_impute_mean <- function(data.se){
   return(data.se)
 }
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se filter feature with miss value
 #' @export
 DEP_filter_miss <- function(data.se,group.miss.ratio = 0.3 ){
 
@@ -829,7 +894,7 @@ DEP_filter_miss <- function(data.se,group.miss.ratio = 0.3 ){
 
 }
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se filter feature with QC RSD
 #' @export
 DEP_filter_QC_RSD <- function(data.se,QC_RSD = 0.3){
 
@@ -841,7 +906,7 @@ DEP_filter_QC_RSD <- function(data.se,QC_RSD = 0.3){
 }
 
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se calculate RSD of QC
 #' @export
 DEP_get_QC_RSD <- function(data.se){
 
@@ -852,7 +917,6 @@ DEP_get_QC_RSD <- function(data.se){
 }
 
 
-#' DEP_preprocess
 
 #' @describeIn DEP_Style_se filter miss, filter QC rsd, normalization, imputation
 #' @export
@@ -918,7 +982,8 @@ DEP_plot_normalization <- function (se, ...)
     DEP::theme_DEP1()
 }
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+
+#' @describeIn DEP_Style_se get a vector of group color
 #' @export
 get_DEP_se_group_color <- function(se){
 
@@ -929,7 +994,7 @@ get_DEP_se_group_color <- function(se){
 }
 
 
-#' @describeIn DEP_Style_se DEP_list_contrast
+#' @describeIn DEP_Style_se get significant feature
 #' @export
 get_DEP_se_sig_feature <- function(data.diff,contrast = DEP_list_contrast(data.diff)[1] ){
 
@@ -967,7 +1032,7 @@ get_DEP_se_sig_feature <- function(data.diff,contrast = DEP_list_contrast(data.d
 #'
 get_DEP_se_from_ME_result <- function(ME_file ){
 
-  data.file <- "D:/temp/20250721_Plasma_Lipid_Annotation.xlsx"
+  data.file <- ME_file
   sample.info <- readxl::read_excel(data.file,sheet = "sample.info")
   data <- readxl::read_excel(data.file,sheet = "data")
 
@@ -989,8 +1054,8 @@ get_DEP_se_from_ME_result <- function(ME_file ){
       kegg_id =`KEGG ID`)
 
 
-  data_unique <- make_unique(row.data, "id", "id", delim = ";")
-  data.se <- make_se(data_unique,
+  data_unique <- DEP::make_unique(row.data, "id", "id", delim = ";")
+  data.se <- DEP::make_se(data_unique,
                      match(col.data$sample.name,colnames(data_unique)), col.data)
 
 
