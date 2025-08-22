@@ -312,3 +312,11 @@ scale_subscript_legend <- function(values = NULL, labels = NULL) {
 }
 
 
+
+heatmap_set_size <- function(hm,width  = 5,height= 5){
+
+  hm@heatmap_param$width <- unit(width,"cm")
+  hm@heatmap_param$height <- unit(height,"cm")
+
+  return(hm)
+}
