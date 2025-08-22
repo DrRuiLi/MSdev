@@ -109,6 +109,56 @@ get_xchrom_peak_score <- function(xchrom){
 
 }
 
+
+sub_xchrom <-  function (x, i, j, drop = TRUE)
+{
+  if (missing(i) && missing(j))
+    return(x)
+  if (missing(i))
+    i <- seq_len(nrow(x))
+  if (missing(j))
+    j <- seq_len(ncol(x))
+  if (is.logical(i))
+    i <- which(i)
+  if (is.logical(j))
+    j <- which(j)
+  if (length(i) > 1 || length(j) > 1)
+    drop <- FALSE
+  if (length(i) == 1 && length(j) == 1 && drop)
+    return(x@.Data[i, j, drop = TRUE][[1]])
+  cpeaks_orig <- chromPeaks(x)
+  fts_orig <- featureDefinitions(x)
+  ph <- x@.processHistory
+  pd <- x@phenoData
+  fd <- x@featureData
+  xclass <- class(x)
+  x <- as(x@.Data[i = i, j = j, drop = FALSE], xclass)
+  pd <- pd[j, ]
+  Biobase::pData(pd) <- droplevels(pData(pd))
+  x@phenoData <- pd
+  fd <- fd[i, ]
+  Biobase::pData(fd) <- droplevels(pData(fd))
+  x@featureData <- fd
+  if (nrow(fts_orig)) {
+    cpeaks_sub <- chromPeaks(x)
+    fts <- vector("list", length(i))
+    for (el in seq_along(i)) {
+      fts_row <- fts_orig[fts_orig$row == i[el], ,
+                          drop = FALSE]
+      if (nrow(fts_row)) {
+        fts_row$row <- el
+        fts_row <- xcms:::.subset_features_on_chrom_peaks(fts_row,
+                                                          cpeaks_orig, cpeaks_sub)
+        fts[[el]] <- fts_row
+      }
+      else fts[[el]] <- DataFrame()
+    }
+    x@featureDefinitions <- do.call(rbind, fts)
+  }
+
+  x
+}
+
 get_xchroms_peaks_count <- function(xchroms){
 
   peaks.info <- chromPeaks(xchroms)%>%
@@ -264,6 +314,7 @@ xcms_get_feature_group <- function(xcms.xcms,
 #' @export
 #'
 get_xcms_chromatogram <- function(object,
+                                  BPPARAM= SerialParam(),
                                   ...){
 
 
@@ -275,7 +326,7 @@ get_xcms_chromatogram <- function(object,
     #message(nrow(rt))
     register(SerialParam())
     y <-NA
-    try(y <- xcms::chromatogram(x,BPPARAM = SerialParam(),...)
+    try(y <- xcms::chromatogram(x,BPPARAM = BPPARAM,...)
     )
     return(y)
   },...)
@@ -382,7 +433,9 @@ get_chroms_data <- function(xchrom){
 #'
 
 #'
-XChromatograms_rt_unit <- function(xchroms,unit_to = "s"){
+XChromatograms_rt_unit <- function(xchroms,unit_to = "s",
+                                   BPPARAM = BatchtoolsParam(progressbar = T,log = F,
+                                                             registryargs = batchtoolsRegistryargs(packages = c("MSnbase")))){
 
 
   unit.mulit <- switch(unit_to,
@@ -407,8 +460,7 @@ XChromatograms_rt_unit <- function(xchroms,unit_to = "s"){
   xchroms.trans <- bplapply(1:length(xchroms),FUN = f,
                               xchroms = xchroms,
                               unit.mulit = unit.mulit,
-                              BPPARAM = BatchtoolsParam(progressbar = T,
-                                                        registryargs = batchtoolsRegistryargs(packages = c("MSnbase"))))
+                              BPPARAM = BPPARAM)
   xchroms.trans <- XChromatograms(xchroms.trans,
                                     nrow = dim(xchroms)[1],byrow = T)
 
