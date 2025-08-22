@@ -639,7 +639,6 @@ analyzeMSdevDEP <- function(object){
 #'
 #' @param object MSdev
 #'
-#' @return NULL
 #' @export
 #'
 MSdev_export <- function(object,candi = F){
@@ -680,7 +679,7 @@ get_MSDB_info <- function (MSDB_id,
 
 
 get_CompDb_info <- function(cpdb,
-                                compound_id,
+                            compound_id,
                                 keys = c("name","kegg_id",
                                          "formula", "smiles")){
 
@@ -707,7 +706,6 @@ get_CompDb_info <- function(cpdb,
 #'
 #' @param object MSdev
 #'
-#' @returns ggplot
 #' @export
 #'
 plot_MSdev_normalization <- function(object){
@@ -724,7 +722,6 @@ plot_MSdev_normalization <- function(object){
 #'
 #' @param object MSdev
 #'
-#' @returns ggplot
 #' @export
 #'
 plot_MSdev_QC_RSD_hist <- function(object){
@@ -797,6 +794,8 @@ plot_MSdev_QC_RSD_CDF <- function(object){
 }
 
 
+#' @describeIn MSdev_preprocess_visualization show TIC
+#' @export
 plot_MSdev_TIC <- function(object){
 
   data.se <- get_MSdev_DEP_se(object,preprocess = F)
@@ -806,7 +805,8 @@ plot_MSdev_TIC <- function(object){
   p1/p2
 }
 
-
+#' @describeIn MSdev_preprocess_visualization show PCA before and after norm
+#' @export
 plot_MSdev_PCA <- function(object){
 
   se <- get_MSdev_DEP_se(object,"meta",keep_before_norm = T)
