@@ -10,7 +10,7 @@ get_MSIPCoreData <- function(sp.iso,
   #                                           iso_count = iso_count)
   #sp.frag.data <- CFM_spectra_data_merge(sp.frag.data,iso_count)
 
-  sp.iso <- Spectra_annotate_cfmd(sp = sp.iso,cfmd = cfmd,iso_ele ,iso_count_max,ppm )
+  sp.iso <- Spectra_annotate_cfmd(sp = sp.iso,cfmd = cfmd,iso_ele ,iso_count_max = iso_count_max,ppm )
   sp.iso <- Spectra_calculate_fragment_iso_ratio(sp.iso)
   fg.map <- get_MSIPFragmentMap(sp.iso,
                                 cfmd,
@@ -93,8 +93,6 @@ MSIPCore_solve <- function(MSIPCoreData,
                            weight_fun = .intensity_weight,
                            re_split_isotopomers = T){
 
-  if (isEmpty(MSIPCoreData))
-    return(MSIPCoreData)
 
   ### set all include
   MSIPCoreData@FG_map@FG.data$include <- MSIPCoreData@FG_map@FG.data$include |T
@@ -381,6 +379,8 @@ MSIPFragmentMap_reduce_fragment <- function(MSIPFragmentMap){
 }
 
 MSIPFragmentMap_include_fragment <- function(MSIPFragmentMap){
+
+  if (isEmpty(MSIPFragmentMap)) return(MSIPFragmentMap)
 
   frag.include <- MSIPFragmentMap@FG.data%>%
     dplyr::filter(include)%>%
@@ -1177,9 +1177,7 @@ plot_MSIP_intensity_consistency_cor <- function(msdev,
 
     fg_data <- get_MSIP_intensity_consistency_cor_data(msdev,
                                                        min_sp = min_sp,
-                                                       min_isotopologue = min_isotopologue,
-                                                       log_int_bw = log_int_bw,
-                                                       high_cos = high_cos)
+                                                       min_isotopologue = min_isotopologue)
   }
 
 
@@ -1476,6 +1474,7 @@ Spectra_annotate_cfmd <- function(
   ### pre-process
   {
 
+    if (is.null(sp)) return(sp)
 
     if (!"fragment_group"%in% colnames(cfmd@peak_assignment)) {
       cfmd <- cfm_data_get_fragment_group(cfmd)
@@ -1535,6 +1534,8 @@ Spectra_annotate_cfmd <- function(
 
 
 Spectra_calculate_fragment_iso_ratio <- function(sp){
+
+  if (is.null(sp)) return(sp)
 
   sp$fragment_group_int_sum <- lapply(1:length(sp),function(i){
 
@@ -1858,13 +1859,18 @@ get_MSIPFragmentMap <- function(sp,
 
 
 
-  fg.map <- new("MSIPFragmentMap")
+  fg.map <- get_MSIPFragmentMap_from_cfmd(cfmd = cfmd,
+                                          iso_count_max=iso_count_max,
+                                          target_ele = get_ele_uniso(iso_ele))
 
+  if (is.null(sp)) {
+    return(fg.map)
+  }
 
   ### FG - Ratio
   {
 
-    if (!"fragment_group" %in% Spectra::spectraVariables(sp)) {
+    if ( !"fragment_group" %in% Spectra::spectraVariables(sp)) {
       sp <- Spectra_annotate_cfmd(sp = sp,cfmd = cfmd,iso_ele ,iso_count_max,ppm )
       sp <- Spectra_calculate_fragment_iso_ratio(sp)
     }

@@ -80,7 +80,7 @@ get_Molecule_igraph_from_smiles <- function(smiles = "NCC(O)=O",id ="A",canonica
 
 get_Molecule_igraph_from_cfmd <- function(cfmd,fragment.id = 1){
 
-  cfmd@fragment_igraph[[fragment.id]]
+  get_Molecule_igraph_from_sdf(cfmd@fragment_sdf[[fragment.id]])
 }
 
 #'  Add isotopomer
@@ -202,6 +202,22 @@ Molecule_igraph_fill_isotopologues <- function(Molecule_igraph,target_ele = "[13
 
   return(Molecule_igraph)
 }
+
+
+Molecule_igraph_filter_isotopomers <- function(Molecule_igraph,fraction_thresh = 0.001){
+
+  istpm <- Molecule_igraph@isotopomer %>%
+    dplyr::ungroup()%>%
+    dplyr::mutate(abundance = abundance/sum(abundance,na.rm = T))%>%
+    dplyr::filter(abundance >= fraction_thresh)
+
+  Molecule_igraph@isotopomer <- Molecule_igraph@isotopomer%>%
+    dplyr::filter(isotopomer %in% istpm$isotopomer)
+
+
+  return(Molecule_igraph)
+}
+
 
 get_isotopomer_name <- function(iso_vec){
 

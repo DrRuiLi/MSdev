@@ -281,6 +281,9 @@ MSIP_get_isotopologues_data <- function(object,
                                         score = this.seed.df$score,
                                         adduct = this.seed.df$adduct,
                                         polarity = this.seed.df$polarity,
+                                        feature_id = setNames(
+                                          this.fdf$feature_id,
+                                          format_isotopologue(this.fdf$iso_count,"M")),
                                         merged = F)
 
         atom.count <- get_formula_ele_count(this.list$compound_info$formula,get_ele_uniso(iso_ele))
@@ -297,23 +300,17 @@ MSIP_get_isotopologues_data <- function(object,
         #this.sp <- lapply(this.sp,combineSpectra_groupby_ce)
         names(this.sp) <- paste0("M", this.fdf$iso_count[ match(names(this.sp),
                                                                 this.fdf$feature_id)])
-        this.sp <- this.sp[lengths(this.sp)!=0]
-        if (!length(this.sp)) next
+        #this.sp <- this.sp[lengths(this.sp)!=0]
+        #if (!length(this.sp)) next
         this.sp <- lapply(this.sp , function(x) split(x,x$sample.source))
         sp_count <- lapply(this.sp,function(y){
           y.l <- lengths(y)
           if (length(y.l)) return(y.l)
           return(0)
         })%>%do.call(rbind,.)
-        to.add <- setdiff(unique(xcms.se$sample.source),colnames(sp_count))
-        if (length(to.add)) {
-          sp_count <- cbind(sp_count,  matrix(
-            rep(0,length(this.sp)*length(to.add) )  ,nrow =length(this.sp),
-            dimnames = list(names(this.sp),
-                            to.add)))
-        }
+        sp_count <- get_matrix_value_fill_with_NA(sp_count,colnames_vec = colnames(sp_count),rownames_vec = names(this.sp))
         this.list$Spectra <- this.sp
-        this.list$compound_info$ms2_count <-sp_count
+        this.list$compound_info$ms2_count <- sp_count
       }
 
       ### matrix
@@ -400,6 +397,177 @@ MSIP_get_isotopologues_data <- function(object,
 }
 
 
+
+MSIP_get_isotopologues_data_fid <- function(object,fid_seed,polarity,
+                                            iso_ele = get_MSdev_iso_ele(object)){
+
+
+
+
+
+  ### from MSIP_get_isotopologues_data
+  {
+    sp.ms2 <- onDiskData_retrieve(object@spectra$MS2_Spectra)
+    sp.ms2$sample.source <- object@sampleInfo$sample.source[
+      match_path(dataOrigin(sp.ms2),object@sampleInfo$msData.files)]
+    #cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
+
+    ### Requirement in xcms features
+    ### iso_seed
+
+    {
+      pol <- ifelse(polarity ==0,"Negative","Positive")
+      xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+      xcms.se <- get_xcms_quantify_MSIP(xcms.xcms)
+      samples <- levels(groupStringFactor(xcms.se$sample.source))
+      xcms.fdf <- featureDefinitions(xcms.xcms)
+      iso.table <- object@statData$MSIP$isotopologues_table[[pol]]
+      iso.table$ms2_id <-xcms.fdf$ms2_id[match(iso.table$feature_id,xcms.fdf$feature_id  )]
+      iso.table <- iso.table%>%
+        dplyr::mutate(ms2_count = lengths(ms2_id),
+                      ele_count = get_formula_ele_count(formula,
+                                                        ele = get_ele_uniso(iso_ele)))%>%
+        dplyr::filter(!is.na(iso_seed),
+                      iso_count <= ele_count
+        )
+
+    }
+
+
+
+      {
+
+        this.fdf <- iso.table%>%
+          dplyr::filter(iso_seed == fid_seed)
+        this.seed.df <- this.fdf%>%
+          dplyr::filter(feature_id==iso_seed)
+        this.seed.fid <- this.seed.df$feature_id
+        this.list <- list()
+      }
+        ### compound_info
+        {
+          this.list$compound_info <- list(name = this.seed.df$name,
+                                          compound_id = this.seed.df$compound_id,
+                                          mz = this.seed.df$mzmed,
+                                          rt = this.seed.df$rtmed,
+                                          formula = this.seed.df$formula,
+                                          smiles = this.seed.df$smiles,
+                                          score = this.seed.df$score,
+                                          adduct = this.seed.df$adduct,
+                                          polarity = this.seed.df$polarity,
+                                          merged = F)
+
+          atom.count <- get_formula_ele_count(this.list$compound_info$formula,get_ele_uniso(iso_ele))
+        }
+
+
+
+        ### Spectra split
+        {
+          this.sp <-  lapply(this.fdf$ms2_id,function(x){
+            get_spectra_by_name(sp.ms2,x)
+          })
+          #message(i_seed_id," ",lengths(this.fdf$ms2_id))
+          names(this.sp) <- paste0("M", this.fdf$iso_count[ match(names(this.sp),
+                                                                  this.fdf$feature_id)])
+
+          this.sp <- lapply(this.sp , function(x) split(x,x$sample.source))
+          sp_count <- lapply(this.sp,function(y){
+            y.l <- lengths(y)
+            if (length(y.l)) return(y.l)
+            return(0)
+          })%>%do.call(rbind,.)
+
+          to.add <- setdiff(unique(xcms.se$sample.source),colnames(sp_count))
+          sp_count <- get_matrix_value_fill_with_NA(sp_count,
+                                                    colnames_vec = unique(xcms.se$sample.source),
+                                                    rownames_vec = names(this.sp))
+          sp_count[is.na(sp_count)] <- 0
+
+          this.list$Spectra <- this.sp
+          this.list$compound_info$ms2_count <-sp_count
+        }
+
+        ### matrix
+        {
+
+          ### intensity_matrix
+          {
+
+          }
+          ### ratio_matrix
+          {
+            ratio_matrix <- object@statData$MSIP$
+              isotopologues_matrix$ratio_to_seed[[pol]][this.fdf$feature_id,]
+            xcms.se.temp <-xcms.se[,colnames(ratio_matrix)]
+            ratio_matrix <- apply(ratio_matrix,1,mean_f,
+                                  f = xcms.se.temp$sample.source,simplify = F)%>%
+              do.call(rbind,.)
+            rownames(ratio_matrix) <- format_isotopologue(this.fdf$iso_count,"M")
+            ratio_matrix <- get_matrix_value_fill_with_NA(ratio_matrix,
+                                                          colnames_vec = samples,
+                                                          rownames_vec = format_isotopologue(0:atom.count,"M"))
+          }
+
+          ###purity_matrix
+          {
+            purity_matrix <- object@statData$MSIP$
+              isotopologues_matrix$ms1_purity[[pol]][this.fdf$feature_id,]
+            xcms.se.temp <-xcms.se[,colnames(purity_matrix)]
+            purity_matrix <- apply(purity_matrix,1,mean_f,
+                                   f = xcms.se.temp$sample.source,simplify = F)%>%
+              do.call(rbind,.)
+            rownames(purity_matrix) <- paste0("M",this.fdf$iso_count)
+            purity_matrix <- get_matrix_value_fill_with_NA(purity_matrix,
+                                                           colnames_vec = samples,
+                                                           rownames_vec = format_isotopologue(0:atom.count,"M"))
+          }
+
+
+          ### natural_matrix
+          {
+
+            natural_matrix <- get_iso_natural_ratio(formula = this.list$compound_info$formula,
+                                                    iso_ele = iso_ele,ratio_matrix = ratio_matrix)
+            natural_matrix <- get_matrix_value_fill_with_NA(natural_matrix,
+                                                            colnames_vec = samples,
+                                                            rownames_vec = format_isotopologue(0:atom.count,"M"))
+          }
+
+          this.list$compound_info$ratio_matrix <- ratio_matrix
+          this.list$compound_info$purity_matrix <- purity_matrix
+          this.list$compound_info$natural_matrix <- natural_matrix
+
+        }
+
+
+        ### filter
+        {
+          #if ( length(this.list$Spectra$M0)==0 ) next
+          if (is.na(this.list$compound_info$formula)) next
+          if (length(this.list$Spectra)<1) next
+
+
+
+        }
+
+
+        ### MSIPMetaboliteData
+        {
+
+          object@statData$MSIP$isotopologues_data[[paste0(fid_seed,"_",pol)]] <-
+            MSIPMetaboliteData(CompoundInfo = this.list$compound_info,
+                               Spectra = this.list$Spectra     )
+
+        }
+
+      }
+
+  return(object)
+
+
+
+}
 
 
 get_MSdev_iso_ele <- function(object){
@@ -712,19 +880,20 @@ MSIP_solve_isotopologues <- function(object,
     this.fid <- process.info$feature_id[i]
     this.iso.count <- process.info$iso_count[i]
     this.sample <- process.info$samples[i]
+    this.sp.count <- process.info$ms2.count[i]
 
 
     start_time <- Sys.time()
-    message_with_time(this.fid,";",this.sample,";",str_isotope2_num(this.iso.count))
+    message_with_time(this.fid,";",this.sample,";",str_isotope2_num(this.iso.count),";",this.sp.count," Spectra")
 
     this.natural.ratio <- process.info$natural.ratio[i]
     this.msip.mtbd <- iso.data[[this.fid]]
     this.cfmd <- this.msip.mtbd@CompoundInfo$CFM_annotation
     this.sp.iso <-this.msip.mtbd@Spectra[[str_isotope2_num(this.iso.count)]][[this.sample]]
-    if(!length(this.sp.iso)) return(NULL)
+    #if(!length(this.sp.iso)) return(NULL)
     msip.core <- get_MSIPCoreData(sp.iso = this.sp.iso,
                                   cfmd = this.cfmd,
-                                  iso_count = this.iso.count,
+                                  iso_count_max = this.iso.count,
                                   ppm = ppm)
     msip.core <- MSIPCore_solve(msip.core,
                                 int_thresh = int_thresh,
@@ -958,7 +1127,7 @@ get_MSIP_solve_computation_evaluate <- function(object,
 
   sample.tracer <- .get_MSIP_tracer(object)
   comp.eval <- do.call(rbind,comp.eval.list)%>%
-    dplyr::filter(ms2.count>0)%>%
+    #dplyr::filter(ms2.count>0)%>%
     dplyr::mutate(traced = case_when(
       is.na(sample.tracer[samples] )~F,
       T~T))
@@ -1331,7 +1500,7 @@ get_MSIP_weight_fun <- function(object){
 
 
 
-get_MSIP_Molecule_igraph<- function(object,fraction = 0.001){
+get_MSIP_Molecule_igraph <- function(object,fraction_thresh = 0.001){
 
   isotopologues_datas <- object@statData$MSIP$isotopologues_data
   dm <- list(names(isotopologues_datas),unique(object@sampleInfo$sample.source))
@@ -1382,7 +1551,7 @@ get_MSIP_Molecule_igraph<- function(object,fraction = 0.001){
           ### fliter
           {
 
-            idx.filt <- which(isotopomers.abundance > fraction)
+            idx.filt <- which(isotopomers.prob > fraction_thresh)
             isotopomers.ele <- isotopomers.ele[idx.filt,,drop = F]
             isotopomers.FSIS <- isotopomers.FSIS[idx.filt]
             isotopomers.abundance <- isotopomers.abundance[idx.filt]
@@ -1402,12 +1571,13 @@ get_MSIP_Molecule_igraph<- function(object,fraction = 0.001){
               abundance = isotopomers.abundance[ii])
           }
 
+
         }
 
 
       }
 
-
+      mol.ig <- Molecule_igraph_filter_isotopomers(mol.ig,fraction_thresh = fraction_thresh)
 
       Molecule_igraph_matrix[i,j] <- list(mol.ig)
     }
@@ -1418,6 +1588,85 @@ get_MSIP_Molecule_igraph<- function(object,fraction = 0.001){
   return(Molecule_igraph_matrix)
 
 
+}
+
+get_MSIPIsotopologueData_Molecule_igraphs  <- function(object,fraction_thresh = 0.001){
+
+
+  { ### Metabolites
+    isotopologues_data <- object
+    ratio_matrix <- isotopologues_data@CompoundInfo$ratio_matrix
+    natural_matrix <- isotopologues_data@CompoundInfo$natural_matrix
+    ratio_adj_matrix <- ratio_matrix*(1-natural_matrix)
+    ratio_adj_matrix["M0",] <- 1
+    ratio_adj_matrix[ratio_adj_matrix<0] <- 0
+    ratio_adj_matrix[is.na(ratio_adj_matrix)] <- 0
+    for (j in colnames(Molecule_igraph_matrix)  ) {### samples
+
+      mol.ig <- get_Molecule_igraph_from_smiles(isotopologues_data@CompoundInfo$smiles)
+      for (k in rownames(ratio_matrix) ) { ### isotopologues
+
+        message_with_time(" j ",j," k ",k)
+        if (k=="M0") next
+        msip.core <- isotopologues_data@MSIPIsotopologueDatas[[k]][[j]]
+        if (isEmpty(msip.core)) {
+
+          ### if MSIP not data exist, simulate isotopologue
+          mol.ig <- Molecule_igraph_add_isotopologue(
+            Molecule_igraph = mol.ig,
+            isotopologue = k,
+            abundance = ratio_adj_matrix[k,j],
+            target_ele =target_ele,
+            all_isotopomers = F
+
+          )
+
+        }else{
+          isotopomers.ele <- msip.core@solve$MSIPIsotopomerMap@isotopomer.defination
+          istp <- rownames(isotopomers.ele)
+          isotopomers.prob <- msip.core@solve$MSIPIsotopomerMap@isotopomer.probability[istp]
+          isotopomers.FSIS <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set%>%
+            lapply(function(x){data.frame(isotopomer = x)})%>%
+            data.table::rbindlist(idcol = "FSIS")%>%
+            dplyr::mutate(FSIS = paste0(k,"_",FSIS))%>%
+            dplyr::pull(FSIS,name = isotopomer)
+          isotopomers.FSIS <- isotopomers.FSIS[istp]
+          isotopomers.abundance <- (isotopomers.prob * ratio_adj_matrix[k,j])[istp]
+          ### fliter
+          {
+
+            idx.filt <- which(isotopomers.prob > fraction_thresh)
+            isotopomers.ele <- isotopomers.ele[idx.filt,,drop = F]
+            isotopomers.FSIS <- isotopomers.FSIS[idx.filt]
+            isotopomers.abundance <- isotopomers.abundance[idx.filt]
+
+          }
+          isotopomers.ele.list <- apply(isotopomers.ele,1,function(x){
+            make_vector(target_ele,
+                        colnames(isotopomers.ele)[x==1])},simplify = F)
+
+          for (ii in seq_len(nrow(isotopomers.ele))) {
+            #message(ii)
+            mol.ig <- Molecule_igraph_add_isotopomer(
+              mol.ig,
+              isotopomer = rownames(isotopomers.ele)[ii],
+              iso_vec = isotopomers.ele.list[[ii]],
+              FSIS = isotopomers.FSIS[ii],
+              abundance = isotopomers.abundance[ii])
+          }
+
+
+        }
+
+
+      }
+
+      mol.ig <- Molecule_igraph_filter_isotopomers(mol.ig,fraction_thresh = fraction_thresh)
+
+
+    }
+
+  }
 }
 
 
@@ -1463,8 +1712,13 @@ Report_MSIP_raw_data <- function(object,
     dplyr::filter(solved,iso_count > 0)
 
 
+
+  ### out put
   {
-    file.remove(file,showWarnings  = F)
+
+    file.dir <- paste0(object@projectInfo$projectDir,"/MSIP/raw.data")
+    dir.create(file.dir,showWarnings = F,recursive = T)
+    open_dir(file.dir)
     for (i in 1:nrow(comp.eval)) {
 
       ### retrieve data
@@ -1479,7 +1733,7 @@ Report_MSIP_raw_data <- function(object,
 
         this.cfmd <- this.data@CompoundInfo$CFM_annotation
         this.msip.core <- this.data@MSIPIsotopologueDatas[[format_isotopologue(this.isotopologue,"M")]][[this.sample]]
-        this.sp <-this.msip.core@Spectra_data
+        this.sp <- this.msip.core@Spectra_data
         this.mz <- this.data@CompoundInfo$mz + 1.003355484 * this.isotopologue
 
 
@@ -1496,6 +1750,9 @@ Report_MSIP_raw_data <- function(object,
 
       }
 
+      {
+        file.path <- paste0(file.dir,"/",this.fid,".pdf")
+      }
 
       ### Chrom + MS2 Acq
       {
@@ -1592,12 +1849,13 @@ Report_MSIP_raw_data <- function(object,
         p1 <- p.chrom.acq/p.sp.ce
         #p1 <- p.sp.ce
 
-        export_graph2pdf(p1,file_path = file,append = T,width = 5,height = 6)
+        export_graph2pdf(p1,file_path = file.path,append = T,width = 5,height = 6)
 
-        export_graph2pdf(p.sp.fg,file_path = file,append = T,width = ncol(p.sp.fg@matrix)*0.2+2,height = 6)
+        export_graph2pdf(p.sp.fg,file_path = file.path,append = T,width = ncol(p.sp.fg@matrix)*0.2+2,height = 6)
 
         p3 <- p.mig+p.isotopomer+plot_layout(widths = c(2,1))
-        export_graph2pdf(p3,file_path = file,append = T,width = 15,height = 6)
+
+        export_graph2pdf(p3,file_path = file.path,append = T,width = 15,height = 6)
       }
     }
   }
@@ -1687,9 +1945,9 @@ Report_MSIP_isotopomers <- function(object,
 }
 
 
-MSIP_get_Molecule_igraph <- function(object,fraction = 0.001){
+MSIP_get_Molecule_igraph <- function(object,fraction_thresh = 0.001){
 
-  MSIP.mol.igs <- get_MSIP_Molecule_igraph(object,fraction = fraction)
+  MSIP.mol.igs <- get_MSIP_Molecule_igraph(object,fraction_thresh = fraction_thresh)
   object@statData$MSIP$isotopomer_Molecule_igraph <-MSIP.mol.igs
   return(object)
 
