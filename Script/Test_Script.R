@@ -37,12 +37,15 @@ edata(mfn)[1,]
 mol.ig.from <- V(mfn)[["C00022"]]$Molecule_igraph
 mol.ig.to <- V(mfn)[["C00036"]]$Molecule_igraph
 
-a <- get_atom_map(sdf.parent = mol.ig.from@sdf,sdf.product = mol.ig.to@sdf,
-             ig.parent = mol.ig.from@igraph,
-             ig.product = mol.ig.to@igraph)
+a <- get_atom_map(
+  sdf.parent = mol.ig.from@sdf,
+  sdf.product = mol.ig.to@sdf,
+  ig.parent = mol.ig.from@igraph,
+  ig.product = mol.ig.to@igraph)
 
 get_Molecule_atom_transfer_by_map(mol.ig.from,
                                   mol.ig.to)
+
 
 mfn.ig <- readRDS("temp/20241227Glucose_glutamate.ig.rds")
 
@@ -2855,5 +2858,146 @@ a <- r_bg(func = function(){
   ggvenn(data = list(A = str_digit(rda$mzmed,1),
                      B = str_digit(serum.lipidomic.se@elementMetadata$mz,1)
                        ))
+
+}
+
+# Mon Aug  4 13:42:42 2025 ------------------------------
+{
+
+
+  a <- msip.pdh.0703@statData$MSIP$isotopologues_table$Negative
+
+  edit_df_in_excel(a)
+
+  msip.pdh.0703 <- MSIP_get_isotopologues_data_fid(msip.pdh.0703,"FT00124",polarity = 0)
+
+
+ object <- msip.pdh.0703@statData$MSIP$isotopologues_data$FT00124_Negative
+
+
+ get_MSIPIsotopologueData_Molecule_igraph()
+
+
+ mig.serine <- msip.pdh.0703@statData$MSIP$isotopomer_Molecule_igraph["FT01766_Negative",]
+ a <- mig.serine[[1]]@isotopomer %>%
+   dplyr::mutate(abundance = abundance/sum(abundance))
+
+}
+
+
+
+# Wed Aug 13 13:10:45 2025 ------------------------------
+{
+  detach_all_packages <- function() {
+    base_pkgs <- c("package:stats", "package:graphics", "package:grDevices",
+                   "package:utils", "package:datasets", "package:methods",
+                   "package:base")
+
+    pkgs <- search()[grepl("^package:", search())]   # all attached packages
+    pkgs_to_unload <- setdiff(pkgs, base_pkgs)       # exclude base packages
+
+    for (pkg in pkgs_to_unload) {
+      detach(pkg, character.only = TRUE, unload = TRUE)
+    }
+  }
+  detach_all_packages()
+
+}
+
+# Thu Aug 14 01:10:14 2025 ------------------------------
+{
+  a.fd <- a@featureDefinitions
+  a.fd.class <- sapply(a.fd,class)
+  a.fd[,which(a.fd.class=="list")] <- NULL
+  a.fd -> a@featureDefinitions
+
+
+  b <- a[1,1:5,drop = F]
+
+
+}
+
+# Fri Aug 15 11:00:17 2025 ------------------------------
+{
+
+
+  chroms <- onDiskData_retrieve(msip.pdh.0703@xcmsData$Negative_Chromatograms)
+
+
+
+
+
+
+  a <- sub_chrom(chroms,1)
+
+}
+
+# Fri Aug 15 13:40:08 2025 set color for data.se------------------------------
+{
+  data.se <- load_demo("data.se")
+
+  data.se <- DEP_get_group_color(data.se)
+
+
+  group.color <- c("GroupA" = "#123456","GroupB" = "#964837","GroupC" = "#165472","GroupD" = "#986324")
+  data.se <- DEP_get_group_color(data.se,group.color)
+
+  xcms <- load_demo("xcms")
+  #xcms <- xcms[1]
+  a <- xcms::chromatogram(xcms,mz = c(100,101),BPPARAM  =SerialParam(progressbar = T))
+  a <- get_xcms_chromatogram(xcms,mz = c(100,101),BPPARAM  =SerialParam(progressbar = T))
+
+  size_of(a1@chromPeakData)
+
+}
+# Fri Aug 15 17:13:20 2025 ------------------------------
+{
+
+
+  a <- matrix(1:20,ncol = 5,nrow = 4)
+  ah <- Heatmap(a,width = unit(10, "cm"),height = unit(10, "cm"))
+  hm <- Heatmap(a)
+
+  b <- matrix(1:54,ncol = 6,nrow = 9)
+
+
+
+  p <- Heatmap(a)
+  p@matrix_param$width <- unit(3 ,"cm")
+  p@matrix_param$height <- unit(5 ,"cm")
+
+  open_plot_win(ah,10,10)
+  open_plot_win(bh)
+
+}
+
+# Mon Aug 18 14:44:01 2025 XHL------------------------------
+{
+
+  ms.data <- readxl::read_excel("d:/temp/20250814-peak data.xlsx")
+
+
+  plot.data <- ms.data%>%
+    dplyr::mutate(x = mz,
+                  xend = mz,
+                  y = 0,
+                  yend = intensity)
+  label.data <- plot.data%>%
+    dplyr::mutate(show_label = as.logical(show_label))%>%
+    dplyr::filter(show_label)
+
+  p <- ggplot(plot.data)+
+    geom_segment(
+      aes(x= x,xend= xend,y=y,yend= yend)
+    )+
+    ggrepel::geom_text_repel(
+      aes(x= x , y = yend,label = x),data = label.data
+    )+
+    scale_y_continuous(expand = expansion())+
+    scale_x_continuous(breaks = (0:10)*100)+
+    labs(x = "mz",y = "intensity")+
+    theme_classic()
+  p
+  export::graph2pdf(p,file = "d:/temp/spectrum.pdf",width = 5,height = 3)
 
 }

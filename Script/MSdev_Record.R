@@ -1735,7 +1735,7 @@
     #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
     hm <- DEP.plot.heatmap(data.diff)
     export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                     width = 6,height = 60,append = T)
+                     width = 6,height = 20,append = T)
 
 
     data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
@@ -1821,7 +1821,7 @@
     #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
     hm <- DEP.plot.heatmap(data.diff)
     export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                     width = 6,height = 60,append = T)
+                     width = 6,height = 20,append = T)
 
     data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
     p <- plotPathwayEnrichment(data.path[[1]],method = "bubble")
@@ -2235,7 +2235,7 @@
     #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
     hm <- DEP.plot.heatmap(data.diff)
     export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                     width = 6,height = 60,append = T)
+                     width = 6,height = 20,append = T)
 
 
     data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
@@ -2325,7 +2325,7 @@
     #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
     hm <- DEP.plot.heatmap(data.diff)
     export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                     width = 6,height = 60,append = T)
+                     width = 6,height = 20,append = T)
 
     data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
     p.list <- lapply(names(data.path),
@@ -2425,7 +2425,7 @@
       #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
       hm <- DEP.plot.heatmap(data.diff)
       export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                       width = 6,height = 60,append = T)
+                       width = 6,height = 20,append = T)
 
       data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
       p.list <- lapply(names(data.path),
@@ -2480,7 +2480,7 @@
       #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
       hm <- DEP.plot.heatmap(data.diff)
       export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                       width = 6,height = 60,append = T)
+                       width = 6,height = 20,append = T)
 
       data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
       p.list <- lapply(names(data.path),
@@ -2535,7 +2535,7 @@
       #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
       hm <- DEP.plot.heatmap(data.diff)
       export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                       width = 6,height = 60,append = T)
+                       width = 6,height = 20,append = T)
 
       data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
       p.list <- lapply(names(data.path),
@@ -2590,7 +2590,7 @@
       #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
       hm <- DEP.plot.heatmap(data.diff)
       export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                       width = 6,height = 60,append = T)
+                       width = 6,height = 20,append = T)
 
       data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
       p.list <- lapply(names(data.path),
@@ -2645,7 +2645,7 @@
       #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
       hm <- DEP.plot.heatmap(data.diff)
       export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                       width = 6,height = 60,append = T)
+                       width = 6,height = 20,append = T)
 
       data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
       p.list <- lapply(names(data.path),
@@ -2700,7 +2700,7 @@
       #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
       hm <- DEP.plot.heatmap(data.diff)
       export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                       width = 6,height = 60,append = T)
+                       width = 6,height = 20,append = T)
 
       data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
       p.list <- lapply(names(data.path),
@@ -2797,7 +2797,7 @@
     #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
     hm <- DEP.plot.heatmap(data.diff)
     export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                     width = 6,height = 60,append = T)
+                     width = 6,height = 20,append = T)
 
     data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
     p.list <- lapply(names(data.path),
@@ -2890,7 +2890,7 @@
     #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
     hm <- DEP.plot.heatmap(data.diff)
     export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                     width = 6,height = 60,append = T)
+                     width = 6,height = 20,append = T)
 
     data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
     p.list <- lapply(names(data.path),
@@ -3045,7 +3045,11 @@
 
 
       ### sampXHL_p
-      data.se <- data.se[,data.se$sample.type%in%c("A")]
+      sample.type = "A"
+      data.se <- get_MSdev_DEP_se(msdev.XHL,from = "metabolite")
+      data.se <- data.se[,data.se$sample.type%in%c(sample.type)]
+      proj.dir <- paste0("D:\\20250720.CityUNS/",sample.type)
+      dir.create(paste0(proj.dir,"/Statistic"),recursive = T)
       data.se.SampXHL_P <- DEP_preprocess(data.se)
       data.diff <- DEP_test_diff(data.se.SampXHL_P,type = "all")
       data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
@@ -3074,7 +3078,7 @@
                              feature_id = get_DEP_se_sig_feature(data.diff,contrast = "all"))
 
       export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
-                       width = 6,height = 60,append = T)
+                       width = 6,height = 20,append = T)
 
       data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
       p.list <- lapply(names(data.path),
@@ -3089,6 +3093,174 @@
         file  =paste0(proj.dir,"/Statistic/pathway.xlsx")
       )
     }
+
+    ### F
+    {
+
+
+      sample.type = "F"
+      data.se <- get_MSdev_DEP_se(msdev.XHL,from = "metabolite")
+      data.se <- data.se[,data.se$sample.type%in%c(sample.type)]
+      proj.dir <- paste0("D:\\20250720.CityUNS/",sample.type)
+      dir.create(paste0(proj.dir,"/Statistic"),recursive = T)
+
+      data.se.SampXHL_P <- DEP_preprocess(data.se)
+      data.diff <- DEP_test_diff(data.se.SampXHL_P,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 10,append = T)
+      data.diff <- DEP_test_diff(data.se.SampXHL_P)
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 10,append = T)
+      table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+      xlsx.write.list(table.diff,
+                      paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+      )
+
+
+      data.diff <- DEP_test_diff(data.se.SampXHL_P,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+      #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+      hm <- DEP_plot_heatmap(data.diff,
+                             feature_id = get_DEP_se_sig_feature(data.diff,contrast = "all"))
+
+      export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 6,height = 20,append = T)
+
+      data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
+      p.list <- lapply(names(data.path),
+                       function(x){
+                         p <- plotPathwayEnrichment(data.path[[x]],method = "bubble",title  = x)
+                       })
+      p <- ggplot_sum_patchwork(p.list)
+      export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 20,height = 10,append = T)
+      xlsx.write.list(
+        data.path,
+        file  =paste0(proj.dir,"/Statistic/pathway.xlsx")
+      )
+    }
+
+    ### M
+    {
+
+
+      ### sampXHL_p
+
+
+      sample.type = "M"
+      data.se <- get_MSdev_DEP_se(msdev.XHL,from = "metabolite")
+      data.se <- data.se[,data.se$sample.type%in%c(sample.type)]
+      proj.dir <- paste0("D:\\20250720.CityUNS/",sample.type)
+      dir.create(paste0(proj.dir,"/Statistic"),recursive = T)
+
+      data.se.SampXHL_P <- DEP_preprocess(data.se)
+      data.diff <- DEP_test_diff(data.se.SampXHL_P,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 10,append = T)
+      data.diff <- DEP_test_diff(data.se.SampXHL_P)
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 10,append = T)
+      table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+      xlsx.write.list(table.diff,
+                      paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+      )
+
+
+      data.diff <- DEP_test_diff(data.se.SampXHL_P,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+      #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+      hm <- DEP_plot_heatmap(data.diff,
+                             feature_id = get_DEP_se_sig_feature(data.diff,contrast = "all"))
+
+      export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 6,height = 20,append = T)
+
+      data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
+      p.list <- lapply(names(data.path),
+                       function(x){
+                         p <- plotPathwayEnrichment(data.path[[x]],method = "bubble",title  = x)
+                       })
+      p <- ggplot_sum_patchwork(p.list)
+      export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 20,height = 10,append = T)
+      xlsx.write.list(
+        data.path,
+        file  =paste0(proj.dir,"/Statistic/pathway.xlsx")
+      )
+    }
+
+    ### L
+    {
+
+
+
+      sample.type = "L"
+      data.se <- get_MSdev_DEP_se(msdev.XHL,from = "metabolite")
+      data.se <- data.se[,data.se$sample.type%in%c(sample.type)]
+      proj.dir <- paste0("D:\\20250720.CityUNS/",sample.type)
+      dir.create(paste0(proj.dir,"/Statistic"),recursive = T)
+
+
+      data.se.SampXHL_P <- DEP_preprocess(data.se)
+      data.diff <- DEP_test_diff(data.se.SampXHL_P,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 10,append = T)
+      data.diff <- DEP_test_diff(data.se.SampXHL_P)
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 10,append = T)
+      table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+      xlsx.write.list(table.diff,
+                      paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+      )
+
+
+      data.diff <- DEP_test_diff(data.se.SampXHL_P,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+      #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+      hm <- DEP_plot_heatmap(data.diff,
+                             feature_id = get_DEP_se_sig_feature(data.diff,contrast = "all"))
+
+      export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 6,height = 20,append = T)
+
+      data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
+      p.list <- lapply(names(data.path),
+                       function(x){
+                         p <- plotPathwayEnrichment(data.path[[x]],method = "bubble",title  = x)
+                       })
+      p <- ggplot_sum_patchwork(p.list)
+      export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 20,height = 10,append = T)
+      xlsx.write.list(
+        data.path,
+        file  =paste0(proj.dir,"/Statistic/pathway.xlsx")
+      )
+    }
+
   }
 
 
