@@ -58,12 +58,12 @@ analyzeANOVA <- function(anova.matrix , anova.group){
 #' @description pathway enrichment by global test
 #' @param pathway.matrix should be a matrix, sample as rowname, kegg id as colname
 #' @param pathway.group should be a vector with length same as nrow(pathway.matrix), indicate group of sample
-#'
+#' @param filter_Metabolism only output pathway of Metabolism
 #' @return global.test.result
 #' @export
 #'
 
-analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group){
+analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group,filter_Metabolism = F){
 
   kegg.pathway <- MSdb::get_KEGG_pathway()
   pathway.matrix <-data.frame( group = groupStringFactor(pathway.group),
@@ -102,7 +102,13 @@ analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group){
     gt.gt <-globaltest::gt( group~. , data = gt.data,model = "logistic")
     global.test.result[i,6:10] <- gt.gt@result
   }
-  global.test.result
+
+  if (filter_Metabolism) {
+    global.test.result <- global.test.result%>%
+      dplyr::filter(grepl("Metabolism" , pathway.class))
+  }
+
+  return(global.test.result)
 
 
 
@@ -117,7 +123,7 @@ analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group){
 #' @export
 #'
 
-analyzePathwayHyperTest <- function(kegg.id = "C00024"){
+analyzePathwayHyperTest <- function(kegg.id = "C00024", filter_Metabolism = F){
 
   kegg.pathway <- MSdb::get_KEGG_pathway()
   kegg.pathway.compound <- MSdb::get_KEGG_compound_pathway_df()
@@ -150,7 +156,15 @@ analyzePathwayHyperTest <- function(kegg.id = "C00024"){
     pathway.hyper.test$compounds[i] <- ifelse(length(compounds.richment)!=0,stringr::str_c(compounds.richment,collapse = ";"),NA)
 
   }
-  pathway.hyper.test
+  if (filter_Metabolism) {
+    pathway.hyper.test <- pathway.hyper.test%>%
+      dplyr::filter(grepl("Metabolism" , pathway.class))
+  }
+
+  return(pathway.hyper.test)
+
+
+
 }
 
 #' plotPCA
