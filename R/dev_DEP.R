@@ -196,7 +196,7 @@ DEP_filter_significant <- function(data.se,
                                    top = Inf){
 
 
-  rd <- DEP_get_diff_table(data.se,contrast = i.contra,keep.all = T)%>%
+  rd <- DEP_get_diff_table(data.se,contrast = contrast,keep.all = T)%>%
     dplyr::slice_max(`p_value_-log10`,n = top,with_ties = F)%>%
     dplyr::filter(significant)
 
@@ -580,47 +580,6 @@ DEP.plot.lfc.lipid.class <- function(data.se,
 
 
 }
-
-#' @describeIn DEP_Style_se plot heatmap
-#' @export
-DEP.plot.heatmap <- function(data.se,
-                             contrast = DEP_list_contrast(data.se )[1],
-                             p.adjust = F){
-
-  if (length(grep("_significant", colnames(rowData(data.se))))<1) {
-    if (p.adjust) {
-      data.se <- DEP::add_rejections(data.se)
-
-    } else{
-      data.se <- DEP_add_rejections(data.se,p.adjust = F)
-    }
-  }
-
-
-  col.info <-SummarizedExperiment::colData(data.se)%>%
-    as.data.frame()%>%
-    dplyr::mutate(col_group = condition,
-                  column_labels = sample.labels,
-                  column_split = group)
-  row.info <-DEP::plot_volcano(data.se,contrast,plot = F,adjusted = p.adjust )%>%
-    dplyr::mutate(SummarizedExperiment::rowData(data.se[protein,])%>%
-                    as.data.frame()
-    )%>%
-    dplyr::mutate(row_group = "",
-                  row_labels = label)%>%
-    dplyr::filter(significant)
-
-  heatmap.matrix <-SummarizedExperiment::assay(data.se[row.info$name,col.info$ID])%>%
-    `^`(2,.)%>%t%>%scale%>%t
-
-
-
-  plotHeatmap(heatmap.matrix,col.info,row.info)
-
-
-
-}
-
 
 
 

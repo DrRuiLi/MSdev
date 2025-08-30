@@ -451,13 +451,9 @@ plotHeatmap <- function(heatmap.matrix,
                           cluster_column_slices = F,
                           column_split = col.info$column_split,
                           row_split = row.info$column_split,
-                          #rect_gp = gpar(color = "black"),
-
-
                           column_labels = col.info$column_labels,
                           column_names_rot =- 45,
                           row_labels = str_short(row.info$row_labels,50),
-                          row_names_side = "left",
                           row_names_gp = grid::gpar(fontsize= 6),
                           column_names_gp  = grid::gpar(fontsize= 6),
                           ...
