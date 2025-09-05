@@ -360,13 +360,13 @@ DEP_plot_volcano <- function(data.se,
   if (show.label) {
     row.data <- SummarizedExperiment::rowData(data.se)%>%
       as.data.frame()
-    volcano.data <- volcano.data%>%
+    volcano.data2 <- volcano.data%>%
       dplyr::mutate(label = row.data$label[match(protein , row.data$feature_id)],
                     label = str_short(label,label.max.char))%>%
       dplyr::slice_max(`p_value_-log10`,n = label.top)
 
     p <- p+
-      ggrepel::geom_text_repel(data = filter(volcano.data, significant),
+      ggrepel::geom_text_repel(data = filter(volcano.data2, significant),
                                aes(label = label), size = 2.4,
                                box.padding = unit(0.1, "lines"),
                                point.padding = unit(0.1, "lines"),
