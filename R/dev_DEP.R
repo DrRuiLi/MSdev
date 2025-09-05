@@ -170,22 +170,16 @@ DEP_check_sig <- function(data.se){
 
 #' @describeIn DEP_Style_se warpper of DEP::test_diff
 #' @export
-DEP_test_diff <- function(data.se,type = "all",...){
+DEP_test_diff <- function(se,type,...){
 
+
+  mc <- match.call()
+  arg.list <- as.list(mc[-1])
   groups <- data.se$condition%>%
     groupStringFactor()
-  data.diff<- DEP::test_diff(data.se,type = type,
-                             control = levels(groups)[1],
-                             ...)
-  #data.diff<- add_rejections(data.diff,alpha = 0.05,lfc =1)
-#
-  #if (!p.adj) {
-#
-  #  data.diff <- add_rejections_no_p.adj(data.diff)
-  #  #sum(data.diff@elementMetadata@listData$significant)
-#
-  #}
-  data.diff
+  if (is.null(arg.list$control)) arg.list$control<- levels(groups)[1]
+  if (is.null(arg.list$type)) arg.list$type<- "all"
+  do.call(DEP::test_diff,arg.list)
 }
 
 

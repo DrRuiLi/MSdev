@@ -3001,3 +3001,15 @@ a <- r_bg(func = function(){
   export::graph2pdf(p,file = "d:/temp/spectrum.pdf",width = 5,height = 3)
 
 }
+
+# Fri Sep  5 14:44:40 2025 ------------------------------
+Heatmap(
+  mat,
+  name = "expression",
+  column_title = "Samples",
+  column_title_side = "top",   # keep on top
+  column_title_gp = gpar(fontsize = 12, fontface = "bold"),
+  column_title_rot = 0,
+#  column_title_align = "center",
+#  column_title_position = "bottom" # <-- key: puts title below the column dendrogram
+)
