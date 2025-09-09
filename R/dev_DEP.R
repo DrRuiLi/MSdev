@@ -126,7 +126,9 @@ DEP_add_rejections <- function(data.se , p.adjust = T, p = 0.05,lfc = 0.5){
     }
 
   }
-
+  data.diff@metadata$DEP_add_rejections$p <- p
+  data.diff@metadata$DEP_add_rejections$p.adjust <- p.adjust
+  data.diff@metadata$DEP_add_rejections$lfc <- lfc
 
   data.diff
 
@@ -180,6 +182,26 @@ DEP_test_diff <- function(se,type,...){
   if (is.null(arg.list$control)) arg.list$control<- levels(groups)[1]
   if (is.null(arg.list$type)) arg.list$type<- "all"
   do.call(DEP::test_diff,arg.list)
+}
+
+
+DEP_t_test_diff <- function(se,...){
+
+  diff <- DEP_test_diff(se,...)
+  contras <- DEP_list_contrast(diff)
+  for (i.contra in contras) {
+
+    groups <- strsplit(i.contra,"_vs_")[[1]]
+    groups.se <- se[,se$condition%in%groups]
+    groups.assay <- assay(groups.se)
+    p.val <- apply(groups.assay,1,function(x){t.test_dev(x~groups.se$condition)})
+    p.val <-  unname(p.val[rownames(diff)])
+    p.adj <- p.adjust(p.val,method = "BH")
+    diff@elementMetadata[[paste0(i.contra,"_p.val")]] <-p.val
+
+  }
+  return(diff)
+
 }
 
 
@@ -296,13 +318,10 @@ DEP_plot_volcano <- function(data.se,
 
   volcano.sig <- volcano.data%>%
     dplyr::filter(significant)
-  lfc <- min(abs(volcano.sig$log2_fold_change))
-  lfc <- ifelse(is.infinite(lfc),0,lfc)
-  p.sig <- volcano.data[(abs(volcano.data$log2_fold_change)>lfc  )&
-                         (volcano.data$`p_value_-log10` > -log10(0.05)),  ]
+  lfc <- data.se@metadata$DEP_add_rejections$lfc
 
-  p.adjust <- ifelse(any(!p.sig$protein%in% volcano.sig$protein),
-                     T,F)
+
+  p.adjust <- data.se@metadata$DEP_add_rejections$p.adjust
 
   if (p.adjust) {
     volcano.data$y <-volcano.data$`adjusted_p_value_-log10`
