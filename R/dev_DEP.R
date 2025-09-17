@@ -1066,3 +1066,99 @@ DEP_remove_QC <- function(data.se,remove_QC = T, remove_Blank = T){
 
 
 }
+
+
+DEP_test_gsea <-function (dep, databases = c("GO_Molecular_Function_2017b",
+                                             "GO_Cellular_Component_2017b", "GO_Biological_Process_2017b"),
+                          contrasts = TRUE)
+{
+  assertthat::assert_that(inherits(dep, "SummarizedExperiment"),
+                          is.character(databases), is.logical(contrasts), length(contrasts) ==
+                            1)
+  if (!"enrichR" %in% rownames(installed.packages())) {
+    stop("test_enrichR() requires the 'enrichR' package",
+         "\nTo install the package run: install.packages('enrichR')")
+  }
+  row_data <- rowData(dep, use.names = FALSE)
+  if (any(!c("name", "ID") %in% colnames(row_data))) {
+    stop("'name' and/or 'ID' columns are not present in '",
+         deparse(substitute(dep)), "'\nRun make_unique() and make_se() to obtain the required columns",
+         call. = FALSE)
+  }
+  if (length(grep("_p.adj|_diff", colnames(row_data))) < 1) {
+    stop("'[contrast]_diff' and/or '[contrast]_p.adj' columns are not present in '",
+         deparse(substitute(dep)), "'\nRun test_diff() to obtain the required columns",
+         call. = FALSE)
+  }
+  libraries <- enrichR::listEnrichrDbs()$libraryName
+  if (all(!databases %in% libraries)) {
+    stop("Please run `test_gsea()` with valid databases as argument",
+         "\nSee http://amp.pharm.mssm.edu/Enrichr/ for available databases")
+  }
+  if (any(!databases %in% libraries)) {
+    databases <- databases[databases %in% libraries]
+    message("Not all databases found", "\nSearching the following databases: '",
+            paste0(databases, collapse = "', '"), "'")
+  }
+  message("Background")
+  background <- gsub("[.].*", "", row_data$name)
+  background_enriched <- enrichR::enrichr(background, databases)
+  df_background <- NULL
+  for (database in databases) {
+    temp <- background_enriched[database][[1]] %>% mutate(var = database)
+    df_background <- rbind(df_background, temp)
+  }
+  df_background$contrast <- "background"
+  df_background$n <- length(background)
+  OUT <- df_background %>% mutate(bg_IN = as.numeric(gsub("/.*",
+                                                          "", Overlap)), bg_OUT = n - bg_IN) %>% select(Term,
+                                                                                                        bg_IN, bg_OUT)
+  if (contrasts) {
+    df <- row_data %>% as.data.frame() %>% select(name,
+                                                  ends_with("_significant")) %>% mutate(name = gsub("[.].*",
+                                                                                                    "", name))
+    df_enrich <- NULL
+    for (contrast in colnames(df[2:ncol(df)])) {
+      message(gsub("_significant", "", contrast))
+      significant <- df[df[[contrast]], ]
+      genes <- significant$name
+      enriched <- enrichR::enrichr(genes, databases)
+      contrast_enrich <- NULL
+      for (database in databases) {
+        temp <- enriched[database][[1]] %>% mutate(var = database)
+        contrast_enrich <- rbind(contrast_enrich, temp)
+      }
+      contrast_enrich$contrast <- contrast
+      contrast_enrich$n <- length(genes)
+      cat("Background correction... ")
+      contrast_enrich <- contrast_enrich %>% mutate(IN = as.numeric(gsub("/.*",
+                                                                         "", Overlap)), OUT = n - IN) %>% select(-n) %>%
+        left_join(OUT, by = "Term") %>% mutate(log_odds = log2((IN *
+                                                                  bg_OUT)/(OUT * bg_IN)))
+      cat("Done.")
+      df_enrich <- rbind(df_enrich, contrast_enrich) %>%
+        mutate(contrast = gsub("_significant", "", contrast))
+    }
+  }
+  else {
+    significant <- row_data %>% as.data.frame() %>% select(name,
+                                                           significant) %>% filter(significant) %>% mutate(name = gsub("[.].*",
+                                                                                                                       "", name))
+    genes <- significant$name
+    enriched <- enrichR::enrichr(genes, databases)
+    df_enrich <- NULL
+    for (database in databases) {
+      temp <- enriched[database][[1]] %>% mutate(var = database)
+      df_enrich <- rbind(df_enrich, temp)
+    }
+    df_enrich$contrast <- "significant"
+    df_enrich$n <- length(genes)
+    cat("Background correction... ")
+    df_enrich <- df_enrich %>% mutate(IN = as.numeric(gsub("/.*",
+                                                           "", Overlap)), OUT = n - IN) %>% select(-n) %>%
+      left_join(OUT, by = "Term") %>% mutate(log_odds = log2((IN *
+                                                                bg_OUT)/(OUT * bg_IN)))
+    cat("Done.")
+  }
+  return(df_enrich)
+}
