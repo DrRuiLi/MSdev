@@ -202,6 +202,7 @@ MSdev_get_xcms <- function(object){
     }else{
       xcms.xcms <- readMSData(sample.info.polarity$msData.files,
                               mode = "onDisk")
+      xcms.xcms <- filterPolarity(xcms.xcms,i)
     }
     Biobase::pData(xcms.xcms ) <-
       cbind(Biobase::pData(xcms.xcms),
@@ -1026,7 +1027,7 @@ get_MS_sampleinfo <- function(raw.data.dir,
       max(char_vector,na.rm = T)
     }
     sample.info <- data.frame(raw.files = raw.files)%>%
-      dplyr::filter(!grepl(pattern = "condition",x = raw.files))%>%
+      #dplyr::filter(!grepl(pattern = "condition",x = raw.files))%>%
       dplyr::mutate(ms.labels = gsub(pattern = paste0(rawDataFormat,"$"),
                                      x = basename(raw.files),
                                      ignore.case = T,
