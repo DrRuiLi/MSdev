@@ -1842,7 +1842,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
       rt.adjust.param <- xcms::PeakGroupsParam(minFraction = 0.4,
                                           subset = which(peaksGroup == "QC"),
                                           subsetAdjust = "average",span = 0.4)
-      #xcms.xcms <- xcms::adjustRtime(xcms.xcms,param = rt.adjust.param)
+      xcms.xcms <- xcms::adjustRtime(xcms.xcms,param = rt.adjust.param)
     }
   }
 
@@ -2015,7 +2015,7 @@ plot_xcms_TIC <- function(xcms.xcms,col.group = NULL,title = "TIC"){
   ggplot(xcms.scan)+
     geom_line(aes(x = retentionTime , y = tic,
                   col = group,
-                  group=fileIdx))+
+                  group=fileIdx),alpha = 0.1)+
     scale_color_manual(values = col.group)+
     #scale_y_log10()+
     labs(title = title,x = "Retention Time", y = "Intensity", col = "")+

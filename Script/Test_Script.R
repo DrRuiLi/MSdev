@@ -3013,3 +3013,50 @@ Heatmap(
 #  column_title_align = "center",
 #  column_title_position = "bottom" # <-- key: puts title below the column dendrogram
 )
+# Tue Sep 16 22:08:15 2025 ------------------------------
+{
+
+  library(MSconvertR)
+  library(MSdev)
+  raw.files <-"d:/temp/20250916_Meta_Amide-pH9-2.wiff"
+
+  msConvert2SciexMultipleWiff(raw.files,dir.to = "d:/temp/20250916_Meta_Amide-pH9-2/")
+
+  mzml.files <- dir("d:/temp/20250916_Meta_Amide-pH9-2/",full.names = T)
+  mchroms <- MSnbase::readSRMData(mzml.files)
+  for (i in seq_along(mzml.files)) {
+    export_MChromatograms_Metabolites(mchroms[,i],
+                                      file = sub(mzml.files,pattern = "mzML",replacement = "pdf")[i],patched = T)
+  }
+
+
+
+  fda <- fData(mchroms)%>%
+    dplyr::mutate(row = 1:n(),
+                  label =sub('.*name=([^ ]+).*', '\\1', chromatogramId ),
+                  temp_idf = paste0(polarity,"_",precursorIsolationWindowTargetMZ)
+                  #temp_idf = chromatogramId
+    )%>%
+    dplyr::arrange(label)
+  idfs <- unique(fda$temp_idf)
+  pl <- list()
+  for (idf in idfs) {
+    idf.fda <- fda%>%
+      dplyr::filter(temp_idf == idf)%>%
+      dplyr::mutate(color_f = paste0(label,": ",productIsolationWindowTargetMZ) )
+
+
+    p <- plot_XChromatograms(mchroms[idf.fda$row,],norm = F,move = F,color_by = "row",
+                             color_f =idf.fda$color_f)+
+      labs(subtitle = paste0("mz = ",unique(idf.fda$precursorIsolationWindowTargetMZ)))
+    pl[[idf]] <- p
+    export_graph2pdf(p,file_path = file,append = T)
+  }
+
+  pa <- ggplot_sum_patchwork(pl)+
+    plot_layout(ncol = 2)
+
+  open_plot_win(pa,width = 12, height = 15)
+
+
+}
