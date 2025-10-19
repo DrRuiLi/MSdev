@@ -77,7 +77,7 @@ MSdev_get_MSinfo <- function(object){
   ### define acquire Type
   ### note, these model string are identified by mzR
   {
-    HRMS <- c("Q Exactive Plus","TripleTOF 6600","Orbitrap IQ-X",
+    HRMS <- c("Q Exactive Plus","TripleTOF 6600","Orbitrap IQ-X","Q Exactive",
               "Orbitrap Exploris 480","Orbitrap Astral")
     TQMS <- c("TSQ Quantis")
     model.df <- data.frame(
@@ -1012,7 +1012,7 @@ get_MS_sampleinfo <- function(raw.data.dir,
 
   raw.files <- dir(path = raw.data.dir,
                    pattern = paste0(rawDataFormat,"$"),
-                   full.names = T)
+                   full.names = T,recursive = T)
   raw.files <- normalizePath(raw.files,winslash = "/")
   if (length(raw.files)==0) {
     stop("No ",rawDataFormat," files exist")
@@ -1456,7 +1456,8 @@ MSdev_get_Stat <- function(object,
                                     "inchikey","lipidclass"),
                            score_thresh = 0.5,rt_bin = NA,
                            polarity_paired = T,
-                           candi = F){
+                           candi = F,
+                           metabolite = T){
 
   ### make se
   {
@@ -1487,7 +1488,8 @@ MSdev_get_Stat <- function(object,
       se[[pol]]$files<- NULL
       se[[pol]]$ExpTime<- NULL
     }
-    feature.se <- do.call("rbind",se)
+    overlap <- do.call("intersect",unname(sapply(se,colnames)))
+    feature.se <- do.call("rbind",sapply(se,`[`,,overlap))
     #feature.se <- se[[2]]
   }
 
@@ -1499,18 +1501,24 @@ MSdev_get_Stat <- function(object,
     ### sort colname
     rda <- rowData(feature.se)%>%
       as.data.frame()%>%
-      dplyr::select(feature_id,mzmed,rtmed,compound_id, adduct,mz_ref,rt_ref,score,qc_rsd,sample_rsd,peakMaxo,#ms2_id,
-                    candidate.id,candidate.adduct,candidate.mz,score.ms2)
+      dplyr::select(any_of(
+        c("feature_id","mzmed","rtmed","compound_id", "adduct","mz_ref","rt_ref",
+          "pave_seed",  "pave_CN",   "pave_cor",
+          "score","qc_rsd","sample_rsd","peakMaxo",#ms2_id,
+                             "candidate.id","candidate.adduct","candidate.mz","score.ms2")))
 
     ### retrieve data
-    cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
-    db.info <- get_CompDb_info(compound_id = rda$compound_id,
-                               keys = keys,
-                               cpdb = cpdb)
-    rda <- rda%>%
-      dplyr::mutate(db.info,.after = rtmed,
-                    #KEGG_get_cp_linked_gene(kegg_id)
-                    )
+    if (!is.null(rda$compound_id)) {
+      cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
+      db.info <- get_CompDb_info(compound_id = rda$compound_id,
+                                 keys = keys,
+                                 cpdb = cpdb)
+      rda <- rda%>%
+        dplyr::mutate(db.info,.after = rtmed,
+                      #KEGG_get_cp_linked_gene(kegg_id)
+        )
+    }
+
 
     rowData(feature.se) <- rda
 
@@ -1521,6 +1529,7 @@ MSdev_get_Stat <- function(object,
 
 
 
+    object@statData$feature.se <- feature.se
 
   }
 
@@ -1556,14 +1565,17 @@ MSdev_get_Stat <- function(object,
 
 
   ###  metabolite
-  {
+  if(metabolite){
     ### select unique feature
     .uniqueFeatures <- function(score,intensity){
-      score <- ifelse(score > 0.3 , 10,1)
+      score <- ifelse(score > 0.75 , 10,1)
       unique.score <- score*log10(intensity)
       unique.score
     }
 
+    if (is.null(rda$score)) {
+      rda$score <- 0
+    }
 
     rda.filter <- rda%>%
       as.data.frame()%>%
@@ -1578,13 +1590,12 @@ MSdev_get_Stat <- function(object,
 
 
     metabolite.se <- feature.se[rownames(feature.se)%in%rda.filter$feature_id,]
+    object@statData$metabolite.se <- metabolite.se
 
   }
 
 
 
-  object@statData$feature.se <- feature.se
-  object@statData$metabolite.se <- metabolite.se
   object
 
 }
