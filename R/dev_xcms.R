@@ -254,7 +254,9 @@ xcms_get_peak_fill <- function(xcms.xcms){
 
 
   ###return
+  xcms.ph <- xcms::processHistory(xcms.xcms)
   xcms::chromPeaks(xcms.xcms) <- xcms.peaks
+  xcms.xcms@.processHistory <- xcms.ph
   return(xcms.xcms)
 }
 
@@ -272,19 +274,19 @@ xcms_get_feature_group <- function(xcms.xcms,
                                    intCor = 0.5,
                                    eicCor = 0.5){
 
-  featureGroups(xcms.xcms) <- NA
+  xcms::featureGroups(xcms.xcms) <- NA
   register(SnowParam(progressbar = T))
   if (!is.null(diffRt)) {
     message(Sys.time()," group by SimilarRtimeParam")
-    xcms.xcms <- groupFeatures(xcms.xcms,
-                                   param = SimilarRtimeParam(diffRt,
+    xcms.xcms <- MsFeatures::groupFeatures(xcms.xcms,
+                                   param = MsFeatures::SimilarRtimeParam(diffRt,
                                                              groupFun = groupHclust ))
-    message(length(unique(featureGroups(xcms.xcms)))," feature group")
+    message(length(unique(xcms::featureGroups(xcms.xcms)))," feature group")
   }
   if (!is.null(intCor)) {
     message(Sys.time()," group by AbundanceSimilarityParam")
-    xcms.xcms <- groupFeatures(xcms.xcms,
-                                    param = AbundanceSimilarityParam(threshold = intCor,
+    xcms.xcms <- MsFeatures::groupFeatures(xcms.xcms,
+                                    param = MsFeatures::AbundanceSimilarityParam(threshold = intCor,
                                                                      transform = log2 ),
                                     filled = TRUE)
     message(length(unique(featureGroups(xcms.xcms)))," feature group")
@@ -292,10 +294,10 @@ xcms_get_feature_group <- function(xcms.xcms,
   if (!is.null(eicCor)) {
     register(SerialParam())
     message(Sys.time()," group by EicSimilarityParam")
-    xcms.xcms <- groupFeatures(xcms.xcms,
-                                    param = EicSimilarityParam(threshold = eicCor,
+    xcms.xcms <- MsFeatures::groupFeatures(xcms.xcms,
+                                    param = MsFeatures::EicSimilarityParam(threshold = eicCor,
                                                                n=2))
-    message(length(unique(featureGroups(xcms.xcms)))," feature group")
+    message(length(unique(xcms::featureGroups(xcms.xcms)))," feature group")
   }
 
   return(xcms.xcms)
@@ -1797,6 +1799,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
                                 findChromPeaks = xcms::CentWaveParam(),
                                 groupChromPeaks = xcms::PeakDensityParam(sampleGroups = "A")
                               ),
+                              BPPARAM  = BiocParallel::SnowParam(workers = 4,progressbar = T),
                               ...){
 
 
@@ -1815,8 +1818,8 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   message(Sys.time()," Find peaks...")
   xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
                             param = xcms_param$findChromPeaks,
-                            BPPARAM  = BiocParallel::SnowParam(workers = 4,progressbar = T),...)
-  xcms.xcms <- xcms_get_peak_fill(xcms.xcms)
+                            BPPARAM  = BPPARAM,...)
+  #xcms.xcms <- xcms_get_peak_fill(xcms.xcms)
   #mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
   #xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
   #                                    BPPARAM  = BiocParallel::SerialParam(progressbar = T))
