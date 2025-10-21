@@ -1,10 +1,13 @@
-setGeneric(
+
+#if (!isGeneric("vdata"))
+  setGeneric(
   "vdata",
   def = function(object) {
     igraph::as_data_frame(object, "vertices")
   }
 )
 
+#if (!isGeneric("edata"))
 setGeneric(
   "edata",
   def = function(object) {
@@ -14,6 +17,7 @@ setGeneric(
 
 
 
+#if (!isGeneric("vdata<-"))
 setGeneric(
   "vdata<-",
   def = function(object, value) {
@@ -21,6 +25,7 @@ setGeneric(
     object
   }
 )
+#if (!isGeneric("edata<-"))
 setGeneric(
   "edata<-",
   def = function(object, value) {
@@ -34,6 +39,7 @@ setGeneric(
 #'
 #' @export
 #'
+#if (!isGeneric("atom"))
 setGeneric("atom",
            def = function(object,
                           element = "ANY"){
@@ -46,11 +52,15 @@ setGeneric("atom",
            }
 )
 
-setGeneric("element",
-           def = function(object,...){
-             bonds(object)$atom
-           }
-)
+#if (!isGeneric("element"))
+
+
+
+  setGeneric("get_element",
+             def = function(object,...){
+               bonds(object)$atom
+             }
+  )
 
 
 #' Example dataset: element_table

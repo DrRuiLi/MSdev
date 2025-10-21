@@ -96,7 +96,7 @@ setMethod("atom",
           })
 
 
-setMethod("element",
+setMethod("get_element",
           "Molecule_igraph",
           definition = function(object,...){
             vdata(object)%>%
