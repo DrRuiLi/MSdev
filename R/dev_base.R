@@ -341,3 +341,8 @@ rm_except <- function(..., env = parent.frame()) {
 
 show_col <- scales::show_col
 
+
+paste0_without_na <- function(..., sep = "") {
+  args <- lapply(list(...), function(x) ifelse(is.na(x), "", x))
+  do.call(paste, c(args, sep = sep))
+}

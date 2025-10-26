@@ -74,22 +74,24 @@ groupMz <- function(x,ppm = 10,return.type = c("vector","data.frame")){
 }
 
 
+cluster_rt <- function(rt,rt.tol){
+  if (length(rt)==1) {
+    return(1)
+  }
+  dist(rt)%>%
+    hclust()%>%
+    cutree(h = rt.tol)
+
+}
+
 cluster_ion <- function(mz,rt , ppm.thresh =10, rt.tol = 15){
 
-  .cluster_rt <- function(rt,rt.tol){
-    if (length(rt)==1) {
-      return(1)
-    }
-    dist(rt)%>%
-      hclust()%>%
-      cutree(h = rt.tol)
 
-  }
 
   ion.df <- data.frame(mz,rt)%>%
     dplyr::mutate(mz.group = groupMz(mz,ppm = ppm.thresh))%>%
     dplyr::group_by(mz.group)%>%
-    dplyr::mutate(rt.cluster = .cluster_rt(rt,rt.tol))%>%
+    dplyr::mutate(rt.cluster = cluster_rt(rt,rt.tol))%>%
     dplyr::group_by(mz.group,rt.cluster)%>%
     dplyr::mutate(ion.cluster = paste0("Ion_cluster",sprintf("%08d",cur_group_id())))%>%
     dplyr::ungroup()%>%
@@ -181,6 +183,10 @@ median_part <- function(x, n = 10){
 
 mean_f <- function(x,f,...){
   sapply(split(x,f),mean,...)
+}
+
+median_f <- function(x,f,...){
+  sapply(split(x,f),median,...)
 }
 
 sum_matrix <- function(...){
@@ -363,7 +369,7 @@ groupHclust <- function (x, maxDiff = 5){
 
 
 plot_density <- function(x){
-  plot(density(x))
+  plot(density(x,na.rm =T))
 }
 
 which.mid <- function(x){

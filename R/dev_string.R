@@ -184,3 +184,9 @@ str_isotope2_num <- function(str,to = NULL){
 }
 
 
+num2percent <- function(x,digit = 2){
+
+  paste0(str_digit(x*100,digit),"%")
+
+
+}
