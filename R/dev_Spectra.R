@@ -779,11 +779,11 @@ plot_Spectra_Precursor_Int <- function(sp,
 
 }
 
-setMethod("plotSpec",
-          signature = "Spectra",
-          definition = function(object){
-            plot_Spectra(object)
-          })
+#setMethod("plotSpec",
+#          signature = "Spectra",
+#          definition = function(object){
+#            plot_Spectra(object)
+#          })
 
 setMethod("plot",
           signature = "Spectra",
