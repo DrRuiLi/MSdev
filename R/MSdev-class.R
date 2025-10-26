@@ -44,6 +44,7 @@ setClass("MSdev",
 #' @importFrom ComplexHeatmap draw Legend rowAnnotation
 #' @importFrom grid gpar grid.rect grid.circle
 #' @importFrom data.table rbindlist
+#' @export
 MSdev <- function(rawDataDir =
                     "C:/Users/91879/OneDrive/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data",
                   projectDir = dirname(rawDataDir),
@@ -80,7 +81,7 @@ MSdev <- function(rawDataDir =
 
     ### check raw data
     {
-      rowDataFile <- dir(.Object@projectInfo$rawDataDir)
+      rowDataFile <- dir(.Object@projectInfo$rawDataDir,recursive = T)
       .Object@projectInfo$rawDataFormat =
         dplyr::case_when(any(grepl(pattern = ".wiff$", x = rowDataFile))~".wiff",
                          any(grepl(pattern = ".raw$", x = rowDataFile))~".raw",
@@ -88,7 +89,7 @@ MSdev <- function(rawDataDir =
                          any(grepl(pattern = ".lcd$", x = rowDataFile))~".lcd")
       rowDataFile <- dir(path = .Object@projectInfo$rawDataDir,
                          pattern =paste0(.Object@projectInfo$rawDataFormat,"$") ,
-                         full.names = T)
+                         full.names = T,recursive = T)
       .Object@projectInfo$rawDataFileCount <- length(rowDataFile)
       .Object@projectInfo$experimentTime <- max(file.info(rowDataFile)$mtime)
 
