@@ -177,7 +177,7 @@ DEP_test_diff <- function(se,type,...){
 
   mc <- match.call()
   arg.list <- as.list(mc[-1])
-  groups <- data.se$condition%>%
+  groups <- se$condition%>%
     groupStringFactor()
   if (is.null(arg.list$control)) arg.list$control<- levels(groups)[1]
   if (is.null(arg.list$type)) arg.list$type<- "all"
