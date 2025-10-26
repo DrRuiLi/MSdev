@@ -1330,7 +1330,8 @@ MSdev_extract_Spectra <- function(object,
 #' @export
 #'
 MSdev_match_Spectra_to_feature <- function(object,
-                                           rt.tol = 10){
+                                           rt.tol = 10,
+                                           ppm = 20){
 
 
 
@@ -1346,7 +1347,7 @@ MSdev_match_Spectra_to_feature <- function(object,
       as.data.frame()
     sp.ms2.data <- get_Spectra_ms2_feature_id(sp.ms2,
                                               xcms.fdf,
-                                              ppm = 10,
+                                              ppm = ppm,
                                               rt.tol = rt.tol)
 
 
@@ -1488,7 +1489,7 @@ MSdev_get_Stat <- function(object,
       se[[pol]]$files<- NULL
       se[[pol]]$ExpTime<- NULL
     }
-    overlap <- do.call("intersect",unname(sapply(se,colnames)))
+    overlap <- do.call("intersect",unname(lapply(se,colnames)))
     feature.se <- do.call("rbind",sapply(se,`[`,,overlap))
     #feature.se <- se[[2]]
   }
@@ -1780,3 +1781,16 @@ get_MSdev_isotopologues_data <- function(object){
 }
 
 
+count_MSdev_peaks <- function(object){
+
+  xcms <- object@xcmsData$NegativeMS1
+  pks <- table(chromPeaks(xcms)[,"sample"])
+  names(pks) <- pData(xcms)[,1]
+  print(pks)
+
+
+  xcms <- object@xcmsData$PositiveMS1
+  pks <- table(chromPeaks(xcms)[,"sample"])
+  names(pks) <- pData(xcms)[,1]
+  print(pks)
+}
