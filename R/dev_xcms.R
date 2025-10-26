@@ -1300,9 +1300,9 @@ plot_xcms_peaks_distribution <- function(xcms.xcms,plot.title = "Peaks distribut
     dplyr::filter(!is.na(maxo),
                   rtmax-rtmin <60,
                   !merged)
-  xcms.process.type <- processHistory(xcms.xcms) %>% sapply( processType )
-  xcms.findpeak.param <- processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
-    processParam()
+  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( processType )
+  xcms.findpeak.param <- xcms::processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
+    xcms::processParam()
   if (type == "o") {
     ggplot(xcms.peaks)+
       geom_point(aes(x = rt,y=mz,
@@ -1377,10 +1377,10 @@ plot_xcms_features_distribution <-
       apply(featureValues(xcms.xcms, value = "maxo"), 1, median, na.rm = T)
 
     xcms.process.type <-
-      processHistory(xcms.xcms) %>% sapply(processType)
+      xcms::processHistory(xcms.xcms) %>% sapply(processType)
     xcms.findpeak.param <-
-      processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]] %>%
-      processParam()
+      xcms:: processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]] %>%
+      xcms::processParam()
     ### generate scale
     maxo.range <- quantile(log10((xcms.features$maxo)))
     peak.witdh.range <- quantile(xcms.features$peakWidth)
@@ -1510,9 +1510,9 @@ plot_xcms_peaks_mzerror_density <- function(xcms.xcms,
            mz_diff = mzmax-mzmin,
            peak_width = rtmax-rtmin)
 
-  xcms.process.type <- processHistory(xcms.xcms) %>% sapply( processType )
-  xcms.findpeak.param <- processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
-    processParam()
+  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( processType )
+  xcms.findpeak.param <- xcms::processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
+    xcms::processParam()
   ggplot(xcms.peaks,aes(x = mz , y = ppm)) +
     stat_density_2d(aes(fill= after_stat(level)),
                     contour = T,
@@ -1546,9 +1546,9 @@ plot_xcms_peaks_mzerror_density <- function(xcms.xcms,
 
 plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"){
 
-  xcms.process.type <- processHistory(xcms.xcms) %>% sapply( processType )
-  xcms.findpeak.param <- processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
-    processParam()
+  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( processType )
+  xcms.findpeak.param <- xcms::processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
+    xcms::processParam()
   xcms.peaks <- chromPeaks(xcms.xcms)%>%
     as.data.frame()
   xcms.scans <- get_xcms_scan_Stat(xcms.xcms)%>%
@@ -1598,9 +1598,9 @@ plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"
 
 plot_xcms_peaks_ms2_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS2"){
 
-  xcms.process.type <- processHistory(xcms.xcms) %>% sapply( processType )
-  xcms.findpeak.param <- processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
-    processParam()
+  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( processType )
+  xcms.findpeak.param <- xcms::processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
+    xcms::processParam()
   xcms.peaks <- chromPeaks(xcms.xcms)%>%
     as.data.frame()
   xcms.scans <- Biobase::fData(xcms.xcms)%>%
@@ -1686,9 +1686,9 @@ plot_xcms_ms2_distribution <- function(xcms.xcms,plot.title = "MS2 Precursor dis
 plot_xcms_peaks_SN_distribution <- function(xcms.xcms,plot.title = "Peaks SNR(Signal to Noise Ratio)"){
 
 
-  xcms.process.type <- processHistory(xcms.xcms) %>% sapply( processType )
-  xcms.findpeak.param <- processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
-    processParam()
+  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( xcms::processType )
+  xcms.findpeak.param <- xcms::processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
+    xcms::processParam()
   xcms.peaks <- chromPeaks(xcms.xcms)%>%
     as.data.frame()
 
