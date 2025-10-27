@@ -218,7 +218,7 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
 }
 
 #' combineSpectra_groupby_ce
-#' @description using [combinePeaksData_tic_weighted], refer to [Spectra::combinePeaksData]
+#' @description using combinePeaksData_tic_weighted, refer to [Spectra::combinePeaksData]
 #'
 #' @param sp Spectra
 #' @param minProp num

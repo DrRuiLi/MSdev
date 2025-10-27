@@ -1,7 +1,7 @@
 #' MSdev_find_isotope_label
 #'
 #' @param object MSdev
-#' @param isotope "[13]C"
+#' @param isotope "\[13\]C"
 #' @param max_label 10
 #' @param ppm 20
 #' @param net.degree.ratio 0.5

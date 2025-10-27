@@ -88,7 +88,7 @@ get_Molecule_igraph_from_cfmd <- function(cfmd,fragment.id = 1){
 #'
 #' @param Molecule_igraph `Molecule_igraph`
 #' @param isotopomer isotopomer name
-#' @param iso_vec isotope of atom, such as c("C_1" = "[13]C")
+#' @param iso_vec isotope of atom, such as c("C_1" = "\[13\]C")
 #' @param abundance number
 #'
 #' @returns `Molecule_igraph`

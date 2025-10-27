@@ -656,7 +656,7 @@ plot_CFM_annotated_Spectra <- function(cfmd){
 #'
 #' @param sp Spectra
 #' @param cfmd cfmd_data
-#' @param isotope "[13]C"
+#' @param isotope `[13]C`
 #' @param iso_count num
 #' @param ppm 20
 #'
@@ -783,8 +783,8 @@ CFM_data_get_igraph <- function(object){
 #'
 #'
 #' @param object cfmd
-#' @param iso_ele '[13]C'
-#' @param BPPARAM BiocParallel::SerialParam()
+#' @param iso_ele `[13]C`
+#' @param BPPARAM [BiocParallel::SerialParam]
 #'
 #' @note CFM_data_get_atom_map take too much times when construct, major in get_CFM_data_trans_map>>>fmcs
 #'

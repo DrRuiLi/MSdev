@@ -3454,3 +3454,258 @@
 
 
 }
+
+# Thu Sep 25 15:30:01 2025 Gout OA------------------------------
+{
+  msdev.LE <- MSdev("d:/data/2025.09.19.Gout.OA/rawdata/")
+  #msdev.LE <- load_as_var("d:/20250306.LE/LXM_META/MSdev_2025_03_08.Rdata")
+  msdev.LE <- MSdev_msConvert(msdev.LE)
+  msdev.LE <- MSdev_checkSampleInfo(msdev.LE)
+  msdev.LE <- MSdev_xcmsProcessing(msdev.LE)
+  msdev.LE <- MSdev_extract_Spectra(msdev.LE)
+  msdev.LE <- MSdev_match_Spectra_to_feature(msdev.LE)
+  msdev.LE <- MSdev_annotation(msdev.LE,
+                               expand_adduct= T,
+                               cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+  msdev.LE <- MSdev_get_Stat(msdev.LE,QC_RSD = Inf)
+  MSdev_export(msdev.LE)
+  MSdev_save(msdev.LE)
+
+
+
+  {
+
+    proj.dir <- msdev.LE@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(msdev.LE,from = "metabolite")
+    #data.se <- data.se[,grepl(data.se$group,pattern = "Tumor") ]
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3)
+
+
+    #maped.genes <- KEGG_get_cp_linked_gene(rowData(data.se)$kegg_id)
+    #edit_df_in_excel(maped.genes)
+
+    ### Plot TIC
+    {
+      p1 <- plot_xcms_TIC(msdev.LE@xcmsData$PositiveMS1)+
+        labs(title = "Positive TIC")
+      p2 <- plot_xcms_TIC(msdev.LE@xcmsData$NegativeMS1)+
+        labs(title = "Negative TIC")
+      p <- p1+p2+plot_layout(ncol = 1)
+      export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 8,append = T)
+    }
+
+
+
+    ### sample_p
+    data.se <- data.se[,!data.se$condition%in%c("QC","Blank","A0")]
+    data.se.Sample_P <- DEP_normalization(data.se)
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    data.diff <- DEP_test_diff(data.se.Sample_P)
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+    p.diff.list <- DEP_plot_volcano(data.diff,"all")
+    p.diff <- ggplot_sum_patchwork(p.diff.list)
+    export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 10,height = 10,append = T)
+    table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+    xlsx.write.list(table.diff,
+                    paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+    )
+
+
+    data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+    data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+    #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+    hm <- DEP.plot.heatmap(data.diff)
+    export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 6,height = 20,append = T)
+
+
+    data.path <- DEP_pathway_enrich(data.diff,contrast = "all",method = "GlobalTest")
+    p.list <- lapply(names(data.path),
+                     function(x){
+                       p <- plotPathwayEnrichment(data.path[[x]],method = "bubble",title = x)
+                     })
+    p <- ggplot_sum_patchwork(p.list)
+    export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 20,height = 10,append = T)
+    xlsx.write.list(
+      data.path,
+      file =paste0(proj.dir,"/Statistic/pathway.xlsx")
+    )
+  }
+
+
+}
+
+# Tue Oct 14 12:56:05 2025 ZWD Lipidomics------------------------------
+{
+
+  MSdev.obj <- MSdev("d:/data/2025_09_16-Zhuangweidong/Data/")
+  #MSdev.obj <- MSdev_load("d:/data/2025_09_16-Zhuangweidong/MSdev_2025_10_14.Rdata")
+  MSdev.obj <- MSdev_msConvert(MSdev.obj)
+  MSdev.obj <- MSdev_checkSampleInfo(MSdev.obj)
+  MSdev.obj <- MSdev_xcmsProcessing(MSdev.obj)
+  MSdev.obj <- MSdev_extract_Spectra(MSdev.obj)
+  #MSdev.obj <- MSdev_match_Spectra_to_feature(MSdev.obj)
+  MSdev.obj <- MSdev_annotation(MSdev.obj,
+                                expand_adduct= T,
+                                cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast.sqlite",
+                                selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
+  MSdev.obj <- MSdev_get_Stat(MSdev.obj,score_thresh = 0.5)
+  MSdev_export(MSdev.obj)
+  MSdev_save(MSdev.obj)
+
+
+
+  ### figure SAMPLE1
+  {
+
+    proj.dir <- MSdev.obj@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(MSdev.obj,from = "metabolite",QC_RSD= Inf)
+
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3)
+
+
+    ### Plot TIC
+    {
+      p1 <- plot_xcms_TIC(MSdev.obj@xcmsData$PositiveMS1)+
+        labs(title = "Positive TIC")
+      p2 <- plot_xcms_TIC(MSdev.obj@xcmsData$NegativeMS1)+
+        labs(title = "Negative TIC")
+      p <- p1+p2+plot_layout(ncol = 1)
+      export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 8,append = T)
+    }
+
+
+    ### diff
+    {
+      data.se1 <- data.se[,data.se$sample.type == "Sample"]
+      data.se.Sample_P <- DEP_preprocess(data.se1)
+      data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 5,height = 5,append = T)
+      data.diff <- DEP_test_diff(data.se.Sample_P)
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 5,height = 5,append = T)
+      table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+      xlsx.write.list(table.diff,
+                      paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+      )
+
+
+      data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+      #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+      hm <- DEP_plot_heatmap(data.diff)
+      export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 6,height = 80,append = T)
+
+    }
+
+
+
+  }
+
+
+}
+# Mon Oct 20 13:49:34 2025 WJY identification------------------------------
+{
+
+  msdev.wjy <- MSdev("d:/data/2025.10.15.WJY/rawdata/")
+  msdev.wjy <- MSdev_load("d:/data/2025.10.15.WJY/MSdev_2025_10_20.Rdata")
+  msdev.wjy <- MSdev_msConvert(msdev.wjy)
+  msdev.wjy <- MSdev_checkSampleInfo(msdev.wjy)
+  msdev.wjy <- MSdev_set_param(msdev.wjy,
+                                   findChromPeaks =
+                                     xcms::CentWaveParam(
+                                       ppm = 20,
+                                       prefilter = c(3,1000),
+                                       peakwidth = c(10, 30),
+                                       snthresh = 100,
+                                       fitgauss = T
+                                     ),
+                                   groupChromPeaks =
+                                     xcms::PeakDensityParam(
+                                       sampleGroups = "A",
+                                       minFraction = 0,
+                                       binSize = 0.005,
+                                       bw = 20,
+                                       ppm = 10))
+  msdev.wjy <- MSdev_xcmsProcessing(msdev.wjy)
+  msdev.wjy <- MSdev_extract_Spectra(msdev.wjy)
+  msdev.wjy <- MSdev_match_Spectra_to_feature(msdev.wjy,ppm = 20)
+  msdev.wjy <- MSdev_annotation(msdev.wjy,
+                               expand_adduct= T,
+                               cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+  MSdev_save(msdev.wjy)
+  pos <- get_xcms_feature_se(msdev.wjy@xcmsData$PositiveMS1)
+  neg <- get_xcms_feature_se(msdev.wjy@xcmsData$NegativeMS1)
+
+  plot_density(rowData(neg)$score)
+
+
+  xlsx.write.list(list(pos = rowData(pos),neg = rowData(neg)),
+                  file = "d:/temp/temp.xlsx")
+
+
+}
+# Wed Oct 22 09:17:25 2025 WJY H5------------------------------
+{
+  msdev.wjy <- MSdev_load("d:/data/2025.10.15.WJY/MSdev_2025_10_20.Rdata")
+  msdev.wjy@projectInfo$MSdevFile <- "d:/data/2025.10.15.WJY/WJY.H5.Rdata"
+
+  msdev.wjy <- MSdev_checkSampleInfo(msdev.wjy)
+  msdev.wjy <- MSdev_set_param(msdev.wjy,
+                               findChromPeaks =
+                                 xcms::CentWaveParam(
+                                   ppm = 20,
+                                   prefilter = c(3,1000),
+                                   peakwidth = c(10, 30),
+                                   snthresh = 100,
+                                   fitgauss = T
+                                 ),
+                               groupChromPeaks =
+                                 xcms::PeakDensityParam(
+                                   sampleGroups = "A",
+                                   minFraction = 0,
+                                   binSize = 0.005,
+                                   bw = 20,
+                                   ppm = 10))
+  msdev.wjy <- MSdev_xcmsProcessing(msdev.wjy)
+  msdev.wjy <- MSdev_extract_Spectra(msdev.wjy)
+  msdev.wjy <- MSdev_match_Spectra_to_feature(msdev.wjy,ppm = 20,rt.tol = 30)
+  msdev.wjy <- MSdev_annotation(msdev.wjy,
+                                expand_adduct= T,
+                                cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite")
+  MSdev_save(msdev.wjy)
+  pos <- get_xcms_feature_se(msdev.wjy@xcmsData$PositiveMS1)
+  neg <- get_xcms_feature_se(msdev.wjy@xcmsData$NegativeMS1)
+
+  plot_density(rowData(neg)$score)
+
+
+  xlsx.write.list(list(pos = rowData(pos),neg = rowData(neg)),
+                  file = "d:/temp/temp.xlsx")
+
+ }

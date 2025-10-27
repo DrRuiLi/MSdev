@@ -738,7 +738,7 @@ findFeature <- function(object,
 #' @title findISMSdev
 #' @description find features of internals standard listed in `object@experimentInfo@Internal_Standard`
 #' by `Exact_mass` and `Retention_time` (if provide),
-#' only [M+H] and [M-H] are considered. Correlation and intensity will be plot based on `object@statData[["featureRaw"]]`, please check.
+#' only `[M+H]` and `[M-H]` are considered. Correlation and intensity will be plot based on `object@statData[["featureRaw"]]`, please check.
 #' A column "internal_standard" will be added in `object@statData[["featureRaw"]]`
 #'
 #' @param object MSdev
