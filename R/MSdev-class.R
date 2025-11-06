@@ -43,7 +43,7 @@ setClass("MSdev",
 #' degree V E `V<-` `E<-`
 #' @importFrom ComplexHeatmap draw Legend rowAnnotation
 #' @importFrom grid gpar grid.rect grid.circle
-#' @importFrom data.table rbindlist
+#' @importFrom data.table rbindlist data.table
 #' @export
 MSdev <- function(rawDataDir =
                     "C:/Users/91879/OneDrive/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data",
