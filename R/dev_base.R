@@ -141,6 +141,13 @@ open_MSIP <- function(){
   return(msip.file)
 }
 
+open_PAVE <- function(){
+  pave.file <- "C:/Users/91879/OneDrive/Documents/YLF_Lab/Project/2025.10.10.PAVE/code/PAVE_data_Analysis.R"
+  rstudioapi::documentOpen(pave.file)
+
+  return(pave.file)
+}
+
 
 open_MSIP_dir <- function(){
 

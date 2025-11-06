@@ -28,7 +28,7 @@ get_PAVE_from_MSdev <- function(object){
 }
 
 
-PAVE_get_atom_count <- function(object,BPPARAM = SnowParam(workers = 6,progressbar = T)){
+PAVE_get_atom_count <- function(object, BPPARAM = SnowParam(workers = 6,progressbar = T)){
 
 
   polarity.index <- c("0" = "Negative",
@@ -38,10 +38,12 @@ PAVE_get_atom_count <- function(object,BPPARAM = SnowParam(workers = 6,progressb
 
     ### get xcms
     {
+
       polarity.tag <- paste0(polarity.index[as.character(i.pol)],"MS1")
       xcms.xcms <- object@xcmsData[[polarity.tag]]
       if (is.null(xcms.xcms)) next
       #xcms.se <- get_xcms_feature_se(xcms.xcms)
+
     }
 
     ### find +C +N from peaks in unlabeled sample
@@ -90,7 +92,6 @@ PAVE_junk_remover <- function(object,ppm = 10,rt.tol = 20){
       {
 
         message_with_time("Find isotope and adduct in ",pol)
-
         iso.diff <- data.frame(
           chemform = c("[13]C1C-1","[13]C1C-1","[18]O1O-1","[18]O1O-1","[15]N1N-1","[34]S1S-1","[37]ClCl-1"),
           charge = c(1,2,1,2,1,1,1)
@@ -105,7 +106,7 @@ PAVE_junk_remover <- function(object,ppm = 10,rt.tol = 20){
           dplyr::filter(polarity == pol)%>%
           dplyr::mutate(type = "adduct")
 
-        mass_diff <- bind_rows(iso.diff,adducts.diff)
+        mass_diff <- bind_rows(iso.diff,  adducts.diff)
 
 
 
@@ -514,7 +515,7 @@ PAVE_report <- function(object,file = tempfile(fileext = "pdf"),mzr = c(0,Inf)){
 
     cn.stat.list[[pol]]$ATOMCOUNT <-
       list(total_peaks = nrow(xcms.fdf),
-           peaks_in_blak = sum(xcms.fdf$Blank>0),
+           peaks_in_blak = 0,
            peaks_withou_labeling = length(setdiff(xcms.fdf$feature_id,cn.peaks$feature_id)),
            peaks_low_cor = sum(cn.peaks$pave_cor < 0.75),
            peaks_high_cor = sum(cn.peaks$pave_cor >= 0.75) )
@@ -659,6 +660,7 @@ PAVE_find_xcms_CN <- function(xcms.xcms, rt.tol = 20, ppm= 10 ,
                                N = possible.n.count,
                                p.cor = NA)
 
+        if (!nrow(cn.comb)) return(NULL)
         ### score possible C and N pattern
         cn.comb.list <- list()
         for (i.cn in 1:nrow(cn.comb)) {
@@ -738,7 +740,7 @@ PAVE_find_xcms_CN <- function(xcms.xcms, rt.tol = 20, ppm= 10 ,
 
 
 
-get_CN_mass_diff_table <- function(C_max=100,N_max=50){
+get_CN_mass_diff_table <- function(C_max=100,N_max=20){
 
 
 
@@ -746,7 +748,6 @@ get_CN_mass_diff_table <- function(C_max=100,N_max=50){
   {
     C13_mass_diff= MSCC::chemform_mz("[13]CC-1")
     N15_mass_diff= MSCC::chemform_mz("[15]NN-1")
-
 
   }
 
@@ -778,8 +779,12 @@ get_CN_mass_diff_table <- function(C_max=100,N_max=50){
         N_count = 0:N_max
       )%>%
       dplyr::mutate(
+        chemform_diff = paste0("[13]C",C_count,"C-",C_count,
+                               "[15]N",N_count,"N-",N_count),
+        #mz = MSCC::chemform_mz(chemform_diff),
         mass_diff = C_count * C13_mass_diff + N_count * N15_mass_diff
       )
+    CN_mass_diff_df <- data.table::as.data.table(CN_mass_diff_df)
 
   }
 

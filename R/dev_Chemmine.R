@@ -697,3 +697,64 @@ make_isotopologues_col <- function(n=10){
 
 }
 
+
+
+get_adduct_mass_diff <- function(polarity = 0,direction = 1){
+
+
+  pol <- ifelse(polarity==1,"positive","negative")
+
+  adduct.table <- MSCC::adduct.table%>%
+    dplyr::filter( Ion_mode == pol)%>%
+    dplyr::mutate(m_c = Multi/Charge)
+
+
+  adduct.diff <- expand.grid(
+    adduct.from = 1:nrow(adduct.table),
+    adduct.to = 1:nrow(adduct.table)
+  )%>%
+    dplyr::filter(
+      adduct.table$m_c[adduct.from] == adduct.table$m_c[adduct.to]
+    )%>%
+    dplyr::mutate(
+      chemform_diff = MSCC::chemform_calc(adduct.table$Formula_diff[adduct.to],
+                                    adduct.table$Formula_diff[adduct.from],
+                                    calc = "-",return = "chemform"),
+      mass_diff = MSCC::chemform_mz(chemform_diff),
+      #mass_diff =adduct.table$Mass[adduct.to] - adduct.table$Mass[adduct.from],
+      #charge = adduct.table$Charge[adduct.to],
+      adduct.from = adduct.table$Adduct[adduct.from],
+      adduct.to = adduct.table$Adduct[adduct.to]
+    )
+
+  #which(upper.tri(diag(nrow(adduct.table)),diag = F),arr.ind = T)
+  adduct.diff <- data.table::as.data.table(adduct.diff)
+
+  return(adduct.diff)
+
+}
+
+
+get_iso_mass_diff <- function(){
+
+
+  iso.ele <- c("[10]B","[15]N","[29]Si","[30]Si",
+               "[53]Cr","[13]C","[2]H","[34]S",
+               "[37]Cl","[41]K","[18]O","[44]Ca",
+               "[60]Ni","[62]Ni")
+
+  ele <- MSCC::elem_table%>%
+    dplyr::mutate(ele.base = get_ele_uniso(element))%>%
+    dplyr::group_by(ele.base)%>%
+    dplyr::filter(any(element %in% iso.ele))%>%
+    dplyr::arrange(mass)%>%
+    dplyr::mutate(chemform_diff = paste0(element,"1",element[1],"-1"),
+                  mass_diff = MSCC::chemform_mz(chemform_diff))%>%
+    dplyr::ungroup()%>%
+    dplyr::filter(mass_diff!=0)%>%
+    dplyr::select("element","chemform_diff","mass_diff")
+
+  data.table::as.data.table(ele)
+
+
+}

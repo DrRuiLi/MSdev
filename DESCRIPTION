@@ -7,7 +7,7 @@ Authors@R:
 Description: MS data basic manipulate and advanced algorithm
 License: MIT + file LICENSE
 Depends:
-    R (>= 3.5.0)
+    R (>= 4.5.0)
 Imports: 
     Biobase,
     magrittr,

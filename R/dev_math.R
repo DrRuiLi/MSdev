@@ -261,6 +261,12 @@ expand_range <- function(x= c(5,10),add = 0,multi = 0){
   return(x)
 }
 
+sum_dup <- function(x){
+
+  sum(duplicated(x))
+
+}
+
 
 
 
@@ -349,6 +355,33 @@ match_mz <- function(mz1,mz2,mz.ppm = 10){
 
 }
 
+match_mz_grid <- function(mz1, mz2 , ppm = 10 ){
+
+  match.df <-  expand.grid(
+    ion1 = seq_along(mz1),
+    ion2 = seq_along(mz2)
+  )
+  match.df <- match.df[match.df$ion1!=match.df$ion2,]
+  match.df$mz.diff <- mz2[match.df$ion2]-mz1[match.df$ion1]
+  match.df$mz.mean <- (mz1[match.df$ion1]+mz2[match.df$ion2])/2
+  match.df$mz.ppm <- abs( match.df$mz.diff /match.df$mz.mean)*1e6
+  match.df <- match.df[match.df$mz.ppm < ppm,]
+
+  return(match.df)
+
+  ion1 <- rep(seq_along(mz1),each = length(mz2))
+  ion2 <- rep(seq_along(mz2),times = length(mz1))
+  mz.diff <- mz2[ion2]-mz1[ion1]
+  mz.mean <- (mz1[ion1]+mz2[ion2])/2
+  mz.ppm <- abs( mz.diff / mz.mean)*1e6
+  idx <- mz.ppm < ppm
+  data.frame(
+    ion1 = ion1[idx],
+    ion2 = ion2[idx]
+  )
+
+
+}
 
 
 groupHclust <- function (x, maxDiff = 5){
@@ -503,3 +536,40 @@ weighted_icc <- function(score_mat, weights) {
 rsd <- function(x, na.rm = TRUE) {
    sd(x, na.rm = na.rm) / mean(x, na.rm = na.rm)
 }
+
+
+match_mz_foverlaps <- function(mz1, mz2, ppm.base = mz1, ppm = 10 ) {
+
+ # if (length(mz1 )>length(mz2)) {
+ #   res <- match_mz_foverlaps(mz2,mz1)
+ #   idx <- res$ion1
+ #   res$ion1 <- res$ion2
+ #   res$ion2 <-idx
+ #   return(res)
+ # }
+
+  dt_x <- data.table(x = mz1,
+                     ion1 = seq_along(mz1))
+  dt_x[, `:=`(
+    xmin = x - ppm.base * ppm / 1e6,
+    xmax = x + ppm.base * ppm / 1e6
+  )]
+  data.table::setkey(dt_x, xmin, xmax)
+
+  dt_y <- data.table(y = mz2,
+                     ion2 = seq_along(mz2),
+                     y_start = mz2, y_end = mz2)
+  data.table::setkey(dt_y, y_start, y_end)
+
+  res <- data.table::foverlaps(dt_y, dt_x, by.x = c("y_start", "y_end"),
+                   type = "within", nomatch = 0L)
+
+
+  res[, mz.ppm := abs((y - x) / ppm.base[ion1] * 1e6)]
+
+
+
+  res <- res[,c("ion1","ion2","mz.ppm")]
+  res[]
+}
+

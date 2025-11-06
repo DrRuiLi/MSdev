@@ -277,14 +277,14 @@ xcms_get_feature_group <- function(xcms.xcms,
   xcms::featureGroups(xcms.xcms) <- NA
   register(SnowParam(progressbar = T))
   if (!is.null(diffRt)) {
-    message(Sys.time()," group by SimilarRtimeParam")
+    message_with_time(" group by SimilarRtimeParam")
     xcms.xcms <- MsFeatures::groupFeatures(xcms.xcms,
                                    param = MsFeatures::SimilarRtimeParam(diffRt,
                                                              groupFun = groupHclust ))
     message(length(unique(xcms::featureGroups(xcms.xcms)))," feature group")
   }
   if (!is.null(intCor)) {
-    message(Sys.time()," group by AbundanceSimilarityParam")
+    message_with_time(" group by AbundanceSimilarityParam")
     xcms.xcms <- MsFeatures::groupFeatures(xcms.xcms,
                                     param = MsFeatures::AbundanceSimilarityParam(threshold = intCor,
                                                                      transform = log2 ),
@@ -293,7 +293,7 @@ xcms_get_feature_group <- function(xcms.xcms,
   }
   if (!is.null(eicCor)) {
     register(SerialParam())
-    message(Sys.time()," group by EicSimilarityParam")
+    message_with_time(" group by EicSimilarityParam")
     xcms.xcms <- MsFeatures::groupFeatures(xcms.xcms,
                                     param = MsFeatures::EicSimilarityParam(threshold = eicCor,
                                                                n=2))
@@ -822,6 +822,8 @@ get_xcms_feature_iso_connection <- function(xcms.xcms,
   return(fdf.iso.connect)
 
 }
+
+
 
 #' xcms_get_feature_isotope_label
 #' @description
@@ -1815,7 +1817,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
 
 
   ### Find peaks
-  message(Sys.time()," Find peaks...")
+  message_with_time(" Find peaks...")
   xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
                             param = xcms_param$findChromPeaks,
                             BPPARAM  = BPPARAM,...)
@@ -1825,7 +1827,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   #                                    BPPARAM  = BiocParallel::SerialParam(progressbar = T))
 
   ### adujust RT
-  message(Sys.time()," Adjust RT...")
+  message_with_time(" Adjust RT...")
   peaksGroup <- Biobase::pData(xcms.xcms)$sample.type
   peak.density.param <- xcms::PeakDensityParam(sampleGroups = peaksGroup,
                                          minFraction = 0.4,bw = 30,
@@ -1851,11 +1853,11 @@ xcmsProcessingMS1 <- function(xcms.xcms,
 
 
   ### group peaks
-  message(Sys.time()," Group peaks...")
+  message_with_time(" Group peaks...")
   peak.density.param <- xcms_param$groupChromPeaks
   peak.density.param@sampleGroups <- Biobase::pData(xcms.xcms)$sample.type
   xcms.xcms <- xcms::groupChromPeaks(xcms.xcms,param = peak.density.param)
-  message(Sys.time()," ",nrow(featureDefinitions(xcms.xcms))," feature found")
+  message_with_time(" ",nrow(featureDefinitions(xcms.xcms))," feature found")
   xcms.xcms <- xcms::fillChromPeaks(xcms.xcms,param = xcms::FillChromPeaksParam())
 
 
@@ -2501,5 +2503,97 @@ xcms_from_ms2_spectra <- function(sp.ms2 ,
 
 
   return(XCMSnExp)
+
+}
+
+
+xcms_get_feature_adduct_connection <- function(xcms.xcms,rt.tol = 5,ppm = 10){
+
+
+  pol <- unique(polarity(xcms.xcms))
+  adduct.diff <- get_adduct_mass_diff(pol)
+  adduct.diff <- adduct.diff[order(adduct.diff$mass_diff),]
+  #xcms.xcms <- xcms_get_feature_group(xcms.xcms,diffRt = 10,intCor = NULL,eicCor = NULL)
+  xcms.fdf <- featureDefinitions(xcms.xcms)
+
+
+  ### Construct connection
+  {
+
+
+
+
+    # Generate all connection
+    # filter rt diff
+    # calc mz diff
+    # pre-filter mz.diff
+    # calc mz.mean
+    {
+
+      xcms.net <- expand.grid(
+        from = 1:nrow(xcms.fdf),
+        to = 1:nrow(xcms.fdf)
+      )
+      xcms.net <- data.table::as.data.table(xcms.net)
+      xcms.net <- xcms.net[from != to ][
+        , rt.diff := abs(xcms.fdf$rtmed[to]-xcms.fdf$rtmed[from]) ][
+        rt.diff < rt.tol,][
+          , c("mz.diff") := .( xcms.fdf$mzmed[to] - xcms.fdf$mzmed[from])][
+            mz.diff > min(adduct.diff$mass_diff)&mz.diff < max(adduct.diff$mass_diff) ][
+              ,mz.mean := xcms.fdf$mzmed[to] + xcms.fdf$mzmed[from]   ]
+    }
+
+
+    # match mz.diff to adduct.diff
+    match.df <- match_mz_foverlaps(mz1 = xcms.net$mz.diff,mz2 = adduct.diff$mass_diff,
+                                   ppm.base = xcms.net$mz.mean,ppm = ppm)
+
+
+    # add adduct.diff data
+    xcms.net.matched <- xcms.net[match.df$ion1,][
+      ,c("adduct.diff.idx","mz.ppm"):= .(match.df$ion2,match.df$mz.ppm)
+    ][mz.ppm  < ppm,][ ### connect within ppm
+      ,c("adduct.mass.diff","from.adduct","to.adduct"):= .(adduct.diff$mass_diff[adduct.diff.idx],
+                                              adduct.diff$adduct.from[adduct.diff.idx],
+                                              adduct.diff$adduct.to[adduct.diff.idx])
+    ]
+
+
+  }
+
+
+  ###
+  {
+
+    xcms.net.matched$label  <- paste0(xcms.net.matched$from.adduct," to ",xcms.net.matched$to.adduct)
+    xcms.fdf.ig <- igraph::graph_from_data_frame(xcms.net.matched)
+    visIgraph(igraph_filter_distance(xcms.fdf.ig,from = "11959",1))%>%
+      visEdges(smooth = T)
+
+
+    node.group <- igraph::components(xcms.fdf.ig)$membership
+
+    ig <- igraph_filter_vertex(xcms.fdf.ig , which(node.group==1))
+
+    eda <- edata(ig)
+    vda <- vdata(ig)
+    plot_density(eda$rt.diff)
+
+  }
+
+}
+
+
+plotly_xcms_feature_group <- function(xcms.xcms){
+
+
+  xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+    as.data.frame()
+  #ggplot(xcms.fdf)+
+  #  geom_point(aes(x = rtmed , y = mzmed, col = feature_group))+
+  #  theme(legend.position = "none")
+
+  plotly::plot_ly(xcms.fdf)%>%
+    add_markers(x = ~rtmed, y = ~mzmed, color = ~feature_group)
 
 }
