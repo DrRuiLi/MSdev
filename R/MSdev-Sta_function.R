@@ -798,7 +798,7 @@ plot_MSdev_QC_RSD_CDF <- function(object){
 #' @export
 plot_MSdev_TIC <- function(object){
 
-  data.se <- get_MSdev_DEP_se(object,preprocess = F)
+  data.se <- get_MSdev_DEP_se(object,from = "f",preprocess = F)
   col.group <- get_DEP_se_group_color(data.se)
   p1 <- plot_xcms_TIC(object@xcmsData$PositiveMS1,col.group = col.group,title = "Positive TIC")
   p2 <- plot_xcms_TIC(object@xcmsData$NegativeMS1,col.group = col.group,title = "Negative TIC")

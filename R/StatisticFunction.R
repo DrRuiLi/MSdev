@@ -199,7 +199,7 @@ plot_PCA <- function(pca.matrix,pca.group,
     pca.data <- rbind(pca.data,to.rep.df)
   }
   col.list <-
-    ggsci::pal_lancet()(length(unique(pca.data$pca.group)))
+    ggsci::pal_npg()(length(unique(pca.data$pca.group)))
   names(col.list) <- unique(pca.data$pca.group)
   col.list["QC"] <- "grey"
   #col.list["Blank"] <- "grey"

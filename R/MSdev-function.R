@@ -1458,7 +1458,7 @@ MSdev_get_Stat <- function(object,
                            score_thresh = 0.5,rt_bin = NA,
                            polarity_paired = T,
                            candi = F,
-                           metabolite = T){
+                           metabolite = T,...){
 
   ### make se
   {
@@ -1477,7 +1477,7 @@ MSdev_get_Stat <- function(object,
         se[[pol]] <- SummarizedExperiment::SummarizedExperiment()
         next
       }
-      pol.se <- get_xcms_feature_se(xcms.xcms)
+      pol.se <- get_xcms_feature_se(xcms.xcms,...)
       se[[pol]] <- pol.se[,intersect(col.order,colnames(pol.se))]
       se[[pol]]$sampleNames<- NULL
       se[[pol]]$no<- NULL
@@ -1503,7 +1503,7 @@ MSdev_get_Stat <- function(object,
     rda <- rowData(feature.se)%>%
       as.data.frame()%>%
       dplyr::select(any_of(
-        c("feature_id","mzmed","rtmed","compound_id", "adduct","mz_ref","rt_ref",
+        c("feature_id","mzmed","rtmed","compound_id", "adduct","mz_ref","rt_ref","polarity",
           "pave_seed",  "pave_CN",   "pave_cor",
           "score","qc_rsd","sample_rsd","peakMaxo",#ms2_id,
                              "candidate.id","candidate.adduct","candidate.mz","score.ms2")))
