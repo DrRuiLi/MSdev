@@ -274,6 +274,17 @@ vis_igraph <- function(ig){
 }
 
 
+vis_pave_igraph <- function(ig){
+
+  vis_igraph(ig)%>%
+    visNetwork::visEdges(
+      smooth = F,
+      length = 300,
+      font = list(
+       align = "top"
+      ))
+}
+
 igraph_add_vcolor<- function(ig,v,color){
 
   vda <- vdata(ig)
