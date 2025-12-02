@@ -1108,7 +1108,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
         }
       }
       if (is.null(refSpec)) return(NULL)
-      scorem <- Spectra::compareSpectra(expSpec,refSpec,,FUN = rdot_product, m = 2)
+      scorem <- Spectra::compareSpectra(expSpec,refSpec,,FUN = MsCoreUtils::ndotproduct, m = 2)
       dim(scorem) <- c(length(expSpec),length(refSpec))
       scorem[is.infinite(scorem)|is.na(scorem )] <- 0
       scores <- apply(scorem,2,max,na.rm=T)
