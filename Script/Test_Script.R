@@ -636,3 +636,854 @@
   quantile(kegg.n.count,c(0,0.9,0.99,0.999,0.9999))
 
 }
+
+# Thu Nov  6 19:30:15 2025 ------------------------------
+{
+
+  xcms.net.matched$label <- sapply(
+    xcms.net.candidate,
+    function(x){
+      x%>%
+        dplyr::mutate(
+          temp = case_when(
+            type == "isotope"~ element,
+            type == "CN_label" ~ pave_pattern,
+            type == "adduct" ~ paste0( adduct.from ," to ", adduct.to)
+          ),
+          label = paste0(type,": ",temp))%>%
+        dplyr::pull(label)%>%
+        paste0(collapse = "\n")
+    })
+  xcms.net.matched$is_CN <- sapply(
+    xcms.net.candidate,
+    function(x){
+      "CN_label" %in%  x$type
+    })
+  xcms.net.matched <- xcms.net.matched%>%
+    dplyr::filter(is_CN)
+  xcms.ig <- igraph::graph_from_data_frame(xcms.net.matched)
+  node.group <- igraph::components(xcms.ig)$membership
+
+  vda <- vdata(xcms.ig)%>%
+    dplyr::mutate(color = case_when(
+      name %in% cn.net.hit$from ~ "#E64B35",
+      T~"#97C2FC"
+    ))
+  vda -> vdata(xcms.ig)
+  ngcn <- data.frame(
+    ig = unique(node.group),
+    cn = 0,
+    e = 0
+  )
+
+  for (i in unique(node.group)) {
+
+    sub.ig <- igraph_filter_vertex(xcms.ig , node.group==i)
+    eda <- edata(sub.ig)
+    cn.count  <- sum(eda$is_CN)
+
+    visNetwork::visIgraph(sub.ig)
+    ngcn$cn[i] <- cn.count
+    ngcn$e[i] <- nrow(eda)
+    ngcn$cne[i] <- cn.count/nrow(eda)
+
+  }
+
+
+  cn.ig <- igraph::graph_from_data_frame( cn.net.hit  )
+
+
+
+  idx <- 1:1e5
+  a <- matrixSub(rt[idx],rt[idx])
+
+}
+
+
+{
+
+  rt <- xcms.fdf$rtmed [1:1000]
+
+  x <- data.table(point = rt,x = rt)
+  range.x <- x[,.(id,start =  x - 5, end = x + 5)]
+  setkey(x,point)
+  setkey(range.x,start,end)
+  a <- foverlaps(x, range.x, type="any", which=TRUE)
+
+
+
+  object@projectInfo$MSdevFile
+
+}
+# Fri Nov  7 18:32:52 2025 ------------------------------
+{
+
+  p.r <- ggplot(cn.net.eval)+
+    geom_histogram(aes(y = rt.diff,x = after_stat(ndensity), fill = cn.hit),
+                   position = "dodge",#stat = "density",
+                   binwidth = 1,col = "white")+
+    stat_ecdf(aes(y = rt.diff, col = cn.hit),linewidth = 2)+
+    scale_fill_manual(values =cols)+
+    scale_color_manual(values =cols)+
+    scale_x_continuous(expand = c(0,0))+
+    scale_y_continuous(expand = c(0,0)#,limits = c(0,10)
+                       )+
+    labs(x = NULL, y = NULL)+
+    theme_classic()+
+    theme(axis.text.y = element_blank(),
+          legend.position = "none",
+          axis.ticks = element_blank())
+
+  ggplot(cn.net.eval)+
+    stat_ecdf(aes(x = rt.diff,y = after_stat(density)))
+
+  ggplot(cn.net.eval)+
+    geom_bar(aes(x= 0,y=0, fill = cn.hit),stat = "identity")+
+    scale_fill_manual(values =cols)+
+    labs(x = NULL, y = NULL,fill = "CN labeled")+
+    theme_void()+
+    theme(legend.position = "inside")
+
+  x.to.h <- ad.net%>%
+    dplyr::filter( from %in% cn.net.hit$from,
+                   to %in% cn.net.hit$from)
+  xcms.ig%>%
+    igraph_filter_distance(c("3162","3202"),1)%>%
+    visNetwork::visIgraph()
+}
+
+# Mon Nov 10 13:25:26 2025 ------------------------------
+{
+
+  x <- cn.net.hit$mz.ppm
+  ec <- ecdf(mz.ppm)
+  cdf <- data.frame(x = knots(ec), y = ec(knots(ec)))
+
+  # Find inflection point
+  inflection::findiplist(cdf$x, cdf$y,index = 0)
+  plot(ec,xlim = c(-5,5))
+  abline(v = -1.0455205    )
+
+
+  library(segmented)
+  x <- cdf$x
+  y <- cdf$y
+  model <- lm(y ~ x)
+  seg <- segmented(model, seg.Z = ~x, psi = 5)  # initial guess
+  summary(seg)
+
+  mu <- median(x)
+  sigma <- mad(x)
+  x[abs(x - mu) < 3 * sigma]
+  mu-3*sigma
+  x_clean <- x[abs(x - mu) < 3 * sigma]
+
+  mu2 <- mean(x_clean)
+  sigma2 <- sd(x_clean)
+  ci95 <- c(mu2 - 3 * sigma2, mu2 + 3 * sigma2)
+  ci95
+}
+
+# Mon Nov 10 19:20:14 2025 ------------------------------
+{
+
+  vda <- vdata(ig)%>%
+    dplyr::mutate(id = name, .before = name)
+  visNetwork::visNetwork(nodes = vda,edges = edata(ig))%>%
+    visNetwork::visOptions(width = "100%",
+                           height = "100%")
+
+
+
+}
+
+# Tue Nov 11 10:20:45 2025 ------------------------------
+{
+  ###
+  node.count <- vda%>%
+    dplyr::distinct(node.group,n)
+
+  cn.seed.net <- xcms.net.matched%>%
+    dplyr::filter(as.character(from) %in% cn.seed,
+                  as.character(to) %in% cn.seed)%>%
+    dplyr::mutate(from.cn = cn.seed.formula[as.character(from)],
+                  to.cn = cn.seed.formula[as.character(to)],
+                  chemfrom.diff = chemform_calc(from.cn ,to.cn,"-",return = "chemform"))
+
+
+  x1 <- x[, .SD[order(type != "CN_label")[1]], by = chemform_diff]
+  x1
+
+  ### TEMP
+  {
+
+
+    xcms.net.candidate <- split(xcms.net.candidate,xcms.net.candidate$ion1)
+    xcms.net.matched <- xcms.net[as.numeric(names(xcms.net.candidate)),]
+    names(xcms.net.candidate) <- xcms.net.matched$eid
+
+
+    xcms.net.integrated <- bplapply(
+      xcms.net.candidate,
+      function(x){
+
+        x <- x[,temp := fcase(
+          type == "isotope",chemform_diff,
+          type == "CN_label" , pave_pattern,
+          type == "adduct" , chemform_diff,
+          default = ""
+        )][,label :=  paste0(type,": ",temp)
+        ][, .SD[order(type != "CN_label")[1]], by = chemform_diff]
+
+        nrow(x)
+      },BPPARAM = SerialParam(progressbar = T))
+
+
+    xcms.ig <- igraph::graph_from_data_frame(xcms.net.matched)
+
+    cn.ig <- igraph_filter_vertex(xcms.ig,  as.character(cn.net.hit$from))
+    node.group <- igraph::components(cn.ig)$membership
+    vda <-  vdata(cn.ig)%>%
+      dplyr::mutate(node.group = node.group ,
+                    pave_formula = cn.seed.formula[name],
+                    label = pave_formula)%>%
+      dplyr::group_by(node.group)%>%
+      dplyr::mutate(n = n())%>%
+      dplyr::ungroup()
+    eda <- edata(cn.ig)
+    vdata(cn.ig) <- vda
+
+    igraph_filter_vertex(cn.ig, node.group== 276 )%>%
+      vis_igraph()%>%
+      visEdges(arrows = "to")
+
+    igraph_filter_distance(xcms.ig,"928",10)%>%
+      vis_igraph()%>%
+      visEdges(arrows = "to")
+
+
+    ### ig
+    {
+
+      node.group <- igraph::components(xcms.ig)$membership
+
+      vda <- vdata(xcms.ig)%>%
+        dplyr::mutate(color = case_when(
+          name %in% cn.net.hit$from ~ "#E64B35",
+          T~"#97C2FC"
+        ))
+      vda -> vdata(xcms.ig)
+      ngcn <- data.frame(
+        ig = unique(node.group),
+        cn = 0,
+        e = 0
+      )
+
+      for (i in unique(node.group)) {
+
+        sub.ig <- igraph_filter_vertex(xcms.ig , node.group==i)
+        eda <- edata(sub.ig)
+        cn.count  <- sum(eda$is_CN)
+
+        visNetwork::visIgraph(sub.ig)
+        ngcn$cn[i] <- cn.count
+        ngcn$e[i] <- nrow(eda)
+        ngcn$cne[i] <- cn.count/nrow(eda)
+
+      }
+
+
+
+
+      }
+
+  }
+
+
+  obj <- MSdev_load("d:/data/2025.10.10.PVAE/PAVE_With_Params/QEplus_ppm10_sn10.rdata")
+  PAVE2(obj)
+
+  obj <- MSdev_load("d:/data/2025.10.10.PVAE/data8600/MSdev_2025_10_16.Rdata")
+  PAVE2(obj)
+
+  obj <- MSdev_load("d:/data/2025.10.10.PVAE/PAVE_With_Params/TOF8600_ppm10_sn10.rdata")
+  PAVE2(obj)
+
+  obj <- MSdev_load("d:/data/2025.10.10.PVAE/PAVE_With_Params/TOF8600_ppm25_sn100.rdata")
+  PAVE2(obj)
+
+  obj <- MSdev_load("d:/data/2025.10.10.PVAE/PAVE_With_Params/TOF8600_DDA_ppm10_sn10.rdata")
+  PAVE2(obj)
+
+  obj <- MSdev_load("d:/data/2025.10.10.PVAE/PAVE_With_Params/TOF7600_ppm10_sn10.rdata")
+  PAVE2(obj)
+
+  obj <- MSdev_load("d:/data/2025.10.10.PVAE/PAVE_With_Params/OE480_480k_ppm10_sn10.rdata")
+  PAVE2(obj)
+
+  obj <- MSdev_load("d:/data/2025.10.10.PVAE/PAVE_With_Params/OE480_120k_ppm10_sn10.rdata")
+  PAVE2(obj)
+
+  obj <- MSdev_load("d:/data/2025.10.10.PVAE/PAVE_With_Params/OE480_60k_ppm10_sn10.rdata")
+  PAVE2(obj)
+
+}
+
+# Wed Nov 19 16:24:10 2025 ------------------------------
+{
+
+  for (iv in i.cn.seed.vda$name) {
+
+    for (jv in i.cn.seed.vda$name) {
+
+      ijp <- igraph::all_simple_paths(
+        i.cn.seed.ig,
+        from = iv,to = jv,mode  = "all")
+      if (length(ijp) >1) {
+
+        i.path <- get_edges_from_epath(ig = i.cn.seed.ig, ijp[[1]],directed = F)
+
+      }
+
+    }
+
+  }
+
+
+
+
+}
+
+
+
+# Thu Nov 20 15:37:25 2025 ------------------------------
+{
+
+  ### list all path i to j
+  ### test if chemform cum exist
+
+  vis_igraph(i.cn.seed.ig)
+
+  for(iv in seq_len(length(V(i.cn.seed.ig))) ){
+
+    ap <- igraph::shortest_paths(i.cn.seed.ig,
+                                 from = iv,
+                                 output = "both",
+                                 mode = "all")
+
+    for (jv in seq_along(ap$vpath)) {
+
+      if (length( ap$vpath[[jv]])<=2) {
+        next
+      }
+
+      j.dir <- get_path_direction(i.cn.seed.ig,
+                                  ap$vpath[[jv]],
+                                  ap$epath[[jv]])
+
+      j.cd <- ap$epath[[jv]]$chemform_diff
+      j.cd <- MSCC::chemform_multi(j.cd,j.dir,return = "chemform")
+
+      j.cd.temp <- sapply(seq_along(j.cd),function(x){
+        MSCC:::chemform_sum(j.cd[1:x])
+      })
+      j.cd.temp <- chemform_simplify(j.cd.temp)
+      j.cd.temp <- chemform_remove_iso(j.cd.temp)
+      j.cd.exist <- (j.cd.temp %in% ad.mass.diff$chemform_diff)
+
+
+
+      if (all(j.cd.exist)) {
+
+        message(iv," ",jv," ",sum(j.cd.exist))
+        #message(paste0(i.ep$eid,collapse = ";"))
+        #edge.remain[[i.ring]] <- i.ep$eid
+
+      }
+
+    }
+
+
+
+    #if (i.cd.cum!="") break
+
+  }
+
+}
+
+
+
+# Thu Nov 20 14:19:14 2025 ------------------------------
+{
+
+  ap <- igraph::all_shortest_paths(i.cn.seed.ig,
+                       from = 1,
+                       mode = "all")
+
+  for(i.ring in seq_len(length(ap$vpath)) ){
+
+    if (length( ap$vpath[[i.ring]])<=1) {
+      next
+    }
+    i.dir <- get_path_direction(i.cn.seed.ig,
+                                ap$vpath[[i.ring]],
+                                ap$epath[[i.ring]])
+    i.cd <- ap$epath[[i.ring]]$chemform_diff
+    i.cd <- MSCC::chemform_multi(i.cd,i.dir,return = "chemform")
+    i.cd.cum <- MSCC:::chemform_sum(i.cd)
+    message(i.cd.cum)
+    sapply(seq_along(i.cd),function(x){
+      MSCC:::chemform_sum(i.cd[1:x])
+    })
+    #if (i.cd.cum!="") break
+
+  }
+
+}
+
+# Thu Nov 20 15:12:09 2025 ------------------------------
+{
+
+  for (i.cn.seed in i.cn.seed.vda$name) {
+    all.from <- c( incident(i.cn.seed.ig,i.cn.seed,mode = "out")$adduct.from,
+                   incident(i.cn.seed.ig,i.cn.seed,mode = "in")$adduct.to)
+    print(all.from)
+  }
+
+
+
+
+}
+
+# Thu Nov 20 13:04:18 2025 ------------------------------
+{
+
+  ### find all ring
+  ### chemform cum in ring
+  ### chenform cum exist
+
+
+  i.cn.seed.ig.ring <- igraph::simple_cycles(
+    i.cn.seed.ig,mode = "all")
+
+  ring.node.forms <- list()
+  for(i.ring in seq_len(length(i.cn.seed.ig.ring$vertices)) ){
+
+    i.ep <-  i.cn.seed.ig.ring$edges[[i.ring]]
+    i.dir <- get_path_direction(i.cn.seed.ig,
+                                i.cn.seed.ig.ring$vertices[[i.ring]],
+                                i.ep)
+    i.cd <- i.cn.seed.ig.ring$edges[[i.ring]]$chemform_diff
+    i.cd <- MSCC::chemform_multi(i.cd,i.dir,return = "chemform")
+    #i.cd.cum <- MSCC:::chemform_sum(i.cd)
+    i.cd.temp <- sapply(seq_along(i.cd),function(x){
+      MSCC:::chemform_sum(i.cd[1:x])
+    })
+    i.cd.temp <- chemform_simplify(i.cd.temp)
+    i.cd.temp <- chemform_remove_iso(i.cd.temp)
+    i.cd.exist <- (i.cd.temp%in% ad.mass.diff$chemform_diff)
+
+    if (all(i.cd.exist)) {
+
+      i.ring.ig  <- igraph_filter_edge(i.cn.seed.ig,
+                                       which(E(i.cn.seed.ig)$eid %in%  i.ep$eid))
+      i.ring.vform <- get_pave_ring_vertex_form(i.ring.ig)
+      if (any(lengths(i.ring.vform) > 1)) next
+      i.ring.vform <- unlist(i.ring.vform)
+      #print(i.ring.vform)
+      ring.node.forms[[i.ring]] <- i.ring.vform
+    }
+  }
+  ring.node.form <- do.call(bind_rows, ring.node.forms)
+  ring.node.form.group(ring.node.form)
+
+  i.cn.seed.ig.loop <- igraph_filter_edge(i.cn.seed.ig,
+                                          which(E(i.cn.seed.ig)$eid %in%
+                                                  unique(unlist(edge.remain))))
+  i.cn.seed.ig.exclude.ring <- igraph_remove_vertex(
+    i.cn.seed.ig, names(V(i.cn.seed.ig.loop)))
+
+
+}
+
+# Thu Nov 27 11:33:51 2025 ------------------------------
+p1 <- plot_xcms_TIC(res$OE480_120k_ppm10_sn10.rdata@xcmsData$NegativeMS1,title = "480_120k")
+p2 <- plot_xcms_TIC(res$OE480_480k_ppm10_sn10.rdata@xcmsData$NegativeMS1,title = "480_480k")
+p3 <- plot_xcms_TIC(res$QEplus_ppm10_sn10.rdata@xcmsData$NegativeMS1,title = "QE_plus")
+p4 <- plot_xcms_TIC(res$Astral_ppm10_sn10.rdata@xcmsData$NegativeMS1,title = "Astral")
+
+p <- p1/p2/p3/p4
+
+
+p1 <- plot_xcms_TIC(res$OE480_120k_ppm10_sn10.rdata@xcmsData$PositiveMS1,title = "480_120k")
+p2 <- plot_xcms_TIC(res$OE480_480k_ppm10_sn10.rdata@xcmsData$PositiveMS1,title = "480_480k")
+p3 <- plot_xcms_TIC(res$QEplus_ppm10_sn10.rdata@xcmsData$PositiveMS1,title = "QE_plus")
+p4 <- plot_xcms_TIC(res$Astral_ppm10_sn10.rdata@xcmsData$PositiveMS1,title = "Astral")
+
+p <- p1/p2/p3/p4
+open_plot_win(p,10,10)
+
+
+
+# Thu Nov 27 13:46:04 2025 ------------------------------
+{
+  library(tidyverse)
+  {
+    hs <- read.csv("d:/Share/Hang Seng TECH Historical Data.csv")%>%
+      dplyr::mutate(Date = as.Date(Date, format = "%m/%d/%Y")+1,
+                    Price = parse_number(Price),
+                    diff = c(0,diff(Price)),
+                    change = as.numeric(sub("%", "", Change..)) ,
+                    type = "hs")
+
+    ns <- read.csv("d:/Share/NASDAQ Composite Historical Data.csv")%>%
+      dplyr::mutate(Date = as.Date(Date, format = "%m/%d/%Y"),
+                    Price = parse_number(Price),
+                    diff = c(0,diff(Price)),
+                    change = as.numeric(sub("%", "", Change..)) ,
+                    type = "ns")
+
+    overlap.date <- intersect(hs$Date,ns$Date)%>%sort()
+    hs <- hs[match(overlap.date,hs$Date),]
+    ns <- ns[match(overlap.date,ns$Date),]
+
+    plot.data <- rbind(hs,ns)
+
+
+    cor.test(hs$diff,ns$diff)
+    #plot(hs$change,ns$change)
+
+
+    plot.data <-
+      data.frame(date = overlap.date,hs = hs$change,ns = ns$change)
+
+
+    p1 <-ggplot(plot.data,aes(x = ns , y = hs))+
+      geom_point()+
+      geom_smooth()+
+      ggpubr::stat_cor()+
+      labs(x = "NASDAQ (day 0)", y = "HS TECH (day -1)")+
+      theme_bw()
+
+
+  }
+  {
+    hs <- read.csv("d:/Share/Hang Seng TECH Historical Data.csv")%>%
+      dplyr::mutate(Date = as.Date(Date, format = "%m/%d/%Y")+0,
+                    Price = parse_number(Price),
+                    diff = c(0,diff(Price)),
+                    change = as.numeric(sub("%", "", Change..)) ,
+                    type = "hs")
+
+    ns <- read.csv("d:/Share/NASDAQ Composite Historical Data.csv")%>%
+      dplyr::mutate(Date = as.Date(Date, format = "%m/%d/%Y"),
+                    Price = parse_number(Price),
+                    diff = c(0,diff(Price)),
+                    change = as.numeric(sub("%", "", Change..)) ,
+                    type = "ns")
+
+    overlap.date <- intersect(hs$Date,ns$Date)%>%sort()
+    hs <- hs[match(overlap.date,hs$Date),]
+    ns <- ns[match(overlap.date,ns$Date),]
+
+    plot.data <- rbind(hs,ns)
+
+
+    cor.test(hs$diff,ns$diff)
+    #plot(hs$change,ns$change)
+
+
+    plot.data <-
+      data.frame(date = overlap.date,hs = hs$change,ns = ns$change)
+
+
+    p2 <-ggplot(plot.data,aes(x = ns , y = hs))+
+      geom_point()+
+      geom_smooth()+
+      ggpubr::stat_cor()+
+      labs(x = "NASDAQ (day 0)", y = "HS TECH (day 0)")+
+      theme_bw()
+
+
+  }
+  {
+    hs <- read.csv("d:/Share/Hang Seng TECH Historical Data.csv")%>%
+      dplyr::mutate(Date = as.Date(Date, format = "%m/%d/%Y")-1,
+                    Price = parse_number(Price),
+                    High = parse_number(High),
+                    Low = parse_number(Low),
+                    diff = c(0,diff(Price)),
+                    change = as.numeric(sub("%", "", Change..)) ,
+                    hr = (1-Price/(1+change/100)/High)*100,
+                    lr = (1-Price/(1+change/100)/Low)*100,
+                    type = "hs")%>%
+      dplyr::arrange(Date)
+
+    ns <- read.csv("d:/Share/NASDAQ Composite Historical Data.csv")%>%
+      dplyr::mutate(Date = as.Date(Date, format = "%m/%d/%Y"),
+                    Price = parse_number(Price),
+                    High = parse_number(High),
+                    Low = parse_number(Low),
+                    diff = c(0,diff(Price)),
+                    change = as.numeric(sub("%", "", Change..)) ,
+                    hr = (1-Price/(1+change/100)/High)*100,
+                    lr = (1-Price/(1+change/100)/Low)*100,
+                    type = "hs")%>%
+      dplyr::arrange(Date)
+
+    overlap.date <- intersect(hs$Date,ns$Date)%>%sort()
+    hs <- hs[match(overlap.date,hs$Date),]
+    ns <- ns[match(overlap.date,ns$Date),]
+
+    plot.data <- rbind(hs,ns)
+
+
+    cor.test(hs$diff,ns$diff)
+    #plot(hs$change,ns$change)
+
+
+    plot.data <-
+      data.frame(date = overlap.date,hs = hs$change,ns = ns$change)
+
+
+    p3 <-ggplot(plot.data,aes(x = ns , y = hs))+
+      geom_point()+
+      geom_smooth()+
+      ggpubr::stat_cor()+
+      labs(x = "NASDAQ (day 0)", y = "HS TECH (day 1)")+
+      theme_bw()
+    p3
+
+    diff.thresh <- 2
+    start.point <- 0
+    strategy <- data.frame(date = overlap.date,
+               hs = hs$change,
+               ns = ns$change)%>%
+      dplyr::mutate(
+        x = case_when(
+          ns > start.point ~ (hs > ns - diff.thresh),
+          ns < -start.point ~ (hs < ns + diff.thresh),
+          T ~ T
+        ),
+        y = hs > ns - diff.thresh,
+        z = hs < ns + diff.thresh,
+        s = case_when(
+          ns>0&hs>0~"11",
+          ns>0&hs<0~"10",
+          ns<0&hs>0~"01",
+          ns<0&hs<0~"00"
+        )
+      )
+
+    x.exist = case_when(
+      ns$change > start.point ~ (hs$lr  < ns$change - diff.thresh),
+      ns$change < -start.point ~ (hs$hr > ns$change + diff.thresh),
+      T~F
+    )
+    sum(strategy$x)/length(overlap.date)
+    sum(x.exist)/length(overlap.date)
+
+
+    sum(strategy$y)/length(overlap.date)
+    sum(strategy$z)/length(overlap.date)
+    table(strategy$s)
+
+  }
+  {
+    hs <- read.csv("d:/Share/Hang Seng TECH Historical Data.csv")%>%
+      dplyr::mutate(Date = as.Date(Date, format = "%m/%d/%Y")-2,
+                    Price = parse_number(Price),
+                    diff = c(0,diff(Price)),
+                    change = as.numeric(sub("%", "", Change..)) ,
+                    type = "hs")
+
+    ns <- read.csv("d:/Share/NASDAQ Composite Historical Data.csv")%>%
+      dplyr::mutate(Date = as.Date(Date, format = "%m/%d/%Y"),
+                    Price = parse_number(Price),
+                    diff = c(0,diff(Price)),
+                    change = as.numeric(sub("%", "", Change..)) ,
+                    type = "ns")
+
+    overlap.date <- intersect(hs$Date,ns$Date)%>%sort()
+    hs <- hs[match(overlap.date,hs$Date),]
+    ns <- ns[match(overlap.date,ns$Date),]
+
+    plot.data <- rbind(hs,ns)
+
+
+    cor.test(hs$diff,ns$diff)
+    #plot(hs$change,ns$change)
+
+
+    plot.data <-
+      data.frame(date = overlap.date,hs = hs$change,ns = ns$change)
+
+
+    p4 <-ggplot(plot.data,aes(x = ns , y = hs))+
+      geom_point()+
+      geom_smooth()+
+      ggpubr::stat_cor()+
+      labs(x = "NASDAQ (day 0)", y = "HS TECH (day 2)")+
+      theme_bw()
+
+
+  }
+
+  p <- p1+p2+p3 + p4+plot_layout(nrow = 1)
+  open_plot_win(p, 16,4)
+
+
+  {
+    hs <- read.csv("d:/Share/Hang Seng TECH Historical Data.csv")%>%
+      dplyr::mutate(Date = as.Date(Date, format = "%m/%d/%Y")-1,
+                    Price = parse_number(Price),
+                    High = parse_number(High),
+                    Low = parse_number(Low),
+                    diff = c(0,diff(Price)),
+                    change = as.numeric(sub("%", "", Change..)) ,
+                    hr = (1-Price/(1+change/100)/High)*100,
+                    lr = (1-Price/(1+change/100)/Low)*100,
+                    type = "hs")%>%
+      dplyr::arrange(Date)
+
+    ns <- read.csv("d:/Share/NASDAQ Composite Historical Data.csv")%>%
+      dplyr::mutate(Date = as.Date(Date, format = "%m/%d/%Y"),
+                    Price = parse_number(Price),
+                    High = parse_number(High),
+                    Low = parse_number(Low),
+                    diff = c(0,diff(Price)),
+                    change = as.numeric(sub("%", "", Change..)) ,
+                    hr = (1-Price/(1+change/100)/High)*100,
+                    lr = (1-Price/(1+change/100)/Low)*100,
+                    type = "hs")%>%
+      dplyr::arrange(Date)
+
+    overlap.date <- intersect(hs$Date,ns$Date)%>%sort()
+    hs <- hs[match(overlap.date,hs$Date),]
+    ns <- ns[match(overlap.date,ns$Date),]
+
+    plot.data <- rbind(hs,ns)
+
+
+    cor.test(hs$diff,ns$diff)
+    #plot(hs$change,ns$change)
+
+
+    plot.data <-
+      data.frame(date = overlap.date,hs = hs$change,ns = ns$change)
+
+
+    p3 <-ggplot(plot.data,aes(x = ns , y = hs))+
+      geom_point()+
+      geom_smooth()+
+      ggpubr::stat_cor()+
+      labs(x = "NASDAQ (day 0)", y = "HS TECH (day 1)")+
+      theme_bw()
+    p3
+
+    diff.thresh <- 2
+    start.point <- 0
+    strategy <- data.frame(date = overlap.date,
+                           hs = hs$change,
+                           ns = ns$change)%>%
+      dplyr::mutate(
+        x = case_when(
+          ns > start.point ~ (hs > ns - diff.thresh),
+          ns < -start.point ~ (hs < ns + diff.thresh),
+          T ~ T
+        ),
+        y = hs > ns - diff.thresh,
+        z = hs < ns + diff.thresh,
+        s = case_when(
+          ns>0&hs>0~"11",
+          ns>0&hs<0~"10",
+          ns<0&hs>0~"01",
+          ns<0&hs<0~"00"
+        )
+      )
+
+    x.exist = case_when(
+      ns$change > start.point ~ (hs$lr  < ns$change - diff.thresh),
+      ns$change < -start.point ~ (hs$hr > ns$change + diff.thresh),
+      T~F
+    )
+    sum(strategy$x)/length(overlap.date)
+    sum(x.exist)/length(overlap.date)
+
+
+    sum(strategy$y)/length(overlap.date)
+    sum(strategy$z)/length(overlap.date)
+    table(strategy$s)
+
+    start.point <- 0
+    diff.thresh <- 2.9
+    earn.point <- 1.3
+    earn <- rep(NA,nrow(hs))
+
+    for (i in 1:nrow(hs)) {
+      i.nc <- ns$change[i]
+      if (abs(i.nc) > start.point) {
+
+        if ( hs$lr[i] < i.nc - diff.thresh ) {
+          i.b <- mean(   (i.nc - diff.thresh)   ,
+                         hs$lr[i]    )
+          i.b <- (i.nc - diff.thresh)
+          if (hs$hr[i] > i.nc - diff.thresh + earn.point ) {
+            i.s <- ( i.nc - diff.thresh + earn.point )
+          }else{
+            i.s <- hs$change[i]
+          }
+
+          i.earn <- (i.s - i.b)
+          earn[[i]] <- i.earn
+          #message(i,";",i.b,";",i.s)
+        }
+      }
+    }
+
+    hist(earn)
+    sum(earn ,na.rm = T)
+    sum(!is.na(earn) ,na.rm = T)
+
+
+    sum(between.range(hs$change,cbind(ns$change-2.9,0+2.9)))/938
+
+  }
+
+}
+
+# Thu Nov 27 16:25:58 2025 ------------------------------
+{
+  library(ggplot2)
+  library(ggpp)
+
+  # Example data
+  df <- data.frame(
+    x = rnorm(50),
+    y = rnorm(50)
+  )
+
+  # A small table to display
+  tbl <- data.frame(
+    Stat = c("Mean X", "Mean Y"),
+    Value = c(mean(df$x), mean(df$y))
+  )
+
+  p <- ggplot() +
+    #geom_point() +
+    geom_table_npc(
+      data = data.frame(x = NA,
+                        y = NA,
+                        tbl = I(list(tbl))),
+      aes(npcx = 0.5, npcy = 0.5, label = tbl)
+    ) +
+    theme_minimal()
+
+  open_plot_win(p,10,10)
+
+}
+
+# Tue Dec  2 10:24:24 2025 ------------------------------
+{
+
+}
