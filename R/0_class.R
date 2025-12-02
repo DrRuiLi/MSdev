@@ -29,7 +29,7 @@ setGeneric(
 setGeneric(
   "edata<-",
   def = function(object, value) {
-    value <- value[, !grepl("^from|to$", colnames(value))]
+    value <- value[, !grepl("^from$|^to$", colnames(value))]
     igraph::edge.attributes(object) <- as.list(value)
     object
   }

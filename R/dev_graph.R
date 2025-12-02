@@ -1,4 +1,4 @@
-get_nodes_between_selected <- function(ig,selected.node){
+get_nodes_between_selected <- function(ig, selected.node){
 
   dism <- distances(ig)[,selected.node]
   node.con <- apply(dism,1,function(x){
@@ -8,11 +8,11 @@ get_nodes_between_selected <- function(ig,selected.node){
   c(nodes,selected.node)%>%unique()%>%return()
 }
 
-get_edges_from_epath <- function(ig,v){
+get_edges_from_epath <- function(ig,v,directed= F){
 
   vp <- rep(names(v),each=2)
   vp <- vp[-c(1,length(vp))]
-  E(ig)[get.edge.ids(ig, vp)]
+  E(ig)[get.edge.ids(ig, vp,directed =directed )]
 
 }
 
@@ -33,6 +33,26 @@ igraph_filter_edge <- function(ig,e){
   ig <- igraph::delete.edges(ig,setdiff(igraph::E(ig),e))
   igraph_filter_vertex(ig,igraph::degree(ig)!=0)
 
+
+}
+
+igraph_remove_edge <- function(ig,e){
+
+  if (is.numeric(e))
+    e <- igraph::E(ig)[e]
+
+
+  ig <- igraph::delete.edges(ig,e)
+  #igraph_filter_vertex(ig,igraph::degree(ig)!=0)
+  return(ig)
+
+}
+
+igraph_remove_vertex <- function(ig,v){
+
+  if (is.numeric(v)|is.logical(v)|is.character(v))
+    v <- igraph::V(ig)[v]
+  igraph::delete.vertices(ig,v)
 
 }
 
@@ -66,7 +86,19 @@ igraph_filter_path<- function(ig,paths){
   igraph_filter_vertex(ig,ids)
 }
 
+get_path_direction <- function(ig,vpath,epath){
 
+  vs <- names(vpath)
+  vs <- c(vs,vs[1])
+  es <- igraph::ends(ig,epath)
+
+  ep.dir <- rep(1,length(epath))
+  for (i in 1:nrow(es)) {
+    ep.dir[i] <- ifelse( es[i,1] == vs[i] &es[i,2] == vs[i+1],1,-1)
+  }
+  return(ep.dir)
+
+}
 
 
 igraph_add_reverse_edges <- function(ig){
@@ -139,7 +171,7 @@ igraph_vpath_to_epath <- function(ig,vpath){
   epaths <- lapply(vpath, function(path) {
     edges <- c()
     for (i in seq_along(path)[-length(path)]) {
-      edges <- c(edges, get_edge_ids(ig, c(path[i], path[i + 1]),
+      edges <- c(edges, igraph::get_edge_ids(ig, c(path[i], path[i + 1]),
                                      directed  =F))
     }
     edges
@@ -235,8 +267,9 @@ vis_igraph <- function(ig){
   vda <- vdata(ig)%>%
     dplyr::mutate(id = name, .before = name)
   visNetwork::visNetwork(nodes = vda,edges = edata(ig))%>%
-    visNetwork::visOptions(width = "100%",
-                           height = "100%")
+    visEdges(arrows = "to")%>%
+    visNetwork::visOptions(width = "200%",
+                           height = "200%")
 
 }
 
@@ -312,4 +345,12 @@ igraph_get_nodes_distance <- function(ig,from,dis){
   id.dis <- which(apply(dist,2,function(x){any(x<=dis)}))
   setdiff(names(id.dis),from)
 
+}
+
+
+get_igraph_membership <- function(ig){
+
+
+  node.group <- igraph::components(ig)$membership
+  return(node.group)
 }
