@@ -1464,7 +1464,7 @@ MSdev_get_Stat <- function(object,
   {
 
     sample.info <- object@sampleInfo%>%
-      dplyr::filter(polarity_paired#|(!polarity_paired)
+      dplyr::filter(polarity_paired|(!polarity_paired)
                     )
     col.order <- sample.info%>%
       dplyr::distinct(sample.name)%>%
@@ -1793,4 +1793,18 @@ count_MSdev_peaks <- function(object){
   pks <- table(chromPeaks(xcms)[,"sample"])
   names(pks) <- pData(xcms)[,1]
   print(pks)
+}
+
+
+get_MSdev_instrument <- function(object){
+
+  manufacturer <- object@projectInfo$msManufacturer
+  manufacturer <- ifelse(manufacturer == "instrument model","Unknow manufacturer",manufacturer)
+  model <- object@projectInfo$msModel
+  model <- ifelse(model == "Applied Biosystems instrument model",
+                         "Unknow model",model)
+
+  paste(manufacturer,model)
+
+
 }
