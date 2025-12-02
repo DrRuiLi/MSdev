@@ -537,16 +537,41 @@ rsd <- function(x, na.rm = TRUE) {
    sd(x, na.rm = na.rm) / mean(x, na.rm = na.rm)
 }
 
-
 match_mz_foverlaps <- function(mz1, mz2, ppm.base = mz1, ppm = 10 ) {
 
- # if (length(mz1 )>length(mz2)) {
- #   res <- match_mz_foverlaps(mz2,mz1)
- #   idx <- res$ion1
- #   res$ion1 <- res$ion2
- #   res$ion2 <-idx
- #   return(res)
- # }
+  if (length(mz1 )>length(mz2)) {
+
+    mz.max.ppm <- max(ppm.base)*ppm/1e6
+
+    dt_x <- data.table(x = mz2,
+                       ion2 = seq_along(mz2))
+    dt_x[, `:=`(
+      xmin = x - mz.max.ppm,
+      xmax = x + mz.max.ppm
+    )]
+
+    data.table::setkey(dt_x, xmin, xmax)
+
+    dt_y <- data.table(y = mz1,
+                       ion1 = seq_along(mz1),
+                       y_start = mz1, y_end = mz1)
+    data.table::setkey(dt_y, y_start, y_end)
+
+    res <- data.table::foverlaps(dt_y, dt_x, by.x = c("y_start", "y_end"),
+                                 type = "within", nomatch = 0L)
+
+
+    res[, ppmb := ppm.base[ion1] ]
+    res[, mz.ppm := (y - x) / ppmb * 1e6]
+    res <- res[abs(mz.ppm) < ppm]
+
+
+    res <- res[,c("ion1","ion2","mz.ppm")]
+
+
+
+    return(res[])
+  }
 
   dt_x <- data.table(x = mz1,
                      ion1 = seq_along(mz1))
@@ -562,7 +587,7 @@ match_mz_foverlaps <- function(mz1, mz2, ppm.base = mz1, ppm = 10 ) {
   data.table::setkey(dt_y, y_start, y_end)
 
   res <- data.table::foverlaps(dt_y, dt_x, by.x = c("y_start", "y_end"),
-                   type = "within", nomatch = 0L)
+                               type = "within", nomatch = 0L)
 
 
   res[, mz.ppm := abs((y - x) / ppm.base[ion1] * 1e6)]
@@ -573,3 +598,10 @@ match_mz_foverlaps <- function(mz1, mz2, ppm.base = mz1, ppm = 10 ) {
   res[]
 }
 
+
+ttwdfs <- function(a,p){
+  if (p > 1) {
+    p <- p/100
+  }
+  a/(1-p)
+}
