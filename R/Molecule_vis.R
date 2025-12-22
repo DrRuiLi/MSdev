@@ -92,10 +92,13 @@ vis_sdf_igraph <- function(sdf.igraph,show_id = F,...){
 
   sdf.igraph <- sdf.igraph%>%
     sdf_igraph_show_id(show_id)
+
   vda <- vdata(sdf.igraph)%>%
-    dplyr::mutate(x= x-mean(x),
-                  y = y-mean(y))
-  eda <- edata(sdf.igraph)
+    dplyr::mutate(x = x-mean(x),
+                  y = y-mean(y))%>%
+    dplyr::select("id",everything())
+  eda <- edata(sdf.igraph)%>%
+    dplyr::select(c("from","to","bond_type","width","color","smooth"))
 
   visNetwork(nodes = vda,edges = eda) %>%
     visLayout( hierarchical = FALSE)
@@ -325,4 +328,17 @@ sdf_igraph_merge_all <- function(...,vertical = T){
   names(col)<-names(prob)
   col[is.na(col)] <- na.col
   col
+}
+
+
+
+vis_cfm_data_trans_net <- function(cfmd){
+
+  cfmd.trans.ig <- get_CFM_data_trans_igraph(cfmd)
+
+  visNetwork(nodes = vdata(cfmd.trans.ig),
+             edges = edata(cfmd.trans.ig))%>%
+    visEdges(smooth = F)
+
+
 }

@@ -968,7 +968,7 @@ Spectra_set_MEM_backend <- function(sp){
 #' @return plotly
 #' @export
 #'
-plotly_Spectra <- function(sp,label.top = 10){
+plotly_Spectra <- function(sp,label.top = 10,show.info = F){
 
   if (length(sp)>1) {
       warning("more than 1 spectra input, select the first")
@@ -983,11 +983,16 @@ plotly_Spectra <- function(sp,label.top = 10){
                   highlight = intensity > quantile(intensity,(n()-label.top)/n()),
                   size = ifelse(highlight,1,0))
 
-  label.to.show <- paste0(
-    "precursorMz = ", round(precursorMz(sp),digits = 4),"\n",
-    "precursorIntensity = ", format(Spectra::precursorIntensity(sp),digits = 3,sci=T),"\n",
-    "collisionEnergy = ", (collisionEnergy(sp)),"\n"
-  )
+  if(show.info){
+    label.to.show <- paste0(
+      "precursorMz = ", round(precursorMz(sp),digits = 4),"\n",
+      "precursorIntensity = ", format(Spectra::precursorIntensity(sp),digits = 3,sci=T),"\n",
+      "collisionEnergy = ", (collisionEnergy(sp)),"\n"
+    )
+  }else{
+    label.to.show <- ""
+  }
+
 
   plot_ly(sp.data)%>%
     add_segments(x = ~x, xend = ~ xend,

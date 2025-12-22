@@ -1064,26 +1064,33 @@ get_CFM_data_trans_igraph <- function(object){
 
   node.df <- object@fragment_define %>%
     dplyr::mutate(id = fragment_id,
+                  label = id,
                   no = 1:n(),
                   color.border =case_when(
                     no == 1~ "rgba(100, 100, 100, 0.8)",
-                      T ~ "rgba(100, 100, 100, 0.1)"
+                      T ~ "rgba(100, 100, 100, 0.8)"
                     ),
                   color.background = case_when(
-                    T ~ "rgba(200, 200, 200, 1)"
+                    T ~ "rgba(255, 255, 255, 0.8)"
                   ),
+                  #color.highlight.background = "rgba(43, 124, 233, 0.1)",
+                  #color.highlight.border = "rgba(43, 124, 233, 1)",
+                  font.size = 30,
                   borderWidth = 5,
                   size = case_when(no == 1~ 100,
                                    T~50))
   edge.df <- object@fragment_transition%>%
     dplyr::mutate(match.str = paste0(from,to),
-                  no = 1:n(),
+                  arrows.to.scaleFactor = 2,
                   atom.loss = n_atoms - n_atoms_compose_map,
                   bond.loss =1-bond.score,
-                  color =  "rgba(100, 100, 100, 0.1)",
+                  color =  "rgba(100, 100, 100, 0.2)",
                   width = 10,
+                  smooth = F,
                   loss.distance = atom.loss+bond.loss,
-                  length = normalize_max_min(loss.distance)*1500)
+                  length = normalize_max_min(loss.distance)*1500,
+                  length = 700,
+                  no = 1:n())
 
   frag.trans.graph <- igraph::graph_from_data_frame(edge.df,
                                             vertices = node.df )
@@ -1537,20 +1544,20 @@ get_CFM_data_from_smiles <- function(smiles = "NCC(O)=O",
 
 
 
-shiny_vis_cfmd <- function(cfmd){
+shiny_vis_cfmd_FG_map <- function(cfmd){
 
 
   .ui <- function(){
     fluidPage(
       column(width = 6,
-             plotOutput(outputId = "heatmap_atom_map",height  = "800px")),
+             shiny::plotOutput(outputId = "heatmap_atom_map",height  = "800px")),
       column(width = 6,
              selectInput(inputId = "fg_id",choices = sort(unique(cfmd@fragment_define$fragment_group)),
                          label = "Fragment group",selected = cfmd@fragment_define$fragment_group[1]),
              selectInput(inputId = "fragment",label = "fragment",
                          choices = sort(unique(cfmd@fragment_define$fragment_id)),
                          selected = cfmd@fragment_define$fragment_id[1] ),
-             visNetworkOutput(outputId = "atom_map",height  = "800px"))
+             visNetwork::visNetworkOutput(outputId = "atom_map",height  = "800px"))
     )
 
   }
@@ -1559,15 +1566,21 @@ shiny_vis_cfmd <- function(cfmd){
     function(input, output, session) {
 
       output$heatmap_atom_map <- renderPlot({
+
+        message_with_time("heatmap_atom_map")
         get_CFM_data_MSIPFragmentMap(cfmd)%>%
           heatmap_MSIPFragmentMap()
       })
 
       output$atom_map <- visNetwork::renderVisNetwork({
-        vis_cfm_data_fragment_atom_map(cfmd ,input$fragment)
+        message_with_time("atom_map")
+        vis_cfm_data_fragment_atom_map(cfmd ,input$fragment,show_id = F)
       })
 
       observeEvent(input$fg_id,{
+
+        message_with_time("fg_id")
+
         x <- cfmd@fragment_define%>%
           dplyr::filter(fragment_group == input$fg_id)
         updateSelectInput(inputId = "fragment",choices = x$fragment_id)
@@ -1587,6 +1600,86 @@ shiny_vis_cfmd <- function(cfmd){
 
 
 }
+
+
+shiny_vis_cfmd_trans <- function(cfmd){
+
+
+  .ui <- function(){
+    fluidPage(
+      column(width = 6,
+             visNetwork::visNetworkOutput(outputId = "vis_trans",height = "800px"),
+             style = "border: 1px solid #aaa; padding: 6px;"),
+      column(width = 6,
+             plotlyOutput(outputId = "cfm_sp"),
+             verbatimTextOutput("frag_info"),
+             visNetwork::visNetworkOutput(outputId = "atom_map" ))
+    )
+
+  }
+
+  .server <- function(){
+    function(input, output, session) {
+
+      output$vis_trans <-  visNetwork::renderVisNetwork({
+
+        message_with_time("get_CFM_data_trans_igraph")
+        vis_igraph(get_CFM_data_trans_igraph(cfmd)) %>%
+          visOptions(nodesIdSelection =
+                       list(enabled  = T,
+                            selected  = cfmd@fragment_define$fragment_id[1]))
+
+
+      })
+
+
+      output$frag_info <- renderText({
+
+        message_with_time("frag_info")
+        x <- input$vis_trans_selected
+        if(is.null(x)) return(NULL)
+        if(x==""){      return(NULL)  }
+        y <- cfmd@fragment_define
+        paste0("Fragment: ",x,"\n",
+               "Formula: ",y[x,"formula"],"\n",
+               "mz: ",y[x,"fragment_mz"],"\n"  )
+
+      })
+      output$atom_map <-  visNetwork::renderVisNetwork({
+
+        message_with_time("get_CFM_data_trans_igraph")
+        x <- input$vis_trans_selected
+        if(is.null(x)) return(NULL)
+        if(x==""){      return(NULL)  }
+
+        vis_cfm_data_fragment_atom_map(cfmd,input$vis_trans_selected,show_id = F)
+
+
+      })
+
+
+      output$cfm_sp <- renderPlotly({
+
+        plotly_Spectra(get_CFM_data_Spectra(cfmd))
+
+      })
+
+
+    }
+  }
+
+  ### Start Shiny APP
+  {
+    shinyApp(ui = .ui(),
+             server = .server(),
+             options = list(host = "0.0.0.0",
+                            #port = 6548,
+                            launch.browser = T))
+  }
+
+
+}
+
 
 
 

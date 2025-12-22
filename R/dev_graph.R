@@ -268,8 +268,8 @@ vis_igraph <- function(ig){
     dplyr::mutate(id = name, .before = name)
   visNetwork::visNetwork(nodes = vda,edges = edata(ig))%>%
     visEdges(arrows = "to")%>%
-    visNetwork::visOptions(width = "200%",
-                           height = "200%")
+    visNetwork::visOptions(width = "100%",
+                           height = "100%")
 
 }
 
@@ -294,6 +294,8 @@ igraph_add_vcolor<- function(ig,v,color){
   vda[v,"color.border"] <- color
   vda -> vdata(ig)
   return(ig)
+
+
 }
 
 igraph_add_vfill<- function(ig,v,color){

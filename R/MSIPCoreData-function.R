@@ -1634,6 +1634,7 @@ get_Spectra_fg_ratio_se <- function(sp,iso_count_max = 3){
 
     fragment_group_ratio_matrix <- do.call(bind_rows,fragment_group_ratio_matrix)%>%as.matrix()
     fragment_group_ratio_matrix <- fragment_group_ratio_matrix[,colnames(fragment_group_ratio_matrix)!="EMPTY_SP",drop = F]
+    if(!"sp_id" %in%Spectra::spectraVariables(sp))  sp$sp_id <- paste0("sp_",seq_along(sp))
     rownames(fragment_group_ratio_matrix) <- sp$sp_id
 
 
@@ -1696,7 +1697,7 @@ get_Spectra_fg_ratio_se <- function(sp,iso_count_max = 3){
   {
     rda <- Spectra::spectraData(sp)%>%
       as.data.frame()%>%
-      dplyr::select(sp_id,precursorMz,rtime,collisionEnergy,totIonCurrent)
+      dplyr::select(any_of(c("sp_id","precursorMz","rtime","collisionEnergy","totIonCurrent")))
 
 
   }

@@ -980,9 +980,9 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
   xcms.featuredef <- featureDefinitions(xcms.xcms)%>%
     as.data.frame()
 
-  matched.df <- match_mz_rt(mz1 = xcms.featuredef$mzmed,
+  matched.df <- match_mz_foverlaps(mz1 = xcms.featuredef$mzmed,
                             mz2 = cp.adduct$chemform.adduct.mz,
-                            mz.ppm = mz.ppm)
+                            ppm = mz.ppm)
   xcms.featuredef$candidate.id <- sapply(1:nrow(xcms.featuredef),function(i){
     idx <- matched.df$ion2[matched.df$ion1 == i]
     cp.adduct$compound_id[as.numeric(idx)]
