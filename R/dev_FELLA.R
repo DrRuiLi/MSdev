@@ -35,7 +35,7 @@ fella_igraph <- function(fella.fella,
   V(fella.graph)$p.enrich <- fella.pscore[v.name]
   cf <-  circlize::colorRamp2(breaks = c(0, 1.30103, 5),
                               colors = c("white", "white", "#D21E31"))
-  V(fella.graph)$col.enrich <- cf(-log10(fella.pscore[v.name])) %>% str_sub(., 1, 7)
+  V(fella.graph)$col.enrich <- cf(-log10(fella.pscore[v.name])) %>% stringr::str_sub(., 1, 7)
   V(fella.graph)$type <- dplyr::case_when(
     com == 1 ~ "Pathway",
     com == 2 ~ "Module",
@@ -79,7 +79,7 @@ fella_get_igraph_for_vis <- function(fella.fella,
       id = name,
       p.enrich = fella.pscore[name],
       col.enrich = cf(-log10(p.enrich)) %>%
-        str_sub(., 1, 7),
+        stringr::str_sub(., 1, 7),
       type = case_when(
         com == 1 ~ "Pathway",
         com == 2 ~ "Module",

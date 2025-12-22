@@ -353,3 +353,25 @@ paste0_without_na <- function(..., sep = "") {
   args <- lapply(list(...), function(x) ifelse(is.na(x), "", x))
   do.call(paste, c(args, sep = sep))
 }
+
+
+get_progress_bar <- function(total_iterations = 100){
+
+  pbar <- progress::progress_bar$new(
+    format = "[:bar] :percent in :elapsed, current index: :current",
+    total = total_iterations,
+    clear = FALSE
+  )
+
+  return(pbar)
+
+
+}
+
+
+expand_dir_from_onedrive <- function(d = "."){
+
+  user.dir <- normalizePath(Sys.getenv("USERPROFILE"),winslash = "/")
+  normalizePath(paste0(user.dir,"/Onedrive/",d),winslash = "/")
+
+}

@@ -1486,4 +1486,601 @@ open_plot_win(p,10,10)
 # Tue Dec  2 10:24:24 2025 ------------------------------
 {
 
+  g.mmu <- buildGraphFromKEGGREST(
+    organism = "hsa")
+
+  buildDataFromGraph(
+    keggdata.graph = g.mmu,
+    internalDir = TRUE,
+    matrices = c("hypergeom", "diffusion", "pagerank"),
+    normality = c("diffusion", "pagerank") )
+
+}
+
+# Thu Dec  4 14:57:13 2025 ------------------------------
+{
+  total_iterations <- 100
+
+  # 1. Initialize the progress bar object
+  # :bar displays the bar, :percent shows progress, :elapsed shows time spent
+  pbar <- progress_bar$new(
+    format = "[:bar] :percent in :elapsed, current index: :current",
+    total = 100,
+    clear = FALSE
+  )
+
+  # 2. Start the for loop
+  for (i in 1:total_iterations) {
+
+    # Simulate work
+    Sys.sleep(0.05)
+
+    # 3. Increment the progress bar
+    pbar$tick()
+  }
+
+
+  # 1. Define the parameters
+  total_iterations <- 50
+  pb <- txtProgressBar(min = 0, max = total_iterations, style = 5) # Style 3 is the most common text format
+
+  # 2. Start the for loop
+  for (i in 1:total_iterations) {
+
+    # --- START OF YOUR LOOP BODY ---
+
+    # Simulate some work
+    Sys.sleep(0.1)
+
+    # You can store results here if needed
+
+    # --- END OF YOUR LOOP BODY ---
+
+    # 3. Update the progress bar
+    setTxtProgressBar(pb, i)
+  }
+
+  # 4. Close the progress bar when the loop is done
+  close(pb)
+
+
+}
+
+# Mon Dec  8 19:30:24 2025 ------------------------------
+{
+
+  dur <- 60*6000
+  act.time <- 25
+  bh.cd <- 140
+  gt.cd <- 280
+  gb.cd <- 105
+  bh.time <- seq(0,dur,bh.cd)
+  gt.time <- seq(0,dur,gt.cd)
+  gb.time <- seq(0,dur,gb.cd)
+
+  all.tp <- unique(c(bh.time,gt.time,gb.time))
+  all.times <- data.table(
+    time = all.tp
+  )%>%
+    dplyr::mutate(
+      bh =   time %in% bh.time,
+      gt =   time %in% gt.time,
+      gb =   time %in% gb.time,
+
+      bh = ifelse(bh,2.5,1),
+      gt = ifelse(gt,8 * 1.8,1),
+      gb = ifelse(gb,2.2,1),
+      tt = gt*bh*gb
+      )%>%
+    dplyr::arrange(time)
+
+  print(
+    (sum(all.times$tt * act.time) + dur - nrow(all.times) * act.time ) / dur
+  )
+
+
+}
+
+# Wed Dec 10 19:39:16 2025 ------------------------------
+{
+
+  x.mz <- normalize_max_min(select.fdf$mzmed)*0.6+0.2
+  mz.label.size = 6
+  sp_anno_fun_list <- list(
+    function(x, y, w, h) {
+      grid.segments(x0 = unit(x.mz[1], "npc"), y0 = unit(0, "npc"),
+                    x1 = unit(x.mz[1], "npc"), y1 = unit(0.8, "npc"))
+
+      grid.text(label = str_digit(select.fdf$mzmed[1],4),
+                gp = gpar(fontsize = mz.label.size),
+                x = unit(x.mz[1], "npc"),  y = unit(0.9, "npc"))
+
+      grid.segments(x0 = unit(0, "npc"), y0 = unit(0, "npc"),
+                    x1 = unit(1, "npc"), y1 = unit(0, "npc"))
+    },
+    function(x, y, w, h) {
+      grid.segments(x0 = unit(x.mz[2], "npc"), y0 = unit(0, "npc"),
+                    x1 = unit(x.mz[2], "npc"), y1 = unit(0.8, "npc"))
+      grid.text(label = str_digit(select.fdf$mzmed[2],4),
+                gp = gpar(fontsize = mz.label.size),
+                x = unit(x.mz[2], "npc"),  y = unit(0.9, "npc"))
+
+      grid.segments(x0 = unit(0, "npc"), y0 = unit(0, "npc"),
+                    x1 = unit(1, "npc"), y1 = unit(0, "npc"))
+    },
+    function(x, y, w, h) {
+      grid.segments(x0 = unit(x.mz[3], "npc"), y0 = unit(0, "npc"),
+                    x1 = unit(x.mz[3], "npc"), y1 = unit(0.8, "npc"))
+      grid.text(label = str_digit(select.fdf$mzmed[3],4),
+                gp = gpar(fontsize = mz.label.size),
+                x = unit(x.mz[3], "npc"),  y = unit(0.9, "npc"))
+
+      grid.segments(x0 = unit(0, "npc"), y0 = unit(0, "npc"),
+                    x1 = unit(1, "npc"), y1 = unit(0, "npc"))
+    },
+    function(x, y, w, h) {
+      grid.segments(x0 = unit(x.mz[4], "npc"), y0 = unit(0, "npc"),
+                    x1 = unit(x.mz[4], "npc"), y1 = unit(0.8, "npc"))
+      grid.text(label = str_digit(select.fdf$mzmed[4],4),
+                gp = gpar(fontsize = mz.label.size),
+                x = unit(x.mz[4], "npc"),  y = unit(0.9, "npc"))
+
+      grid.segments(x0 = unit(0, "npc"), y0 = unit(0, "npc"),
+                    x1 = unit(1, "npc"), y1 = unit(0, "npc"))
+    }
+  )
+  names(sp_anno_fun_list) <- select.node$pave_pattern
+
+  hm <- Heatmap(pave.mat,
+                show_heatmap_legend = F,
+                col = colramp(),
+                cluster_columns = F,
+                cluster_rows = F,,
+                row_names_side = "left",
+                rect_gp = gpar(col = "black"),
+                right_annotation = HeatmapAnnotation(
+                  mz = anno_customize(
+                    x= select.node$pave_pattern,
+                    graphics = sp_anno_fun_list
+                    ),
+                  which = "row",
+                  border  = T,
+                  annotation_name_rot = 0,
+                  width =  unit(2,"inch")
+                ),
+                column_names_rot = -45)
+  hm
+
+}
+
+# Sat Dec 13 22:21:22 2025 ------------------------------
+{
+  obj <- MSdev("d:/data/2025.12.13.lie/rawdata/")
+  obj <- MSdev_msConvert(obj)
+  #obj <- MSdev_checkSampleInfo(obj)
+  sam.info <- obj@sampleInfo%>%
+    dplyr::filter(file.exists(msData.files))
+
+  ef <- c()
+  for ( i.f in sam.info$msData.files) {
+    try.res <- ""
+    try.res <- try(xcms.xcms <- readSRMData(i.f))
+    if (any(grepl("Error ",try.res))) {
+      ef <- c(ef,i.f)
+    }
+  }
+
+  xcms.xcms <- readSRMData(sam.info$msData.files)
+  xcms.pks <- findChromPeaks(xcms.xcms,param = CentWaveParam())
+  xcms.pks <- groupChromPeaks(xcms.pks,
+                              param = PeakDensityParam(sampleGroups = sam.info$group))
+
+
+}
+
+# Sat Dec 13 23:14:11 2025 ------------------------------
+{
+  sample.info <- openxlsx::read.xlsx("d:/data/2025.12.13.lie/Lipid_SampleInfo.xlsx")
+  data <-  openxlsx::read.xlsx("d:/data/2025.12.13.lie/Lipid_SampleInfo.xlsx",sheet = 2)
+  sample.info <- sample.info%>%
+    dplyr::filter(Sample.Name %in% data$Sample.Name)%>%
+    dplyr::distinct(Sample.Name,.keep_all = T)
+  data.matrix <-data %>%
+    dplyr::filter(Sample.Name %in% sample.info$Sample.Name)%>%
+    dplyr::distinct(Sample.Name,.keep_all = T)%>%
+    dplyr::select(!contains("IS"))%>%
+    column_to_rownames("Sample.Name")
+  data.matrix <- data.matrix[sample.info$Sample.Name,]
+
+  p.before <- plot_PCA(data.matrix,pca.group = sample.info$Sample.Type,
+                       col = c("#EB5640","#3B5B8B"))+
+    labs(title = "PCA before normalization")
+
+  vsn_fit <- vsn2(as.matrix(data.matrix))
+  mat_vsn <- predict(vsn_fit, as.matrix(data.matrix))
+  p.vsn <- plot_PCA(mat_vsn,pca.group = sample.info$Sample.Type,
+                    col = c("#EB5640","#3B5B8B"))+
+    labs(title = "PCA after normalization")
+
+  open_plot_win(p.before+p.vsn,6,3)
+  export_graph2pdf(p.before+p.vsn,file_path = "d:/temp/figures.pdf",
+                   width = 6,height = 3)
+
+
+  ### rt
+  {
+
+    sample.info <- openxlsx::read.xlsx("d:/data/2025.12.13.lie/Lipid_SampleInfo.xlsx")
+    data <-  openxlsx::read.xlsx("d:/data/2025.12.13.lie/Lipid_SampleInfo.xlsx",sheet = 3)
+    sample.info <- sample.info%>%
+      dplyr::filter(Sample.Name %in% data$Sample.Name)%>%
+      dplyr::distinct(Sample.Name,.keep_all = T)%>%
+      dplyr::arrange(Inject.Order)
+    plot.data <-data %>%
+      dplyr::filter(Sample.Name %in% sample.info$Sample.Name)%>%
+      dplyr::distinct(Sample.Name,.keep_all = T)%>%
+      dplyr::select(!contains("IS"),Sample.Name)%>%
+      column_to_rownames("Sample.Name")%>%
+      pivot_longer(everything(),names_to = "name",values_to = "value")%>%
+      dplyr::group_by(name)%>%
+      dplyr::mutate(value = value - mean(value,na.rm = T))
+
+
+    p1 <- ggplot(plot.data)+
+      geom_boxplot(aes(x = name,y = value ),outliers = F)+
+      geom_hline(yintercept = c(-0.5,0.5) ,linetype = "dashed" , col = "grey" )+
+      geom_jitter(aes(x = name,y = value ),pch = 21,
+                  col = "black",fill = "red",alpha = 0.5)+
+      labs(x = NULL, y="Retention Time error")+
+      ylim(c(-1,1))+
+      theme_classic()
+    p1
+
+    open_plot_win(p1,5,3)
+
+
+
+
+
+
+
+  }
+
+
+  ### intensity
+  {
+
+    sample.info <- openxlsx::read.xlsx("d:/data/2025.12.13.lie/Lipid_SampleInfo.xlsx")
+    data <-  openxlsx::read.xlsx("d:/data/2025.12.13.lie/Lipid_SampleInfo.xlsx",sheet = 2)
+    sample.info <- sample.info%>%
+      dplyr::filter(Sample.Name %in% data$Sample.Name)%>%
+      dplyr::distinct(Sample.Name,.keep_all = T)%>%
+      dplyr::arrange(Inject.Order)
+    plot.data <-data %>%
+      dplyr::filter(Sample.Name %in% sample.info$Sample.Name)%>%
+      dplyr::distinct(Sample.Name,.keep_all = T)%>%
+      dplyr::select(!contains("IS"),Sample.Name)%>%
+      column_to_rownames("Sample.Name")%>%
+      pivot_longer(everything(),names_to = "name",values_to = "value")%>%
+      dplyr::group_by(name)%>%
+      dplyr::mutate(value = value/median(value,na.rm = T)*100)
+
+
+    p2 <- ggplot(plot.data)+
+      geom_boxplot(aes(x = name,y = value ),outliers = F)+
+      geom_hline(yintercept = c(70,130) ,linetype = "dashed" , col = "grey" )+
+      geom_jitter(aes(x = name,y = value ),pch = 21,
+                  col = "black",fill = "red",alpha = 0.5)+
+      labs(x = NULL, y="Variation in Relative Area (%)")+
+      ylim(c(0,300))+
+      theme_classic()
+    p2
+
+    #open_plot_win(p2,5,3)
+
+    #open_plot_win(p1+p2,6,4)
+    export_graph2pdf(p1+p2,file_path = "d:/temp/figures.pdf",
+                     width = 6,height = 4,append = T)
+
+
+
+
+  }
+
+
+
+  ### int-injec,
+  {
+
+
+    data.matrix <-data %>%
+      dplyr::filter(Sample.Name %in% sample.info$Sample.Name)%>%
+      dplyr::distinct(Sample.Name,.keep_all = T)%>%
+      column_to_rownames("Sample.Name")
+    data.matrix <- data.matrix[sample.info$Sample.Name,]
+    vsn_fit <- vsn2(as.matrix(data.matrix))
+    mat_vsn <- predict(vsn_fit, as.matrix(data.matrix))%>%as.data.frame()
+
+
+    plot.data <- sample.info %>%
+      dplyr::mutate(value = data.matrix[Sample.Name,"IS_DSPCD70"])%>%
+      dplyr::distinct(Sample.Name,.keep_all = T)%>%
+      dplyr::mutate(
+        injection.order = Inject.Order,
+        group = Sample.Type,
+        injection.order = as.numeric(injection.order)
+      )
+
+    x <- plot.data$value
+    p1 <- ggplot(plot.data)+
+      geom_point(aes(x = injection.order, y = value,fill= group),
+                 pch = 21)+
+      geom_hline(
+        yintercept = c(mean(x) + sd(x) * c(-1,1)))+
+      geom_hline(
+        yintercept = c(mean(x) + sd(x) * c(-0.3,0.3)), linetype = "dashed")+
+      scale_fill_manual(values = c("#EB5640","#3B5B8B"))+
+      ylim(c(0,quantile(plot.data$value,0.98)))+
+      labs(title = "Raw Peak",x = "Injection Order", y="Intensity",fill = "")+
+      theme_classic()+
+      theme(legend.position = "top",plot.title = element_text(hjust = 0.5))
+
+    p1
+    #open_plot_win(p,5,3)
+
+
+    plot.data <- sample.info %>%
+      dplyr::mutate(value = mat_vsn[Sample.Name,"IS_PED31"],
+                    value=2^value)%>%
+      dplyr::distinct(Sample.Name,.keep_all = T)%>%
+      dplyr::mutate(
+        injection.order = Inject.Order,
+        group = Sample.Type,
+        injection.order = as.numeric(injection.order)
+      )
+
+    x <- plot.data$value
+    p2 <- ggplot(plot.data)+
+      geom_point(aes(x = injection.order, y = value,fill= group),
+                 pch = 21)+
+      geom_hline(
+        yintercept = c(mean(x) + sd(x) * c(-1,1)))+
+      geom_hline(
+        yintercept = c(mean(x) + sd(x) * c(-0.3,0.3)), linetype = "dashed")+
+      ylim(c(0,quantile(plot.data$value,0.98)))+
+      scale_fill_manual(values = c("#EB5640","#3B5B8B"))+
+      labs(title = "Corrected Peak",x = "Injection Order", y="Intensity",fill = "")+
+      theme_classic()+
+      theme(legend.position = "top",plot.title = element_text(hjust = 0.5))
+
+    p2
+    open_plot_win(p2,5,3)
+
+    open_plot_win(p1/p2,6,8)
+    export_graph2pdf(p1/p2,file_path = "d:/temp/figures.pdf",
+                     width = 6,height = 8,append = T)
+  }
+
+
+}
+# Mon Dec 15 15:44:16 2025 ------------------------------
+{
+
+  MSdev_annotation(object,cpdb_path = cpdb_path)
+
+
+
+
+  ###temp
+  {
+    system.time(
+      matched.df <- match_mz_rt(mz1 = xcms.featuredef$mzmed,
+                                mz2 = cp.adduct$chemform.adduct.mz,
+                                mz.ppm = mz.ppm)
+    )
+
+    system.time(
+      matched.df2 <- match_mz_foverlaps(mz1 = xcms.featuredef$mzmed,
+                                mz2 = cp.adduct$chemform.adduct.mz,
+                                ppm = mz.ppm)
+    )
+  }
+}
+
+
+# Mon Dec 15 20:46:52 2025 ------------------------------
+{
+
+  Sys.setenv(
+    http_proxy  = "http://127.0.0.1:7897",
+    https_proxy = "http://127.0.0.1:7897"
+  )
+  getSymbols("1810.HK", src = "yahoo",
+             from = "2000-01-02",
+             to   = TODAY())
+
+  plot(`1810.HK`)
+
+  plot(yearlyReturn(SPY))
+  periodReturn(SPY)
+
+
+}
+
+# Mon Dec 15 21:58:24 2025 ------------------------------
+{
+
+  library(tidyquant)
+  library(dplyr)
+  library(TTR)
+
+  getSymbols("SPY", from = "2005-01-01")
+  prices <- tq_get("SPY", from = "2005-01-01")
+
+
+  data <- prices %>%
+    tq_transmute(
+      select     = adjusted,
+      mutate_fun = dailyReturn,
+      col_rename = "ret"
+    ) %>%
+    left_join(prices, by = "date") %>%
+    mutate(
+      ma200  = SMA(adjusted, 200),
+      signal = ifelse(adjusted > ma200, 1, 0),
+      strategy_ret = signal * ret
+    )
+
+
+
+
+  library(tidyquant)
+  library(dplyr)
+  library(TTR)
+
+  prices <- tq_get("SPY", from = "2005-01-01")
+
+  data <- prices %>%
+    mutate(
+      ma200 = SMA(adjusted, n = 200),
+      signal = ifelse(adjusted > ma200, 1, 0),
+      ret = dailyReturn(adjusted),
+      strategy_ret = signal * ret
+    )
+
+  # 累计收益
+  cumprod(1 + na.omit(data$strategy_ret))
+
+
+  library(tidyquant)
+  library(dplyr)
+  library(TTR)
+
+  prices <- tq_get("SPY", from = "1998-01-01",to = "2025-12-11")
+
+  tsmom <- prices %>%
+    mutate(
+      ret = log(adjusted / lag(adjusted)),
+      ma200 = SMA(adjusted, 200),
+      signal = ifelse(adjusted > ma200, 1, 0),
+      signal = lag(signal, 1),
+      strategy_ret = signal * ret
+    ) %>%
+    filter(!is.na(strategy_ret))
+
+  # 累计收益
+  tsmom <- tsmom %>%
+    mutate(
+      cum_strategy = exp(cumsum(strategy_ret)),
+      cum_buyhold  = exp(cumsum(ret))
+    )
+
+  ggplot(tsmom)+
+    geom_point(aes(x = date, y = cum_buyhold),col = "blue")+
+    geom_point(aes(x = date, y = cum_strategy),col = "red")
+
+
+  max_dd <- function(x) {
+    cummax_x <- cummax(x)
+    min((x - cummax_x) / cummax_x)
+  }
+
+  max_dd(tsmom$cum_strategy)
+  max_dd(tsmom$cum_buyhold)
+
+  sd(tsmom$strategy_ret, na.rm = TRUE) * sqrt(252)
+  sd(tsmom$ret, na.rm = TRUE) * sqrt(252)
+
+
+  mean(tsmom$strategy_ret, na.rm = TRUE) /
+    sd(tsmom$strategy_ret, na.rm = TRUE) * sqrt(252)
+
+
+  {
+
+    symbols <- c("SPY", "IEF", "GLD","QQQ")
+    symbols <- c("VOO","QQQ","1810.HK")
+   # symbols <-"1810.HK"
+    monthly_prices <- tq_get(
+      symbols,
+      from = "2015-01-01",
+      to = TODAY(),
+      periodicity = "daily"
+    ) %>%
+      select(symbol, date, adjusted) %>%
+      rename(close = adjusted)%>%
+      dplyr::filter(!is.na(close))
+
+    tsmom <- monthly_prices %>%
+      group_by(symbol) %>%
+      mutate(
+        ret    = log(close / lag(close)),
+        ma10   = SMA(close, 30),
+        signal = ifelse(close > ma10, 1, 0),
+        signal = lag(signal, 1),
+        strat_ret = signal * ret
+      ) %>%
+      filter(!is.na(strat_ret)) %>%
+      ungroup()
+
+    portfolio <- tsmom %>%
+      group_by(date) %>%
+      summarise(
+        portfolio_ret = mean(strat_ret, na.rm = TRUE),
+        buyhold_ret   = mean(ret, na.rm = TRUE)
+      ) %>%
+      mutate(
+        cum_trend   = exp(cumsum(portfolio_ret)),
+        cum_buyhold = exp(cumsum(buyhold_ret))
+      )
+
+    p <- portfolio %>%
+      select(date, cum_trend, cum_buyhold) %>%
+      pivot_longer(-date) %>%
+      ggplot(aes(date, value, color = name)) +
+      geom_line(linewidth = 1) +
+      #scale_y_log10() +
+      labs(
+        title = "Multi-Asset Trend Following vs Buy & Hold",
+        y = "Cumulative Return (log scale)",
+        color = ""
+      ) +
+      theme_minimal()
+    print(p)
+
+    max_dd(portfolio$cum_trend)
+    max_dd(portfolio$cum_buyhold)
+
+
+
+    sd(portfolio$cum_trend, na.rm = TRUE) * sqrt(252)
+    sd(portfolio$cum_buyhold, na.rm = TRUE) * sqrt(252)
+
+
+
+    }
+
+}
+# Thu Dec 18 13:00:07 2025 ------------------------------
+{
+
+
+  cfmd <- get_CFM_data_from_smiles(
+    smiles = "Nc1ccc(O)cc1",compound_id = "gshSSSS")
+
+  shiny_vis_cfmd_trans(cfmd)
+
+  {
+
+
+  }
+
+
+
+
+
+
+
+
+
 }

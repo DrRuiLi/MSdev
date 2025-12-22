@@ -180,7 +180,8 @@ analyzePathwayHyperTest <- function(kegg.id = "C00024", filter_Metabolism = F){
 plot_PCA <- function(pca.matrix,pca.group,
                      force_ellipse = T,
                      show_ellipse = T,
-                     showlabel = F){
+                     showlabel = F,
+                     col = NULL){
 
   pca.pca <- ropls::opls(x = pca.matrix,
                          crossvalI = ifelse(nrow(pca.matrix)>6,7,nrow(pca.matrix)),
@@ -198,11 +199,16 @@ plot_PCA <- function(pca.matrix,pca.group,
                      )
     pca.data <- rbind(pca.data,to.rep.df)
   }
-  col.list <-
-    ggsci::pal_npg()(length(unique(pca.data$pca.group)))
-  names(col.list) <- unique(pca.data$pca.group)
-  col.list["QC"] <- "grey"
-  #col.list["Blank"] <- "grey"
+  if(is.null(col)){
+    col.list <-
+      ggsci::pal_npg()(length(unique(pca.data$pca.group)))
+    names(col.list) <- unique(pca.data$pca.group)
+    col.list["QC"] <- "grey"
+    #col.list["Blank"] <- "grey"
+
+  }else{
+    col.list <- col
+  }
 
   if (showlabel) {
     p<-  ggplot(pca.data) +
