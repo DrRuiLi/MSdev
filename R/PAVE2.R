@@ -1,6 +1,10 @@
 PAVE2 <- function(object){
 
 
+  if(F){
+    object <- readRDS("temp/20251119.rds")
+    i.pol = 0
+  }
 
 
   for (i.pol in 0:1) {
@@ -10,6 +14,8 @@ PAVE2 <- function(object){
 
     ### data
     {
+
+      time.start <- Sys.time()
       pol <- ifelse(i.pol==0,"Negative","Positive")
       message_with_time(pol)
 
@@ -60,6 +66,7 @@ PAVE2 <- function(object){
 
     ### filter CN label pattern
     {
+
       cn.net <- cn.net%>%
         dplyr::mutate(pave_pattern = paste0("C",C_count ,"N",N_count  ))
       cn.net.list <- split(cn.net,cn.net$from)
@@ -101,7 +108,7 @@ PAVE2 <- function(object){
 
         p.cor.max <- max(cn.comb$p.cor,na.rm = T)
         #message(p.cor.max)
-        if(p.cor.max< 0.75) return(NULL)
+        if(p.cor.max< 0) return(NULL)
         cn.comb <- cn.comb%>%dplyr::slice_max(p.cor,with_ties = F)
         all.form <- c(paste0("C0N",cn.comb$N,""),paste0("C",cn.comb$C,"N0"),
                       paste0("C",cn.comb$C,"N",cn.comb$N,""))
@@ -114,7 +121,33 @@ PAVE2 <- function(object){
       },BPPARAM = SerialParam(progressbar = T))
       names(cn.net.list.hit) <- names(cn.net.list)
       cn.net.list.hit <- cn.net.list.hit[!sapply(cn.net.list.hit,is.null)]
-      cn.net.hit <- data.table::rbindlist(cn.net.list.hit)
+      cn.net.hit <- data.table::rbindlist(cn.net.list.hit)%>%
+        dplyr::filter(pave_cor > 0.75)
+
+
+
+
+      ### timer and temp save
+      {
+        time.end <- Sys.time()
+        time.cost <- difftime(time.end,time.start,units = "secs")%>%as.numeric()
+        readr::write_lines(
+          paste0("pave2",",",
+                 nrow(featureDefinitions(xcms.xcms)),",",
+                 time.cost),
+          append = T,
+          file = expand_dir_from_onedrive("Documents/YLF_Lab/Project/2025.10.10.PAVE/data/pave.CN.count.timer.csv")
+        )
+
+        if (T) {
+
+          cn.temp <- data.table::rbindlist(cn.net.list.hit)
+          object@statData$PAVE2_temp[[pol]]$CNfinder <- cn.net %>%
+            dplyr::mutate(pave_cor = cn.temp$pave_cor[match(ion1,cn.temp$ion1)])
+
+        }
+
+      }
     }
 
 
@@ -351,10 +384,10 @@ PAVE2 <- function(object){
 
 
 
-    ### graph annotate CN seed
-    {
-      message_with_time("Graph annotate CN seed")
+    ### graph annotate CN seed, using Loop to determine
+    if(T){
 
+      message_with_time("Graph annotate CN seed")
       cn.seed.ig <- igraph_filter_vertex(xcms.ig,cn.seed)
       cn.seed.ig <- igraph_remove_edge(cn.seed.ig,
                                        which(E(cn.seed.ig)$eid %in% cn.seed.net[new.type=="false",eid]))
@@ -364,13 +397,15 @@ PAVE2 <- function(object){
       cn.seed.split <- split(cn.seed.vdata$name,cn.seed.vdata$node.group)
       table(lengths(cn.seed.split))
       cn.seed.annotation <- list()
+      pb <- get_progress_bar(total_iterations =  length(cn.seed.split))
       for (i.css in seq_along(cn.seed.split) ) {
 
-        i.css <- which(lengths(cn.seed.split) == 6 )[2]
+        pb$tick()
+        #i.css <- which(lengths(cn.seed.split) == 6 )[2]
         i.seed <- cn.seed.split[[i.css]]
         #message_with_time(i.css,"; ",length(i.seed))
         i.cn.seed.ig <- igraph_filter_vertex(cn.seed.ig, i.seed)
-        vis_pave_igraph(i.cn.seed.ig)
+        #vis_pave_igraph(i.cn.seed.ig)
 
         if (length(i.seed) == 1) {
 
@@ -385,15 +420,11 @@ PAVE2 <- function(object){
         }
 
         i.cn.seed.ig.ring <- igraph::simple_cycles(
-          i.cn.seed.ig,mode = "all",min = 3,max = 5)
+          i.cn.seed.ig,mode = "all",min = 3,max = 4)
 
         if (length(i.cn.seed.ig.ring$vertices)>0) {
           ### ring test
           {
-
-
-
-
 
             eloop <- list()
             ring.node.forms <- list()
@@ -478,7 +509,7 @@ PAVE2 <- function(object){
 
         }
 
-        if (!length(i.cn.seed.ig.ring$vertices)>0){
+        if (T){
 
           if (all(E(i.cn.seed.ig)$type=="fragment")) {
             i.seed.seed  <- edata(i.cn.seed.ig)$to[1]
@@ -512,6 +543,135 @@ PAVE2 <- function(object){
 
       }
 
+      pave.cor <- dplyr::pull(.data = cn.net.hit,pave_cor,name = from)
+      cn.seed.annotation.df <- do.call(bind_rows,cn.seed.annotation)%>%
+        dplyr::mutate(
+          pave_annotation = case_when(
+            grepl(pattern = "^\\[",pave_MS_form)~"isotope",
+            pave_seed == paste0("CN_Seed_",name)~ "CN_metabolite",
+            is.na(pave_seed) ~"Unknow_adduct",
+            !grepl(pattern = ";$",pave_MS_form)~"fragment",
+            T~"adduct"
+          ),
+          pave_cor = pave.cor[name],
+          pave_pattern = "C0N0"
+
+        )
+
+      rownames(cn.seed.annotation.df) <- cn.seed.annotation.df$name
+
+      cn.exp <- cn.seed.annotation.df[as.character(cn.net.hit$from),]%>%
+        dplyr::mutate(name = as.character(cn.net.hit$to),
+                      pave_cor = cn.net.hit$pave_cor,
+                      pave_pattern = cn.net.hit$pave_pattern,
+                      pave_formula = cn.net.hit$pave_formula
+                      )
+      cn.peaks.annotation.df <- rbind(cn.seed.annotation.df,cn.exp)
+      table(cn.peaks.annotation.df$pave_annotation)
+    }
+
+
+    ### graph annotate CN seed
+    if(F){
+
+      message_with_time("Graph annotate CN seed")
+      cn.seed.ig <- igraph_filter_vertex(xcms.ig,cn.seed)
+      cn.seed.ig <- igraph_remove_edge(cn.seed.ig,
+                                       which(E(cn.seed.ig)$eid %in% cn.seed.net[new.type=="false",eid]))
+
+      cn.seed.vdata <- vdata(cn.seed.ig)%>%
+        dplyr::mutate(node.group = get_igraph_membership(cn.seed.ig))
+      cn.seed.split <- split(cn.seed.vdata$name,cn.seed.vdata$node.group)
+      table(lengths(cn.seed.split))
+      cn.seed.annotation <- list()
+      for (i.css in seq_along(cn.seed.split) ) {
+
+        #i.css <- which(lengths(cn.seed.split) == 12 )[1]
+        i.seed <- cn.seed.split[[i.css]]
+        #message_with_time(i.css,"; ",length(i.seed))
+        i.cn.seed.ig <- igraph_filter_vertex(cn.seed.ig, i.seed)
+        vis_pave_igraph(i.cn.seed.ig)
+        vis_pave_igraph(pave_igraph_contract(i.cn.seed.ig))
+
+        if (length(i.seed) == 1) {
+
+          cn.seed.annotation[[i.css]] <- data.frame(
+            name = i.seed,
+            pave_MS_form = "Undefined",
+            pave_formula = cn.seed.formula[i.seed],
+            pave_seed = paste0("CN_Seed_",i.seed)
+
+          )
+          next
+        }
+        if (length(i.seed) > 1) {
+
+          i.cn.seed.ig.ct <- pave_igraph_contract(i.cn.seed.ig)
+          eda <- edata(i.cn.seed.ig.ct) %>%
+            dplyr::filter(!from == to)
+
+          if (nrow(eda) == 0) {
+
+            if (all(E(i.cn.seed.ig)$type=="fragment")) {
+              i.seed.seed  <- edata(i.cn.seed.ig)$to[1]
+            }else{
+              i.cn.seed.ig.remove.fg <- igraph_filter_edge(
+                i.cn.seed.ig, which(E(i.cn.seed.ig)$type!="fragment"))
+              i.seed.seed <- as.character(min(as.numeric(names(V(i.cn.seed.ig.remove.fg)))))
+            }
+
+            i.seed.form <- get_pave_ig_vertex_form(i.cn.seed.ig)%>%
+              sapply(`[`,1)
+            #i.seed.form <- unlist(i.seed.form)
+            if (length(i.seed.form) > length(i.seed)) {
+              break
+            }
+
+            cn.seed.annotation[[i.css]] <- data.frame(
+              name = i.seed,
+              pave_MS_form = i.seed.form[i.seed],
+              pave_formula = cn.seed.formula[i.seed],
+              pave_seed = paste0("CN_Seed_",i.seed.seed)
+            )
+            next
+          }
+
+          v.anno <- data.table(
+            name = c(eda$from,eda$to),
+            adduct = c(eda$adduct.from,eda$adduct.to),
+            eid = c(eda$eid,eda$eid),
+            error = c(abs(eda$rt.diff),abs(eda$rt.diff))
+          )%>%
+            dplyr::group_by(name)%>%
+            dplyr::mutate(
+              degree =n() )%>%
+            dplyr::group_by(name,adduct)%>%
+            dplyr::mutate(freq = n(),
+                          ratio = freq/ degree)%>%
+            dplyr::ungroup()%>%
+            dplyr::mutate(
+              ratio = case_when(degree == 1~ 0.5,
+                                T~ratio)
+            )
+
+          eid.filt <- names(which(sort(mean_f(v.anno$ratio,v.anno$eid)) > 0.5))
+          igraph_filter_edge(i.cn.seed.ig.ct, which(E(i.cn.seed.ig.ct)$eid %in%eid.filt))%>%
+            vis_pave_igraph()
+
+
+          eid.reomve <- names(which(sort(mean_f(v.anno$ratio,v.anno$eid)) <= 0.5))
+          igraph_remove_edge(i.cn.seed.ig, which(E(i.cn.seed.ig.ct)$eid %in%eid.reomve))%>%
+            vis_pave_igraph()
+
+        }
+
+
+
+
+
+
+      }
+
       cn.seed.annotation.df <- do.call(bind_rows,cn.seed.annotation)%>%
         dplyr::mutate(
           pave_annotation = case_when(
@@ -532,8 +692,7 @@ PAVE2 <- function(object){
     }
 
 
-
-    object@statData$PAVE[[pol]] <-cn.seed.annotation.df
+    object@statData$PAVE2[[pol]] <- cn.peaks.annotation.df
 
 
   }

@@ -178,3 +178,21 @@ get_fragment_mass_diff <- function(){
     ,fragment := chemform_diff ]
 
 }
+
+
+pave_igraph_contract <- function(pave.ig){
+
+  eda <- edata(pave.ig) %>%
+    dplyr::filter(!type == "adduct")
+  vm <- get_igraph_membership(graph_from_data_frame(eda))
+  vda <- vdata(pave.ig)
+
+  vm2 <- setNames(seq_along(vda$name)+length(vda$name),vda$name)
+  vm2[names(vm)] <-vm
+
+  ign <-igraph::contract(pave.ig,
+                         as.numeric(factor(vm2)),
+                         vertex.attr.comb = "first")
+  #vis_pave_igraph(ign)
+  return(ign)
+}

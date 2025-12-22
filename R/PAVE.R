@@ -36,6 +36,8 @@ PAVE_get_atom_count <- function(object, BPPARAM = SnowParam(workers = 6,progress
   for (i.pol in 0:1) {
 
 
+    time.start <- Sys.time()
+
     ### get xcms
     {
 
@@ -54,6 +56,20 @@ PAVE_get_atom_count <- function(object, BPPARAM = SnowParam(workers = 6,progress
 
     }
 
+
+
+    ### timer
+    {
+      time.end <- Sys.time()
+      time.cost <- difftime(time.end,time.start,units = "secs")%>%as.numeric()
+      readr::write_lines(
+        paste0("pave1",",",
+               nrow(featureDefinitions(xcms.xcms)),",",
+               time.cost),
+        append = T,
+        file = expand_dir_from_onedrive("Documents/YLF_Lab/Project/2025.10.10.PAVE/data/pave.CN.count.timer.csv")
+      )
+    }
 
   }
 
@@ -695,7 +711,7 @@ PAVE_find_xcms_CN <- function(xcms.xcms, rt.tol = 20, ppm= 10 ,
             cn.fdf <- cn.comb.list[[which.max(cn.comb$p.cor)]]
             cn.fdf$pave_cor <- max(cn.comb$p.cor,na.rm  =T)
 
-            message_with_time(this.fid," Pattern: ",cn.fdf$pave_CN[-1],"; Cor = ",cn.fdf$pave_cor[1])
+            #message_with_time(this.fid," Pattern: ",cn.fdf$pave_CN[-1],"; Cor = ",cn.fdf$pave_cor[1])
             return(cn.fdf)
           }
 
@@ -797,10 +813,10 @@ get_CN_mass_diff_table <- function(C_max=100,N_max=20){
 get_ideal_CN_ratio <- function(C = 10 , N = 2){
 
   m <- diag(rep(1,4))
-  colnames(m) <- c("C0N0",paste0("C",C,"N0"),paste0("C0N",N),paste0("C",C,"N",N))
-  rownames(m) <- c("S12C14N","S13C14N","S12C15N","S13C15N")
+  colnames(m) <- c("C0N0",paste0("C0N",N),paste0("C",C,"N0"),paste0("C",C,"N",N))
+  rownames(m) <- c("S12C14N","S12C15N","S13C14N","S13C15N")
 
-  if(N==0) m <- m[,1:2]+m[,3:4]
+  if(N==0) m <- m[,c(1,3)]+m[,c(2,4)]
 
   return(m)
 }
