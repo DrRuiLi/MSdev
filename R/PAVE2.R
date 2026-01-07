@@ -23,7 +23,7 @@ PAVE2 <- function(object){
       xcms.net <- get_xcms_feature_connect(xcms.xcms,rt.tol = rt.tol)
       xcms.val <- featureValues(xcms.xcms,missing = 0,value = "maxo")
       xcms.pave.sample <- pData(xcms.xcms)%>%
-        dplyr::filter(sample.type %in% c("S12C14N","S12C15N","S13C14N","S13C15N"))
+        dplyr::filter(sample.type %in% c("S12C14N","S12C15N","S13C14N","S13C15N","Blank"))
 
     }
 
@@ -99,7 +99,9 @@ PAVE2 <- function(object){
           m.detected <- xcms.val[c(x.cn$from[1],to.id),  xcms.pave.sample$sampleNames]
           colnames(m.detected) <- xcms.pave.sample$sample.type
           rownames(m.detected) <- c("C0N0",all.form)
-          m.detected <- m.detected/m.detected[1,1]
+          mean.c0n0 <- mean(m.detected[rownames(m.detected) == "C0N0",
+                                       colnames(m.detected) == "S12C14N"])
+          m.detected <- m.detected/mean.c0n0
           m.ideal <- get_ideal_CN_ratio(this.c,this.n)%>%t
           m.ideal <- m.ideal[rownames(m.detected),colnames(m.detected)]
           p.cor <- cor(as.vector(m.detected),as.vector(m.ideal))
@@ -136,7 +138,7 @@ PAVE2 <- function(object){
                  nrow(featureDefinitions(xcms.xcms)),",",
                  time.cost),
           append = T,
-          file = expand_dir_from_onedrive("Documents/YLF_Lab/Project/2025.10.10.PAVE/data/pave.CN.count.timer.csv")
+          file = get_dir_expand_from_onedrive("Documents/YLF_Lab/Project/2025.10.10.PAVE/data/pave.CN.count.timer.csv")
         )
 
         if (T) {
@@ -238,7 +240,8 @@ PAVE2 <- function(object){
     {
 
 
-      cn.net.hit <- cn.net.hit[abs(mz.ppm )< ppm.dyn & abs(rt.diff) < rt.tol.dyn]
+      cn.net.filter <- cn.net.hit[abs(mz.ppm )> ppm.dyn | abs(rt.diff) > rt.tol.dyn]
+      cn.net.hit <- cn.net.hit[! from %in% cn.net.filter$from]
       ad.net <- ad.net[abs(mz.ppm )< ppm.dyn & abs(rt.diff) < rt.tol.dyn]
       is.net <- is.net[abs(mz.ppm) < ppm.dyn & abs(rt.diff) < rt.tol.dyn]
       fg.net <- fg.net[abs(mz.ppm) < ppm.dyn & abs(rt.diff) < rt.tol.dyn]
@@ -554,20 +557,22 @@ PAVE2 <- function(object){
             T~"adduct"
           ),
           pave_cor = pave.cor[name],
-          pave_pattern = "C0N0"
+          pave_pattern = "C0N0",
+          pave_cn_seed = name
 
-        )
+        )%>%setDT()
 
-      rownames(cn.seed.annotation.df) <- cn.seed.annotation.df$name
+      cn.exp <- cn.net.hit[
+        from  %in% cn.seed.annotation.df$name][
+          , name := as.character(to) ][
+            ,pave_cn_seed := as.character(from)][
+              , .(name,pave_formula   ,pave_pattern  ,pave_cor ,pave_cn_seed)
+            ][cn.seed.annotation.df[,.(pave_seed,pave_MS_form,pave_annotation,pave_cn_seed)],
+              on = "pave_cn_seed"]
 
-      cn.exp <- cn.seed.annotation.df[as.character(cn.net.hit$from),]%>%
-        dplyr::mutate(name = as.character(cn.net.hit$to),
-                      pave_cor = cn.net.hit$pave_cor,
-                      pave_pattern = cn.net.hit$pave_pattern,
-                      pave_formula = cn.net.hit$pave_formula
-                      )
-      cn.peaks.annotation.df <- rbind(cn.seed.annotation.df,cn.exp)
+      cn.peaks.annotation.df <- bind_rows(cn.seed.annotation.df,cn.exp)
       table(cn.peaks.annotation.df$pave_annotation)
+
     }
 
 
