@@ -2084,3 +2084,109 @@ open_plot_win(p,10,10)
 
 
 }
+# Sun Dec 28 20:49:31 2025 ------------------------------
+{
+
+  obj <- MSdev("d:/data/2025.12.26.PAVE2/2021222_PAVE/data/")
+  obj <- MSdev_msConvert(obj)
+  obj <- MSdev_checkSampleInfo(obj)
+  obj <- MSdev_set_param(
+    obj,
+    findChromPeaks =
+      xcms::CentWaveParam(
+        ppm = 10,
+        prefilter = c(3,1000),
+        peakwidth = c(10,30),
+        snthresh = 10,
+        fitgauss = T),
+    groupChromPeaks =
+      xcms::PeakDensityParam(
+        sampleGroups = "A",
+        minFraction = 0.6,
+        binSize = 0.002,
+        bw = 12,
+        ppm = 10))
+  obj <- MSdev_xcmsProcessing(obj)
+  MSdev_save(obj)
+
+}
+# Tue Dec 30 10:09:25 2025 ------------------------------
+{
+
+  ppm = 10
+  sn = 100
+  ### 120K
+  {
+    obj <- MSdev("d:/temp/astral/data/")
+    obj <- MSdev_msConvert(obj)
+    obj <- MSdev_checkSampleInfo(obj)
+    obj <- MSdev_set_param(
+      obj,
+      findChromPeaks =
+        xcms::CentWaveParam(
+          ppm = ppm,
+          prefilter = c(3,1000),
+          peakwidth = c(10,30),
+          snthresh = sn,
+          fitgauss = T),
+      groupChromPeaks =
+        xcms::PeakDensityParam(
+          sampleGroups = "A",
+          minFraction = 0.6,
+          binSize = 0.002,
+          bw = 12,
+          ppm = ppm))
+    obj <- MSdev_xcmsProcessing(obj)
+    MSdev_save(obj)
+
+
+    xcms <- obj@xcmsData$PositiveMS1
+    pks <- table(chromPeaks(xcms)[,"sample"])
+    names(pks) <- pData(xcms)[,1]
+    print(pks)
+    nrow(featureDefinitions(xcms))
+
+  }
+
+
+  ppm = 10
+  sn = 100
+  {
+
+    OE480 <- MSdev("d:/temp/oe480/data/")
+    OE480 <- MSdev_msConvert(OE480)
+    OE480 <- MSdev_checkSampleInfo(OE480)
+    OE480 <- MSdev_set_param(
+      OE480,
+      findChromPeaks =
+        xcms::CentWaveParam(
+          ppm = ppm,
+          prefilter = c(3,1000),
+          peakwidth = c(10,30),
+          snthresh = sn,
+          fitgauss = T),
+      groupChromPeaks =
+        xcms::PeakDensityParam(
+          sampleGroups = "A",
+          minFraction = 0.6,
+          binSize = 0.002,
+          bw = 12,
+          ppm = ppm))
+    OE480 <- MSdev_xcmsProcessing(OE480)
+    xcms <- OE480@xcmsData$PositiveMS1
+    pks <- table(chromPeaks(xcms)[,"sample"])
+    names(pks) <- pData(xcms)[,1]
+    print(pks)
+    nrow(featureDefinitions(xcms))
+
+  }
+
+
+  obj <- load_demo()
+  a <- MSdev_annotation(obj)
+
+  obj <- MSdev_load("d:/data/2025.12.26.PAVE2/PAVE_With_Params/OE480_480k_ppm10_sn10.rdata")
+  plot_xcms_adjustedRT(obj@xcmsData$PositiveMS1)
+  plot_xcms_adjustedRT(obj@xcmsData$NegativeMS1)
+
+}

@@ -560,7 +560,7 @@ PAVE2 <- function(object){
           pave_pattern = "C0N0",
           pave_cn_seed = name
 
-        )%>%setDT()
+        )%>%data.table::setDT()
 
       cn.exp <- cn.net.hit[
         from  %in% cn.seed.annotation.df$name][

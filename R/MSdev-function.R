@@ -14,14 +14,14 @@
 #' @return MSdev
 #' @export
 #'
-MSdev_save <- function(object){
+MSdev_save <- function(object,file = object@projectInfo$MSdevFile){
   MSdev <- object
-  save.dir <- dirname(object@projectInfo$MSdevFile)
+  save.dir <- dirname(file)
   if (!dir.exists(save.dir)) {
     dir.create(save.dir,recursive = T)
   }
   #save(MSdev, file =  object@projectInfo$MSdevFile)
-  qs::qsave(MSdev, file =  object@projectInfo$MSdevFile)
+  qs::qsave(MSdev, file =  file)
   invisible(MSdev)
 }
 
@@ -78,7 +78,8 @@ MSdev_get_MSinfo <- function(object){
   ### note, these model string are identified by mzR
   {
     HRMS <- c("Q Exactive Plus","TripleTOF 6600","Orbitrap IQ-X","Q Exactive",
-              "Orbitrap Exploris 480","Orbitrap Astral")
+              "Orbitrap Exploris 480","Orbitrap Astral",
+              "Thermo Electron instrument model")
     TQMS <- c("TSQ Quantis")
     model.df <- data.frame(
       model = c(HRMS,TQMS),
@@ -1393,7 +1394,7 @@ MSdev_match_Spectra_to_feature <- function(object,
 #'
 
 MSdev_annotation <- function(object,
-                             cpdb_path,
+                             cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite",
                              calc_isopattern_score = F,
                              ppm = 10,
                              ...){
@@ -1401,6 +1402,7 @@ MSdev_annotation <- function(object,
   cpdb <- CompoundDb::CompDb(cpdb_path)
 
   for (i in 0:1) {
+
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     if (is.null(xcms.xcms)) next

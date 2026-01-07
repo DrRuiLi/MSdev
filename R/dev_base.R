@@ -142,7 +142,8 @@ open_MSIP <- function(){
 }
 
 open_PAVE <- function(){
-  pave.file <- "C:/Users/91879/OneDrive/Documents/YLF_Lab/Project/2025.10.10.PAVE/code/PAVE_data_Analysis.R"
+
+  pave.file <- get_dir_expand_from_onedrive("Documents/YLF_Lab/Project/2025.10.10.PAVE/code/PAVE_data_Analysis.R")
   rstudioapi::documentOpen(pave.file)
   setRStudioDir()
   return(pave.file)
@@ -369,9 +370,23 @@ get_progress_bar <- function(total_iterations = 100){
 }
 
 
-expand_dir_from_onedrive <- function(d = "."){
+get_dir_expand_from_onedrive <- function(d = "."){
 
   user.dir <- normalizePath(Sys.getenv("USERPROFILE"),winslash = "/")
   normalizePath(paste0(user.dir,"/Onedrive/",d),winslash = "/")
+
+}
+
+
+calculate_pulse <- function(x = 1000, mt = F, qr = T, guru = 0.028,rc = 1.05){
+
+  r.base <- x * 0.024
+  r.qr <- ifelse(qr,x * 0.02,0)
+  r.food <- ifelse(mt, x * 0.05,0)
+  r.food <- ifelse(r.food > 100, 100, r.food)
+  r.guru <- x * guru
+  r  <- r.base + r.qr + r.food + r.guru
+
+  x  - r * rc
 
 }

@@ -67,7 +67,7 @@ PAVE_get_atom_count <- function(object, BPPARAM = SnowParam(workers = 6,progress
                nrow(featureDefinitions(xcms.xcms)),",",
                time.cost),
         append = T,
-        file = expand_dir_from_onedrive("Documents/YLF_Lab/Project/2025.10.10.PAVE/data/pave.CN.count.timer.csv")
+        file = get_dir_expand_from_onedrive("Documents/YLF_Lab/Project/2025.10.10.PAVE/data/pave.CN.count.timer.csv")
       )
     }
 
@@ -817,7 +817,7 @@ get_ideal_CN_ratio <- function(C = 10 , N = 2){
   rownames(m) <- c("S12C14N","S12C15N","S13C14N","S13C15N")
 
   if(N==0) m <- m[,c(1,3)]+m[,c(2,4)]
-
+  m <- rbind(m,Blank = 0)
   return(m)
 }
 

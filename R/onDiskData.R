@@ -1,4 +1,3 @@
-
 setOldClass("object_size")
 setClass("onDiskData",
          slots = list("path" = "character",
