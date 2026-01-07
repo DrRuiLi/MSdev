@@ -983,6 +983,7 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
   matched.df <- match_mz_foverlaps(mz1 = xcms.featuredef$mzmed,
                             mz2 = cp.adduct$chemform.adduct.mz,
                             ppm = mz.ppm)
+  matched.df2 <- cbind( matched.df,cp.adduct[matched.df$ion2,])
   xcms.featuredef$candidate.id <- sapply(1:nrow(xcms.featuredef),function(i){
     idx <- matched.df$ion2[matched.df$ion1 == i]
     cp.adduct$compound_id[as.numeric(idx)]
@@ -1011,6 +1012,22 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
                                        cpdb,
                                        sp.ms2,
                                        ...){
+
+
+
+  ### no ms2
+  {
+    if (length(sp.ms2)==0) {
+      xcms.fdf <- featureDefinitions(xcms.xcms)
+      xcms.fdf$score.ms2 <- lapply(xcms.fdf$candidate.id,function(x){
+        rep(0,length(x))
+      })
+
+      featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
+      return(xcms.xcms)
+    }
+
+  }
 
 
   ### load spectra database
@@ -1213,6 +1230,9 @@ get_xcms_feature_all_candidate <- function(xcms.xcms){
 xcms_get_feature_annotation <- function(xcms.xcms,
                                         cpdb,
                                         cpdb.keys = c("name","formula","smiles"),
+                                        weight_mz = 0.1,
+                                        weight_ms2 = 0.7,
+                                        weight_isopattern =0.2,
                                         ...){
 
 
@@ -1221,33 +1241,44 @@ xcms_get_feature_annotation <- function(xcms.xcms,
   xcms.fdf$adduct <- NA
   xcms.fdf$score <- NA
   xcms.fdf$mz_ref <- NA
-  xcms.fdf$rt_ref <- NA
-  for (i in 1:nrow(xcms.fdf)) {
 
 
-   # message_with_time(i)
-    this.mz <- xcms.fdf$mzmed[i]
-    candi.compound_id <- xcms.fdf$candidate.id[[i]]
-    candi.mz <- xcms.fdf$candidate.mz[[i]]
-    candi.adduct <- xcms.fdf$candidate.adduct[[i]]
-    candi.score.ms2 <- xcms.fdf$score.ms2[[i]]
-    candi.score.isopattern <- xcms.fdf$score.isopattern[[i]]
-    candi.score.isopattern[is.nan(candi.score.isopattern)|is.na(candi.score.isopattern)] <-0
-    if (length(candi.compound_id)==0) next
 
-    ### score
-    #score.mz <- abs(candi.mz-this.mz)
-    #score.mz <- 1-score.mz/max(score.mz)
-    score.ms2 <- candi.score.ms2
-    score.isopattern <- candi.score.isopattern
-    score <- score.isopattern * 0.2 + score.ms2*0.8
-    selected <- which.max(score)
+  {
+    xcms.candi.dt <-lapply(which(lengths(xcms.fdf$candidate.id)!=0), function(i) {
+        data.table(
+          feature_id = xcms.fdf$feature_id[i],
+          mz = xcms.fdf$mzmed[i],
+          candidate.id = xcms.fdf$candidate.id[[i]],
+          candidate.adduct = xcms.fdf$candidate.adduct[[i]],
+          candidate.formula = xcms.fdf$candidate.formula[[i]],
+          candidate.mz = xcms.fdf$candidate.mz[[i]],
+          score.ms2 =  xcms.fdf$score.ms2[[i]],
+          score.isopattern = xcms.fdf$score.isopattern[[i]]
+        )
+      }) %>% rbindlist
+    xcms.candi.dt <- xcms.candi.dt[
+      ,score.isopattern:= ifelse(is.na(score.isopattern),0,score.isopattern)][
+        ,score.isopattern:= ifelse(is.nan(score.isopattern),0,score.isopattern)][
+          ,score.mz := 1- abs(candidate.mz-mz)/mz *1e6 / 20 ][ ### (1-ppm/10)
+            , score.mz := ifelse(score.mz < 0, 0, score.mz)][
+              ,score := score.isopattern * weight_isopattern + score.ms2*weight_ms2+score.mz * weight_mz]
 
-    ### info
-    xcms.fdf$compound_id[i] <- candi.compound_id[selected]
-    xcms.fdf$adduct[i] <- candi.adduct[selected]
-    xcms.fdf$score[i] <- score[selected]
-    xcms.fdf$mz_ref[i] <- candi.mz[selected]
+    xcms.candi.dt.max <- xcms.candi.dt[, .SD[which.max(score)], by = feature_id]
+    data.table::setnames(xcms.candi.dt.max,
+                          old =  c("candidate.id","candidate.adduct","candidate.formula","candidate.mz"),
+                          new = c("compound_id","adduct","formula","mz_ref") )
+    data.table::setkey(xcms.candi.dt.max,feature_id)
+
+    xcms.candi <- xcms.candi.dt.max[xcms.fdf$feature_id]
+    xcms.fdf$compound_id <- xcms.candi$compound_id
+    xcms.fdf$adduct <- xcms.candi$adduct
+    xcms.fdf$formula <- xcms.candi$formula
+    xcms.fdf$score <- xcms.candi$score
+    xcms.fdf$mz_ref <- xcms.candi$mz_ref
+    xcms.fdf$score.ms2 <- xcms.candi$score.ms2
+    xcms.fdf$score.isopattern <- xcms.candi$score.isopattern
+    xcms.fdf$score.mz <- xcms.candi$score.mz
 
   }
 
@@ -1801,6 +1832,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
                                 findChromPeaks = xcms::CentWaveParam(),
                                 groupChromPeaks = xcms::PeakDensityParam(sampleGroups = "A")
                               ),
+                              adjustRT = T,
                               BPPARAM  = BiocParallel::SnowParam(workers = 4,progressbar = T),
                               ...){
 
@@ -1827,29 +1859,34 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   #                                    BPPARAM  = BiocParallel::SerialParam(progressbar = T))
 
   ### adujust RT
-  message_with_time(" Adjust RT...")
-  peaksGroup <- Biobase::pData(xcms.xcms)$sample.type
-  peak.density.param <- xcms::PeakDensityParam(sampleGroups = peaksGroup,
-                                         minFraction = 0.4,bw = 30,
-                                         binSize = 0.015)
-  xcms.xcms <- xcms::groupChromPeaks(xcms.xcms,param = peak.density.param)
+  if(adjustRT){
+
+    message_with_time(" Adjust RT...")
+    peaksGroup <- Biobase::pData(xcms.xcms)$sample.type
+    peak.density.param <- xcms::PeakDensityParam(sampleGroups = peaksGroup,
+                                                 minFraction = 0.4,bw = 30,
+                                                 binSize = 0.015)
+    xcms.xcms <- xcms::groupChromPeaks(xcms.xcms,param = peak.density.param)
 
 
 
-  if (length(sampleNames(xcms.xcms))>1) {
-    if (sum(peaksGroup=="QC") <2 ) {
-      rt.adjust.param <- xcms::PeakGroupsParam(minFraction = 0.4,
-                                         #subset = which(peaksGroup == "QC"),
-                                         subsetAdjust = "previous",span = 0.4)
-      xcms.xcms <- xcms::adjustRtime(xcms.xcms,param = rt.adjust.param)
-    }else{
-      ### adjust based on QC
-      rt.adjust.param <- xcms::PeakGroupsParam(minFraction = 0.4,
-                                          subset = which(peaksGroup == "QC"),
-                                          subsetAdjust = "average",span = 0.4)
-      xcms.xcms <- xcms::adjustRtime(xcms.xcms,param = rt.adjust.param)
+    if (length(sampleNames(xcms.xcms))>1) {
+      if (sum(peaksGroup=="QC") <2 ) {
+        rt.adjust.param <- xcms::PeakGroupsParam(minFraction = 0.4,
+                                                 #subset = which(peaksGroup == "QC"),
+                                                 subsetAdjust = "previous",span = 0.4)
+        xcms.xcms <- xcms::adjustRtime(xcms.xcms,param = rt.adjust.param)
+      }else{
+        ### adjust based on QC
+        rt.adjust.param <- xcms::PeakGroupsParam(minFraction = 0.4,
+                                                 subset = which(peaksGroup == "QC"),
+                                                 subsetAdjust = "average",span = 0.4)
+        xcms.xcms <- xcms::adjustRtime(xcms.xcms,param = rt.adjust.param)
+      }
     }
+
   }
+
 
 
   ### group peaks
