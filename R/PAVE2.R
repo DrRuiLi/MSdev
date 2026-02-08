@@ -156,15 +156,25 @@ PAVE2 <- function(object){
     ### RT and mz error evaluation
     if(T){
 
-      # quantile(cn.net.hit$mz.ppm,c(0,0.5,0.95,0.99,0.999))
-      # max(abs(median(cn.net.hit$mz.ppm) +  mad(cn.net.hit$mz.ppm) * qnorm(0.99) * c(-1,1)))
       ppm.dyn <- mad(cn.net.hit$mz.ppm) * qnorm(0.99)
       rt.tol.dyn <- mad(cn.net.hit$rt.diff) * qnorm(0.99)
 
       cn.net.eval <- cn.net%>%
         dplyr::mutate(cn.hit = ion1%in% cn.net.hit$ion1)%>%
         dplyr::arrange(cn.hit)
+      data.table::setDT(cn.net.eval)
+      cn.net.eval[(cn.hit),mz.ppm]
       #cn.net.eval <- cn.net.eval[1:1000000,]
+      ppm.fit <- distinct_norm_from_random_backgroud(cn.net.eval[(cn.hit),mz.ppm],
+                                                     cn.net.eval[!(cn.hit),mz.ppm])
+      ppm.dyn <- ppm.fit$sd * qnorm(0.99)
+      rt.fit <- distinct_norm_from_random_backgroud(cn.net.eval[(cn.hit),rt.diff],
+                                                     cn.net.eval[!(cn.hit),rt.diff])
+      rt.tol.dyn <- rt.fit$sd * qnorm(0.99)
+
+      object@statData$PAVE2_temp[[pol]][["mz.dyn"]] <- ppm.fit
+      object@statData$PAVE2_temp[[pol]][["rt.dyn"]] <- rt.fit
+
       cols <- c("TRUE" = "red","FALSE" = "#888888")
 
       p <- ggplot() +
@@ -172,64 +182,82 @@ PAVE2 <- function(object){
           geom_point(data = cn.net.eval,
                    aes(x = mz.ppm, y = rt.diff,
                        col = cn.hit),
-                   pch = 16,alpha = 0.5,size = 0.5),
+                   pch = 16,alpha = 0.2,size = 0.02),
           dpi = 300)+
         scale_color_manual(values = cols)+
         labs(x = "mz error (ppm)",y = "rt shift (s)")+
         #coord_fixed(ppm/rt.tol)+
-        theme_bw()+
+        theme_bw(base_size = 6)+
         theme(legend.position = "none")
       p.r <- ggplot(cn.net.eval)+
         geom_histogram(aes(y = rt.diff,x = after_stat(density), fill = cn.hit),
                        position = "dodge",#stat = "density",
                        bins = 20,col = "white")+
-        stat_ecdf(aes(y = rt.diff, col = cn.hit),linewidth = 1)+
-        geom_hline(yintercept = rt.tol.dyn*c(-1,1),col = "red",linewidth = 1 ,lty = "dashed")+
-        annotate(geom = "text",x = 0.5, y = rt.tol/2,label = str_digit(rt.tol.dyn),size = 5,col = "red",check_overlap = T)+
+        stat_ecdf(aes(y = rt.diff, col = cn.hit),linewidth = 0.5)+
+        geom_hline(yintercept = rt.tol.dyn*c(-1,1),col = "red",linewidth = 0.5 ,lty = "dashed")+
+        annotate(geom = "text",x = 0.5, y = rt.tol/2,label = str_digit(rt.tol.dyn),
+                 size = 2,col = "red",check_overlap = T)+
         scale_fill_manual(values =cols)+
         scale_color_manual(values =cols)+
         scale_x_continuous(expand = c(0,0),breaks = c(0,1))+
         labs(x = NULL, y = NULL)+
         theme_classic()+
+        theme_classic(base_size = 6)+
         theme(axis.text.y = element_blank(),
-              legend.position = "none",
-              axis.ticks = element_blank())
+              legend.position = "inside",
+              legend.position.inside = c(0.5,0.9),
+              axis.ticks = element_blank(),
+              legend.title = element_text(size = 5,face = "bold"),
+              legend.text = element_text(size = 4),
+              legend.background = element_blank(),
+              legend.key.size =unit(0.1,"inch"),
+              legend.key.spacing = unit(0.02,"inch"),
+              legend.title.position = "top")
 
       p.u <- ggplot(cn.net.eval)+
         geom_histogram(aes(x = mz.ppm,y = after_stat(density), fill = cn.hit),
                        position = "dodge",#stat = "density",
                        bins = 20,col = "white")+
-        stat_ecdf(aes(x = mz.ppm, col = cn.hit),linewidth = 1,show.legend = F)+
-        geom_vline(xintercept = ppm.dyn*c(-1,1),col = "red",linewidth = 1 ,lty = "dashed")+
-        annotate(geom = "text",x = -ppm/2, y = 0.8,label = str_digit(ppm.dyn),size = 5,col = "red",check_overlap = T)+
+        stat_ecdf(aes(x = mz.ppm, col = cn.hit),linewidth = 0.5,show.legend = F)+
+        geom_vline(xintercept = ppm.dyn*c(-1,1),col = "red",linewidth = 0.5 ,lty = "dashed")+
+        annotate(geom = "text",x = -ppm/2, y = 0.8,label = str_digit(ppm.dyn),
+                 size = 2,col = "red",check_overlap = T)+
         scale_fill_manual(values = cols)+
         scale_color_manual(values =cols)+
         scale_y_continuous(expand = c(0,0),breaks = c(0,1))+
         labs(x = NULL, y = NULL,fill = "CN labeled")+
-        theme_classic()+
+        theme_classic(base_size = 6)+
         theme( legend.position = "none",
                axis.text.x = element_blank(),
-              axis.ticks = element_blank())
+               axis.ticks = element_blank())
 
       p.ur <- ggplot(cn.net.eval)+
         geom_bar(aes( y =  0, fill = cn.hit),position = "stack")+
-        annotate(geom = "text",x = 0, y = 0,size = 5,
+        annotate(geom = "text",x = 0, y = 0,size = 2,
                  label = num2percent(sum(cn.net.eval$cn.hit)/nrow(cn.net.eval)))+
         scale_fill_manual(values =cols,guide = guide_legend(ncol = 1))+
         labs(fill = "CN labeled")+
         coord_polar()+
-        theme_void()+
-        theme(legend.position = "top",
+        theme_void(base_size = 6)+
+        theme(legend.title = element_text(size = 5,face = "bold"),
+              legend.text = element_text(size = 5),
+              legend.key.size =unit(0.1,"inch"),
+              legend.key.spacing = unit(0.02,"inch"),
+              legend.position = "none",
               legend.title.position = "top")
       #p.ur
       p.all <- p.u+p.ur+p+p.r+
         plot_layout(heights  = c(0.2,0.8),widths = c(0.8,0.2))+
-        plot_annotation(title = paste0(get_MSdev_instrument(object)," ",pol))
+        plot_annotation(title = paste0(get_MSdev_instrument(object)," ",pol))&
+        theme(
+          plot.title = element_text(size = 6),
+          plot.tag.position = "topleft",
+          plot.margin = margin(t = 1, r = 1 , b = 1, l = 1 ))
       #open_plot_win(p.all,width = 10,height = 10)
       fo <- paste0(object@projectInfo$MSdevFile,".pave.error.pdf")
       fo <- paste0( "C:\\Users\\91879\\OneDrive\\Documents\\YLF_Lab\\Project\\2025.10.10.PAVE\\result/dynamic error/",
                     basename(fo) )
-      export_graph2pdf(p.all,file_path = fo,width = 10,height = 10,append = i.pol)
+      export_graph2pdf(p.all,file_path = fo,width = 3,height = 3,append = i.pol)
 
 
 
@@ -697,6 +725,16 @@ PAVE2 <- function(object){
     }
 
 
+    ### formula assign
+    {
+
+
+
+
+
+    }
+
+
     object@statData$PAVE2[[pol]] <- cn.peaks.annotation.df
 
 
@@ -714,4 +752,59 @@ PAVE2 <- function(object){
 }
 
 
+distinct_norm_from_random_backgroud <- function(
+    x_norm,x_random){
 
+
+  bg_kde <- density(x_random, n = 1e5)
+
+  f_bg <- function(x) {
+    approx(bg_kde$x, bg_kde$y, xout = x,
+           rule = 2, ties = mean)$y
+  }
+
+  fit_bg_norm_mixture <- function(
+    x,
+    f_bg,
+    max_iter = 1e3,
+    tol = 1e-6
+  ) {
+    n <- length(x)
+
+    pi  <- 0.2
+    mu  <- mean(x)
+    sd  <- sd(x)
+
+    loglik_old <- -Inf
+
+    for (iter in seq_len(max_iter)) {
+
+      bg_d <- f_bg(x)
+      bg_d[bg_d <= 0] <- min(bg_d[bg_d > 0]) * 1e-3
+
+      norm_d <- dnorm(x, mu, sd)
+
+      w <- pi * norm_d / ((1 - pi) * bg_d + pi * norm_d)
+
+      pi <- mean(w)
+      mu <- sum(w * x) / sum(w)
+      sd <- sqrt(sum(w * (x - mu)^2) / sum(w))
+
+      loglik <- sum(log((1 - pi) * bg_d + pi * norm_d))
+      if (abs(loglik - loglik_old) < tol) break
+      loglik_old <- loglik
+    }
+
+    list(
+      pi = pi,
+      mu = mu,
+      sd = sd,
+      posterior = w,
+      iter = iter
+    )
+  }
+
+  fit <- fit_bg_norm_mixture(x_norm, f_bg)
+  return(fit)
+
+}
