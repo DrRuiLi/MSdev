@@ -312,7 +312,7 @@ get_MSdev_param <- function(object){
                             prefilter = c(5,1000),
                             verboseColumns=T,
                             withWave = T)
-    gpp <- xcms::PeakDensityParam("A",bw = 10,
+    gpp <- xcms::PeakDensityParam("A",bw = 5,
                             minFraction = 0.3,binSize = 0.002)
 
     ### temp for Astral
@@ -390,7 +390,7 @@ get_MSdev_xcms_param_by_exp <- function(object){
   ### group peaks param
   {
     gpp <- xcms::PeakDensityParam(sampleGroups = "A",
-                            bw = 10,
+                            bw = 5,
                             minFraction = 0.6,
                             binSize = 0.015)
 
@@ -1809,4 +1809,18 @@ get_MSdev_instrument <- function(object){
   paste(manufacturer,model)
 
 
+}
+
+
+MSdev_get_feature_wmean <- function(object){
+
+  for (i.pol in 0:1) {
+    pol <- ifelse(i.pol==0,"Negative","Positive")
+    polarity.tag <- paste0(pol,"MS1")
+    xcms.xcms <- object@xcmsData[[polarity.tag]]
+    xcms.xcms <- xcms_get_feature_wmean(xcms.xcms)
+    xcms.xcms -> object@xcmsData[[polarity.tag]]
+  }
+
+  return(object)
 }

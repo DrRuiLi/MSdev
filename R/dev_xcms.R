@@ -39,6 +39,14 @@ get_features_from_xcms <- function(xcms.xcms,missing = NA){
 }
 
 
+#' @describeIn xcms_extenstion extract feature data from xcms, convert to SummarizedExperiment
+#' @title get_xcms_feature_se
+#' @param xcms.xcms xcms object
+#' @param missing how missing values should be reported. Allowed values are NA (the default), a numeric or missing = "rowmin_half". The latter replaces any NA with half of the row's minimal (non-missing) value.
+#'
+#' @returns SummarizedExperiment
+#' @export
+#'
 get_xcms_feature_se <- function(xcms.xcms,...){
 
   pol <- c("0" = "neg","1" = "pos")
@@ -2633,4 +2641,30 @@ plotly_xcms_feature_group <- function(xcms.xcms){
   plotly::plot_ly(xcms.fdf)%>%
     add_markers(x = ~rtmed, y = ~mzmed, color = ~feature_group)
 
+}
+
+
+xcms_get_feature_wmean <- function(xcms.xcms){
+
+  xcms.fdf <- featureDefinitions(xcms.xcms)
+  xcms.pks <- chromPeaks(xcms.xcms)
+
+  wrt <- sapply(xcms.fdf$peakidx,function(x){
+
+    x.rt <- xcms.pks[x,"rt"]
+    x.int <- xcms.pks[ x, "maxo"]
+    weighted.mean(x.rt,x.int)
+  })
+
+  wmz <- sapply(xcms.fdf$peakidx,function(x){
+
+    x.mz <- xcms.pks[x,"mz"]
+    x.int <- xcms.pks[ x, "maxo"]
+    weighted.mean(x.mz,x.int)
+  })
+
+  xcms.fdf$mzmed <- wmz
+  xcms.fdf$rtmed <- wrt
+  xcms.fdf -> featureDefinitions(xcms.xcms)
+  return(xcms.xcms)
 }
