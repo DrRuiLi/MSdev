@@ -405,6 +405,7 @@ Molecule_igraph_vis_format <- function(Molecule_igraph){
 
   edata(Molecule_igraph)  <- edata(Molecule_igraph)%>%
     dplyr::mutate(smooth = FALSE,
+                  #arrows = FALSE,
                   width = 10*bond_type)
 
   return(Molecule_igraph)

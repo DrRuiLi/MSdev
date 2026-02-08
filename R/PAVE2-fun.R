@@ -111,7 +111,8 @@ get_adduct_mass_diff <- function(polarity = 0,direction = 1){
   pol <- ifelse(polarity==1,"positive","negative")
 
   adduct.table <- MSCC::adduct.table%>%
-    dplyr::filter( Ion_mode == pol)%>%
+    dplyr::filter( Ion_mode == pol,
+                   Multi  == 1, abs(Charge     )==1)%>%
     dplyr::mutate(m_c = Multi/Charge)
 
 

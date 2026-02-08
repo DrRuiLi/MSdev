@@ -1550,7 +1550,7 @@ open_plot_win(p,10,10)
 {
 
   dur <- 60*6000
-  act.time <- 25
+  act.time <- 30
   bh.cd <- 140
   gt.cd <- 280
   gb.cd <- 105
@@ -1567,8 +1567,8 @@ open_plot_win(p,10,10)
       gt =   time %in% gt.time,
       gb =   time %in% gb.time,
 
-      bh = ifelse(bh,2.5,1),
-      gt = ifelse(gt,8 * 1.8,1),
+      bh = ifelse(bh,11,1),
+      gt = ifelse(gt,9.9 * 2,1),
       gb = ifelse(gb,2.2,1),
       tt = gt*bh*gb
       )%>%
@@ -2185,8 +2185,242 @@ open_plot_win(p,10,10)
   obj <- load_demo()
   a <- MSdev_annotation(obj)
 
-  obj <- MSdev_load("d:/data/2025.12.26.PAVE2/PAVE_With_Params/OE480_480k_ppm10_sn10.rdata")
-  plot_xcms_adjustedRT(obj@xcmsData$PositiveMS1)
-  plot_xcms_adjustedRT(obj@xcmsData$NegativeMS1)
+  obj <- MSdev_load("d:/data/2025.12.26.PAVE2/PAVE_With_Params/remove/OE480_240k_ppm10_sn10.rdata")
+  xcms.xcms <- obj@xcmsData$PositiveMS1
+  #xcms.xcms <- adjustRtime(xcms.xcms,param = PeakGroupsParam())
+  plot_xcms_adjustedRT(xcms.xcms)->p
+  open_plot_win(p,5,3)
+
+
+}
+# Fri Jan  9 12:57:04 2026 PAVE Nutrition------------------------------
+{
+  library(ComplexHeatmap)
+  obj <- MSdev_load("d:/data/2026.01.07.PAVE.Nutrition/MSdev_2026_01_07.Rdata")
+  obj <- MSdev_checkSampleInfo(obj)
+
+  xcms.se <- get_xcms_feature_se(obj@xcmsData$NegativeMS1,missing  = "rowmin_half")
+  pave.res <- obj@statData$PAVE2$Negative%>%
+    dplyr::filter(pave_annotation == "CN_metabolite",
+                  pave_pattern == "C0N0")%>%
+    dplyr::mutate(N.count = str_extract(pave_formula,"N[0-9]+"),
+                  N.count = str_extract_num(N.count),
+                  N.count = case_when(N.count >=5~"N >=5",
+                                      T~paste0("N",N.count))
+                  )
+
+  xcms.se <- se_adjuset_by_weight(xcms.se)
+  pave.se <- xcms.se[as.numeric(pave.res$name),]
+  pave.se <- pave.se[,grepl(x=pave.se$group,pattern = "NS")]
+
+  hm <- assay(pave.se)
+  #hm <- hm %>% t %>% scale()%>%t
+  hm <- (hm/ rowMeans(hm[,2:3]))%>%log2()
+  hm[is.na(hm)] <- 0
+  row.sd <- apply(hm,1,sd)
+  #con.sd <- apply(hm[,1:3],1,sd)
+  hm <- hm[row.sd > 0 ,]
+  pave.res.hm <- pave.res[row.sd > 0,]
+
+  ht <- Heatmap(hm,
+                name = "aaa",
+          col = colramp(breaks = c(-2,0,2),
+                       colors = c("#2A7AED","white","#E33F32")),
+          show_row_names = F,
+          show_row_dend = F,
+          show_column_names = F,
+          column_split = pave.se$group,
+          row_split = factor(pave.res.hm$N.count,levels =c( paste0("N",0:10),"N >=5")),
+          row_title_rot = 0,
+          column_title = c("Control","+AA/uracil/adenine","+leucine","+threonine",
+                           "+trptophan","+adenine","+uracil","+acetate"),
+          heatmap_legend_param = list(
+            title = "Log2(FC)\nto Control"
+          ),
+          cluster_row_slices = F,
+          cluster_columns = F)
+  draw(ht)
+
+  for (i in 1:6) {
+    for (j in 1:8) {
+      decorate_heatmap_body("aaa", row_slice = i,column_slice = j, {
+        grid.rect(gp = gpar(fill = NA, col = "black", lwd = 1.5))
+      })
+    }
+  }
+
+  export::graph2png(file = "d:/temp/pave.nutrition.pos.png",width = 15,height = 8)
+  export::graph2png(file = "d:/temp/pave.nutrition.neg.png",width = 15,height = 8)
+
+}
+# Tue Jan 20 13:15:29 2026 ------------------------------
+{
+
+  files <- dir("d:/data/2026.01.19.MHR/data/",full.names = T)
+
+  a <- file.info(files)%>%
+    rownames_to_column("file.path")%>%
+    dplyr::filter(! isdir )%>%
+    dplyr::mutate(file.new = gsub(" \\(2\\)",replacement  = "neg",x = file.path))
+  file.rename(a$file.path,a$file.new)
+}
+
+# Fri Jan 23 13:38:41 2026 ------------------------------
+{
+  library(IRanges)
+
+  demo.file <- get_dir_expand_from_onedrive(
+    "Documents/YLF_Lab/Project/2025.10.10.PAVE/data/demo/pave.demo.rdata")
+  demo.data.set <- MSdev_load(demo.file)
+  xcms.net <- get_xcms_feature_connect(demo.data.set@xcmsData$PositiveMS1,rt.tol = 10)
+  scale_factor <- 1e6
+  ppm_tol <- 10
+  mz.real <- xcms.net$mz.diff
+  mz.space <- IRanges(start = 0,end = 1000 * scale_factor)
+
+  real_ranges <- IRanges(
+    start = round((mz.real - mz.real * ppm_tol / 1e6) * scale_factor),
+    end   = round((mz.real + mz.real * ppm_tol / 1e6) * scale_factor)
+  )
+  real_ranges <- merged_ranges <- reduce(real_ranges)
+
+  cn.mass.diff <- get_CN_mass_diff_table(C_max = 250,N_max = 250)
+  cn.mz <- cn.mass.diff$mass_diff
+  cn.range <- IRanges(
+    start = round((cn.mz - cn.mz * ppm_tol / 1e6) * scale_factor),
+    end   = round((cn.mz + cn.mz * ppm_tol / 1e6) * scale_factor)
+  )%>%reduce()
+  sum(width(cn.range))/9e8
+  # 计算交集
+  overlap_ranges <- pintersect(mz.space[query_idx], real_ranges[subject_idx])
+  overlap_ranges
+
+
+
+  {
+
+    mz.diff <- xcms.net$mz.diff
+    mz.diff <- mz.diff[mz.diff > 0 & mz.diff< 10]
+    mz.diff.ir <- IRanges(start = (mz.diff - mz.diff * ppm * 1e-6) * mz.scale,
+                          end = (mz.diff + mz.diff * ppm * 1e-6) * mz.scale )
+    ir <- sort(mz.diff.ir)
+    reduce(ir)
+    cv <- coverage(ir)
+
+
+
+  }
+
+
+
+
+}
+
+# Mon Feb  2 16:15:19 2026 signal discrimination------------------------------
+{
+
+
+  {
+    set.seed(123)
+
+    # ---------- 参数 ----------
+    n_bg   <- 8000
+    n_red  <- 8000
+    pi_sig <- 0.4
+
+    mu_sig <- 5
+    sd_sig <- 0.4
+
+    # ---------- 灰色：纯随机背景 ----------
+    gray <- runif(n_bg, min = 0, max = 10)
+
+    # ---------- 红色：背景 + 正态 ----------
+    is_signal <- rbinom(n_red, 1, pi_sig)
+
+    red <- ifelse(
+      is_signal == 1,
+      rnorm(n_red, mu_sig, sd_sig),
+      runif(n_red, min = 0, max = 10)
+    )
+
+    # 截断到区间（避免正态跑飞）
+    red <- red[red >= 0 & red <= 10]
+    plot.ecdf(red)
+    plot.ecdf(gray)
+  }
+
+
+  {
+
+    bg_kde <- density(gray, n = 4096)
+
+    f_bg <- function(x) {
+      approx(bg_kde$x, bg_kde$y, xout = x,
+             rule = 2, ties = mean)$y
+    }
+
+
+    fit_bg_norm_mixture <- function(
+    x,
+    f_bg,
+    max_iter = 200,
+    tol = 1e-6
+    ) {
+      n <- length(x)
+
+      pi  <- 0.2
+      mu  <- mean(x)
+      sd  <- sd(x)
+
+      loglik_old <- -Inf
+
+      for (iter in seq_len(max_iter)) {
+
+        bg_d <- f_bg(x)
+        bg_d[bg_d <= 0] <- min(bg_d[bg_d > 0]) * 1e-3
+
+        norm_d <- dnorm(x, mu, sd)
+
+        w <- pi * norm_d / ((1 - pi) * bg_d + pi * norm_d)
+
+        pi <- mean(w)
+        mu <- sum(w * x) / sum(w)
+        sd <- sqrt(sum(w * (x - mu)^2) / sum(w))
+
+        loglik <- sum(log((1 - pi) * bg_d + pi * norm_d))
+        if (abs(loglik - loglik_old) < tol) break
+        loglik_old <- loglik
+      }
+
+      list(
+        pi = pi,
+        mu = mu,
+        sd = sd,
+        posterior = w,
+        iter = iter
+      )
+    }
+
+    fit <- fit_bg_norm_mixture(red, f_bg,max_iter = 100000,tol = 100)
+
+    fit$pi
+    fit$mu
+    fit$sd
+
+
+
+    plot.ecdf(red)
+    abline(v = c( fit$mu-2 * fit$sd,fit$mu+2 * fit$sd))
+
+
+  }
+
+
+
+  fit <- fit_bg_norm_mixture(hit.ppm , f_bg,max_iter = 100000,tol = 100)
+
+}
+# Thu Feb  5 22:24:29 2026 ------------------------------
+{
 
 }

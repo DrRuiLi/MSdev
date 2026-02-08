@@ -320,3 +320,19 @@ heatmap_set_size <- function(hm,width  = 5,height= 5){
 
   return(hm)
 }
+
+
+get_ggplot_from_heatmap <- function(hm){
+  wrap_elements(grid.grabExpr(draw(hm)))
+}
+
+ggplot_irange <- function(IR, scale = 1e-6){
+
+  ir.data <- as.data.frame(IR)
+  ir.data <- (ir.data *  scale)%>%
+    dplyr::mutate(no = 1:n())
+
+  ggplot(ir.data)+
+    geom_segment( aes(x = start,xend = end, y = no,yend = no) )
+
+}

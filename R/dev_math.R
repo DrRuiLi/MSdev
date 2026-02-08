@@ -605,3 +605,13 @@ ttwdfs <- function(a,p){
   }
   a/(1-p)
 }
+
+irange.intersect <- function(IR1,IR2){
+
+  hits <- IRanges::findOverlaps(IR1,IR2)
+  ov <- IRanges::pintersect(
+    IR1[queryHits(hits)],
+    IR2[subjectHits(hits)]
+  )
+  IRanges::reduce(ov)
+}

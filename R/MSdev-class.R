@@ -86,6 +86,7 @@ MSdev <- function(rawDataDir =
         dplyr::case_when(any(grepl(pattern = ".wiff$", x = rowDataFile))~".wiff",
                          any(grepl(pattern = ".raw$", x = rowDataFile))~".raw",
                          any(grepl(pattern = ".mzXML$", x = rowDataFile))~".mzXML",
+                         any(grepl(pattern = ".mzML$", x = rowDataFile))~".mzML",
                          any(grepl(pattern = ".lcd$", x = rowDataFile))~".lcd")
       rowDataFile <- dir(path = .Object@projectInfo$rawDataDir,
                          pattern =paste0(.Object@projectInfo$rawDataFormat,"$") ,

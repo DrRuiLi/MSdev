@@ -104,7 +104,7 @@ setGeneric("open_dir",
 
 setMethod("open_dir",signature = "MSdev",
           definition = function(x){
-            open_dir(x@projectInfo$projectDir)
+            open_dir(x@projectInfo$MSdevFile)
           })
 
 open_dir_ActivedFilePath <- function(){
@@ -378,7 +378,7 @@ get_dir_expand_from_onedrive <- function(d = "."){
 }
 
 
-calculate_pulse <- function(x = 1000, mt = F, qr = T, guru = 0.028,rc = 1.05){
+calculate_pulse <- function(x = 1000, mt = F, qr = T, guru = 0.028,rc = 1){
 
   r.base <- x * 0.024
   r.qr <- ifelse(qr,x * 0.02,0)

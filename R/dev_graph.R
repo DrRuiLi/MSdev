@@ -279,10 +279,11 @@ vis_pave_igraph <- function(ig){
   vis_igraph(ig)%>%
     visNetwork::visEdges(
       smooth = F,
-      length = 300,
+      length = 240,
       font = list(
        align = "top"
-      ))
+      ))%>%
+    visPhysics(enabled = FALSE)
 }
 
 igraph_add_vcolor<- function(ig,v,color){
