@@ -50,7 +50,7 @@ groupStringFactor <- function(x){
 
   ### letter
   x.new <- c(x.con,sort(x.other))
-  factor(x,levels = rev(unique(x.new)))
+  factor(x,levels = (unique(x.new)))
 }
 
 
@@ -189,4 +189,22 @@ num2percent <- function(x,digit = 2){
   paste0(str_digit(x*100,digit),"%")
 
 
+}
+
+
+str_digit <- function(x,digit = 2){
+
+  sprintf(paste0("%.",digit,"f"), x )
+}
+
+
+str_normalize_name <- function(x) {
+
+  x  %>%
+    stringr::str_to_lower()  %>%
+    #stringr::str_replace_all(pattern = "\\(.*?\\)",replacement =  " " )  %>% ## remove all char in ()
+    stringr::str_replace_all(pattern = "\\b(reduced|oxidized|oxidised|l|d)\\b", replacement = " ")  %>%
+    stringr::str_replace_all(pattern = "[^a-z0-9 ]", replacement = " ")  %>%
+    stringr::str_replace_all(pattern = "\\s+", replacement = " ")  %>%
+    trimws()
 }
