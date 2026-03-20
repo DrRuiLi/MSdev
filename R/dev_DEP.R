@@ -506,7 +506,7 @@ DEP.plot.lfc.lipid.class <- function(data.se,
   }
 
   data("lipid.classification",package = "MSdb" )
-  plot.data <- DEP::plot_volcano(data.se,contrast,plot = F,adjusted = p.adjust )%>%
+  plot.data <- DEP::plot_volcano(data.se,contrast,plot = F )%>%
     dplyr::mutate(diff = case_when(log2_fold_change > 0 & significant~ "up",
                                    log2_fold_change < 0 & significant~ "down",
                                    T~ "no"),
@@ -595,6 +595,54 @@ DEP.plot.lfc.lipid.class <- function(data.se,
 }
 
 
+DEP_plot_lipid_change_ratio <- function(data.se,
+                                        contrast = DEP_list_contrast(data.se )[1]){
+
+
+  data("lipid.classification",package = "MSdb" )
+
+  plot.data <- DEP_get_diff_table(data.se,contrast = contrast,keep.all = T)%>%
+    dplyr::left_join(lipid.classification,by = "Lipid_subclass" )%>%
+    dplyr::mutate(
+      change = case_when(
+        significant&log2_fold_change >0 ~ "UP",
+        significant&log2_fold_change <0 ~ "DOWN",
+        T ~ "No Change"
+      )
+    )%>%
+    dplyr::group_by(Lipid_subclass)%>%
+    dplyr::mutate(sig.ratio = sum(significant)/n())%>%
+    dplyr::ungroup()%>%
+    dplyr::count(Lipid_subclass,change,sig.ratio)%>%
+    dplyr::group_by(Lipid_subclass)%>%
+    dplyr::mutate(ratio = n/sum(n),
+                  total = sum(n)
+                    )%>%
+    dplyr::ungroup()%>%
+    dplyr::arrange(-total)%>%
+    dplyr::mutate(Lipid_subclass = factor(Lipid_subclass,levels = rev(unique(Lipid_subclass) )))
+
+  l <- plot.data%>%
+    dplyr::distinct(Lipid_subclass,.keep_all = T)%>%
+    dplyr::arrange(sig.ratio,total)%>%
+    dplyr::slice_tail(n = 20)%>%
+    dplyr::pull(Lipid_subclass)
+  plot.data <- plot.data%>%
+    dplyr::filter(Lipid_subclass %in% l)
+
+  ggplot(plot.data)+
+    geom_bar(aes(y = Lipid_subclass , x = n,fill = change),
+             stat = "identity", color = "black")+
+    scale_fill_manual(values = c(
+      "DOWN" = "#2C7BB6",      # blue
+      "No Change" = "#BDBDBD", # grey
+      "UP" = "#D7191C"         # red
+    ))+
+    labs(title = contrast,x = "Count", y = "Lipid Subclass",fill = "Change")+
+    theme_bw(base_size = 6)
+
+
+}
 
 #' @describeIn DEP_Style_se plot heatmap
 #' @export
@@ -613,6 +661,7 @@ DEP_plot_heatmap <- function(data.se,
                     as.data.frame()%>%
     dplyr::mutate(row_group = "",
                   row_labels = label)
+  rownames(data.se) <- row.info$name
   if (!is.null(feature_id)) row.info <- row.info[feature_id,,drop = F]
 
   heatmap.matrix <-SummarizedExperiment::assay(data.se[row.info$name,col.info$ID])%>%
@@ -624,7 +673,7 @@ DEP_plot_heatmap <- function(data.se,
   hm <- plotHeatmap(
     heatmap.matrix,
     col.info,row.info,
-    column_title_gp = gpar(fill = get_DEP_se_group_color(data.se),fontsize = 8),
+    column_title_gp = gpar(fill = get_DEP_se_group_color(data.se),fontsize = 12),
     ...
     )
   hm
@@ -959,9 +1008,12 @@ DEP_plot_normalization <- function (se, ...)
 #' @export
 get_DEP_se_group_color <- function(se){
 
+  if(is.null(se$group.color)){
+    se$group.color <- ggsci::pal_aaas()(10)[groupStringFactor(se$group)]
+  }
   x <- setNames(se$group.color,se$group)
   x <- x[!duplicated(x)]
-  x <- x[levels(se$group)]
+  #x <- x[levels(se$group)]
   na.omit(x)
 }
 
