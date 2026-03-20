@@ -342,3 +342,28 @@ vis_cfm_data_trans_net <- function(cfmd){
 
 
 }
+
+
+rotate_nodes_safe <- function(ig, angle_deg) {
+
+  theta <- angle_deg * (pi / 180)
+
+  nodes <- vdata(ig)
+  range_x <- max(nodes$x) - min(nodes$x)
+  range_y <- max(nodes$y) - min(nodes$y)
+  avg_range <- (range_x + range_y) / 2
+
+  cx <- mean(nodes$x)
+  cy <- mean(nodes$y)
+  nodes$x_std <- (nodes$x - cx)
+  nodes$y_std <- (nodes$y - cy)
+
+  nodes$x_new <- nodes$x_std * cos(theta) - nodes$y_std * sin(theta)
+  nodes$y_new <- nodes$x_std * sin(theta) + nodes$y_std * cos(theta)
+
+  nodes$x <- nodes$x_new + cx
+  nodes$y <- nodes$y_new + cy
+
+  nodes -> vdata(ig)
+  return(ig)
+}
