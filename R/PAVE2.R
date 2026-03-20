@@ -302,7 +302,7 @@ PAVE2 <- function(object){
     }
 
 
-    ### graph
+    ### graph of cn seed
     {
 
       cn.seed.formula <- cn.net.hit %>%
@@ -416,7 +416,7 @@ PAVE2 <- function(object){
 
 
     ### graph annotate CN seed, using Loop to determine
-    if(T){
+    if(F){
 
       message_with_time("Graph annotate CN seed")
       cn.seed.ig <- igraph_filter_vertex(xcms.ig,cn.seed)
@@ -728,8 +728,9 @@ PAVE2 <- function(object){
     ### formula assign
     {
 
-
-
+      cpdb_path <- object@projectInfo$CompoundDB_path
+      cpdb <- CompoundDb::CompDb(cpdb_path)
+      xcms.fdf <- featureDefinitions(xcms.xcms)
 
 
     }
