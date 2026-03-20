@@ -82,15 +82,15 @@ get_sdf_igraph <- function(sdf,addH = F){
 
 
 
-#' vis_sdf_igraph
+#' Visualize SDF igraph
 #'
-#' @title Vis Sdf Igraph
-#' @description Vis sdf igraph.
-#' @param sdf.igraph igraph
-#' @param show_id logic
-#' @param highlight vector
+#' @description Creates an interactive visualization of a molecular igraph using visNetwork.
 #'
-#' @return vis html
+#' @param sdf.igraph An igraph object representing the molecule.
+#' @param show_id Logical, whether to show atom IDs as labels (default FALSE).
+#' @param ... Additional arguments passed to visNetwork.
+#'
+#' @return A visNetwork html widget.
 #' @export
 vis_sdf_igraph <- function(sdf.igraph,show_id = F,...){
 

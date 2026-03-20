@@ -168,17 +168,19 @@ analyzePathwayHyperTest <- function(kegg.id = "C00024", filter_Metabolism = F){
 
 }
 
-#' plotPCA
+#' Plot Principal Component Analysis (PCA)
 #'
-#' @title Plot Pca
-#' @description PCA.
-#' @param pca.matrix pca.matrix
-#' @param pca.group pca.group
-#' @param showlabel showlabel
+#' @description Performs PCA and creates a scatter plot with optional ellipses.
 #'
-#' @return ggplot
+#' @param pca.matrix A numeric matrix of features (samples as rows).
+#' @param pca.group Factor or vector indicating group membership for each sample.
+#' @param force_ellipse Logical, whether to force ellipse calculation for groups with few samples.
+#' @param show_ellipse Logical, whether to show confidence ellipses.
+#' @param showlabel Logical, whether to label points with sample names.
+#' @param col Optional named vector of colors for groups.
+#'
+#' @return A ggplot object.
 #' @export
-#'
 
 plot_PCA <- function(pca.matrix,pca.group,
                      force_ellipse = T,
