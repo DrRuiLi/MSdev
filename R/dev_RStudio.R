@@ -11,15 +11,14 @@ setwdActivedFilePath <- function(){
 
 }
 
-#' setRStudioDir
+#' Set RStudio Files Pane Directory
 #'
-#' @title Setrstudiodir
-#' @description SetRStudioDir.
-#' @param path path
+#' @description Navigates the RStudio files pane to the specified directory or the directory of the currently active file.
 #'
-#' @return null
+#' @param path Path to a file or directory. Defaults to the path of the currently active file in the RStudio editor.
+#'
+#' @return NULL (invisibly)
 #' @export
-#'
 setRStudioDir <- function(path = rstudioapi::getSourceEditorContext()$path){
 
   rstudioapi::filesPaneNavigate(path)

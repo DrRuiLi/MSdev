@@ -8,15 +8,16 @@ fella_enrich <- function(cpd_kegg,
   return(fella.fella)
 }
 
-#' fella_igraph
+#' Generate FELLA Enrichment igraph
 #'
-#' @title Fella Igraph
-#' @description Fella igraph.
-#' @param fella.fella
+#' @description Creates an igraph object from FELLA enrichment results, adding enrichment scores and visual attributes.
 #'
-#' @return igraph
+#' @param fella.fella A FELLA enrichment object.
+#' @param p P-value threshold for including nodes (default 0.05).
+#' @param node Maximum number of nodes to include (default 1000).
+#'
+#' @return An igraph object with vertex attributes for enrichment p-values, colors, and types.
 #' @export
-#'
 
 fella_igraph <- function(fella.fella,
                          p = 0.05,
