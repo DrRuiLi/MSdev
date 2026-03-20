@@ -1,11 +1,14 @@
-#' MSIP_start_server
+#' Start MSIP Server
 #'
-#' @title Msip Start Server
-#' @description MSIP start server.
-#' @returns NULL
+#' @description Starts the MSIP server by launching FRP, MSIP, and MFNA processes via system commands.
+#'
+#' @return NULL (invisibly)
 #' @export
 #'
-#' @examples MSIP_start_server()
+#' @examples
+#' \dontrun{
+#' MSIP_start_server()
+#' }
 MSIP_start_server <- function(){
 
 

@@ -114,14 +114,17 @@ get_sdf_formula <- function(sdfs){
   return(sdfs.formula)
 }
 
-#' get_smile_sdf
+#' get_smiles_sdf
 #'
-#' @title Get Smiles Sdf
-#' @description Smiles sdf.
-#' @param smiles  smiles
-#' @param smiles.id NULL
-#'
-#' @return sdf
+#' @title Convert SMILES strings to SDF format
+#' @description Converts one or more SMILES strings to SDF (Structure Data Format) 
+#'   objects using the ChemmineR package. Optionally canonicalizes the structures.
+#'   Uses a precomputed mapping table to replace known SMILES with stored SDFs.
+#' @param smiles Character vector of SMILES strings to convert.
+#' @param smiles.id Optional character vector of IDs to assign to the resulting SDF objects.
+#'   If NULL and `smiles` has names, those names are used; otherwise IDs are generated as "CMP001", etc.
+#' @param canonicalize Logical indicating whether to canonicalize the SDF structures (default: TRUE).
+#' @return An SDFset object (list of SDF objects) containing the molecular structures.
 #' @export
 get_smiles_sdf <- function(smiles,
                            smiles.id = names(smiles),
@@ -310,21 +313,19 @@ get_atom_id_from_parent <- function(parent.sdf.graph,
 }
 
 
-#' get_atom_map
-#'
-#' map atom of two molecular
-#'
-#'
-#' @title Get Atom Map
-#' @description Atom map.
-#' @param sdf.parent sdf
-#' @param sdf.product sdf
-#' @param ig.parent ig
-#' @param ig.product ig
-#' @param return.type string
-#'
-#' @return if prob_matrix, return a matrix, col: atom of product, row: atom of parent
-#' if most_prob, return the vector of most likely map
+#' @title Map atoms between parent and product molecules
+#' @description Performs atom mapping between two molecular structures using maximum common substructure (MCS)
+#'   analysis. Computes probability mappings of atoms from parent to product, accounting for ring differences
+#'   and bond type similarities.
+#' @param sdf.parent An SDF object representing the parent molecule.
+#' @param sdf.product An SDF object representing the product molecule.
+#' @param ig.parent An igraph object representing the parent molecule's molecular graph. If NULL, it is computed from `sdf.parent`.
+#' @param ig.product An igraph object representing the product molecule's molecular graph. If NULL, it is computed from `sdf.product`.
+#' @param iso_ele Character string specifying the isotope element to consider for mapping (default: "[13]C").
+#' @param return.type Character string indicating the type of mapping to return. Either "most_prob" (default) returns a vector of most likely atom mappings, or "prob_matrix" returns a probability matrix.
+#' @return For `return.type = "most_prob"`: a vector where names are atoms of the product and values are probabilities of mapping to atoms of the parent.
+#'   For `return.type = "prob_matrix"`: a matrix with rows as atoms of the parent and columns as atoms of the product, containing probabilities.
+#'   Both return values have an attribute "bond.score" indicating the bond similarity score.
 #' @export
 #'
 get_atom_map <- function(sdf.parent,
@@ -528,16 +529,15 @@ mcs.map.filter.duplicate <- function(mcs.map,target_ele = "C"){
 
 
 
-#' vis_smiles
-#'
-#' @title Vis Smiles
-#' @description Vis smiles.
-#' @param smiles smiles
-#' @param show.formula logic
-#' @param show.label logic
-#' @param highlight v
-#'
-#' @return vis
+#' @title Visualize a molecule from SMILES string
+#' @description Creates an interactive visualization of a molecular structure from a SMILES string.
+#'   Converts the SMILES to an SDF object, then to an igraph representation, and generates an HTML widget
+#'   using visNetwork. Optionally displays the molecular formula.
+#' @param smiles A single SMILES string representing the molecule to visualize.
+#' @param show.formula Logical indicating whether to display the molecular formula in the plot (default: TRUE).
+#' @param show_id Logical indicating whether to show atom IDs as labels (default: TRUE). If FALSE, atom symbols are shown.
+#' @param highlight Optional character vector of atom IDs to highlight in the visualization.
+#' @return An HTML widget object (visNetwork) that can be rendered in RStudio viewer or browser.
 #' @export
 vis_smiles <- function(smiles,
                        show.formula = T,

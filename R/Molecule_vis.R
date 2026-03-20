@@ -1,11 +1,11 @@
-#' get_sdf_igraph
+#' Convert SDF to igraph Object
 #'
-#' @title Get Sdf Igraph
-#' @description Sdf igraph.
-#' @param sdf sdf
-#' @param addH T or F
+#' @description Converts a chemical structure from SDF format to an igraph object for network visualization.
 #'
-#' @return igraph
+#' @param sdf An SDF or SDFset object.
+#' @param addH Logical, whether to include hydrogen atoms (default FALSE).
+#'
+#' @return An igraph object representing the molecular structure.
 #' @export
 get_sdf_igraph <- function(sdf,addH = F){
 

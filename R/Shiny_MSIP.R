@@ -1,10 +1,11 @@
-#' Title
+#' Start MSIP Shiny Application
 #'
-#' @title Msip Shiny Start
-#' @description MSIP shiny start.
-#' @param object MSIP obj
+#' @description Launches the MSIP Shiny application for interactive analysis.
 #'
-#' @return NULL
+#' @param object An MSIP object.
+#' @param port Port number for the Shiny app. If NULL, uses default.
+#'
+#' @return NULL (invisibly)
 #' @export
 
 MSIP_shiny_start <- function(object,port = NULL){
@@ -22,13 +23,13 @@ MSIP_shiny_start <- function(object,port = NULL){
 }
 
 
-#' MSIP_shiny_Acq
+#' Start MSIP Acquisition Shiny Application
 #'
-#' @title Msip Shiny Acq
-#' @description MSIP shiny Acq.
-#' @param object MSIP obj
+#' @description Launches the MSIP Shiny application for acquisition monitoring.
 #'
-#' @return NULL
+#' @param object An MSIP object.
+#'
+#' @return NULL (invisibly)
 #' @export
 MSIP_shiny_Acq <- function(object){
 

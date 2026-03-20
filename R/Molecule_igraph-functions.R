@@ -83,19 +83,19 @@ get_Molecule_igraph_from_cfmd <- function(cfmd,fragment.id = 1){
   get_Molecule_igraph_from_sdf(cfmd@fragment_sdf[[fragment.id]])
 }
 
-#'  Add isotopomer
-#' @title Molecule Igraph Add Isotopomer
-#' @description Molecule igraph add isotopomer.
-#' @describeIn Molecule_igraph Add isotopomer
+#' Add isotopomer to Molecule Igraph
 #'
-#' @param Molecule_igraph `Molecule_igraph`
-#' @param isotopomer isotopomer name
-#' @param iso_vec isotope of atom, such as c("C_1" = "\[13\]C")
-#' @param abundance number
+#' @description Adds an isotopomer to a Molecule_igraph object, updating its isotopomer data frame.
 #'
-#' @returns `Molecule_igraph`
+#' @param Molecule_igraph A `Molecule_igraph` object.
+#' @param isotopomer Isotopomer name. If NULL, a unique name is generated.
+#' @param iso_vec Named vector mapping atom IDs to isotopic labels, e.g., c("C_1" = "[13]C").
+#' @param abundance Numeric abundance of the isotopomer.
+#' @param path Path information (optional).
+#' @param FSIS Fragment-specific isotopomer score (optional).
+#'
+#' @return The updated `Molecule_igraph` object.
 #' @export
-#'
 Molecule_igraph_add_isotopomer <- function(
     Molecule_igraph , isotopomer = NULL,iso_vec = NULL,abundance=NA,path = NA,FSIS = NA){
 
