@@ -1,9 +1,11 @@
-#' export_MChromatograms_Metabolites
+#' @title Export MRM chromatograms as PDF
+#' @description Export MRM chromatograms (XChromatograms or MChromatograms) to PDF file.
 #' @describeIn MRM_data_analysis MRM data analysis
-#' @param mchroms XChromatograms or MChromatograms
-#' @param file tempfile(fileext = ".pdf")
+#' @param mchroms XChromatograms or MChromatograms object
+#' @param file output file path, default tempfile(fileext = ".pdf")
+#' @param patched if TRUE, combine all plots using patchwork; if FALSE, append each plot
 #'
-#' @returns tempfile(fileext = ".pdf")
+#' @return file path of exported PDF
 #' @export
 #'
 export_MChromatograms_Metabolites <- function(mchroms,file = tempfile(fileext = ".pdf"),patched = F){

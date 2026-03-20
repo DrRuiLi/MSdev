@@ -68,6 +68,10 @@ get_MSdev_DEP_se <- function(object,
 
 
 
+#' @title Dep List Contrast
+#' @description DEP list contrast.
+#' @param data.se A SummarizedExperiment object with DEP-style differential analysis results.
+#' @return A character vector of contrast names (e.g., "condA_vs_condB").
 #' @describeIn DEP_Style_se list all contrast in SummarizedExperiment
 #' @export
 DEP_list_contrast <- function(data.se){
@@ -83,12 +87,15 @@ DEP_list_contrast <- function(data.se){
 
 
 
-#' @param data.se SE
-#' @param alpha p threshold
-#' @param lfc fc threshold
-#'
-#' @return se
-#'
+#' @title Dep Add Rejections
+#' @description Add significance rejections to a SummarizedExperiment based on p-values and fold changes. 
+#' Reference to \code{\link[DEP]{add_rejections}}, which does not support significance without p-adjustment.
+#' This function is a supplementary implementation.
+#' @param data.se A SummarizedExperiment object with differential analysis results.
+#' @param p.adjust Logical indicating whether to use adjusted p-values for significance.
+#' @param p Numeric threshold for p-value (or adjusted p-value if p.adjust=TRUE).
+#' @param lfc Numeric threshold for absolute log2 fold change.
+#' @return A SummarizedExperiment object with added significance columns.
 #' @describeIn DEP_Style_se Add significant,Reference to \code{\link[DEP]{add_rejections}},which not support significant with out p adjust,
 #' this function as supplymentary
 #' @export
@@ -134,6 +141,11 @@ DEP_add_rejections <- function(data.se , p.adjust = T, p = 0.05,lfc = 0.5){
 
 }
 
+#' @title Dep P Adjust
+#' @description Adjust p-values for multiple testing across all contrasts.
+#' @param data.se A SummarizedExperiment object with differential analysis results containing p-value columns.
+#' @param p.adjust.method Character string specifying the p-value adjustment method (default "fdr").
+#' @return A SummarizedExperiment object with updated p.adjust columns.
 #' @describeIn DEP_Style_se multiple test
 #' @export
 DEP_p_adjust <- function(data.se , p.adjust.method = "fdr"){
@@ -165,11 +177,12 @@ DEP_check_sig <- function(data.se){
 
 
 
-#' @param data.se SE
-#'
-#' @return SE
-#'
-
+#' @title Dep Test Diff
+#' @description Wrapper of \code{\link[DEP]{test_diff}} for differential analysis between conditions.
+#' @param se A SummarizedExperiment object with condition information.
+#' @param type Character string specifying the type of test (default "all").
+#' @param ... Additional arguments passed to \code{\link[DEP]{test_diff}}.
+#' @return A SummarizedExperiment object with differential analysis results.
 #' @describeIn DEP_Style_se warpper of DEP::test_diff
 #' @export
 DEP_test_diff <- function(se,type,...){
@@ -205,6 +218,12 @@ DEP_t_test_diff <- function(se,...){
 }
 
 
+#' @title Dep Filter Significant
+#' @description Filter significant features based on differential analysis results.
+#' @param data.se A SummarizedExperiment object with significance results.
+#' @param contrast Character string specifying the contrast to filter by (default first contrast).
+#' @param top Integer specifying the maximum number of significant features to return (default Inf).
+#' @return A SummarizedExperiment object containing only significant features.
 #' @describeIn DEP_Style_se filter significant feature
 #' @export
 DEP_filter_significant <- function(data.se,
@@ -224,6 +243,12 @@ DEP_filter_significant <- function(data.se,
 }
 
 
+#' @title Dep Get Diff Table
+#' @description Get differential analysis table for a specified contrast.
+#' @param data.se A SummarizedExperiment object with significance results.
+#' @param contrast Character string specifying the contrast (default first contrast, or "all" for all contrasts).
+#' @param keep.all Logical indicating whether to keep all rowData columns (default FALSE).
+#' @return A data frame with differential analysis results (log2 fold change, p-values, significance).
 #' @describeIn DEP_Style_se get differential table
 #' @export
 DEP_get_diff_table <- function(data.se,
@@ -289,6 +314,14 @@ DEP_get_group_color <- function(data.se,col.group = NULL){
 
 }
 
+#' @title Dep Plot Volcano
+#' @description Create a volcano plot for differential analysis results.
+#' @param data.se A SummarizedExperiment object with significance results.
+#' @param contrast Character string specifying the contrast (default first contrast, or "all" for all contrasts).
+#' @param show.label Logical indicating whether to label top significant features (default TRUE).
+#' @param label.top Integer specifying the number of top features to label (default 10).
+#' @param label.max.char Integer specifying maximum character length for labels (default 15).
+#' @return A ggplot2 volcano plot object.
 #' @describeIn DEP_Style_se plot volcano
 #' @export
 DEP_plot_volcano <- function(data.se,
@@ -398,6 +431,13 @@ DEP_plot_volcano <- function(data.se,
 
 }
 
+#' @title Lipidomic Volcano Plot
+#' @description Create a volcano plot colored by lipid class for lipidomics data.
+#' @param data.se A SummarizedExperiment object with lipid classification.
+#' @param contrast Character string specifying the contrast (default first contrast).
+#' @param p.adjust Logical indicating whether to use adjusted p-values (default FALSE).
+#' @param show.label Logical indicating whether to label significant features (default TRUE).
+#' @return A ggplot2 volcano plot object colored by lipid class.
 #' @describeIn DEP_Style_se plot volcano with lipid class
 #' @export
 DEP.plot.volcano.lipidomic <- function(data.se,
@@ -493,6 +533,12 @@ DEP.plot.volcano.lipidomic <- function(data.se,
 
 }
 
+#' @title LFC by Lipid Class
+#' @description Plot log2 fold changes grouped by lipid class.
+#' @param data.se A SummarizedExperiment object with lipid classification.
+#' @param contrast Character string specifying the contrast (default first contrast).
+#' @param p.adjust Logical indicating whether to use adjusted p-values (default FALSE).
+#' @return A ggplot2 plot showing log2 fold changes grouped by lipid class.
 #' @describeIn DEP_Style_se plot lfc-class
 #' @export
 DEP.plot.lfc.lipid.class <- function(data.se,
@@ -644,6 +690,12 @@ DEP_plot_lipid_change_ratio <- function(data.se,
 
 }
 
+#' @title Dep Plot Heatmap
+#' @description Create a heatmap of expression data using ComplexHeatmap.
+#' @param data.se A SummarizedExperiment object with expression data.
+#' @param feature_id Optional character vector of feature IDs to include (default NULL for all).
+#' @param ... Additional arguments passed to \code{\link[MSdev]{plotHeatmap}}.
+#' @return A ComplexHeatmap object.
 #' @describeIn DEP_Style_se plot heatmap
 #' @export
 DEP_plot_heatmap <- function(data.se,
@@ -685,10 +737,11 @@ DEP_plot_heatmap <- function(data.se,
 
 
 #'
-#' @param data.se SE
-#' @param file_path path
-#' @return null
-
+#' @title Dep Export Data
+#' @description Export SummarizedExperiment data to an Excel file with sample info and compound data.
+#' @param data.se A SummarizedExperiment object.
+#' @param file_path Character string specifying the file path for the Excel output.
+#' @return Invisible NULL. The function writes an Excel file as a side effect.
 #' @describeIn DEP_Style_se export data, wirte coldata and rowdata to excel
 #' @export
 DEP_export_data <- function(data.se,file_path){
@@ -706,6 +759,13 @@ DEP_export_data <- function(data.se,file_path){
 }
 
 
+#' @title Dep Plot PCA
+#' @description Create a PCA plot of expression data.
+#' @param data.se A SummarizedExperiment object with expression data.
+#' @param col.group Named character vector of colors for groups (default from \code{\link[MSdev]{get_DEP_se_group_color}}).
+#' @param showlabel Logical indicating whether to show sample labels (default FALSE).
+#' @param ... Additional arguments passed to \code{\link[MSdev]{plot_PCA}}.
+#' @return A ggplot2 PCA plot object.
 #' @describeIn DEP_Style_se plot PCA
 #' @export
 DEP_plot_PCA <- function(data.se,
@@ -731,9 +791,14 @@ return(p.pca)
 
 }
 
+#' @title Dep Pathway Enrich
+#' @description Perform pathway enrichment analysis using Hypergeometric test or Global test.
+#' @param data.se A SummarizedExperiment object with KEGG IDs in rowData.
+#' @param contrast Character string specifying the contrast (default first contrast, or "all" for all contrasts).
+#' @param method Character string specifying enrichment method: "HyperTest" or "GlobalTest".
+#' @param filter_Metabolism Logical indicating whether to filter to metabolism pathways only (default FALSE).
+#' @return A data frame with pathway enrichment results, or a list of data frames if contrast="all".
 #' @describeIn DEP_Style_se plot pathway enrich
-#'
-#' @param filter_Metabolism only output pathway of Metabolism
 #' @export
 DEP_pathway_enrich <- function(data.se,
                                contrast ,
@@ -779,6 +844,12 @@ DEP_pathway_enrich <- function(data.se,
 }
 
 
+#' @title Dep Pathway Enrich Gene
+#' @description Perform gene set enrichment analysis using enrichR.
+#' @param data.se A SummarizedExperiment object with gene names in rowData.
+#' @param contrast Character string specifying the contrast (default first contrast, or "all" for all contrasts).
+#' @param database Character string specifying the enrichR database (default "KEGG_2021_Human").
+#' @return A data frame with enrichment results, or a list of data frames if contrast="all".
 #' @describeIn DEP_Style_se plot gene pathway enrich
 #' @export
 DEP_pathway_enrich_gene <- function(data.se,
@@ -813,6 +884,10 @@ DEP_pathway_enrich_gene <- function(data.se,
 
 }
 
+#' @title Se Adjust By Weight
+#' @description Adjust sample intensities by weight column.
+#' @param data.se A SummarizedExperiment object with a "weight" column in colData.
+#' @return A SummarizedExperiment object with adjusted assay values.
 #' @describeIn DEP_Style_se adjust by weight
 #' @export
 se_adjuset_by_weight <- function(data.se){
@@ -832,6 +907,10 @@ se_adjuset_by_weight <- function(data.se){
 }
 
 
+#' @title Dep Test ANOVA
+#' @description Perform Kruskal-Wallis test (non-parametric ANOVA) across conditions.
+#' @param data.se A SummarizedExperiment object with condition column.
+#' @return A SummarizedExperiment object with added p.kruskal and p.kruskal.fdr columns in rowData.
 #' @describeIn DEP_Style_se ANOVA test
 #' @export
 DEP_test_ANOVA <- function(data.se){
@@ -850,6 +929,11 @@ DEP_test_ANOVA <- function(data.se){
 
 
 
+#' @title Dep Plot Single Bar
+#' @description Create a boxplot with jitter for a single feature across conditions.
+#' @param data.se A SummarizedExperiment object.
+#' @param id Character string specifying the feature ID to plot.
+#' @return A ggplot2 boxplot object.
 #' @describeIn DEP_Style_se plot bar plot for feature
 #' @export
 DEP_plot_single_bar <- function(data.se,
@@ -878,6 +962,10 @@ DEP_plot_single_bar <- function(data.se,
 
 
 
+#' @title Dep Impute Mean
+#' @description Impute missing values with the mean of each sample.
+#' @param data.se A SummarizedExperiment object with missing values.
+#' @return A SummarizedExperiment object with imputed values.
 #' @describeIn DEP_Style_se impute with mean
 #' @export
 DEP_impute_mean <- function(data.se){
@@ -892,6 +980,11 @@ DEP_impute_mean <- function(data.se){
   return(data.se)
 }
 
+#' @title Dep Filter Miss
+#' @description Filter features based on missing value ratio within each group.
+#' @param data.se A SummarizedExperiment object.
+#' @param group.miss.ratio Numeric threshold for maximum allowed missing ratio per group (default 0.3).
+#' @return A SummarizedExperiment object with filtered features.
 #' @describeIn DEP_Style_se filter feature with miss value
 #' @export
 DEP_filter_miss <- function(data.se,group.miss.ratio = 0.3 ){
@@ -915,6 +1008,11 @@ DEP_filter_miss <- function(data.se,group.miss.ratio = 0.3 ){
 
 }
 
+#' @title Dep Filter QC RSD
+#' @description Filter features based on QC relative standard deviation.
+#' @param data.se A SummarizedExperiment object with qc_rsd column in rowData.
+#' @param QC_RSD Numeric threshold for maximum allowed QC RSD (default 0.3). If Inf, no filtering.
+#' @return A SummarizedExperiment object with filtered features.
 #' @describeIn DEP_Style_se filter feature with QC RSD
 #' @export
 DEP_filter_QC_RSD <- function(data.se,QC_RSD = 0.3){
@@ -927,6 +1025,10 @@ DEP_filter_QC_RSD <- function(data.se,QC_RSD = 0.3){
 }
 
 
+#' @title Dep Get QC RSD
+#' @description Calculate relative standard deviation (RSD) for QC samples.
+#' @param data.se A SummarizedExperiment object with QC samples (group="QC").
+#' @return A SummarizedExperiment object with added qc_rsd column in rowData.
 #' @describeIn DEP_Style_se calculate RSD of QC
 #' @export
 DEP_get_QC_RSD <- function(data.se){
@@ -939,6 +1041,13 @@ DEP_get_QC_RSD <- function(data.se){
 
 
 
+#' @title Dep Preprocess
+#' @description Perform preprocessing pipeline: filter missing values, filter QC RSD, normalize, and impute.
+#' @param data.se A SummarizedExperiment object.
+#' @param group.miss.ratio Numeric threshold for missing value ratio per group (default 0.3).
+#' @param QC_RSD Numeric threshold for QC RSD filtering (default 0.3).
+#' @param keep_before_norm Logical indicating whether to keep data before normalization as an additional assay (default FALSE).
+#' @return A SummarizedExperiment object after preprocessing.
 #' @describeIn DEP_Style_se filter miss, filter QC rsd, normalization, imputation
 #' @export
 DEP_preprocess <- function(data.se,
@@ -967,6 +1076,11 @@ DEP_preprocess <- function(data.se,
 
 
 
+#' @title Dep Plot Normalization
+#' @description Plot boxplots of expression data before and after normalization.
+#' @param se A SummarizedExperiment object (or multiple objects) to compare.
+#' @param ... Additional SummarizedExperiment objects to include in the plot.
+#' @return A ggplot2 boxplot showing normalization effects.
 #' @describeIn DEP_Style_se update `plot_normalization`, add group color
 #' @export
 DEP_plot_normalization <- function (se, ...)
@@ -1004,6 +1118,10 @@ DEP_plot_normalization <- function (se, ...)
 }
 
 
+#' @title Get Dep Se Group Color
+#' @description Get a named color vector for groups in a SummarizedExperiment.
+#' @param se A SummarizedExperiment object with group column.
+#' @return A named character vector of colors where names are group names.
 #' @describeIn DEP_Style_se get a vector of group color
 #' @export
 get_DEP_se_group_color <- function(se){
@@ -1018,6 +1136,11 @@ get_DEP_se_group_color <- function(se){
 }
 
 
+#' @title Get Dep Se Sig Feature
+#' @description Get significant feature IDs from differential analysis results.
+#' @param data.diff A SummarizedExperiment object with significance results.
+#' @param contrast Character string specifying the contrast (default first contrast, or "all" for all contrasts).
+#' @return A character vector of significant feature IDs.
 #' @describeIn DEP_Style_se get significant feature
 #' @export
 get_DEP_se_sig_feature <- function(data.diff,contrast = DEP_list_contrast(data.diff)[1] ){
@@ -1051,9 +1174,12 @@ get_DEP_se_sig_feature <- function(data.diff,contrast = DEP_list_contrast(data.d
 
 
 
+#' @title Get Dep Se From ME Result
+#' @description Import data from a MetaboExplorer (ME) result file into a SummarizedExperiment.
+#' @param ME_file Character string specifying the path to the ME Excel file.
+#' @return A SummarizedExperiment object with DEP-style formatting.
 #' @describeIn DEP_Style_se import data from ME result
 #' @export
-#'
 get_DEP_se_from_ME_result <- function(ME_file ){
 
   data.file <- ME_file
@@ -1106,9 +1232,14 @@ get_DEP_se_from_ME_result <- function(ME_file ){
 
 }
 
+#' @title Dep Remove QC
+#' @description Remove QC and Blank samples from a SummarizedExperiment.
+#' @param data.se A SummarizedExperiment object with sample.type column.
+#' @param remove_QC Logical indicating whether to remove QC samples (default TRUE).
+#' @param remove_Blank Logical indicating whether to remove Blank samples (default TRUE).
+#' @return A SummarizedExperiment object with QC and/or Blank samples removed.
 #' @describeIn DEP_Style_se remove QC and Blank
 #' @export
-#'
 DEP_remove_QC <- function(data.se,remove_QC = T, remove_Blank = T){
 
   if (remove_QC) data.se <- data.se[, !data.se$sample.type %in% "QC"]

@@ -1,10 +1,9 @@
-#' xcms_get_dda_scan_stimulate
-#' stimulate DDA cycle and assign ms2 to feature, now just support single file
-#' @param xcms.scan xcms.scan
-#' @param feature_def feature_def
-#' @param dynamic_time dynamic_time
+#' @title Stimulate DDA cycle and assign MS2 to feature
+#' @description Stimulate DDA cycle and assign ms2 to feature, now just support single file
+#' @param xcms.xcms xcms object
+#' @param dynamic_time minimum time (seconds) before re-acquiring same feature, default 60
 #'
-#' @return  xcms.xcms
+#' @return xcms.xcms object with MS2 assignment
 #' @export
 #'
 

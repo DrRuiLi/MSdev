@@ -84,6 +84,8 @@ get_Molecule_igraph_from_cfmd <- function(cfmd,fragment.id = 1){
 }
 
 #'  Add isotopomer
+#' @title Molecule Igraph Add Isotopomer
+#' @description Molecule igraph add isotopomer.
 #' @describeIn Molecule_igraph Add isotopomer
 #'
 #' @param Molecule_igraph `Molecule_igraph`
@@ -414,6 +416,7 @@ Molecule_igraph_vis_format <- function(Molecule_igraph){
 
 
 
+#' @description Molecule atom transfer by atom map.
 #' @title Auto map atom structure
 #' @describeIn Molecule_atom_transfer
 #' return a matrix, column as atom of `to`, row as multiple map, value as atom of `from`

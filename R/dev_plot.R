@@ -130,6 +130,8 @@ colored_text <- function(x , color = "#E64B35"){
 #' pdf() and export::graph2pdf() not support `append` arg
 #' using qpdf::pdf_combine() to realize that function
 #'
+#' @title Export Graph2pdf
+#' @description Graph2pdf.
 #' @param p ggplot
 #' @param file_path file path
 #' @param append logic

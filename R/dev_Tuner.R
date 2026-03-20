@@ -1,5 +1,7 @@
 #' get xcms param by Autotuner
 #'
+#' @title Get Xcms Autotuner
+#' @description Xcms Autotuner.
 #' @param xcms.xcms xcms
 #'
 #' @return Autotuner

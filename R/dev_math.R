@@ -222,6 +222,7 @@ add_matrix <- function(mat1,mat2){
   return(sum_matrix)
 }
 
+#' @description Normalize max min.
 #' @title normalize_max_min
 #'
 #' @param x num
@@ -281,6 +282,8 @@ gaussian_functioin <- function(x , a =1,b = 0,c = 0.5){
 #' match 2 list of ion based on mz and rt
 #' return all matched, include multiple match
 #'
+#' @title Match Mz Rt
+#' @description Mz rt.
 #' @param mz1 num
 #' @param rt1 num
 #' @param mz2 num
@@ -328,6 +331,8 @@ match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
 #' return the closest match
 #'
 #'
+#' @title Match Mz
+#' @description Mz.
 #' @param mz1 num
 #' @param mz2 num
 #' @param mz.ppm num

@@ -1,12 +1,13 @@
-#' MSdev_find_isotope_label
+#' @title Find isotope labels in MSdev object
+#' @description Find isotope labels in MSdev object by processing isotopologues
+#' and isotope labels for both positive and negative ion modes.
 #'
-#' @param object MSdev
-#' @param isotope "\[13\]C"
-#' @param max_label 10
-#' @param ppm 20
-#' @param net.degree.ratio 0.5
+#' @param object MSdev object
+#' @param iso_ele isotope element, default "[13]C"
+#' @param ppm ppm tolerance, default 10
+#' @param ... additional arguments passed to xcms_get_feature_isotopologues
 #'
-#' @return MSdev
+#' @return MSdev object with isotope labels added
 #' @export
 #'
 MSdev_find_isotope_label <- function(object,
@@ -218,14 +219,14 @@ MSIP_assign_MS2 <- function(object,rt.tol = 10){
 }
 
 
-#' MSIP_get_isotopologues_data
+#' @title Get isotopologues data from MSdev
+#' @description Extract iso-labeled compound info and spectra, filter compound
+#' based on isotope labeling data.
 #'
-#' extract iso-labeled compound info and spectra,
-#' filter compound
+#' @param object MSdev object
+#' @param iso_ele isotope element, default retrieved from object
 #'
-#' @param object MSdev
-#'
-#' @return a list of isotopologues
+#' @return a list of isotopologues data
 #' @export
 #'
 MSIP_get_isotopologues_data <- function(object,
@@ -584,11 +585,16 @@ get_MSdev_iso_ele <- function(object){
   return(iso_ele)
 }
 
-#' get_isotopologues_CFM_annotation
+#' @title Annotate isotopologues with CFM prediction
+#' @description Annotate isotopologues using CFM (Collision-induced dissociation
+#' Fragmentation simulator) prediction data.
 #'
-#' @param object msdev
+#' @param object MSdev object
+#' @param ppm ppm tolerance for matching, default 20
+#' @param check_temp if TRUE, check for existing CFM data in temp directory
+#' @param BPPARAM BiocParallel backend parameter
 #'
-#' @return  list of cfm data
+#' @return MSdev object with CFM annotation added to isotopologues
 #' @export
 #'
 MSIP_get_isotopologues_CFM_annotation <- function(object,
@@ -782,11 +788,13 @@ get_iso_net_assign <- function(iso.ig,net.degree.ratio = 0.6){
 
 
 
-#' get_isotopologues_Spectra_process
+#' @title Process isotopologues spectra
+#' @description Process isotopologues spectra by normalizing and combining
+#' spectra for each collision energy.
 #'
-#' @param iso.list iso.list
+#' @param iso.list list of isotopologues data
 #'
-#' @return iso.list
+#' @return processed iso.list with normalized and combined spectra
 #' @export
 get_isotopologues_Spectra_process <- function(iso.list){
 
@@ -1178,11 +1186,13 @@ MSIP_from_Spectra <- function(object,
 
 
 
+#' @title Merge positive and negative isotopologues data
+#' @description Merge MSIP data from positive and negative ion modes for the same compound.
 #' @describeIn MSIP merge msip data of positive and negative
 #' @param object MSIP/MSdev object
-#' @param rt.tol permitted rt error to merge pos and neg data
+#' @param rt.tol permitted rt error to merge pos and neg data, default 5 seconds
 #'
-#' @return MSIP/MSdev object
+#' @return MSIP/MSdev object with merged isotopologues
 #' @export
 #'
 MSIP_merge_isotopologues <- function(object,

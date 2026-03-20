@@ -75,12 +75,15 @@ colorMix <- function(...){
 
 
 #' @export
+#' @title Message With Time
+#' @description Message with time.
 message_with_time <- function(...){
 
   message(format(Sys.time(),digits = 0)," ",...)
 }
 
 
+#' @description Open dir.
 #' @title open_dir
 #' open dir by Windows
 #'
@@ -165,6 +168,8 @@ open_MSIP_dir <- function(){
 #' split_df
 #' random split data.frame
 #'
+#' @title Split Df
+#' @description Df.
 #' @param df data.frame
 #' @param n number
 #'

@@ -552,12 +552,14 @@ MSIPFragmentMap_merge_complementary <- function(MSIPFragmentMap){
 
 
 
-#' heatmap_MSIPFragmentMap
+#' @title Plot MSIP fragment map as heatmap
+#' @description Create a heatmap visualization of the MSIP fragment map showing
+#' atom mapping probabilities and fragment ratios.
 #' @describeIn MSIPCore heatmap fragment map
+#' @param MSIPFragmentMap MSIPFragmentMap object
+#' @param show_ratio if TRUE, show ratio matrix alongside atom matrix
 #'
-#' @param MSIPFragmentMap MSIPFragmentMap
-#'
-#' @return heatmap
+#' @return ComplexHeatmap object
 #' @export
 heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
                                     show_ratio = F){
@@ -1152,18 +1154,19 @@ plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
 }
 
 
-#' plot_MSIP_intensity_consistency_cor
+#' @title Plot intensity-consistency correlation for MSIP data
+#' @description Evaluate the relationship between intensity and fragment group (FG)
+#' consistency using cosine similarity. Higher intensity generally correlates with
+#' more consistent fragmentation patterns.
 #'
-#' Evaluate the relationship of intensity-FG.consistency
+#' @param msdev MSIP solved MSdev object
+#' @param fg_data pre-computed FG data, if NULL will be computed from msdev
+#' @param min_sp minimum spectra count for a FG to be included, default 3
+#' @param min_isotopologue minimum isotopologue count for a FG to be included, default 3
+#' @param log_int_bw bin width for intensity grouping, default 0.1
+#' @param high_cos threshold for confident FG, default 0.9
 #'
-#'
-#' @param msdev MSIP solved msdev obj
-#' @param min_sp min sp count for a FG to be counted
-#' @param min_isotopologue min isotopologue count for a FG to be counted, count > 2 for cos calculation make sense
-#' @param log_int_bw bin with to split intensity of FG
-#' @param high_cos FG with cos > `high_cos` are considered as confident
-#'
-#' @returns ggplot
+#' @return ggplot object showing intensity vs consistency relationship
 #' @export
 #'
 plot_MSIP_intensity_consistency_cor <- function(msdev,

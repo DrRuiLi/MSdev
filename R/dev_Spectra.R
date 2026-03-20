@@ -181,10 +181,15 @@ normalizeSpectra_by_precursorIntensity <- function(sp){
 
 #' get_Spectra_data
 #'
-#' @param sp `Spectra` object
-#' @param var any variables of `Spectra::spectraVariables()`
+#' @title Get Spectra Data
+#' @description Extracts data from a Spectra object into a data.frame with columns for spectrum ID, mz, intensity, and requested spectrum variables.
+#' @param sp A `Spectra` object containing mass spectrometry data.
+#' @param var Character vector of spectrum variables to include in the output.
+#'   Default is `c("precursorMz", "collisionEnergy")`. Should be valid names
+#'   from `Spectra::spectraVariables()`.
 #'
-#' @return a dataframe with mz and intensity and vars
+#' @return A data.frame with columns: `sp.id` (spectrum identifier), `mz` (mass-to-charge ratio),
+#'   `intensity` (peak intensity), and any additional variables specified in `var`.
 #' @export
 #'
 
@@ -218,12 +223,19 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
 }
 
 #' combineSpectra_groupby_ce
-#' @description using combinePeaksData_tic_weighted, refer to [Spectra::combinePeaksData]
 #'
-#' @param sp Spectra
-#' @param minProp num
+#' @title Combine Spectra by Collision Energy
+#' @description Combines spectra that share the same collision energy using a TIC-weighted
+#'   peak combination method. This is useful for merging technical replicates or
+#'   averaged spectra at each collision energy level.
+#' @param sp A `Spectra` object to combine.
+#' @param minProp Numeric between 0 and 1. Minimum proportion of spectra that must
+#'   contain a peak for it to be retained in the combined spectrum. Default is `0.5`.
+#' @param ppm Numeric. Parts per million tolerance for grouping peaks. Default is `10`.
+#' @param plot Logical. If `TRUE`, generates plots of the combination results. Default is `FALSE`.
+#' @param ... Additional arguments passed to [Spectra::combineSpectra()].
 #'
-#' @return Spectra
+#' @return A `Spectra` object with combined spectra for each unique collision energy.
 #' @export
 #'
 combineSpectra_groupby_ce <- function(sp,
@@ -460,10 +472,14 @@ plot_Spectra_Mirror<- function(sp1,sp2,show.label = "rtime"){
 
 #' plot_Spectra
 #'
-#' @param sp Spectra
-#' @param label.top peaks to label
+#' @title Plot Mass Spectra
+#' @description Creates a ggplot2 bar plot visualization of mass spectra data.
+#'   Peaks above 10% of maximum intensity are highlighted in blue.
+#' @param sp A `Spectra` object to plot.
+#' @param label.top Integer. Number of highest intensity peaks to label with m/z values.
+#'   Default is `10`.
 #'
-#' @return ggplot
+#' @return A `ggplot` object displaying the mass spectrum.
 #' @export
 plot_Spectra<- function(sp,label.top = 10){
 
@@ -868,9 +884,13 @@ plot_Spectra_Injection <- function(sp){
 
 #' get_CFM_data_Spectra
 #'
-#' @param cfm.data from read_CFM_xxx
+#' @title Convert CFM Data to Spectra Object
+#' @description Converts CFM (Competitive Fragmentation Modeling) peak assignment data
+#'   to a `Spectra` object with spectra at three collision energy levels (10, 20, 40 eV).
+#' @param cfmd A CFM data object containing peak assignment information.
+#'   Typically obtained from [read_CFM_xxx] functions.
 #'
-#' @return Spcetra
+#' @return A `Spectra` object containing MS/MS spectra at three collision energy levels.
 #' @export
 #'
 get_CFM_data_Spectra <- function(cfmd ){
@@ -962,10 +982,16 @@ Spectra_set_MEM_backend <- function(sp){
 
 #' plotly_Spectra
 #'
-#' @param sp Spectra
-#' @param label.top highlight
+#' @title Create Interactive Plotly Mass Spectrum
+#' @description Creates an interactive plotly visualization of a single mass spectrum.
+#'   Hovering over peaks shows m/z and intensity values. The top N peaks are highlighted.
+#' @param sp A `Spectra` object. If multiple spectra are provided, only the first is used.
+#' @param label.top Integer. Number of highest intensity peaks to highlight.
+#'   Default is `10`.
+#' @param show.info Logical. If `TRUE`, displays precursor information (m/z, intensity,
+#'   collision energy) in the plot title. Default is `FALSE`.
 #'
-#' @return plotly
+#' @return A `plotly` object displaying an interactive mass spectrum.
 #' @export
 #'
 plotly_Spectra <- function(sp,label.top = 10,show.info = F){
@@ -1016,10 +1042,14 @@ plotly_Spectra <- function(sp,label.top = 10,show.info = F){
 
 #' plotly_Spectra_mirror
 #'
-#' @param sp1 sp1
-#' @param sp2 sp2
+#' @title Create Interactive Mirror Plot of Two Spectra
+#' @description Creates an interactive plotly mirror visualization comparing two mass spectra.
+#'   The first spectrum is displayed on top, the second on bottom (negative intensity).
+#'   Matched peaks are highlighted with markers.
+#' @param sp1 A `Spectra` object for the top spectrum.
+#' @param sp2 A `Spectra` object for the bottom spectrum.
 #'
-#' @return plotly
+#' @return A `plotly` object displaying a mirror plot of the two spectra.
 #' @export
 #'
 plotly_Spectra_mirror <- function(sp1,sp2){
@@ -1057,13 +1087,18 @@ plotly_Spectra_mirror <- function(sp1,sp2){
 
 #' plotly_Spectra_iso_mirror
 #'
-#' @param sp sp
-#' @param sp.iso iso sp
-#' @param ppm ppm
-#' @param iso_mass_diff iso mass diff to nature
-#' @param iso_count iso count
+#' @title Create Interactive Isotopic Mirror Plot
+#' @description Creates an interactive plotly mirror visualization comparing a spectrum
+#'   with its isotopically labeled counterpart. Peaks are matched based on the expected
+#'   isotopic mass difference and highlighted accordingly.
+#' @param sp A `Spectra` object for the natural abundance spectrum (top).
+#' @param sp.iso A `Spectra` object for the isotopically labeled spectrum (bottom).
+#' @param ppm Numeric. Parts per million tolerance for matching peaks. Default is `10`.
+#' @param iso_mass_diff Numeric. Expected mass difference between isotopes.
+#'   Default is `1.003355` (carbon-13 difference).
+#' @param iso_count Integer. Number of isotope labels to account for. Default is `1`.
 #'
-#' @return plotly
+#' @return A `plotly` object displaying an isotopic mirror plot with matched peaks highlighted.
 #' @export
 #'
 plotly_Spectra_iso_mirror <- function(sp,sp.iso ,
@@ -1118,10 +1153,14 @@ plotly_Spectra_iso_mirror <- function(sp,sp.iso ,
 
 #' combineSpectra_ce_max_precursor
 #'
+#' @title Select Spectra with Maximum Precursor Intensity per Collision Energy
+#' @description For each unique collision energy in the Spectra object, selects the spectrum
+#'   with the highest precursor intensity. Useful for selecting the most representative
+#'   spectrum when multiple spectra exist at each collision energy.
+#' @param sp A `Spectra` object containing multiple spectra.
 #'
-#' @param sp sp
-#'
-#' @return sp
+#' @return A `Spectra` object with one spectrum per collision energy (the one with
+#'   maximum precursor intensity).
 #' @export
 combineSpectra_ce_max_precursor  <- function(sp){
 
@@ -1140,11 +1179,15 @@ combineSpectra_ce_max_precursor  <- function(sp){
 
 #' Spectra_get_noise
 #'
-#' estimate noise with max density
+#' @title Estimate Noise Level for Spectra
+#' @description Estimates the noise level for each spectrum using a density-based method.
+#'   The noise is estimated as the intensity value at the maximum of the log10-transformed
+#'   intensity density distribution. Also calculates signal-to-noise ratio (SNR).
+#' @param sp A `Spectra` object.
 #'
-#' @param sp Spectra
-#'
-#' @return Spectra
+#' @return The input `Spectra` object with two additional spectrum variables:
+#'   `noise` (estimated noise level) and `snr` (signal-to-noise ratio, calculated as
+#'   base peak intensity divided by noise).
 #' @export
 #'
 Spectra_get_noise <- function(sp){
@@ -1186,9 +1229,14 @@ Spectra_get_noise <- function(sp){
 
 #' Spectra_filter_noise
 #'
-#' @param sp Spectra
+#' @title Filter Peaks Below Noise Level
+#' @description Filters out mass spectral peaks that are below the noise level.
+#'   Requires that a `noise` spectrum variable has been previously calculated
+#'   (e.g., using [Spectra_get_noise]). Peaks with intensity less than or equal
+#'   to the noise level are removed.
+#' @param sp A `Spectra` object with a `noise` spectrum variable.
 #'
-#' @return Spectra
+#' @return A filtered `Spectra` object with peaks below the noise level removed.
 #' @export
 Spectra_filter_noise <- function(sp){
 
@@ -1220,11 +1268,21 @@ setMethod(sampleNames,"Spectra",
 
 #' Spectra_get_purity
 #'
-#' estimate ms2 spectra precursor purity with MS1 scan
+#' @title Estimate Precursor Purity for Mass Spectra
+#' @description Estimates the purity of the precursor ion for MS/MS spectra.
+#'   For MS2 spectra, calculates the proportion of precursor intensity within the
+#'   isolation window that belongs to the targeted precursor m/z.
+#'   For MS1 spectra, estimates purity using an associated MS1 scan.
+#' @param sp A `Spectra` object for which to estimate purity.
+#' @param msLevel Integer. MS level to process. `1` for MS1 spectra (requires `sp.ms1`),
+#'   `2` for MS2 spectra. Default is `2`.
+#' @param sp.ms1 Optional. A `Spectra` object containing MS1 spectra used for
+#'   purity calculation when `msLevel = 1`. If `NULL`, MS1 spectra are imported
+#'   from the raw data files.
 #'
-#' @param sp Spectra
-#'
-#' @return Spectra
+#' @return The input `Spectra` object with additional spectrum variables:
+#'   For MS2: `ms2_purity` (proportion of precursor in isolation window).
+#'   For MS1: `ms1.intensity`, `ms2.purity`, and `ms2.ppm`.
 #' @export
 #'
 Spectra_get_purity <- function(sp,msLevel = 2,sp.ms1= NULL){

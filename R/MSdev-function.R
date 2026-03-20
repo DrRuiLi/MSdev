@@ -27,11 +27,11 @@ MSdev_save <- function(object,file = object@projectInfo$MSdevFile){
 
 
 
+#' @title Load an MSdev object from a file
+#' @description Load an MSdev object from a file using `qs::qread()`.
 #' @describeIn MSdev_IO load
-#'
 #' @param file_to_load file path
-#'
-#' @returns MSdev
+#' @return MSdev
 #' @export
 #'
 MSdev_load <- function(file_to_load){
@@ -123,11 +123,11 @@ MSdev_get_MSinfo <- function(object){
 }
 
 
+#' @title Add new sample files to MSdev object
+#' @description Add raw data files from a directory to the MSdev object, converting them as needed.
 #' @describeIn MSdev_workflow add samples
-#'
 #' @param object MSdev
 #' @param raw.data.dir file path
-#'
 #' @return MSdev
 #' @export
 MSdev_add_sample <- function(object,
@@ -161,11 +161,11 @@ MSdev_add_sample <- function(object,
 }
 
 
+#' @title Process MS data using xcms
+#' @description Perform peak detection and grouping using xcms functions based on acquisition mode (FS/DDA/MRM).
 #' @describeIn MSdev_workflow use xcms to Processing data
-#'
-#' @param object  MSdev
-#' @param ...
-#'
+#' @param object MSdev
+#' @param ... additional arguments passed to xcms functions
 #' @return MSdev
 #' @export
 MSdev_xcmsProcessing <- function(object,...){
@@ -217,11 +217,10 @@ MSdev_get_xcms <- function(object){
 
 }
 
-#' xcmsProcessingMSdev.DDA
-#'
+#' @title Process DDA data using xcms
+#' @description Perform peak detection on DDA data using xcms, grouping features across samples.
 #' @param object MSdev
-#' @param ...
-#'
+#' @param ... additional arguments passed to xcms functions
 #' @return MSdev
 #' @export
 xcmsProcessingMSdev.DDA <- function(object,...){
@@ -852,11 +851,11 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 
 
 
-#' plot_MSdev_feature_spectrum
-#' @param MSdev.obj MSdev
-#' @param feature_id feature_id
-#'
-#' @return ggplot
+#' @title Plot MS/MS spectrum for a feature
+#' @description Plot experimental and reference MS/MS spectra for a given feature, with annotation details.
+#' @param MSdev.obj MSdev object
+#' @param feature.id Character string specifying the feature ID
+#' @return ggplot object (or NULL if no spectra)
 #' @export
 #'
 
@@ -955,13 +954,12 @@ plot_MSdev_feature_spectrum <- function(MSdev.obj,feature.id  ){
 }
 
 
-#' Title
-#'
-#' @param MSdev.obj MSdev
-#' @param feature_id feature_id
-#' @param out.dir path
-#'
-#' @return NULL
+#' @title Export MS/MS spectrum and chromatogram for a feature
+#' @description Export PNG images of the MS/MS spectrum and chromatogram for a given feature.
+#' @param MSdev.obj MSdev object
+#' @param feature_id Character string specifying the feature ID
+#' @param out.dir Output directory path
+#' @return NULL (writes files to disk)
 #' @export
 #'
 
@@ -992,17 +990,12 @@ export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
 
 
 
-#' get_MS_sampleinfo
-#' @description read in ms raw data from `object@projectInfo$msDataDir`
-#' and generate a table `sampleInfo`
-#' note this function read in file according to their file names, those contaion both "pos" and "neg"
-#' will be regarded as two files
-#' @param object a `MSdev` object
-#'
-#' grep "pos" and "neg" for ion mode
-#'
-#' grep "blank", "blk" and "QC" for sample type, other samples will regard as "Sample"
-#' @return a `MSdev` object
+#' @title Generate sample information table from raw data files
+#' @description Read raw MS data files from a directory and generate a sample information data frame.
+#' @param raw.data.dir Path to directory containing raw data files
+#' @param rawDataFormat File extension of raw data files (default ".raw")
+#' @param verbose Logical indicating whether to print messages
+#' @return data.frame with sample information
 #' @export
 #'
 
@@ -1099,14 +1092,14 @@ get_MS_sampleinfo <- function(raw.data.dir,
 
 
 
-#' MSdev_xcms_group_features
-#' @param object MSdev
-#' @param diffRt 30
-#' @param intCor NULL
-#' @param eicCor NULL
-#' @param ... MSdev
-#'
-#' @return MSdev
+#' @title Group features across samples using xcms
+#' @description Group detected features across samples based on retention time and intensity correlation.
+#' @param object MSdev object
+#' @param diffRt maximum retention time difference for grouping (seconds)
+#' @param intCor minimum intensity correlation threshold
+#' @param eicCor minimum EIC correlation threshold
+#' @param ... additional arguments passed to xcms grouping functions
+#' @return MSdev object with updated feature groups
 #' @export
 #'
 MSdev_xcms_group_features <- function(object,
@@ -1145,11 +1138,11 @@ MSdev_xcms_group_features <- function(object,
 
 
 
+#' @title Manually check and edit sample information using Excel
+#' @description Open the sample information data frame in Excel for manual editing, then update the MSdev object.
 #' @describeIn MSdev_workflow manually check sampleInfo using excel
-#'
-#' @param object a `MSdev` object
-#'
-#' @return MSdev a `MSdev` object
+#' @param object a MSdev object
+#' @return MSdev a MSdev object
 #' @export
 #'
 
@@ -1175,13 +1168,12 @@ MSdev_checkSampleInfo <- function(object){
 
 
 
+#' @title Convert raw data files to mzML format
+#' @description Convert raw data files to mzML format using MSconvertR, updating sample information.
 #' @describeIn MSdev_workflow convert raw files
-#'
-#'
-#'
-#' @param object
-#'
-#' @return MSdev
+#' @param object MSdev object
+#' @param format.to target format (default "mzML")
+#' @return MSdev object with converted files
 #' @export
 
 #'
@@ -1242,12 +1234,14 @@ MSdev_msConvert<- function(object,format.to = "mzML"){
 
 
 
-#' @describeIn MSdev_workflow  Extract all spectra, split to MS1 and MS2, store as `onDiskData`
-#'
-#'
-#' @param object  MSdev
-#'
-#' @return MSdev
+#' @title Extract and store MS1 and MS2 spectra from raw data files
+#' @description Read raw data files, split spectra by MS level, evaluate noise and purity, and store as on-disk data.
+#' @describeIn MSdev_workflow Extract all spectra, split to MS1 and MS2, store as onDiskData
+#' @param object MSdev object
+#' @param rt.tol retention time tolerance for matching spectra to features (seconds)
+#' @param eval.noise logical, whether to evaluate noise in MS2 spectra
+#' @param eval.ms1 logical, whether to evaluate purity using MS1 scans
+#' @return MSdev object with spectra stored
 #' @export
 #'
 MSdev_extract_Spectra <- function(object,
@@ -1323,11 +1317,13 @@ MSdev_extract_Spectra <- function(object,
 }
 
 
+#' @title Assign MS2 spectra to features based on precursor m/z and retention time
+#' @description Match MS2 spectra to features using precursor m/z and retention time tolerances, updating the MSdev object.
 #' @describeIn MSdev_workflow assign Spectra to feature
-#'
-#' @param object MSdev
-#'
-#' @return MSdev
+#' @param object MSdev object
+#' @param rt.tol retention time tolerance (seconds)
+#' @param ppm m/z tolerance in parts per million
+#' @return MSdev object with updated feature-spectra assignments
 #' @export
 #'
 MSdev_match_Spectra_to_feature <- function(object,
@@ -1383,13 +1379,15 @@ MSdev_match_Spectra_to_feature <- function(object,
 
 }
 
-#' MSdev annotation
+#' @title Annotate features using a compound database
+#' @description Perform feature annotation using a CompoundDb database, including MS1 candidate search, MS2 scoring, and isotope pattern scoring.
 #' @describeIn MSdev_workflow annotation
-#'
-#' @param object MSdev
-#' @param db.path CompoundDB
-#' @param ...
-#'
+#' @param object MSdev object
+#' @param cpdb_path path to CompoundDb SQLite database
+#' @param calc_isopattern_score logical, whether to calculate isotope pattern scores
+#' @param ppm m/z tolerance in parts per million
+#' @param ... additional arguments passed to annotation functions
+#' @return MSdev object with annotation results
 #' @export
 #'
 
@@ -1440,17 +1438,18 @@ MSdev_annotation <- function(object,
 
 
 #'
+#' @title Extract and format statistical data from processed MS features
+#' @description Extract feature data from xcms, retrieve compound information, filter based on scores, and generate SummarizedExperiment objects.
 #' @describeIn MSdev_workflow
-#'
-#' extract data from xcms
-#' retrieve compound info from CompDB
-#' filter data
-#' generate data.se
-#'
-#' @param object MSdev
-#' @param QC_RSD QC RSD thresh
-#'
-#' @return MSdev
+#' @param object MSdev object
+#' @param keys character vector of compound database keys to retrieve (e.g., "name", "formula")
+#' @param score_thresh minimum annotation score threshold
+#' @param rt_bin retention time binning width (seconds)
+#' @param polarity_paired logical, whether to pair positive and negative polarity features
+#' @param candi logical, whether to include all candidates in output
+#' @param metabolite logical, whether to filter for metabolite features only
+#' @param ... additional arguments
+#' @return MSdev object with statData populated
 #' @export
 #'
 MSdev_get_Stat <- function(object,
@@ -1654,11 +1653,10 @@ MSdev_update_xcms_pdata <- function(object,
 
 
 
-#' get_MSdev_ms2_Spectra
-#'
-#' @param object MSdev
-#'
-#' @return Spectra
+#' @title Retrieve MS2 spectra from MSdev object
+#' @description Retrieve the stored MS2 Spectra object from the MSdev object.
+#' @param object MSdev object
+#' @return Spectra object
 #' @export
 #'
 get_MSdev_ms2_Spectra <- function(object){
@@ -1670,12 +1668,12 @@ get_MSdev_ms2_Spectra <- function(object){
 }
 
 
-#' MSdev_get_feature_chrom
-#'
-#' @param object MSdev
-#' @param feature.list list of feature_id, named "Positve" and "Negative"
-#'
-#' @return MSdev
+#' @title Extract chromatograms for features
+#' @description Extract chromatograms for specified features from xcms data, storing them as on-disk data.
+#' @param object MSdev object
+#' @param BPPARAM BiocParallel backend for parallel processing
+#' @param feature.list optional list of feature IDs with names "Positive" and "Negative"
+#' @return MSdev object with chromatograms stored
 #' @export
 #'
 MSdev_get_feature_chrom <- function(object,BPPARAM =  SnowParam(

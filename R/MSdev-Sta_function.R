@@ -637,6 +637,8 @@ analyzeMSdevDEP <- function(object){
 
 #' MSdev_export
 #'
+#' @title Msdev Export
+#' @description MSdev export.
 #' @param object MSdev
 #'
 #' @export
@@ -702,6 +704,8 @@ get_CompDb_info <- function(cpdb,
 
 
 #' show TIC, QC RSD, PCA
+#' @title Plot Msdev Normalization
+#' @description MSdev normalization.
 #' @describeIn MSdev_preprocess_visualization show DEP::plot_normalization
 #'
 #' @param object MSdev
@@ -718,6 +722,8 @@ plot_MSdev_normalization <- function(object){
 }
 
 
+#' @title Plot Msdev Qc Rsd Hist
+#' @description MSdev QC RSD hist.
 #' @describeIn MSdev_preprocess_visualization QC RSD Histograms
 #'
 #' @param object MSdev
@@ -759,6 +765,8 @@ plot_MSdev_QC_RSD_hist <- function(object){
 
 
 
+#' @title Plot Msdev Qc Rsd Cdf
+#' @description MSdev QC RSD CDF.
 #' @describeIn MSdev_preprocess_visualization show cumulative distribution
 #'
 #' @param object MSdev
@@ -794,6 +802,8 @@ plot_MSdev_QC_RSD_CDF <- function(object){
 }
 
 
+#' @title Plot Msdev Tic
+#' @description MSdev TIC.
 #' @describeIn MSdev_preprocess_visualization show TIC
 #' @export
 plot_MSdev_TIC <- function(object){
@@ -805,6 +815,8 @@ plot_MSdev_TIC <- function(object){
   p1/p2
 }
 
+#' @title Plot Msdev Pca
+#' @description MSdev PCA.
 #' @describeIn MSdev_preprocess_visualization show PCA before and after norm
 #' @export
 plot_MSdev_PCA <- function(object){

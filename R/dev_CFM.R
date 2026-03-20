@@ -56,19 +56,21 @@ setMethod("show",signature ="CFM_data",definition =
             } )
 
 
-#' CFM predict
-#' @description
-#' see CFM
+#' Predict Mass Spectra using CFM-ID
+#' @title Predict Mass Spectra using CFM-ID
+#' @description Predicts mass spectra fragments for a given molecule using the CFM-ID algorithm via Docker.
+#' This function sends a SMILES or InChI string to the CFM-ID Docker container and returns predicted
+#' fragment spectra at multiple collision energies.
 #' @describeIn CFM predict
-#' @param smiles_or_inchi_or_file smiles
-#' @param prob_thresh prob
-#' @param param_adduct adduct
-#' @param annotate_fragments logic
-#' @param output_file_or_dir path
-#' @param apply_postproc logic
-#' @param suppress_exceptions logic
+#' @param smiles_or_inchi_or_file SMILES string, InChI string, or path to a file containing molecular structure
+#' @param prob_thresh Probability threshold for fragment prediction (default: 0.001)
+#' @param param_adduct Adduct type for prediction, e.g., "[M+H]+" or "[M-H]-" (default: "[M+H]+")
+#' @param annotate_fragments Logical, whether to annotate fragments (default: 1)
+#' @param output_file_or_dir Path to save results, or NULL to return results in memory (default: NULL)
+#' @param apply_postproc Logical, whether to apply post-processing (default: 0)
+#' @param suppress_exceptions Logical, whether to suppress exceptions (default: 1)
 #'
-#' @return list of cfm data
+#' @return A CFM_data object containing predicted spectra data, or path to output file if output_file_or_dir is specified
 #' @export
 
 CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
@@ -109,18 +111,22 @@ CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([
   }
 }
 
-#' CFM_annotate
-#' @describeIn CFM anntate
+#' Annotate Mass Spectra using CFM-ID
+#' @title Annotate Mass Spectra using CFM-ID
+#' @description Annotates experimental mass spectra with predicted fragments using the CFM-ID algorithm via Docker.
+#' This function matches experimental spectra to predicted fragments based on mass tolerance.
+#' @describeIn CFM annotate
 #'
-#' @param smiles_or_inchi smiles
-#' @param spectrum_file spectra
-#' @param id id
-#' @param ppm_mass_tol ppm
-#' @param abs_mass_tol mz tol
-#' @param param_adduct adduct
-#' @param output_file file path
+#' @param smiles_or_inchi SMILES string or InChI string of the molecule to annotate
+#' @param spectrum_file Path to spectrum file (mgf, msp, etc.) or a Spectra object containing experimental spectra
+#' @param id Identifier for the compound (default: "AN_ID")
+#' @param ppm_mass_tol Mass tolerance in parts per million for matching (default: 5.0)
+#' @param abs_mass_tol Absolute mass tolerance in m/z units (default: 0)
+#' @param param_adduct Adduct type for annotation, e.g., "[M+H]+" or "[M-H]-" (default: "[M+H]+")
+#' @param output_file Path to save annotation results, or NULL to return results in memory (default: NULL)
+#' @param ... Additional arguments passed to underlying functions
 #'
-#' @return cfm data
+#' @return A CFM_data object containing annotated spectra data, or path to output file if output_file is specified
 #'
 #' @export
 #'
@@ -168,27 +174,30 @@ CFM_annotate<- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
 }
 
 
-#' CFM_annotate_by_fraggen
+#' Annotate Fragments using CFM Fraggen (Deprecated)
+#' @title Annotate Fragments using CFM Fraggen
 #' @describeIn CFM fraggen and annotate
 #' @description
-#' this function generate CFM_data by CFM_fraggen,
-#' not rely on Spectra input
+#' Deprecated. Use \code{\link{CFM_annotate_by_predict}} instead.
+#' This function generates CFM_data by generating fragment graphs with CFM_fraggen,
+#' not relying on Spectra input. It creates a synthetic peak assignment based on
+#' the generated fragments.
 #'
 #' @note
-#' filter fragment of mz > 30 to avoid error when smiles transform to sdf
+#' Filters fragments with mz < 30 to avoid errors when converting SMILES to SDF.
+#' This function is deprecated and will be removed in future versions.
 #'
+#' @param smiles_or_inchi SMILES string or InChI string of the molecule
+#' @param spectrum_file Spectrum file path (currently unused, default: NULL)
+#' @param max_depth Maximum depth for fragment generation (default: 1)
+#' @param id Identifier for the compound (default: "AN_ID")
+#' @param ppm_mass_tol Mass tolerance in ppm for matching (default: 5.0)
+#' @param abs_mass_tol Absolute mass tolerance in m/z units (default: 0)
+#' @param param_adduct Adduct type, e.g., "[M+H]+" or "[M-H]-" (default: "[M+H]+")
+#' @param output_file Path to save results, or NULL to return results in memory (default: NULL)
+#' @param ... Additional arguments
 #'
-#' @param smiles_or_inchi smiles
-#' @param spectrum_file NULL
-#' @param max_depth 1
-#' @param id ID
-#' @param ppm_mass_tol 20
-#' @param abs_mass_tol 0
-#' @param param_adduct adduct
-#' @param output_file NULL
-#'
-#'
-#' @return CFM_data
+#' @return A CFM_data object containing fragment definitions and peak assignments
 #' @export
 #'
 CFM_annotate_by_fraggen <- function(
@@ -230,14 +239,24 @@ CFM_annotate_by_fraggen <- function(
 }
 
 
-#' CFM_annotate_by_predict
-#'
+#' Predict and Annotate Mass Spectra using CFM-ID
+#' @title Predict and Annotate Mass Spectra using CFM-ID
 #' @describeIn CFM predict and annotate
 #' @description
-#' [CFM_predict] and then [CFM_annotate]
+#' Combines \code{\link{CFM_predict}} and \code{\link{CFM_annotate}} in a single workflow.
+#' First predicts mass spectra using CFM-ID, then annotates the predicted spectra
+#' with fragment assignments. This is useful for obtaining fully annotated spectral data
+#' for a given molecule.
+#'
+#' @param smiles_or_inchi SMILES string or InChI string of the molecule
+#' @param id Identifier for the compound (default: "AN_ID")
+#' @param ppm_mass_tol Mass tolerance in ppm for annotation matching (default: 5.0)
+#' @param abs_mass_tol Absolute mass tolerance in m/z units (default: 0)
+#' @param param_adduct Adduct type, e.g., "[M+H]+" or "[M-H]-" (default: "[M+H]+")
+#' @param output_file Path to save results, or NULL to return results in memory (default: NULL)
+#' @param ... Additional arguments passed to underlying functions
 #'
 #' @export
-#' @inheritParams  CFM_annotate
 CFM_annotate_by_predict <- function(
     smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C@]([H])(O)[C@@]1([H])O",
     id = "AN_ID",
@@ -436,11 +455,15 @@ read_CFM_annotate_result <- function(result_path = "c:/Users/91879/OneDrive/Code
   return(cfm_data)
 }
 
-#' read_CFM_predict_result
-#' @describeIn CFM read_CFM_predict_result
-#' @param result_path path
+#' Read CFM-ID Prediction Results
+#' @title Read CFM-ID Prediction Results
+#' @description Reads and parses the output from CFM-ID prediction results into a structured CFM_data object.
+#' This function processes the text output file from CFM-ID and extracts peak assignments,
+#' fragment definitions, and other spectral data.
+#' @describeIn CFM read prediction results
+#' @param result_path Path to the CFM-ID prediction result file (default: "c:/Users/91879/OneDrive/Code/Docker/cfm/data/cfm_predict_result.txt")
 #'
-#' @return list of cfm data
+#' @return A CFM_data object containing parsed peak assignments and fragment definitions
 #' @export
 #'
 
@@ -651,16 +674,21 @@ plot_CFM_annotated_Spectra <- function(cfmd){
 
 
 
-#' CFM_annotate_isotopologues
-#' @describeIn MSIP CFM_annotate_isotopologues
+#' Annotate Isotopologues in Mass Spectra
+#' @title Annotate Isotopologues in Mass Spectra
+#' @description Annotates mass spectra with isotopologue information by matching peaks
+#' to expected isotope patterns. This function assigns fragment groups and isotope counts
+#' to observed peaks based on mass tolerance.
+#' @describeIn MSIP annotate isotopologues
 #'
-#' @param sp Spectra
-#' @param cfmd cfmd_data
-#' @param isotope `[13]C`
-#' @param iso_count num
-#' @param ppm 20
+#' @param sp A Spectra object containing experimental mass spectra data
+#' @param cfmd A CFM_data object containing fragment definitions and peak assignments
+#' @param iso_ele Isotope element specification, e.g., "[13]C" for carbon-13 (default: "[13]C")
+#' @param iso_count Maximum number of isotope incorporations to consider (default: 0)
+#' @param ppm Mass tolerance in parts per million for isotope matching (default: 20)
 #'
-#' @return null
+#' @return A data frame containing annotated spectrum data with fragment groups, isotope counts,
+#' intensity ratios, and summed intensities for each fragment group
 #' @export
 #'
 CFM_annotate_isotopologues <- function(sp,
@@ -724,12 +752,16 @@ CFM_annotate_isotopologues <- function(sp,
 }
 
 
-#' CFM_data_get_igraph
+#' Get Igraph Objects for CFM Fragments
+#' @title Get Igraph Objects for CFM Fragments
+#' @description Converts fragment structures in a CFM_data object to igraph objects representing
+#' molecular graphs. This function processes fragment SMILES strings to SDF format and then
+#' creates igraph objects for structural analysis.
+#' @describeIn CFM_data get fragment igraph objects
+#' @param object A CFM_data object containing fragment definitions and transitions
 #'
-#' @describeIn CFM_data CFM_data_get_igraph
-#' @param object cfmd
-#'
-#' @return cfmd
+#' @return The input CFM_data object with updated fragment_igraph and fragment_sdf slots,
+#' and filtered fragment_define and fragment_transition slots containing only valid fragments
 #' @export
 CFM_data_get_igraph <- function(object){
 
@@ -778,19 +810,22 @@ CFM_data_get_igraph <- function(object){
 
 
 
-#' Atom tracing map
-#' @describeIn Atom_tracing_map get atom map
+#' Get Atom Tracing Maps for CFM Fragments
+#' @title Get Atom Tracing Maps for CFM Fragments
+#' @description Computes atom-to-atom mapping between parent and product fragments in a CFM_data object.
+#' This function traces how atoms in the original molecule are distributed across fragments
+#' through fragmentation transitions, which is essential for isotope tracing analysis.
+#' @describeIn Atom_tracing_map compute atom maps
 #'
+#' @note CFM_data_get_atom_map can be computationally intensive, particularly in the get_CFM_data_trans_map step
+#' which uses the fmcs (Maximum Common Substructure) algorithm.
 #'
-#' @param object cfmd
-#' @param iso_ele `[13]C`
-#' @param BPPARAM [BiocParallel::SerialParam]
+#' @param object A CFM_data object containing fragment definitions and transitions
+#' @param iso_ele Isotope element specification for tracing, e.g., "[13]C" (default: "[13]C")
+#' @param BPPARAM A BiocParallel backend for parallel processing (default: BiocParallel::SerialParam())
 #'
-#' @note CFM_data_get_atom_map take too much times when construct, major in get_CFM_data_trans_map>>>fmcs
-#'
-#'
-#'
-#' @return cfmd
+#' @return The input CFM_data object with updated fragment_atom_map slot containing atom-to-atom
+#' mapping matrices, and updated fragment_define slot with additional statistics
 #' @export
 #'
 CFM_data_get_atom_map <- function(object,

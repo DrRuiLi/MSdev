@@ -1,5 +1,7 @@
 #' get_sdf_igraph
 #'
+#' @title Get Sdf Igraph
+#' @description Sdf igraph.
 #' @param sdf sdf
 #' @param addH T or F
 #'
@@ -82,6 +84,8 @@ get_sdf_igraph <- function(sdf,addH = F){
 
 #' vis_sdf_igraph
 #'
+#' @title Vis Sdf Igraph
+#' @description Vis sdf igraph.
 #' @param sdf.igraph igraph
 #' @param show_id logic
 #' @param highlight vector

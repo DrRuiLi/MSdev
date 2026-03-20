@@ -1,5 +1,7 @@
 #' Title
 #'
+#' @title Msip Shiny Start
+#' @description MSIP shiny start.
 #' @param object MSIP obj
 #'
 #' @return NULL
@@ -22,6 +24,8 @@ MSIP_shiny_start <- function(object,port = NULL){
 
 #' MSIP_shiny_Acq
 #'
+#' @title Msip Shiny Acq
+#' @description MSIP shiny Acq.
 #' @param object MSIP obj
 #'
 #' @return NULL

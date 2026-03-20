@@ -13,6 +13,8 @@ setwdActivedFilePath <- function(){
 
 #' setRStudioDir
 #'
+#' @title Setrstudiodir
+#' @description SetRStudioDir.
 #' @param path path
 #'
 #' @return null

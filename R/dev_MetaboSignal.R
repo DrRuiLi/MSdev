@@ -1,3 +1,4 @@
+#' @description MetaboSignalNetworkTable2df.
 #' @title MetaboSignalNetworkTable2df
 #'
 #' @param network_table matrix with 3 column: source, target, interaction_type
@@ -78,6 +79,7 @@ MetaboSignalNetworkTableStandardNodeName <- function(network_table,add_hsa = T){
 }
 
 
+#' @description Node info.
 #' @title get_node_info
 #'
 #' @param all_nodes kegg id, currently support cpd(compound) and hsa(gene)

@@ -54,6 +54,7 @@ groupStringFactor <- function(x){
 }
 
 
+#' @description Vector2str.
 #' @title vector2str
 #' @param v vector
 #'

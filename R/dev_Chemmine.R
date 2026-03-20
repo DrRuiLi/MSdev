@@ -116,6 +116,8 @@ get_sdf_formula <- function(sdfs){
 
 #' get_smile_sdf
 #'
+#' @title Get Smiles Sdf
+#' @description Smiles sdf.
 #' @param smiles  smiles
 #' @param smiles.id NULL
 #'
@@ -313,6 +315,8 @@ get_atom_id_from_parent <- function(parent.sdf.graph,
 #' map atom of two molecular
 #'
 #'
+#' @title Get Atom Map
+#' @description Atom map.
 #' @param sdf.parent sdf
 #' @param sdf.product sdf
 #' @param ig.parent ig
@@ -526,6 +530,8 @@ mcs.map.filter.duplicate <- function(mcs.map,target_ele = "C"){
 
 #' vis_smiles
 #'
+#' @title Vis Smiles
+#' @description Vis smiles.
 #' @param smiles smiles
 #' @param show.formula logic
 #' @param show.label logic

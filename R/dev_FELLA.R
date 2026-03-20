@@ -10,6 +10,8 @@ fella_enrich <- function(cpd_kegg,
 
 #' fella_igraph
 #'
+#' @title Fella Igraph
+#' @description Fella igraph.
 #' @param fella.fella
 #'
 #' @return igraph

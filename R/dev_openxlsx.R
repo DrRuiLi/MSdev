@@ -1,3 +1,4 @@
+#' @description Df to wb.
 #' @title df_to_wb
 #'
 #' @param df data.frame
@@ -19,6 +20,7 @@ wb_to_df <- function(wb,sheet_name = 1){
   openxlsx::read.xlsx(wb,sheet = sheet_name)
 }
 
+#' @description Edit df in excel.
 #' @title edit_df_in_excel
 #'
 #' @param df data.frame
@@ -39,6 +41,7 @@ df
 }
 
 #' write.xlsx
+#' @title Xlsx
 #' @description write xlsx, dir will be created if not existed
 #' @param data data to write
 #' @param file.dir file path
@@ -60,6 +63,8 @@ write.xlsx <- function(data,file.dir ){
 #'
 #' Write a list of data.frame (or other object could be write into wroksheet), every term will be writen to a single sheet
 #'
+#' @title List
+#' @description List.
 #' @param df.list list of data
 #' @param file file path
 #'

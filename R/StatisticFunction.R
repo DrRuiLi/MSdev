@@ -114,6 +114,7 @@ analyzePathwayGlobalTest <- function(pathway.matrix,pathway.group,filter_Metabol
 
 }
 
+#' @description AnalyzePathwayHyperTest.
 #' @title analyzePathwayHypertest
 #' @describeIn stat-pathway analyzePathwayHypertest
 #'
@@ -169,6 +170,8 @@ analyzePathwayHyperTest <- function(kegg.id = "C00024", filter_Metabolism = F){
 
 #' plotPCA
 #'
+#' @title Plot Pca
+#' @description PCA.
 #' @param pca.matrix pca.matrix
 #' @param pca.group pca.group
 #' @param showlabel showlabel
@@ -470,6 +473,7 @@ plotHeatmap <- function(heatmap.matrix,
 
 }
 
+#' @description PlotPathwayEnrichment.
 #' @title Bioinformatic analysis
 #' @describeIn MSdev_Bioinfo plotPathwayEnrichment
 #'

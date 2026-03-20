@@ -33,6 +33,8 @@ getmsExpTime<- function(msDataFiles){
 #' get_MSinfo_mzR
 #' get MS experiment time by mzR
 #'
+#' @title Get Msinfo Mzr
+#' @description MSinfo mzR.
 #' @param msDataFiles file path
 #'
 #' @return mzR info
