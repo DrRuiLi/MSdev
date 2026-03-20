@@ -2420,7 +2420,404 @@ open_plot_win(p,10,10)
   fit <- fit_bg_norm_mixture(hit.ppm , f_bg,max_iter = 100000,tol = 100)
 
 }
-# Thu Feb  5 22:24:29 2026 ------------------------------
+
+
+# Mon Feb  9 11:49:16 2026 ------------------------------
 {
+
+  a <- read.csv("d:/aaa.csv")%>%
+    dplyr::mutate(date = as.POSIXct(geoTime/1000))
+  table((format((a$date),"%Y%m"))) %>%barplot()
+
+
+
+  a <- lapply(vdata(cn.seed.ig)$name, function(x){
+
+    message(x)
+    #vdata(cn.seed.ig)$name[167] ->x
+    x.from <- cn.seed.net%>%
+      dplyr::filter(type != "isotope",
+                    from == x)%>%
+      dplyr::select(type,eid,
+                    adduct = adduct.from,
+                    fragment,element
+                    )
+    x.to <- cn.seed.net%>%
+      dplyr::filter(type != "fragment",
+                    to == x)%>%
+      dplyr::select(type,eid,
+                    adduct =adduct.to,
+                    fragment,element
+      )
+
+    bind_rows(x.from,  x.to)
+    c(x.from$adduct,x.to$adduct)
+
+  })
+
+
+  crp <- function(c.count = 10){
+
+    x <- c(rep(0,16 * 3),rep(1,3*3),rep(1,1 * 3))
+    y <-  c(rep(0,16 * 3),rep(1,3*3),rep(c.count * 0.01,1 * 3))
+    plot(x , y)
+    cor(x,y)
+  }
+  crp(4)
+
+
+
+}
+# Tue Feb 24 16:09:49 2026 YMDB------------------------------
+{
+
+  library(ChemmineR)
+
+  ymdb <- read.SDFset("d:/temp/ymdb.sdf")
+  ymdb.data <- datablock(ymdb)%>%
+    datablock2ma()%>%
+    as.data.frame()%>%
+    dplyr::select(compound_id = DATABASE_ID,name = GENERIC_NAME,formula = FORMULA)%>%
+    dplyr::mutate(formula = chemform_formate(formula))%>%
+    dplyr::filter(!is.na(formula))
+
+
+  library(jsonlite)
+  ymdb <- fromJSON("D:/temp/ymdb.json")
+  A <- stream_in(file("D:/temp/ymdb.json"))
+
+  {
+    library(jsonlite)
+    library(dplyr)
+
+    # 1. Read the entire file as one single character string
+    # (YMDB files are usually ~100MB-500MB, which fits in modern RAM)
+    raw_text <- readChar("D:/temp/ymdb.json", file.info("D:/temp/ymdb.json")$size)
+
+    # 2. Fix the "missing comma" issue
+    # This looks for the boundary between two objects and adds a comma
+    fixed_text <- gsub("\\}\\{", "\\}, \\{", raw_text)
+
+    # 3. Wrap it in brackets to turn it into one big valid JSON array
+    json_array <- paste0("[", fixed_text, "]")
+
+    # 4. Parse it into a dataframe
+    # simplifyVector = TRUE is key for turning it into a table automatically
+    df <- fromJSON(json_array, simplifyVector = TRUE)
+
+    # 5. Check the result
+    glimpse(df)
+  }
+
+  cp <- MSdb::get_CompoundDB_Compound()
+  x <- cp%>%
+    dplyr::select(any_of(c("compound_id","name","formula","kegg_id")))%>%
+    dplyr::mutate(formula = chemform_formate(formula))%>%
+    dplyr::filter(!is.na(formula))
+
+  write.xlsx(x, file.dir = "d:/temp/aaa.xlsx")
+
+
+  sapply(1:nrow(cn.seed.vdata),function(i){
+
+    drt <- cn.seed.vdata$candidate.rt[[i]] - cn.seed.vdata$rt[i]
+    drt[which.min(abs(drt))]
+
+  })->rt.e
+  rt.e <- unlist(rt.e)
+  plot_density(rt.e)
+
+
+
+
+  pave.seed <- object@statData$TRACE$Negative%>%
+    dplyr::filter(feature_id==seed)%>%
+    dplyr::mutate(rtd = rt- compound.rt)
+
+
+  nrow(pave.seed)
+  sum(!is.na(pave.seed$compound_id))
+  sum(!is.na(pave.seed$compound.rt)&!is.infinite(pave.seed$compound.rt))
+  sum(abs(pave.seed$rtd) < 100,na.rm = T )
+
+
+  ad.match$mz.ppm%>%
+    plot_density()
+
+
+}
+
+# Mon Mar  2 09:59:41 2026 ------------------------------
+{
+  adducts <- MSCC::adduct.table%>%
+    dplyr::filter(#(sign(Charge)+1)/2 == 0,
+                  Multi  == 1,
+                  abs(Charge) == 1)
+
+
+
+  cpdb <- openxlsx::read.xlsx("d:/data/2025.12.26.PAVE2/trace.cp.db.xlsx")%>%
+    dplyr::mutate(mass = chemform_mz(formula))
+
+  c.count <- sub(".*C(\\d+).*", "\\1", cpdb$formula)%>%as.numeric()
+  mz.split <- split( cpdb$mass,c.count)
+  mzq <- sapply(mz.split, function(x){quantile(x,0.95)})
+  plot(mz.split)
+
+}
+
+{
+  #' Calculate molecular formulas given exact C and H counts
+  #'
+  #' @param mz Observed m/z value
+  #' @param C Exact number of Carbon atoms
+  #' @param H Exact number of Hydrogen atoms
+  #' @param charge Ion charge (e.g., 1 for [M+H]+ or [M]+, -1 for [M-H]-)
+  #' @param ppm Mass error tolerance in ppm
+  #' @param other_elements List of other elements to search and their max limits
+  #' @return A data frame with valid formulas, theoretical m/z, and ppm error
+  find_exact_CH_formula <- function(mz, C, H, charge = 1, ppm = 10) {
+
+    # 1. Exact Monoisotopic Masses
+    mass_dict <- c(
+      C = 12.0000000, H = 1.0078250, N = 14.0030740, O = 15.9949146,
+      P = 30.9737616, S = 31.9720710, Cl = 34.9688527, F = 18.9984032,
+      Br = 78.9183371, Na = 22.9897693, K = 38.9637067
+    )
+    mass_e <- 0.00054858 # Electron mass
+
+
+    # 2. Calculate the target mass of ALL atoms in the ion
+    # m/z = (Sum of Atom Masses - charge * mass_e) / abs(charge)
+    # Therefore: Sum of Atom Masses = mz * abs(charge) + charge * mass_e
+    target_atom_mass <- mz
+
+    # 3. Calculate mass consumed by fixed C and H
+    mass_CN <- (C * mass_dict["C"]) + (N * mass_dict["N"])
+
+    # 4. Calculate remaining mass to fill (mz_other)
+    mz_other <- target_atom_mass - mass_CN
+
+
+    # 5. Dynamically calculate search limits for remaining elements
+    # We use the user's max limit, OR the mathematical limit of mz_other, whichever is smaller
+    search_limits <- lapply(names(mass_dict), function(el) {
+      max_math <- floor(max(0, mz_other) / mass_dict[el])
+      seq(0, max_math)
+    })
+    names(search_limits) <- names(mass_dict)
+
+    # 6. Generate all combinations for the remaining mass
+    grid <- expand.grid(search_limits)
+
+    # Fast matrix multiplication to calculate masses of all combinations
+    grid_mat <- as.matrix(grid)
+    other_masses_vec <- unlist(mass_dict[names(mass_dict)])
+
+    mass_combo <- as.vector(grid_mat %*% other_masses_vec)
+
+    # 7. Calculate theoretical m/z for each combination
+    mz_theo <- (mass_CN + mass_combo - charge * mass_e) / abs(charge)
+
+    # 8. Filter by PPM
+    error_ppm <- abs(mz_theo - mz) / mz * 1e6
+    valid_idx <- which(error_ppm <= ppm)
+
+    if (length(valid_idx) == 0) {
+      message("No combinations found within the ppm tolerance.")
+      return(NULL)
+    }
+
+    # 9. Format Results
+    res <- grid[valid_idx, , drop = FALSE]
+    res$Theoretical_mz <- mz_theo[valid_idx]
+    res$PPM_Error <- error_ppm[valid_idx]
+
+    # Build the formula string cleanly
+    res$Formula <- apply(res[, names(other_elements), drop = FALSE], 1, function(row) {
+      str <- ""
+      if (C > 0) str <- paste0(str, "C", ifelse(C == 1, "", C))
+      if (H > 0) str <- paste0(str, "H", ifelse(H == 1, "", H))
+
+      for (el in names(row)) {
+        count <- row[el]
+        if (count > 0) {
+          str <- paste0(str, el, ifelse(count == 1, "", count))
+        }
+      }
+      return(str)
+    })
+
+    # Sort by smallest error
+    res <- res[order(res$PPM_Error), ]
+    rownames(res) <- NULL # Clean up row names
+
+    # Return final cleaned data frame
+    return(res[, c("Formula", "Theoretical_mz", "PPM_Error", names(other_elements))])
+  }
+
+  # --- EXAMPLE USAGE ---
+
+  # Let's say we have an observed m/z of 128.0948, positive mode (charge = 1)
+  # We strictly want formulas containing exactly C5 and H10
+  results <- find_exact_CH_formula(mz = 128.0948,
+                                   C = 5,
+                                   H = 10,
+                                   charge = 1,
+                                   ppm = 15,
+                                   other_elements = list(N = 5, O = 5, S = 1, Cl = 1))
+
+  print(results)
+
+
+
+
+
+
+
+  mz_formula(
+    Accurate_mass = 810.133057,
+    charge = 1,
+    ppm = 5,
+    C_range = 23:23,
+    N_range = 7:7,
+    H_range = 0:100,
+    O_range = 0:20,
+    Cl_range = 0:0,
+    P_range = 0:3,
+    S_range = 0:3,
+    Na_range = 0:0,
+    K_range = 0:0,
+    F_range = 0:0,
+    Br_range = 0:0,
+    I_range = 0:0,
+    Si_range = 0:0,
+    B_range = 0:0,
+    Ca_range = 0:0,
+    Cu_range = 0:0,
+    Ni_range = 0:0,
+    N_rule = T,
+    Elem_ratio_rule = F,
+    db_min = 0,
+    db_max = 99,
+    metal_ion = 0:3
+  )
+
+
+
+  get_formula_from_CN_mz(144.080725910731,"C10N1")
+
+
+
+
+}
+
+{
+
+  xcms <- object@xcmsData$PositiveMS1
+  fdf <- featureDefinitions(xcms)
+  ch <- chromPeaks(xcms)
+  mz.sd <- sapply(fdf$peakidx,
+                  function(x){
+    sd(ch[x,'mz'])/mean(ch[x,'mz']) * 1e6
+  })
+  plot_density(mz.sd)
+  quantile(mz.sd, 0.9 )
+
+  rt.sd <- sapply(fdf$peakidx,function(x){
+    sd(ch[x,'rt'])
+  })
+  plot_density(rt.sd)
+
+  quantile(rt.sd , 0.98)
+
+
+
+
+
+  pave.seed <- object@statData$TRACE$Negative%>%
+    dplyr::filter(feature_id==seed)%>%
+    dplyr::mutate(rtd = rt- compound.rt)
+
+
+  nrow(pave.seed)
+  sum(!is.na(pave.seed$compound_id))
+  sum(!is.na(pave.seed$compound.rt)&!is.infinite(pave.seed$compound.rt))
+  sum(abs(pave.seed$rtd) < 100, na.rm = T )
+
+  cn.seed.vdata4 <- trace.res%>%
+    dplyr::mutate(rtd = compound.rt - rt,
+                  peaksmaxo = xcms.fdf$peakMaxo[as.numeric(feature_id)],
+                  peaksmaxo = log10(peaksmaxo)  ,
+                  anno = is.na(compound_id))
+
+  ggplot(cn.seed.vdata4)+
+    geom_violin(aes(x = anno , y = peaksmaxo))
+  edit_df_in_excel(cn.seed.vdata4)
+
+}
+
+{
+
+  cp <- readxl::read_excel("d:/temp/Hilic28min_QE_Rt_known_20260228.xlsx")
+  cp$mz <- MSCC::chemform_adduct(cp$formula)
+
+
+  find_xcms_feature(xcms.pos,123.055290)->a
+
+  find_xcms_feature(xcms.xcms.neg,229.011887)->a
+  cn.net%>%
+    dplyr::filter(from == "4150")
+
+}
+# Mon Mar  9 14:21:58 2026 ------------------------------
+{
+
+  pave.seed.pos.manual <- edit_df_in_excel(obj@statData$TRACE$Positive,rowname = F)
+  pave.seed.neg.manual <- edit_df_in_excel(pave.seed.neg)
+
+
+  pave.seed.pos.manual->obj@statData$TRACE$Positive
+  pave.seed.neg.manual->obj@statData$TRACE$Negative
+  MSdev_save(obj)
+}
+
+# Mon Mar  9 14:24:35 2026 ------------------------------
+{
+
+
+  kegg.path <- MSdb::get_KEGG_compound_pathway_df()
+  kegg.path <- kegg.path%>%
+    dplyr::filter(grepl(x = CLASS,pattern = "Metabolism"),
+                  ENTRY== "hsa00470")%>%
+    dplyr::mutate(compund.name = str_normalize_name(COMPOUND))
+
+  kegg.cp <- MSdb:::get_KEGG_compound_df()
+  cpdb.name.to.match <- str_normalize_name(kegg.cp$Name)
+  pb <- get_progress_bar(nrow(kegg.path))
+  res <- list()
+  for (i in 1:nrow(kegg.path)) {
+
+    pb$tick()
+    i.name <- kegg.path$compund.name[i]
+    d <- stringdist::stringdist(
+      i.name,
+      cpdb.name.to.match,
+      method = "jw"
+    )
+    id <- head(order(d),n = 5)
+    res[[i]] <- data.frame(
+      name = i.name,
+      from.id = kegg.path$COMPOUND.ID[i],
+      id.match = id,
+      dist = d[id],
+      matched = cpdb.name.to.match[id],
+      raw.name =  kegg.cp$Name[id],
+      matched.id = kegg.cp$KEGG_id[id]
+    )
+  }
+
+  res.df <- rbindlist(res)
+  edit_df_in_excel(res.df)
 
 }
