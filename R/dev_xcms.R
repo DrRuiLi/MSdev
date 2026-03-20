@@ -1320,6 +1320,18 @@ get_xcms_feature_definitions <- function(xcms.xcms){
   return(xcms.fdf)
 
 }
+
+
+find_xcms_feature <- function(xcms.xcms,mz = 100,ppm = 10){
+
+  fdf <- featureDefinitions(xcms.xcms)
+  mzr <- mz.range.ppm(mz,ppm)
+  fdf[between(fdf$mzmed,mzr[1],mzr[2] ), ]%>%
+    as_tibble()%>%
+    dplyr::mutate(rtmed = rtmed / 60)
+}
+
+
 #' @title plot_xcms_peaks_distribution
 #' @description export peaks data by xcms::chromPeaks and plot by ggplot2
 #'
@@ -1902,6 +1914,8 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   peak.density.param <- xcms_param$groupChromPeaks
   peak.density.param@sampleGroups <- Biobase::pData(xcms.xcms)$sample.type
   xcms.xcms <- xcms::groupChromPeaks(xcms.xcms,param = peak.density.param)
+  #xcms.xcms <- xcms_filter_feature_mz_rsd(xcms.xcms,rsd.ppm = 2)
+  xcms.xcms <- xcms_get_feature_wmean(xcms.xcms)
   message_with_time(" ",nrow(featureDefinitions(xcms.xcms))," feature found")
   xcms.xcms <- xcms::fillChromPeaks(xcms.xcms,param = xcms::FillChromPeaksParam())
 
@@ -2667,4 +2681,38 @@ xcms_get_feature_wmean <- function(xcms.xcms){
   xcms.fdf$rtmed <- wrt
   xcms.fdf -> featureDefinitions(xcms.xcms)
   return(xcms.xcms)
+}
+
+
+xcms_filter_feature_mz_rsd <- function(xcms.xcms, rsd.ppm = 2){
+
+
+  fdf <- featureDefinitions(xcms.xcms)
+  ch <- chromPeaks(xcms.xcms)
+  mz.sd <- sapply(fdf$peakidx,function(x){
+    sd(ch[x,'mz'])/mean(ch[x,'mz']) * 1e6
+  })
+  #plot_density(mz.sd)
+  fdf <- fdf[mz.sd < rsd.ppm,]
+  fdf$feature_id <- paste0("FT",num2str(1:nrow(fdf)))
+  rownames(fdf) <- fdf$feature_id
+  fdf -> featureDefinitions(xcms.xcms)
+  return(xcms.xcms)
+
+}
+xcms_filter_feature_rt_rsd <- function(xcms.xcms, rt.shift = 5 ){
+
+
+  fdf <- featureDefinitions(xcms.xcms)
+  ch <- chromPeaks(xcms.xcms)
+  rt.sd <- sapply(fdf$peakidx,function(x){
+    sd(ch[x,'rt'])/mean(ch[x,'rt'])
+  })
+  #plot_density(mz.sd)
+  fdf <- fdf[rt.sd < rt.shift,]
+  fdf$feature_id <- paste0("FT",num2str(1:nrow(fdf)))
+  rownames(fdf) <- fdf$feature_id
+  fdf -> featureDefinitions(xcms.xcms)
+  return(xcms.xcms)
+
 }
