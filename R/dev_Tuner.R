@@ -1,12 +1,11 @@
-#' get xcms param by Autotuner
+#' Get XCMS Parameters via Autotuner
 #'
-#' @title Get Xcms Autotuner
-#' @description Xcms Autotuner.
-#' @param xcms.xcms xcms
+#' @description Uses the Autotuner algorithm to automatically estimate XCMS peak detection parameters from an xcms object.
 #'
-#' @return Autotuner
+#' @param xcms.xcms An xcmsSet object (or similar) containing chromatographic data.
+#'
+#' @return A list of XCMS parameters as returned by Autotuner's `returnParams`.
 #' @export
-#'
 
 get_xcms_Autotuner <- function(xcms.xcms ){
 
