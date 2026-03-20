@@ -40,13 +40,15 @@ edit_df_in_excel <- function(df = data.frame(),rowname = T){
 df
 }
 
-#' write.xlsx
-#' @title Xlsx
-#' @description write xlsx, dir will be created if not existed
-#' @param data data to write
-#' @param file.dir file path
+#' Write data to Excel file
 #'
-#' @return null
+#' Writes a data frame or other object to an Excel file, creating the
+#' directory if it does not exist.
+#'
+#' @param data Data frame or object to write to Excel.
+#' @param file.dir File path for the output Excel file.
+#'
+#' @return Invisible NULL.
 #' @export
 #'
 
@@ -59,16 +61,16 @@ write.xlsx <- function(data,file.dir ){
 
 
 
-#' xlsx.write.list
+#' Write list of data frames to Excel
 #'
-#' Write a list of data.frame (or other object could be write into wroksheet), every term will be writen to a single sheet
+#' Writes a list of data frames (or other objects) to a single Excel
+#' workbook, each element as a separate sheet. Sheet names are taken from
+#' list names, with invalid characters replaced by underscores.
 #'
-#' @title List
-#' @description List.
-#' @param df.list list of data
-#' @param file file path
+#' @param df.list List of data frames or objects to write.
+#' @param file File path for the output Excel workbook.
 #'
-#' @return null
+#' @return Invisible NULL.
 #' @export
 #'
 

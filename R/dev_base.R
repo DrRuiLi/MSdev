@@ -1,7 +1,7 @@
 
-#' @title date_suffix
-#' @description generate a character of current date
-#' @return str
+#' @title Generate Date Suffix
+#' @description Creates a formatted date string suitable for file naming or timestamping purposes.
+#' @return A character string in the format "_YYYY_MM_DD" representing the current date.
 #' @export
 #'
 
@@ -24,11 +24,11 @@ between.range <- function(x, r){
 
 
 
-#' @title load_as_var
-#' @description load Rdata file and return, only one variable in `file_to_load`
-#' @param file_to_load file path
-#'
-#' @return data
+#' @title Load RData File as Variable
+#' @description Loads an RData file and returns the single variable it contains. The function validates that
+#'   exactly one variable exists in the file before loading.
+#' @param file_to_load Character string specifying the path to the RData file to load.
+#' @return The data object stored in the RData file. The type depends on what was saved in the file.
 #' @export
 #'
 
@@ -43,11 +43,11 @@ load_as_var <- function(file_to_load){
 }
 
 
-#' @title colorMix
-#' @description mix color by RGB and weighted by alpha
-#' @param ... colors
-#'
-#' @return color
+#' @title Mix Colors with Alpha Blending
+#' @description Mixes multiple colors together using RGB values weighted by their alpha (transparency) channels.
+#'   Useful for creating composite colors from overlapping transparent elements.
+#' @param ... One or more color specifications (character strings or color names). NA values are treated as transparent.
+#' @return A single color string in "#RRGGBBAA" format representing the mixed color.
 #' @export
 #'
 
@@ -74,24 +74,24 @@ colorMix <- function(...){
 }
 
 
+#' @title Display Message with Timestamp
+#' @description Outputs a message to the console prefixed with the current date and time.
+#'   Useful for logging progress during long-running operations.
+#' @param ... One or more objects to be converted to character strings and displayed in the message.
+#' @return This function is called for its side effect of printing a message and returns NULL invisibly.
 #' @export
-#' @title Message With Time
-#' @description Message with time.
 message_with_time <- function(...){
 
   message(format(Sys.time(),digits = 0)," ",...)
 }
 
 
-#' @description Open dir.
-#' @title open_dir
-#' open dir by Windows
-#'
-#' @param dir a path of dir or file
-#'
-#' @return null
+#' @title Open Directory in File Explorer
+#' @description Opens a directory in the system's file explorer (Windows Explorer on Windows).
+#'   If a file path is provided, opens the containing directory.
+#' @param x Character string specifying the path to a directory or file. Defaults to the current working directory.
+#' @return The normalized path that was opened, returned invisibly.
 #' @export
-#'
 setGeneric("open_dir",
            def = function(x = getwd()){
 
@@ -165,15 +165,12 @@ open_MSIP_dir <- function(){
 
 }
 
-#' split_df
-#' random split data.frame
-#'
-#' @title Split Df
-#' @description Df.
-#' @param df data.frame
-#' @param n number
-#'
-#' @return list
+#' @title Split Data Frame Randomly
+#' @description Randomly splits a data frame into multiple subsets of approximately equal size.
+#'   Useful for creating training/test splits or cross-validation folds.
+#' @param df A data frame to be split.
+#' @param n Integer specifying the number of subsets to split the data frame into. Default is 2.
+#' @return A list of data frames, with each element containing one subset.
 #' @export
 #'
 

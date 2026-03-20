@@ -105,13 +105,13 @@ cluster_ion <- function(mz,rt , ppm.thresh =10, rt.tol = 15){
 
 
 
-#' @title matrixSub
-#' @description expand 2 vector to matrix and "`-`"
-#' @param v1 vector
-#' @param v2 vector
-#'
-#' @return matrix
-#'
+#' @title Matrix Subtraction of Two Vectors
+#' @description Expands two vectors into matrices and computes element-wise subtraction,
+#'   creating a full difference matrix where each element (i,j) equals v1[i] - v2[j].
+#' @param v1 Numeric vector. Optionally can have names which will be used as row names.
+#' @param v2 Numeric vector. Optionally can have names which will be used as column names.
+#' @return A matrix of dimensions length(v1) x length(v2) containing all pairwise differences.
+#'   Row and column names are preserved if present in the input vectors.
 #' @export
 #'
 #' @examples
@@ -161,13 +161,12 @@ cor.mtest <- function(x){
 }
 
 
-#' @title median_part
-#' @description similar to head() and tail(), return the median of a vector
-#'
-#' @param x vector
-#' @param n number of element
-#'
-#' @return vector
+#' @title Extract Middle Portion of Vector
+#' @description Similar to head() and tail(), but returns elements from the middle portion of a vector
+#'   centered around the median position. Useful for examining central tendency of ordered data.
+#' @param x A numeric or character vector from which to extract elements.
+#' @param n Integer specifying the number of elements to return. Default is 10.
+#' @return A vector containing up to n elements from the middle portion of the input vector.
 #' @export
 #'
 median_part <- function(x, n = 10){
@@ -222,12 +221,13 @@ add_matrix <- function(mat1,mat2){
   return(sum_matrix)
 }
 
-#' @description Normalize max min.
-#' @title normalize_max_min
-#'
-#' @param x num
-#'
-#' @return num
+#' @title Normalize Values Using Min-Max Scaling
+#' @description Applies min-max normalization to scale values to the range [0, 1].
+#'   Works on vectors, matrices, and data frames (normalizes each row for 2D structures).
+#' @param x A numeric vector, matrix, or data frame to be normalized.
+#' @return The normalized data with the same structure as the input.
+#'   For vectors, returns a numeric vector. For matrices/data frames, returns a matrix with values
+#'   normalized row-wise.
 #' @export
 #'
 
@@ -279,19 +279,17 @@ gaussian_functioin <- function(x , a =1,b = 0,c = 0.5){
 
 
 
-#' match 2 list of ion based on mz and rt
-#' return all matched, include multiple match
-#'
-#' @title Match Mz Rt
-#' @description Mz rt.
-#' @param mz1 num
-#' @param rt1 num
-#' @param mz2 num
-#' @param rt2 num
-#' @param mz.ppm num
-#' @param rt.tol num
-#'
-#' @return num
+#' @title Match Ions by M/Z and Retention Time
+#' @description Matches two lists of ions based on mass-to-charge ratio (m/z) and retention time (RT).
+#'   Returns all matched pairs including multiple matches, with error values for each match.
+#' @param mz1 Numeric vector of m/z values for the first ion list.
+#' @param rt1 Numeric vector of retention times for the first ion list. Default is NA values of same length as mz1.
+#' @param mz2 Numeric vector of m/z values for the second ion list.
+#' @param rt2 Numeric vector of retention times for the second ion list. Default is NA values of same length as mz2.
+#' @param mz.ppm Numeric tolerance for m/z matching in parts per million (ppm). Default is 10.
+#' @param rt.tol Numeric tolerance for retention time matching. Default is Inf (no RT filtering).
+#' @return A data frame with columns: ion1 (index in first list), ion2 (index in second list),
+#'   mz.error (relative m/z error), and rt.error (absolute RT difference).
 #' @export
 #'
 match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
@@ -327,17 +325,14 @@ match_mz_rt <- function(mz1,rt1 =rep( NA,length(mz1)),
 }
 
 
-#' match 2 list of ion based on mz
-#' return the closest match
-#'
-#'
-#' @title Match Mz
-#' @description Mz.
-#' @param mz1 num
-#' @param mz2 num
-#' @param mz.ppm num
-#'
-#' @return num
+#' @title Match Ions by M/Z Only
+#' @description Matches two lists of ions based solely on mass-to-charge ratio (m/z).
+#'   Returns the closest match for each ion in the first list, handling multiple potential matches.
+#' @param mz1 Numeric vector of m/z values for the first ion list to match.
+#' @param mz2 Numeric vector of m/z values for the second ion list to match against.
+#' @param mz.ppm Numeric tolerance for m/z matching in parts per million (ppm). Default is 10.
+#' @return A numeric vector of the same length as mz1, containing indices of matched ions in mz2.
+#'   NA values indicate no match was found within the specified tolerance.
 #' @export
 #'
 
