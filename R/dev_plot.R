@@ -15,7 +15,7 @@ open_plot_win <- function(p,width = 5,height = 4){
 
   temp.file <- tempfile(fileext = ".png")
   if (any(c("Heatmap","HeatmapList")%in%class(p))) {
-    export::graph2png(ComplexHeatmap::draw(p),
+    export::graph2png(ComplexHeatmap::draw(p,padding = unit(c(1, 1, 1, 3), "mm")),
                      file =temp.file,
                      width = width,height= height
                      )
@@ -54,6 +54,29 @@ open_plot_pdf <- function(p,width = 5,height = 4){
 
 }
 
+
+open_plot_ppt <- function(p,width = 5,height = 4){
+
+  temp.file <- tempfile(fileext = ".pptx")
+  if (any(c("Heatmap","HeatmapList")%in%class(p))) {
+    export::graph2ppt(ComplexHeatmap::draw(p,padding = unit(c(1, 1, 1, 3), "mm")),
+                      file =temp.file,
+                      width = width,height= height
+    )
+  }else if(any(c("ggplot")%in%class(p))){
+    export::graph2ppt(p,
+                      file =temp.file,
+                      width = width,height= height
+    )
+  }else{
+    export::graph2ppt(p,
+                      file =temp.file,
+                      width = width,height= height
+    )
+  }
+  open_file(temp.file)
+
+}
 
 
 

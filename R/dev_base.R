@@ -149,6 +149,12 @@ open_PAVE <- function(){
   return(pave.file)
 }
 
+open_Project_dir <- function(){
+
+  proj.file <- get_dir_expand_from_onedrive("Documents/YLF_Lab/Project/")
+  setRStudioDir(proj.file)
+  return(proj.file)
+}
 
 open_MSIP_dir <- function(){
 
@@ -314,12 +320,6 @@ setMethod("isEmpty","NULL",definition = function(x){
 })
 
 
-str_digit <- function(x,digit = 2){
-
-  sprintf(paste0("%.",digit,"f"), x )
-}
-
-
 
 try_until_success <- function(func, ...) {
   success <- FALSE
@@ -378,7 +378,7 @@ get_dir_expand_from_onedrive <- function(d = "."){
 }
 
 
-calculate_pulse <- function(x = 1000, mt = F, qr = T, guru = 0.028,rc = 1){
+calculate_pulse <- function(x = 1000, mt = F, qr = T, guru = 0.028,rc = 1.02*0.994){
 
   r.base <- x * 0.024
   r.qr <- ifelse(qr,x * 0.02,0)
