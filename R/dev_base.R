@@ -132,14 +132,18 @@ open_file <- function(dir){
 
 open_script <- function(){
 
-  if (!file.exists("./Script/Test_Script.R")) {
-    file.create("./Script/Test_Script.R")
+  Script.file <- get_dir_expand_from_onedrive("Code\\R\\Package\\MSdev\\Script\\Test_Script.R")
+
+
+  if (!file.exists(Script.file)) {
+    file.create(Script.file)
   }
-  rstudioapi::documentOpen("./Script/Test_Script.R")
+  rstudioapi::documentOpen(Script.file)
 }
 
 open_MSIP <- function(){
-  msip.file <- "c:/Users/91879/OneDrive/Code/R/Projecct/2024.01.11.MSIP/Workflow.2025.07.09.R"
+
+  msip.file <- get_dir_expand_from_onedrive("Code/R/Projecct/2024.01.11.MSIP/Workflow.2025.07.09.R")
   rstudioapi::documentOpen(msip.file)
   return(msip.file)
 }
@@ -157,6 +161,21 @@ open_Project_dir <- function(){
   proj.file <- get_dir_expand_from_onedrive("Documents/YLF_Lab/Project/")
   setRStudioDir(proj.file)
   return(proj.file)
+}
+
+create_Project <- function(name = "New.Proj"){
+
+  proj.file <- get_dir_expand_from_onedrive("Documents/YLF_Lab/Project/")
+  proj.dir <- paste0(
+    proj.file,"/",
+    Sys.Date()%>%gsub(pattern = "-",replacement = ".",fixed = T),".",
+    name
+  )
+  dir.create(proj.dir,showWarnings = F)
+  dir.create(paste0(proj.dir,"/code"),showWarnings = F)
+  dir.create(paste0(proj.dir,"/data"),showWarnings = F)
+  dir.create(paste0(proj.dir,"/result"),showWarnings = F)
+
 }
 
 open_MSIP_dir <- function(){

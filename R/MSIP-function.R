@@ -3,7 +3,7 @@
 #' and isotope labels for both positive and negative ion modes.
 #'
 #' @param object MSdev object
-#' @param iso_ele isotope element, default "[13]C"
+#' @param iso_ele isotope element, default `"[13]C"`
 #' @param ppm ppm tolerance, default 10
 #' @param ... additional arguments passed to xcms_get_feature_isotopologues
 #'

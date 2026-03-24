@@ -64,7 +64,7 @@ setMethod("show",signature ="CFM_data",definition =
 #' @describeIn CFM predict
 #' @param smiles_or_inchi_or_file SMILES string, InChI string, or path to a file containing molecular structure
 #' @param prob_thresh Probability threshold for fragment prediction (default: 0.001)
-#' @param param_adduct Adduct type for prediction, e.g., "[M+H]+" or "[M-H]-" (default: "[M+H]+")
+#' @param param_adduct Adduct type for prediction, e.g., "\[M+H\]+" or "\[M-H\]-" (default: "\[M+H\]+")
 #' @param annotate_fragments Logical, whether to annotate fragments (default: 1)
 #' @param output_file_or_dir Path to save results, or NULL to return results in memory (default: NULL)
 #' @param apply_postproc Logical, whether to apply post-processing (default: 0)
@@ -122,7 +122,7 @@ CFM_predict <- function(smiles_or_inchi_or_file = "[H]C1(O)O[C@]([H])(CO)[C@@]([
 #' @param id Identifier for the compound (default: "AN_ID")
 #' @param ppm_mass_tol Mass tolerance in parts per million for matching (default: 5.0)
 #' @param abs_mass_tol Absolute mass tolerance in m/z units (default: 0)
-#' @param param_adduct Adduct type for annotation, e.g., "[M+H]+" or "[M-H]-" (default: "[M+H]+")
+#' @param param_adduct Adduct type for annotation, e.g., "\[M+H\]+" or "\[M-H\]-" (default: "\[M+H\]+")
 #' @param output_file Path to save annotation results, or NULL to return results in memory (default: NULL)
 #' @param ... Additional arguments passed to underlying functions
 #'
@@ -193,7 +193,7 @@ CFM_annotate<- function(smiles_or_inchi = "[H]C1(O)O[C@]([H])(CO)[C@@]([H])(O)[C
 #' @param id Identifier for the compound (default: "AN_ID")
 #' @param ppm_mass_tol Mass tolerance in ppm for matching (default: 5.0)
 #' @param abs_mass_tol Absolute mass tolerance in m/z units (default: 0)
-#' @param param_adduct Adduct type, e.g., "[M+H]+" or "[M-H]-" (default: "[M+H]+")
+#' @param param_adduct Adduct type, e.g., "\[M+H\]+" or "\[M-H\]-" (default: "\[M+H\]+")
 #' @param output_file Path to save results, or NULL to return results in memory (default: NULL)
 #' @param ... Additional arguments
 #'
@@ -252,7 +252,7 @@ CFM_annotate_by_fraggen <- function(
 #' @param id Identifier for the compound (default: "AN_ID")
 #' @param ppm_mass_tol Mass tolerance in ppm for annotation matching (default: 5.0)
 #' @param abs_mass_tol Absolute mass tolerance in m/z units (default: 0)
-#' @param param_adduct Adduct type, e.g., "[M+H]+" or "[M-H]-" (default: "[M+H]+")
+#' @param param_adduct Adduct type, e.g., "\[M+H\]+" or "\[M-H\]-" (default: "\[M+H\]+")
 #' @param output_file Path to save results, or NULL to return results in memory (default: NULL)
 #' @param ... Additional arguments passed to underlying functions
 #'
@@ -683,7 +683,7 @@ plot_CFM_annotated_Spectra <- function(cfmd){
 #'
 #' @param sp A Spectra object containing experimental mass spectra data
 #' @param cfmd A CFM_data object containing fragment definitions and peak assignments
-#' @param iso_ele Isotope element specification, e.g., "[13]C" for carbon-13 (default: "[13]C")
+#' @param iso_ele Isotope element specification, e.g., "\[13\]C" for carbon-13 (default: "\[13\]C")
 #' @param iso_count Maximum number of isotope incorporations to consider (default: 0)
 #' @param ppm Mass tolerance in parts per million for isotope matching (default: 20)
 #'
@@ -821,7 +821,7 @@ CFM_data_get_igraph <- function(object){
 #' which uses the fmcs (Maximum Common Substructure) algorithm.
 #'
 #' @param object A CFM_data object containing fragment definitions and transitions
-#' @param iso_ele Isotope element specification for tracing, e.g., "[13]C" (default: "[13]C")
+#' @param iso_ele Isotope element specification for tracing, e.g., "\[13\]C" (default: "\[13\]C")
 #' @param BPPARAM A BiocParallel backend for parallel processing (default: BiocParallel::SerialParam())
 #'
 #' @return The input CFM_data object with updated fragment_atom_map slot containing atom-to-atom

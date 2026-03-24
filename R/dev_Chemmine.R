@@ -321,7 +321,7 @@ get_atom_id_from_parent <- function(parent.sdf.graph,
 #' @param sdf.product An SDF object representing the product molecule.
 #' @param ig.parent An igraph object representing the parent molecule's molecular graph. If NULL, it is computed from `sdf.parent`.
 #' @param ig.product An igraph object representing the product molecule's molecular graph. If NULL, it is computed from `sdf.product`.
-#' @param iso_ele Character string specifying the isotope element to consider for mapping (default: "[13]C").
+#' @param iso_ele Character string specifying the isotope element to consider for mapping (default: `"[13]C"`).
 #' @param return.type Character string indicating the type of mapping to return. Either "most_prob" (default) returns a vector of most likely atom mappings, or "prob_matrix" returns a probability matrix.
 #' @return For `return.type = "most_prob"`: a vector where names are atoms of the product and values are probabilities of mapping to atoms of the parent.
 #'   For `return.type = "prob_matrix"`: a matrix with rows as atoms of the parent and columns as atoms of the product, containing probabilities.

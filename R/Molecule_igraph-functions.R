@@ -89,7 +89,7 @@ get_Molecule_igraph_from_cfmd <- function(cfmd,fragment.id = 1){
 #'
 #' @param Molecule_igraph A `Molecule_igraph` object.
 #' @param isotopomer Isotopomer name. If NULL, a unique name is generated.
-#' @param iso_vec Named vector mapping atom IDs to isotopic labels, e.g., c("C_1" = "[13]C").
+#' @param iso_vec Named vector mapping atom IDs to isotopic labels, e.g., c("C_1" = `"[13]C"`).
 #' @param abundance Numeric abundance of the isotopomer.
 #' @param path Path information (optional).
 #' @param FSIS Fragment-specific isotopomer score (optional).

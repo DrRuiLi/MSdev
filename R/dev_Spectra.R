@@ -888,7 +888,7 @@ plot_Spectra_Injection <- function(sp){
 #' @description Converts CFM (Competitive Fragmentation Modeling) peak assignment data
 #'   to a `Spectra` object with spectra at three collision energy levels (10, 20, 40 eV).
 #' @param cfmd A CFM data object containing peak assignment information.
-#'   Typically obtained from [read_CFM_xxx] functions.
+#'   Typically obtained from `read_CFM_xxx` functions.
 #'
 #' @return A `Spectra` object containing MS/MS spectra at three collision energy levels.
 #' @export

@@ -185,6 +185,7 @@ get_xchroms_peaks_count <- function(xchroms){
   return(peaks.count.matrix)
 }
 
+#' @describeIn xcms_extenstion extract chromatogram for a peak
 #' @title get_xcms_peaks_chrom
 #' @description
 #' extract chromatograph from XCMSnExp,
@@ -192,11 +193,11 @@ get_xchroms_peaks_count <- function(xchroms){
 #' else extract from all samples
 #'
 #' @param xcms.xcms XCMSnExp object
-#' @param peaks.id char of num
-#' @param all.sample should all samples included
+#' @param peaks.id char or num
+#' @param all.sample should all samples be included
 #' @param rt one of c("all","identity","expand")
 #'
-#' @return xcms XChromatograms
+#' @return XChromatograms object
 #' @export
 #'
 
@@ -270,8 +271,7 @@ xcms_get_peak_fill <- function(xcms.xcms){
 }
 
 
-#' Group features based on retention time, intensity correlation, and EIC similarity
-#'
+#' @describeIn xcms_extenstion group features
 #' @title Group xcms Features
 #' @description Groups features from an XCMSnExp object using multiple criteria: similarity in retention time, abundance (intensity) correlation, and EIC (extracted ion chromatogram) correlation. The grouping is performed sequentially using the MsFeatures package functions.
 #' @param xcms.xcms XCMSnExp object containing feature definitions.
@@ -320,8 +320,7 @@ xcms_get_feature_group <- function(xcms.xcms,
 
 
 
-#' Extract chromatograms from an XCMSnExp object across all files
-#'
+#' @describeIn xcms_extenstion extract chromatograms
 #' @title Get Xcms Chromatogram
 #' @description Extracts chromatograms from each file in the XCMSnExp object using xcms::chromatogram and combines them into a single XChromatograms object. This function iterates over each file, extracts chromatograms with provided parameters, and returns a combined chromatograms object.
 #' @param object XCMSnExp object from which to extract chromatograms.
@@ -438,8 +437,7 @@ get_chroms_data <- function(xchrom){
 }
 
 
-#' Convert retention time units of XChromatograms
-#'
+#' @describeIn xcms_extenstion convert retention time units
 #' @title XChromatograms Rt Unit
 #' @description Changes the retention time units of XChromatograms objects. In some situations (e.g., SRM data from Thermo), retention times are recorded in minutes, which can cause errors during peak detection. This function converts between seconds and minutes.
 #' @param xchroms XChromatograms or MChromatograms object.
@@ -448,8 +446,6 @@ get_chroms_data <- function(xchrom){
 #'
 #' @return XChromatograms object with converted retention times.
 #' @export
-#'
-
 #'
 XChromatograms_rt_unit <- function(xchroms,unit_to = "s",
                                    BPPARAM = BatchtoolsParam(progressbar = T,log = F,
@@ -494,8 +490,7 @@ XChromatograms_rt_unit <- function(xchroms,unit_to = "s",
 
 
 
-#' Fill chromatograms with fewer than two data points
-#'
+#' @describeIn xcms_extenstion fill chromatograms with fewer than two data points
 #' @title XChromatograms Fill 2point
 #' @description When using xcms::findChromPeaks, chromatograms with fewer than two data points cause errors. This function identifies such chromatograms and adds a duplicate point (time +1, intensity 0) to ensure at least two points exist.
 #' @param xchroms XChromatograms object to be checked and filled.
@@ -531,8 +526,7 @@ XChromatograms_fill_2point <- function(xchroms){
 }
 
 
-#' Plot multiple chromatograms with optional normalization and offset
-#'
+#' @describeIn xcms_extenstion plot chromatograms
 #' @title Plot XChromatograms
 #' @description Plots XChromatograms data as line plots, with options to normalize intensities to 0-1 range, offset chromatograms for clarity, and customize colors. Returns a ggplot object.
 #' @param xchroms XChromatograms object to plot.
@@ -612,8 +606,7 @@ plot_XChromatograms <- function(xchroms ,
 }
 
 
-#' Calculate additional statistics for feature definitions based on chromatographic peaks
-#'
+#' @describeIn xcms_extenstion calculate feature statistics
 #' @title Xcms Get Feature Def Stat
 #' @description Extracts and adds median retention time, signal-to-noise ratio, and maximum intensity for each feature. While xcms::featureDefinitions() provides median mz and rt, this function calculates median values across all peaks within a feature: peakRtMin, peakRtMax, peakWidth, peakMzMin, peakMzMax, peakSN, peakMaxo, and polarity.
 #' @param xcms.xcms XCMSnExp object with feature definitions and chromPeaks.
@@ -693,12 +686,11 @@ xcms_get_feature_stat <- function(xcms.xcms){
 }
 
 
-#' Identify isotopologue relationships among features
-#'
+#' @describeIn xcms_extenstion identify isotopologues
 #' @title Xcms Get Feature Isotopologues
 #' @description Screens isotopologue peaks based on m/z and retention time differences, assigns isotopologue groups and seeds, and records results in featureDefinitions. Uses graph-based clustering to identify isotopologue networks.
 #' @param xcms.xcms XCMSnExp object with feature definitions.
-#' @param iso_ele Isotope element string (e.g., "[13]C") for mass difference calculation.
+#' @param iso_ele Isotope element string (e.g., `"[13]C"`) for mass difference calculation.
 #' @param max_label Maximum number of isotope labels to consider (default 10).
 #' @param ppm Mass accuracy tolerance in ppm (default 10).
 #' @param rt.tol Retention time tolerance in seconds for grouping (default 5).
@@ -844,12 +836,11 @@ get_xcms_feature_iso_connection <- function(xcms.xcms,
 
 
 
-#' Calculate isotope labeling ratios and identify labeled features
-#'
+#' @describeIn xcms_extenstion calculate isotope labeling ratios
 #' @title Xcms Get Feature Isotope Label
 #' @description Calculates the ratio of isotopologue intensities to seed intensities across samples, and determines which features are labeled based on comparison between tracer and non-tracer sample sources. Results are added to featureDefinitions.
 #' @param xcms.xcms XCMSnExp object with isotopologue assignments.
-#' @param iso_ele Isotope element string (e.g., "[13]C") used for labeling.
+#' @param iso_ele Isotope element string (e.g., `"[13]C"`) used for labeling.
 #' @param ... Additional arguments passed to internal functions.
 #'
 #' @return XCMSnExp object with featureDefinitions updated with is_labeled column and Ratio_to_seed_* columns.
@@ -916,8 +907,7 @@ get_xcms_isotopologues_report <- function(xcms.xcms){
 }
 
 
-#' Calculate isotopologue intensity fractions relative to seed features
-#'
+#' @describeIn xcms_extenstion calculate isotopologue fractions
 #' @title Get Xcms Iso Fraction
 #' @description Calculates the fraction of isotopologue intensities relative to their seed feature intensities for each sample. Returns a matrix of fractions without natural abundance adjustment.
 #' @param xcms.xcms XCMSnExp object with isotopologue assignments (iso_seed column).
@@ -960,8 +950,7 @@ get_xcms_iso_fraction <- function(xcms.xcms){
 }
 
 
-#' Match features to compound database based on m/z and retention time
-#'
+#' @describeIn xcms_extenstion match features to compound database
 #' @title Xcms Get Feature Ms1 Candidate
 #' @description Matches features in an XCMSnExp object to compounds in a CompoundDb database using m/z and retention time tolerance. Calculates adduct masses for each compound and finds matches within specified ppm error. Results are stored as candidate lists in featureDefinitions.
 #' @param xcms.xcms XCMSnExp object with feature definitions.
@@ -1348,6 +1337,7 @@ find_xcms_feature <- function(xcms.xcms,mz = 100,ppm = 10){
 }
 
 
+#' @describeIn xcms_extenstion plot peaks distribution
 #' @title plot_xcms_peaks_distribution
 #' @description export peaks data by xcms::chromPeaks and plot by ggplot2
 #'
@@ -1355,7 +1345,7 @@ find_xcms_feature <- function(xcms.xcms,mz = 100,ppm = 10){
 #' @param plot.title title
 #' @param type `"o"`, for geom_point, `"l"`, for geom_segment
 #'
-#' @return xcms
+#' @return ggplot object
 #' @export
 #'
 
@@ -1428,8 +1418,7 @@ plot_xcms_peaks_distribution <- function(xcms.xcms,plot.title = "Peaks distribut
 
 
 
-#' Plot distribution of features in retention time vs m/z space
-#'
+#' @describeIn xcms_extenstion plot features distribution
 #' @title Plot Xcms Features Distribution
 #' @description Visualizes the distribution of detected features in a 2D space of retention time (x-axis) vs m/z (y-axis). Point size represents peak width, color represents log10 intensity. Includes peak detection parameters in subtitle.
 #' @param xcms.xcms XCMSnExp object with feature definitions.
@@ -1514,11 +1503,12 @@ xcms_remove_feature_var <- function(xcms.xcms,var){
 
 #' @title plot_xcms_feature_chromatogram
 #' @description extract Chromatogram from xcms according to feature's mz range and plot
+#' @describeIn xcms_extenstion plot feature chromatogram
 #' @param xcms.xcms XCMSnExp object
 #' @param feature.id feature id
-#' @param sampleNames
+#' @param sampleNames sample names to include
 #'
-#' @return xcms
+#' @return ggplot object
 #' @export
 #'
 
@@ -1608,10 +1598,11 @@ plot_xcms_peaks_mzerror_density <- function(xcms.xcms,
 #' @title plot_xcms_peaks_ms1_scans
 #' @description plot scans number of MS1 levels in each peak, note that to many peaks will lead to stuck,
 #' apply `filterFile` to decrease peaks count
+#' @describeIn xcms_extenstion plot MS1 scan counts for peaks
 #' @param xcms.xcms XCMSnExp object should be a `XCMSnExp` object after `findChromPeaks`
 #' @param plot.title title
 #'
-#' @return xcms
+#' @return ggplot object
 #' @export
 #'
 
@@ -1665,6 +1656,7 @@ plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"
 #' @param xcms.xcms XCMSnExp object with detected peaks and MS2 scans.
 #' @param plot.title Character title for the plot (default "Peaks Sans of MS2").
 #'
+#' @describeIn xcms_extenstion plot MS2 scan counts for peaks
 #' @return ggplot object.
 #' @export
 #'
@@ -1796,12 +1788,12 @@ plot_xcms_peaks_SN_distribution <- function(xcms.xcms,plot.title = "Peaks SNR(Si
 #' @title plot_xcms_peaks_Chromatogram
 #' @description extract EIC according to peaks' mzrange and rtrange,
 #' note that if multiple sample in xcms object, only first sample will be extracted
-#'
+#' @describeIn xcms_extenstion plot chromatogram for a peak
 #' @param xcms.xcms XCMSnExp object
-#' @param peak_ids peaks id
-#' @param rt_expand foldchange to expand rt range
+#' @param peak_id peak id
+#' @param rt expansion range for rt
 #'
-#' @return xcms
+#' @return ggplot object
 #' @export
 #'
 
@@ -1989,14 +1981,15 @@ matchSpectra_Features <- function(xcmsFeatureDef, spec){
 
 
 
+#' @describeIn xcms_extenstion plot feature intensity
 #' @title plot_xcms_feature_intensity
 #' @description plot feature's intensity, ordered by `Biobase::pData(xcms.xcms)$analysis.time.positive` or
 #'  `Biobase::pData(xcms.xcms)$analysis.time.negative`
 #'
 #' @param xcms.xcms XCMSnExp object
-#' @param feature_id_to_show
+#' @param feature_id_to_show feature id to plot
 #'
-#' @return xcms
+#' @return ggplot object
 #' @export
 #'
 

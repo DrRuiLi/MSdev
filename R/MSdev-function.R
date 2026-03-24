@@ -735,11 +735,11 @@ findFeature <- function(object,
   return(feature_matched)
 }
 
-#' @title findISMSdev
-#' @description find features of internals standard listed in `object@experimentInfo@Internal_Standard`
-#' by `Exact_mass` and `Retention_time` (if provide),
-#' only `[M+H]` and `[M-H]` are considered. Correlation and intensity will be plot based on `object@statData[["featureRaw"]]`, please check.
-#' A column "internal_standard" will be added in `object@statData[["featureRaw"]]`
+#' @title Find internal standard features in MSdev
+#' @description Find features of internal standards listed in `object@experimentInfo@Internal_Standard`
+#' by `Exact_mass` and `Retention_time` (if provided).
+#' Only `\[M+H\]` and `\[M-H\]` adducts are considered. Correlation and intensity will be plotted based on `object@statData[["featureRaw"]]`.
+#' A column "internal_standard" will be added to `object@statData[["featureRaw"]]`
 #'
 #' @param object MSdev
 #' @param corr.thred cor
@@ -1440,7 +1440,7 @@ MSdev_annotation <- function(object,
 #'
 #' @title Extract and format statistical data from processed MS features
 #' @description Extract feature data from xcms, retrieve compound information, filter based on scores, and generate SummarizedExperiment objects.
-#' @describeIn MSdev_workflow
+#' @describeIn MSdev_workflow extract statistical data
 #' @param object MSdev object
 #' @param keys character vector of compound database keys to retrieve (e.g., "name", "formula")
 #' @param score_thresh minimum annotation score threshold

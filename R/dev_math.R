@@ -107,7 +107,7 @@ cluster_ion <- function(mz,rt , ppm.thresh =10, rt.tol = 15){
 
 #' @title Matrix Subtraction of Two Vectors
 #' @description Expands two vectors into matrices and computes element-wise subtraction,
-#'   creating a full difference matrix where each element (i,j) equals v1[i] - v2[j].
+#'   creating a full difference matrix where each element `(i,j)` equals `v1[i] - v2[j]`.
 #' @param v1 Numeric vector. Optionally can have names which will be used as row names.
 #' @param v2 Numeric vector. Optionally can have names which will be used as column names.
 #' @return A matrix of dimensions length(v1) x length(v2) containing all pairwise differences.
@@ -222,7 +222,7 @@ add_matrix <- function(mat1,mat2){
 }
 
 #' @title Normalize Values Using Min-Max Scaling
-#' @description Applies min-max normalization to scale values to the range [0, 1].
+#' @description Applies min-max normalization to scale values to the range `[0, 1]`.
 #'   Works on vectors, matrices, and data frames (normalizes each row for 2D structures).
 #' @param x A numeric vector, matrix, or data frame to be normalized.
 #' @return The normalized data with the same structure as the input.
