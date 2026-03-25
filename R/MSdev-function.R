@@ -887,6 +887,76 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 
 
 
+#' @describeIn MSdev_workflow plot peak presence heatmap across samples
+#' @title Plot peaks presence heatmap across samples
+#' @description Plot a heatmap using ComplexHeatmap showing whether each feature's peak is detected (present) or not detected (absent) in each sample.
+#' @param object MSdev object
+#' @param target character. xcmsData element: "PositiveMS1" or "NegativeMS1" (shorthand: "pos"/"neg").
+#' @param top_n integer. Maximum number of features to plot (default Inf). Features are sorted by detection rate.
+#' @return ComplexHeatmap object
+#' @export
+#'
+
+plot_MSdev_sample_peaks <- function(object, target = "PositiveMS1", top_n = Inf) {
+
+  target <- switch(target,
+    "pos" =, "Pos" =, "POS" =, "positive" =, "Positive" =, "PositiveMS1" = "PositiveMS1",
+    "neg" =, "Neg" =, "NEG" =, "negative" =, "Negative" =, "NegativeMS1" = "NegativeMS1",
+    stop("target must be 'PositiveMS1' or 'NegativeMS1' (shorthand: 'pos'/'neg')")
+  )
+  xcms.xcms <- object@xcmsData[[target]]
+  if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) {
+    message("xcmsData$", target, " is NULL or NA")
+    return(NULL)
+  }
+
+  fval <- featureValues(xcms.xcms, value = "maxo")
+  sample.info <- Biobase::pData(xcms.xcms)
+
+  presence <- !is.na(fval)
+  detection_rate <- rowSums(presence) / ncol(presence)
+  presence <- presence[order(detection_rate, decreasing = F), , drop = F]
+  if (nrow(presence) > top_n) {
+    presence <- presence[1:top_n, , drop = FALSE]
+  }
+
+  mat <- ifelse(presence, "Present", "Absent")
+  col_fun <- c("Absent" = "white", "Present" = "black")
+
+  n_features <- nrow(presence)
+  n_samples <- ncol(presence)
+  peak_count <- colSums(presence)
+
+  top_anno <- ComplexHeatmap::HeatmapAnnotation(
+    count = ComplexHeatmap::anno_text(
+      as.character(peak_count),
+      rot = 0,
+      just = "center",
+      gp = grid::gpar(fontsize = 5)
+    ),
+    show_annotation_name = TRUE,
+    annotation_name_side = "left",
+    annotation_name_gp = grid::gpar(fontsize = 7)
+  )
+
+  ha <- ComplexHeatmap::Heatmap(
+    mat,
+    name = "Peak",
+    col = col_fun,
+    top_annotation = top_anno,
+    cluster_rows = FALSE,
+    cluster_columns = FALSE,
+    show_row_names = FALSE,
+    column_names_rot = -45,
+    column_names_gp = grid::gpar(fontsize = ifelse(n_samples > 30, 4, 6)),
+    column_title = paste0("Peak presence - ", target, " (", n_features, " features x ", n_samples, " samples)"),
+    column_title_gp = grid::gpar(fontsize = 10)
+  )
+
+  return(ha)
+}
+
+
 #' @title Plot MS/MS spectrum for a feature
 #' @description Plot experimental and reference MS/MS spectra for a given feature, with annotation details.
 #' @param MSdev.obj MSdev object
