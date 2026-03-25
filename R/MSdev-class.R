@@ -146,3 +146,42 @@ setMethod(
   }
 )
 
+
+#' @title List process history of xcmsData
+#' @description List all process history entries for a specific xcmsData element in an MSdev object.
+#' @param object MSdev object
+#' @param target character. Name of the xcmsData element (default "PositiveMS1").
+#' @return data.frame of process history, or NULL if not available.
+#' @export
+#'
+MSdev_processInfo <- function(object, target = "PositiveMS1") {
+
+  xcms.xcms <- object@xcmsData[[target]]
+  if (is.null(xcms.xcms) || identical(xcms.xcms, NA)  ) {
+    message("xcmsData$", target, " is NULL or NA")
+    return(NULL)
+  }
+
+  ph <- xcms::processHistory(xcms.xcms)
+  if (length(ph) == 0) {
+    message("No process history for xcmsData$", target)
+    return(NULL)
+  }
+
+ php <- lapply(seq_along(ph), function(i) {
+    p <- ph[[i]]
+    #print(xcms::processType(p))
+    p.param <- xcms::processParam(p)
+    if (xcms::processType(p) == "Retention time correction") {
+      p.param@peakGroupsMatrix <- matrix()
+    }
+    #print(p.param)
+    return(p.param)
+  })
+ names(php) <- lapply(seq_along(ph), function(i) {
+   xcms::processType( ph[[i]])
+ })
+ return(php)
+
+}
+
