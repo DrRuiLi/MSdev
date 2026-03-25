@@ -336,9 +336,45 @@ get_MSdev_param <- function(object){
 
 
 
-
 }
 
+
+#' @describeIn MSdev_workflow set xcms parameters
+#' @title Set xcms parameters for MSdev
+#' @description Set custom xcms parameters for peak detection and grouping in an MSdev object.
+#' These parameters will be used during xcms processing.
+#'
+#' @param object MSdev object
+#' @param findChromPeaks xcms parameter object for peak detection (default: `xcms::CentWaveParam()`)
+#' @param groupChromPeaks xcms parameter object for peak grouping (default: `xcms::PeakDensityParam("A")`)
+#'
+#' @return MSdev object with updated parameters
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Create a new MSdev object
+#' msdev <- MSdev(rawDataDir = "path/to/raw/data")
+#'
+#' # Set custom CentWave parameters
+#' cwp <- xcms::CentWaveParam(
+#'   ppm = 10,
+#'   peakwidth = c(5, 20),
+#'   snthresh = 100,
+#'   prefilter = c(3, 100)
+#' )
+#'
+#' # Set custom grouping parameters
+#' gpp <- xcms::PeakDensityParam(
+#'   sampleGroups = "A",
+#'   bw = 5,
+#'   minFraction = 0.6,
+#'   binSize = 0.015
+#' )
+#'
+#' # Apply parameters to MSdev object
+#' msdev <- MSdev_set_param(msdev, findChromPeaks = cwp, groupChromPeaks = gpp)
+#' }
 MSdev_set_param <- function(object,
                             findChromPeaks = xcms::CentWaveParam(),
                             groupChromPeaks = xcms::PeakDensityParam("A")
