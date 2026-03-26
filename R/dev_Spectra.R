@@ -1257,8 +1257,8 @@ Spectra_filter_noise <- function(sp){
 }
 
 
-setMethod(noise,"Spectra",
-          definition = function(object )object$noise)
+#setMethod(noise,"Spectra",
+#          definition = function(object )object$noise)
 
 
 setMethod(sampleNames,"Spectra",

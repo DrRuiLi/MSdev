@@ -15,9 +15,9 @@ setClass("MSdev",
 
 #' @importFrom magrittr `%>%` `%<>%`
 #' @import  tidyverse dplyr ggplot2 patchwork
-#' @importFrom xcms filepaths mzrange plotSpec noise filterFile dirname chromPeaks intensity mz
-#' featureDefinitions polarity `featureDefinitions<-` featureValues featureChromatograms
-#' @importFrom MSnbase readMSData sampleNames fileNames
+#' @importFrom xcms filepaths mzrange plotSpec filterFile chromPeaks intensity mz
+#' featureDefinitions `featureDefinitions<-` featureValues featureChromatograms
+#' @importFrom MSnbase readMSData sampleNames fileNames polarity
 #' @importFrom BiocParallel SnowParam SerialParam bpmapply bplapply snowWorkers register
 #' @importFrom tibble tibble as.tibble rownames_to_column remove_rownames
 #' @importFrom S4Vectors isEmpty

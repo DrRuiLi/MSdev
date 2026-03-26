@@ -1501,6 +1501,7 @@ MSdev_annotation <- function(object,
                              cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite",
                              calc_isopattern_score = F,
                              ppm = 10,
+                             BPPARAM = SerialParam(  progressbar = T),
                              ...){
 
   cpdb <- CompoundDb::CompDb(cpdb_path)
@@ -1525,10 +1526,7 @@ MSdev_annotation <- function(object,
     xcms.xcms <- xcms_get_feature_isopattern_score(xcms.xcms,
                                                    ppm = 10,
                                                    calc_isopattern_score = calc_isopattern_score,
-                                                   BPPARAM = SerialParam(
-                                                     #workers = 6,
-                                                     progressbar = T
-                                                   ))
+                                                   BPPARAM = BPPARAM )
     xcms.xcms <- xcms_get_feature_annotation(xcms.xcms,
                                              cpdb,
                                              ...)

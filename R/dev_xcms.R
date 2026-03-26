@@ -1363,8 +1363,7 @@ xcms_get_feature_isopattern_score <- function(xcms.xcms,
 
     if (calc_isopattern_score) {
 
-
-   iso.score <- bplapply(seq_len(nrow(xcms.se)),
+      iso.score <- bplapply(seq_len(nrow(xcms.se)),
              FUN = function(i,xcms.se,ppm){
                xcms.fdf <- SummarizedExperiment::rowData(xcms.se)
                xcms.se.temp <- xcms.se[MSdev:::between.range(xcms.fdf$rtmed,

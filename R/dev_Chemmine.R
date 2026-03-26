@@ -117,7 +117,7 @@ get_sdf_formula <- function(sdfs){
 #' get_smiles_sdf
 #'
 #' @title Convert SMILES strings to SDF format
-#' @description Converts one or more SMILES strings to SDF (Structure Data Format) 
+#' @description Converts one or more SMILES strings to SDF (Structure Data Format)
 #'   objects using the ChemmineR package. Optionally canonicalizes the structures.
 #'   Uses a precomputed mapping table to replace known SMILES with stored SDFs.
 #' @param smiles Character vector of SMILES strings to convert.
@@ -560,6 +560,7 @@ vis_smiles <- function(smiles,
 
 
 
+#' @export
 get_isopattern_score <- function(formula,
                                  mzs,
                                  int_matrix,
