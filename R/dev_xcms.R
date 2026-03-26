@@ -774,6 +774,188 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
 
 }
 
+#' @describeIn xcms_extenstion identify isotopologues with multiple isotope tracers
+#' @title Xcms Get Feature Isotopologues Multi Tracer
+#' @description TODO: unfinished. Similar to `xcms_get_feature_isotopologues` but supports multiple isotope labels simultaneously (e.g., `[13]C` and `[15]N`).
+#' @param xcms.xcms XCMSnExp object with feature definitions.
+#' @param iso_ele Character vector of isotope element strings (e.g., `c("[13]C","[15]N")`).
+#' @param max_label Named numeric vector of maximum labels per tracer, names must match `iso_ele`.
+#' @param ppm Mass accuracy tolerance in ppm (default 5).
+#' @param rt.tol Retention time tolerance in seconds (default 5).
+#' @param net.degree.ratio Ratio threshold for network degree to assign isotopologue seeds (default 0.3).
+#' @return XCMSnExp object with featureDefinitions updated with iso_seed, iso_count, iso_connection_group, and per-tracer iso_count_* columns.
+#' @export
+#'
+xcms_get_feature_isotopologues_multi_tracer <- function(xcms.xcms,
+                                            iso_ele = c("[13]C","[15]N"),
+                                            max_label = c("[13]C" = 30,"[15]N" = 10),
+                                            ppm = 5,
+                                            rt.tol = 5,
+                                            net.degree.ratio = 0.3){
+
+  ### find multi-tracer connections
+  {
+    fdf.iso.connect <- get_xcms_feature_iso_connection_multi_tracer(
+      xcms.xcms,
+      iso_ele = iso_ele,
+      max_label = max_label,
+      ppm = ppm,
+      rt.tol = rt.tol
+    )
+  }
+
+  ### assign isotopologues
+  {
+    xcms.fdf <- featureDefinitions(xcms.xcms) %>%
+      as.data.frame()
+    iso_ele_clean <- get_ele_uniso(iso_ele)
+    for (el in iso_ele_clean) {
+      xcms.fdf[, paste0("iso_count_", el)] <- NA
+    }
+    xcms.fdf[, "iso_seed"] <- NA
+    xcms.fdf[, "iso_count"] <- NA
+
+    if (nrow(fdf.iso.connect) == 0) {
+      message("No isotopologue connections found")
+      fdf.iso.igraph <- igraph::make_empty_graph(n = 0)
+      node.group <- integer(0)
+    } else {
+      fdf.iso.igraph <- igraph::graph_from_data_frame(fdf.iso.connect)
+      node.group <- igraph::components(fdf.iso.igraph)$membership
+    }
+
+    xcms.fdf <- as.data.frame(xcms.fdf)
+    rownames(xcms.fdf) <- xcms.fdf$feature_id
+    message(length(unique(na.omit(node.group))), " iso-group")
+    message(length(node.group), " iso-features")
+
+    for (i in seq_along(unique(node.group))) {
+      this.nodes <- names(which(node.group == i))
+      this.fdf <- xcms.fdf[this.nodes, ]
+      this.iso <- fdf.iso.connect[from %in% this.nodes | to %in% this.nodes]
+      this.igraph <- igraph::graph_from_data_frame(this.iso, vertices = this.fdf[, 1:7])
+      this.iso.assign <- get_iso_net_assign(this.igraph, net.degree.ratio = net.degree.ratio)
+
+      xcms.fdf[names(this.iso.assign$iso.seed), "iso_seed"] <- this.iso.assign$iso.seed
+      xcms.fdf[names(this.iso.assign$iso_count), "iso_count"] <- this.iso.assign$iso_count
+      xcms.fdf[this.nodes, "iso_connection_group"] <- i
+
+      ### assign per-tracer counts from the seed
+      this.connect <- fdf.iso.connect[from %in% this.nodes & to %in% this.nodes]
+      for (el in iso_ele_clean) {
+        col_name <- paste0("closest.iso.count_", el)
+        if (col_name %in% colnames(this.connect)) {
+          seed.fid <- unique(na.omit(xcms.fdf[this.nodes, "iso_seed"]))
+          if (length(seed.fid) == 1) {
+            seed.idx <- which(this.connect$from == seed.fid | this.connect$to == seed.fid)
+            if (length(seed.idx) > 0) {
+              for (node in this.nodes) {
+                if (node == seed.fid) {
+                  xcms.fdf[node, paste0("iso_count_", el)] <- 0
+                  next
+                }
+                edge.idx <- which((this.connect$from == node & this.connect$to == seed.fid) |
+                                    (this.connect$from == seed.fid & this.connect$to == node))
+                if (length(edge.idx) > 0) {
+                  xcms.fdf[node, paste0("iso_count_", el)] <- abs(this.connect[edge.idx[1], col_name])
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  ### save to featureDefinitions
+  {
+    xcms.fdf.temp <- featureDefinitions(xcms.xcms)
+    rownames(xcms.fdf) <- xcms.fdf$feature_id
+    xcms.fdf.temp[, "iso_seed"] <- xcms.fdf[xcms.fdf.temp$feature_id, "iso_seed"]
+    xcms.fdf.temp[, "iso_count"] <- xcms.fdf[xcms.fdf.temp$feature_id, "iso_count"]
+    xcms.fdf.temp[, "iso_connection_group"] <- xcms.fdf[xcms.fdf.temp$feature_id, "iso_connection_group"]
+    for (el in iso_ele_clean) {
+      xcms.fdf.temp[, paste0("iso_count_", el)] <- xcms.fdf[xcms.fdf.temp$feature_id, paste0("iso_count_", el)]
+    }
+    xcms.fdf.temp -> featureDefinitions(xcms.xcms)
+    message("Get ",
+            sum(!is.na(xcms.fdf.temp[, "iso_count"])),
+            " isotopologues")
+  }
+
+  return(xcms.xcms)
+
+}
+
+
+#' @title TODO: unfinished. Build isotope mass shift grid for multi-tracer
+#' @description Generates all label-count combinations across tracers with their mass shifts.
+#' @param iso_ele Character vector of isotope element strings.
+#' @param max_label Named numeric vector of maximum labels per tracer.
+#' @return Data.frame with columns for each tracer's label count, total.count, and mass.shift.
+#'
+get_xcms_feature_isotope_grid_multi_tracer <- function(iso_ele, max_label) {
+
+  iso.chemforms <- character()
+  iso.counts <- numeric()
+
+  for (i in seq_along(iso_ele)) {
+    ele <- iso_ele[i]
+    elem.symbol <- stringr::str_extract(ele, "[[:alpha:]]+")
+    chemform <- paste0(ele, 1, elem.symbol, -1)
+    iso.chemforms[i] <- chemform
+    iso.counts[i] <- MSCC::chemform_mz(chemform, 0)
+  }
+
+  label.ranges <- lapply(max_label, function(m) -m:m)
+  grid <- expand.grid(label.ranges)
+  colnames(grid) <- iso_ele
+
+  mass.shift <- as.matrix(grid) %*% iso.counts
+
+  data.frame(
+    grid,
+    total.count = rowSums(abs(grid)),
+    mass.shift = as.vector(mass.shift)
+  )
+}
+
+
+get_xcms_feature_iso_connection_multi_tracer <- function(xcms.xcms,
+                                                          iso_ele,
+                                                          max_label,
+                                                          ppm = 10,
+                                                          rt.tol = 5) {
+
+  fdf.connect <- get_xcms_feature_connect(xcms.xcms, rt.tol = rt.tol)
+
+  iso.grid <- get_xcms_feature_isotope_grid_multi_tracer(iso_ele, max_label)
+
+  match.res <- match_mz_foverlaps(mz1 = fdf.connect$mz.diff,
+                                   mz2 = iso.grid$mass.shift,
+                                   ppm.base = fdf.connect$mz.mean,
+                                   ppm = ppm)
+
+  iso_ele_clean <- get_ele_uniso(iso_ele)
+  for (i in seq_along(iso_ele)) {
+    fdf.connect[match.res$ion1, paste0("closest.iso.count_", iso_ele_clean[i])] <- iso.grid[match.res$ion2, iso_ele[i]]
+  }
+  fdf.connect[match.res$ion1, "closest.iso.count"] <- iso.grid$total.count[match.res$ion2]
+  fdf.connect[match.res$ion1, "closest.iso.mz"] <- iso.grid$mass.shift[match.res$ion2]
+  fdf.connect[match.res$ion1, "mz.error"] <- abs(match.res$mz.ppm)
+
+  xcms.fdf <- featureDefinitions(xcms.xcms)
+  fdf.iso.connect <- fdf.connect[!is.na(closest.iso.count) & closest.iso.count != 0]
+  data.table::setorder(fdf.iso.connect, mz.error)
+  fdf.iso.connect <- fdf.iso.connect[!duplicated(fdf.iso.connect, by = c("from", "to"))]
+  fdf.iso.connect[, `:=`(from = xcms.fdf$feature_id[from],
+                          to = xcms.fdf$feature_id[to])]
+
+  return(fdf.iso.connect)
+
+}
+
+
 get_xcms_feature_iso_connection <- function(xcms.xcms,
                                             iso_ele,
                                             max_label = 10,
