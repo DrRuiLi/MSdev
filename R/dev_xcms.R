@@ -1047,7 +1047,8 @@ xcms_get_feature_isotope_label <- function(xcms.xcms,
     xcms.ratio.to.seed <- apply(xcms.ratio.to.seed ,1,
                function(x){  mean_f(x , f = xcms.se$sample.source,,
                                     simplify = F,na.rm=T)})%>%
-      do.call(rbind,.)
+      do.call(bind_rows,.)%>%
+      as.matrix()
 
   }
 

@@ -15,12 +15,13 @@
 #' @export
 #'
 MSdev_save <- function(object,file = object@projectInfo$MSdevFile){
+
   MSdev <- object
   save.dir <- dirname(file)
   if (!dir.exists(save.dir)) {
     dir.create(save.dir,recursive = T)
   }
-  #save(MSdev, file =  object@projectInfo$MSdevFile)
+  MSdev@projectInfo$MSdevFile <- file
   qs::qsave(MSdev, file =  file)
   invisible(MSdev)
 }
