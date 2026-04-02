@@ -28,7 +28,6 @@ setClass("MSdev",
 #' @importFrom CompoundDb compounds
 #' @importFrom ChemmineR atomcountMA MF `cid<-` cid validSDF canonicalize
 #' atomblock bonds bondblock rings
-#' @importFrom MSCC chemform_adduct_check
 #' @importFrom stringr str_extract str_split str_extract_all
 #' @importFrom plotly layout add_bars
 #' @importFrom SummarizedExperiment rowData colData assay `rowData<-` `colData<-` `assay<-`
