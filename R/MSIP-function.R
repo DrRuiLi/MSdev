@@ -1,3 +1,36 @@
+#' @title Import compound table into MSdev
+#' @description Read a compound table from file (.xlsx or .csv) and store it in obj@statData$MSIP$compound_table.
+#' The table must contain columns: compound_id, name, formula, smiles, rt.
+#'
+#' @param obj MSdev object
+#' @param table.path file path to the compound table (.xlsx or .csv)
+#'
+#' @return MSdev object with compound table stored in statData
+#' @export
+#'
+MSIP_import_compound_table <- function(obj, table.path) {
+
+  ext <- tolower(tools::file_ext(table.path))
+
+  if (ext == "xlsx") {
+    compound_table <- openxlsx::read.xlsx(table.path)
+  } else if (ext == "csv") {
+    compound_table <- read.csv(table.path, stringsAsFactors = FALSE)
+  } else {
+    stop("Unsupported format: .", ext, ". Accepted formats: .xlsx, .csv")
+  }
+
+  required_cols <- c("compound_id", "name", "formula", "smiles", "rt")
+  missing_cols <- setdiff(required_cols, colnames(compound_table))
+  if (length(missing_cols) > 0) {
+    stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
+  }
+
+  obj@statData$MSIP$compound_table <- compound_table
+  return(obj)
+}
+
+
 #' @title Find isotope labels in MSdev object
 #' @description Find isotope labels in MSdev object by processing isotopologues
 #' and isotope labels for both positive and negative ion modes.
