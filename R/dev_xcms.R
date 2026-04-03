@@ -367,7 +367,7 @@ get_xcms_feature_chrom <- function(xcms.xcms,
   features.val <- features.val[feature.id,,drop =F]
   if ("maxo"%in% sample  )  {
     xcms.sub <- MSnbase::filterFile(xcms.xcms,
-                                    which.max(features.val))
+                                    which.max(colMeans(features.val)))
   }else if ("all"%in% sample  )  {
     xcms.sub <- xcms.xcms
   }else {
