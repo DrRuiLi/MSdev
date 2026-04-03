@@ -358,7 +358,8 @@ get_xcms_feature_chrom <- function(xcms.xcms,
                                     feature.id = featureDefinitions(xcms.xcms)$feature_id,
                                     sample = "maxo",
                                     rt = "expand",
-                                   BPPARAM = SerialParam()){
+                                    mz.expand = 0,
+                                    BPPARAM = SerialParam()){
 
   features.data <- featureDefinitions(xcms.xcms)
   features.val <- featureValues(xcms.xcms,missing = "rowmin_half")
@@ -383,6 +384,11 @@ get_xcms_feature_chrom <- function(xcms.xcms,
 
   )
   mzr <- features.data[,c("peakMzMin","peakMzMax")]%>%as.matrix()
+  if (mz.expand > 0) {
+    mz_range <- mzr[,2] - mzr[,1]
+    mzr[,1] <- mzr[,1] - mz_range * mz.expand
+    mzr[,2] <- mzr[,2] + mz_range * mz.expand
+  }
 
   x.chrom <-  get_xcms_chromatogram(xcms.sub,
                                   mz = mzr,
@@ -588,7 +594,8 @@ plot_XChromatograms <- function(xchroms ,
                   group = peaks.idx,
                   col = color),
               linewidth = 0.5,alpha = 0.8)+
-    scale_color_manual(values = randomcoloR::distinctColorPalette(length(unique(chrom.data$peaks.idx))))+
+    #scale_color_manual(values = randomcoloR::distinctColorPalette(length(unique(chrom.data$peaks.idx))))+
+    ggsci::scale_fill_npg()+
     labs(x = "Retention time", y = "Intensity",col = "peaks")+
     theme_bw()->p
 
