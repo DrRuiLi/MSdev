@@ -4,7 +4,7 @@ Version: 2.0.0
 Authors@R: 
     person("Rui", "Li", , "lirui3@shanghaitech.edu.cn", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-3199-287X"))
-Description: MS data basic manipulate and advanced algorithm, this is a backup for TRACE publication
+Description: MS data basic manipulate and advanced algorithm.
 License: MIT + file LICENSE
 Depends:
     R (>= 4.5.0)

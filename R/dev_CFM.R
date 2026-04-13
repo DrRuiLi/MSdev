@@ -1522,7 +1522,7 @@ get_CFM_data_from_smiles <- function(smiles = "NCC(O)=O",
                                      adduct = "[M+H]+",
                                      check_temp = T,
                                      iso_ele = "[13]C",
-                                     temp_dir = tempdir(),
+                                     temp_dir = get_dir_expand_from_onedrive("/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb_cfmd"),
                                      ...){
   if(check_temp){
     if (!dir.exists(temp_dir)) dir.create(temp_dir,recursive = T,showWarnings = F)
