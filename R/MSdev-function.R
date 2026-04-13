@@ -52,8 +52,14 @@ MSdev_load <- function(file_to_load){
   if ("msLevels"%in% colnames(sampleInfo)) {
     object@projectInfo$msLevel <- unique(sampleInfo$msLevels)
   }
-  if ("polarity"%in% colnames(sampleInfo)) {
-    object@projectInfo$polarity <- unique(sampleInfo$polarity)
+  # Normalize/split polarity strings like "1;0" so summaries don't drop them.
+  if ("polarity" %in% colnames(sampleInfo)) {
+    sampleInfo.polarity <- sampleInfo %>%
+      dplyr::mutate(polarity = as.character(polarity)) %>%
+      tidyr::separate_rows(polarity, sep = "\\s*;\\s*")
+    object@projectInfo$polarity <- unique(sampleInfo.polarity$polarity)
+  } else {
+    sampleInfo.polarity <- sampleInfo
   }
   if ("manufacturer"%in% colnames(sampleInfo)) {
     object@projectInfo$msManufacturer <- unique(sampleInfo$manufacturer)
@@ -66,7 +72,10 @@ MSdev_load <- function(file_to_load){
     dplyr::pull(sample.name)%>%unique()%>%length()
   object@projectInfo$rawDataFileCount <- sum(!is.na(sampleInfo$raw.files))
   p.index <- c("-1"="Unknow","0"="Negative","1"="Positive")
-  object@projectInfo$rawDatafiles <-table(p.index[sampleInfo$polarity],sampleInfo$sample.type)
+  object@projectInfo$rawDatafiles <- table(
+    p.index[sampleInfo.polarity$polarity],
+    sampleInfo.polarity$sample.type
+  )
   object
 }
 
