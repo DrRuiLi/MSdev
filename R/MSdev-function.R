@@ -202,9 +202,10 @@ MSdev_get_xcms <- function(object){
       xcms.xcms <-NA
       next
     }else{
-      xcms.xcms <- readMSData(sample.info.polarity$msData.files,
+      xcms.xcms <- MSnbase::readMSData(sample.info.polarity$msData.files,
                               mode = "onDisk")
-      xcms.xcms <- filterPolarity(xcms.xcms,i)
+      xcms.xcms <- as(xcms.xcms,"XCMSnExp")
+      xcms.xcms <- MSnbase::filterPolarity(xcms.xcms,i)
     }
     Biobase::pData(xcms.xcms ) <-
       cbind(Biobase::pData(xcms.xcms),
@@ -1447,7 +1448,11 @@ MSdev_match_Spectra_to_feature <- function(object,
       ProtGenerics::filterPolarity(i)
     if (length(sp.ms2)==0) next
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
-    xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
+    if (is.null(xcms.xcms) || !isTRUE(xcms::hasFeatures(xcms.xcms))) {
+      message("no features, skip match to feature")
+      next
+    }
+    xcms.fdf <- xcms::featureDefinitions(xcms.xcms) %>%
       as.data.frame()
     sp.ms2.data <- get_Spectra_ms2_feature_id(sp.ms2,
                                               xcms.fdf,
