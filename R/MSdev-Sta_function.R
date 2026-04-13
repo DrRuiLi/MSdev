@@ -4,7 +4,7 @@ plotMSdevPCA <- function(object,showlabel=F){
   sample.info <- object@sampleInfo%>%
     dplyr::filter(xcmsProcessing%in% c("Both","MS1"),
                   !sample.type%in%   c("Blank"))
-  pca.matrix <- object@statData$feature%>%
+  pca.matrix <- object@advancedAna$feature%>%
     column_to_rownames("feature_id")%>%
     dplyr::select(sample.info$sample.name)%>%
     t
@@ -23,16 +23,16 @@ plotMSdevPCA <- function(object,showlabel=F){
 
 plotMSdevDiffVolcano <- function(object,p.adjusted = T,point.label = F){
 
-  n.diff <- length(object@statData$DifferentialMetabolites)
-  metabolites.table <- object@statData$metabolites%>%
+  n.diff <- length(object@advancedAna$DifferentialMetabolites)
+  metabolites.table <- object@advancedAna$metabolites%>%
     dplyr::select(1:17)
 
   for (i in 1:n.diff) {
 
-    diff.title <- names(object@statData$DifferentialMetabolites)[i]
+    diff.title <- names(object@advancedAna$DifferentialMetabolites)[i]
     diff.dir <- paste0(object@projectInfo$projectDir,"/Statistic/",diff.title)
     dir.create(diff.dir,recursive = T,showWarnings = F)
-    diff.table <- object@statData$DifferentialMetabolites[[i]]%>%
+    diff.table <- object@advancedAna$DifferentialMetabolites[[i]]%>%
       dplyr::mutate(metabolites.table,.after = log10fdr)
     diff.volcano <- plotVolcano(diff.table,p.adjusted ,point.label)+
       labs(title = diff.title)
@@ -54,15 +54,15 @@ plotMSdevDiffHeatmap <- function(object){
 
 
   sample.info <- object@sampleInfo
-  n.diff <- length(object@statData$DifferentialMetabolites)
-  metabolites.table <- object@statData$metabolites
+  n.diff <- length(object@advancedAna$DifferentialMetabolites)
+  metabolites.table <- object@advancedAna$metabolites
   for (i in 1:n.diff) {
 
-    diff.title <- names(object@statData$DifferentialMetabolites)[i]
+    diff.title <- names(object@advancedAna$DifferentialMetabolites)[i]
     diff.dir <- paste0(object@projectInfo$projectDir,"/Statistic/",diff.title)
     dir.create(diff.dir,recursive = T,showWarnings = F)
 
-    diff.table <- object@statData$DifferentialMetabolites[[i]]
+    diff.table <- object@advancedAna$DifferentialMetabolites[[i]]
     diff.col.info <- sample.info%>%
       dplyr::filter(sample.name %in% colnames(diff.table))%>%
       dplyr::mutate(col.group = groupStringFactor(group),
@@ -70,7 +70,7 @@ plotMSdevDiffHeatmap <- function(object){
     diff.row.info <- metabolites.table[diff.table$p.value < 0.05,]%>%
       dplyr::mutate(row.label = str_short(Compound_name , 20),
                     row.group = " ")
-    diff.matrix <- object@statData$metabolites%>%
+    diff.matrix <- object@advancedAna$metabolites%>%
       dplyr::filter(feature_id %in% diff.row.info$feature_id)%>%
       dplyr::select(diff.col.info$sample.name)%>%
       t%>%scale%>%t
@@ -95,15 +95,15 @@ plotMSdevDiffHeatmap <- function(object){
 plotMSdevDiffLipidClassPie <- function(object,topn = 10){
 
   sample.info <- object@sampleInfo
-  n.diff <- length(object@statData$DifferentialMetabolites)
-  metabolites.table <- object@statData$metabolites
+  n.diff <- length(object@advancedAna$DifferentialMetabolites)
+  metabolites.table <- object@advancedAna$metabolites
   for (i in 1:n.diff) {
 
-    diff.title <- names(object@statData$DifferentialMetabolites)[i]
+    diff.title <- names(object@advancedAna$DifferentialMetabolites)[i]
     diff.dir <- paste0(object@projectInfo$projectDir,"/Statistic/",diff.title)
     dir.create(diff.dir,recursive = T,showWarnings = F)
 
-    diff.table <- object@statData$DifferentialMetabolites[[i]]%>%
+    diff.table <- object@advancedAna$DifferentialMetabolites[[i]]%>%
       dplyr::mutate(Lipid_subclass=metabolites.table$Lipid_subclass)
 
 
@@ -170,16 +170,16 @@ plotMSdevANOVA <- function(object){
     dplyr::filter(xcmsProcessing%in% c("Both","MS1"),
                   sample.type != "Blank",
                   sample.type != "QC")
-  n.anova <- length(object@statData$ANOVA)
-  metabolites.table <- object@statData$metabolites
+  n.anova <- length(object@advancedAna$ANOVA)
+  metabolites.table <- object@advancedAna$metabolites
 
   for (i in 1:n.anova) {
 
-    anova.title <- names(object@statData$ANOVA)[i]
+    anova.title <- names(object@advancedAna$ANOVA)[i]
     anova.dir <- paste0(object@projectInfo$projectDir,"/Statistic/",anova.title)
     dir.create(anova.dir,recursive = T,showWarnings = F)
 
-    anova.table <- object@statData$ANOVA[[i]]%>%
+    anova.table <- object@advancedAna$ANOVA[[i]]%>%
       cbind(metabolites.table)
 
     if (anova.title == "All Group") {
@@ -198,7 +198,7 @@ plotMSdevANOVA <- function(object){
     anova.row.info <- metabolites.table[which(anova.table$p.fdr < 0.05),]%>%
       dplyr::mutate(row.label = str_short(Compound_name , 20),
                     row.group = " ")
-    anova.matrix <- object@statData$metabolites%>%
+    anova.matrix <- object@advancedAna$metabolites%>%
       dplyr::filter(feature_id %in% anova.row.info$feature_id)%>%
       dplyr::select(anova.col.info$sample.name)%>%
       t%>%scale%>%t
@@ -226,9 +226,9 @@ plotMSdevDiffVennDiagram <- function(object,
                                      change = c("both","up","down"),
                                      p = "p.value"){
 
-  diff.all <-data.frame(idx = 1:length(object@statData$DifferentialMetabolites),
-                        selected = names(object@statData$DifferentialMetabolites))
-  metabolite.table <- object@statData$metabolites[,1:18]
+  diff.all <-data.frame(idx = 1:length(object@advancedAna$DifferentialMetabolites),
+                        selected = names(object@advancedAna$DifferentialMetabolites))
+  metabolite.table <- object@advancedAna$metabolites[,1:18]
   if (diff.select == "manual") {
     diff.select <- edit_df_in_excel(diff.all)%>%
       dplyr::filter(selected%in%diff.all$selected)
@@ -240,7 +240,7 @@ plotMSdevDiffVennDiagram <- function(object,
   }
 
   if ("both" %in% change) {
-    lapply(object@statData$DifferentialMetabolites, function(x){
+    lapply(object@advancedAna$DifferentialMetabolites, function(x){
       x%>%
         dplyr::filter(eval(str2expression(p)) <0.05)%>%
         pull(feature_id)
@@ -273,7 +273,7 @@ plotMSdevDiffVennDiagram <- function(object,
   }
 
   if ("up" %in% change) {
-    lapply(object@statData$DifferentialMetabolites, function(x){
+    lapply(object@advancedAna$DifferentialMetabolites, function(x){
       x%>%
         dplyr::filter(eval(str2expression(p)) <0.05,foldchange >1)%>%
         pull(feature_id)
@@ -306,7 +306,7 @@ plotMSdevDiffVennDiagram <- function(object,
   }
 
   if ("down" %in% change) {
-    lapply(object@statData$DifferentialMetabolites, function(x){
+    lapply(object@advancedAna$DifferentialMetabolites, function(x){
       x%>%
         dplyr::filter(eval(str2expression(p)) <0.05,foldchange <1)%>%
         pull(feature_id)
@@ -344,16 +344,16 @@ plotMSdevDiffVennDiagram <- function(object,
 
 plotMSdevPathway <- function(object,method = "set1",topN=20){
 
-  n.pathway <- length(object@statData$PathwayEnrichment)
-  metabolites.table <- object@statData$metabolites%>%
+  n.pathway <- length(object@advancedAna$PathwayEnrichment)
+  metabolites.table <- object@advancedAna$metabolites%>%
     dplyr::select(1:17)
 
   for (i in 1:n.pathway) {
 
-    pathway.title <- names(object@statData$PathwayEnrichment)[i]
+    pathway.title <- names(object@advancedAna$PathwayEnrichment)[i]
     pathway.dir <- paste0(object@projectInfo$projectDir,"/Statistic/",pathway.title)
     dir.create(pathway.dir,recursive = T,showWarnings = F)
-    pathway.table <- object@statData$PathwayEnrichment[[i]]%>%
+    pathway.table <- object@advancedAna$PathwayEnrichment[[i]]%>%
       dplyr::arrange(p.value)
 
     pathway.plot <- plotPathwayEnrichment(pathway.table,
@@ -381,16 +381,16 @@ plotMSdevPathway <- function(object,method = "set1",topN=20){
 
 plotMSdevDEPvolcano <- function(object,omic = "m",p.adjusted= F){
 
-  n.diff <- length(object@statData$data.se$data.diff)
-  metabolites.table <- object@statData$metabolites%>%
+  n.diff <- length(object@advancedAna$data.se$data.diff)
+  metabolites.table <- object@advancedAna$metabolites%>%
     dplyr::select(1:17)
 
   for (i in 1:n.diff) {
 
-    diff.title <- names(object@statData$data.se$data.diff)[i]
+    diff.title <- names(object@advancedAna$data.se$data.diff)[i]
     diff.dir <- paste0(object@projectInfo$projectDir,"/Statistic/",diff.title)
     dir.create(diff.dir,recursive = T,showWarnings = F)
-    diff.se  <- object@statData$data.se$data.diff[[i]]
+    diff.se  <- object@advancedAna$data.se$data.diff[[i]]
 
     if (omic== "m") {
 
@@ -493,14 +493,14 @@ analyzeMSdevDiffMetabolites <- function(object){
 
     diff.sample.info <- sample.info%>%
       dplyr::filter(group %in% groups.pair)
-    diff.matrix <- object@statData$metabolites %>%
+    diff.matrix <- object@advancedAna$metabolites %>%
       column_to_rownames("feature_id")%>%
       dplyr::select(diff.sample.info$sample.name)%>%
       t
 
 
     diff.table <- analyzeDiff(diff.matrix,diff.sample.info$group)
-    object@statData$DifferentialMetabolites[[paste0(group.case," vs ",group.con)]] <- diff.table
+    object@advancedAna$DifferentialMetabolites[[paste0(group.case," vs ",group.con)]] <- diff.table
 
   }
 
@@ -521,14 +521,14 @@ analyzeMSdevANOVA <- function(object,groupANOVA = "All Group"){
   }
 
 
-  anova.matrix <- object@statData$metabolites %>%
+  anova.matrix <- object@advancedAna$metabolites %>%
     column_to_rownames("feature_id")%>%
     dplyr::select(anova.sample.info$sample.name)%>%
     t
 
   anova.table <-analyzeANOVA(anova.matrix,anova.sample.info$group)
 
-  object@statData$ANOVA[[paste0(unique(groupANOVA),collapse = "_and_")]] <- anova.table
+  object@advancedAna$ANOVA[[paste0(unique(groupANOVA),collapse = "_and_")]] <- anova.table
   object
 
 }
@@ -543,7 +543,7 @@ analyzeMSdevPathway <- function(object,method = "global.test",p.adjusted=F){
   sample.groups <- unique(sample.info$group)
   groups.comb <- combn(sample.groups,2)
 
-  metabolites.table <- object@statData$metabolites%>%
+  metabolites.table <- object@advancedAna$metabolites%>%
     dplyr::select(1:17)
 
   if (method == "global.test") {
@@ -558,7 +558,7 @@ analyzeMSdevPathway <- function(object,method = "global.test",p.adjusted=F){
 
       pathway.sample.info <- sample.info%>%
         dplyr::filter(group %in% groups.pair)
-      pathway.matrix <- object@statData$metabolites %>%
+      pathway.matrix <- object@advancedAna$metabolites %>%
         dplyr::filter(!is.na(kegg.id))%>%
         dplyr::distinct(kegg.id,.keep_all = T)%>%
         column_to_rownames("kegg.id")%>%
@@ -566,16 +566,16 @@ analyzeMSdevPathway <- function(object,method = "global.test",p.adjusted=F){
         t
       pathway.table <- analyzePathwayGlobalTest(pathway.matrix,pathway.sample.info$group)%>%
         dplyr::mutate(diff = "all")
-      object@statData$PathwayEnrichment[[paste0(group.case," vs ",group.con)]] <- pathway.table
+      object@advancedAna$PathwayEnrichment[[paste0(group.case," vs ",group.con)]] <- pathway.table
 
     }
 
   }
   if (method == "hyper.test") {
-    for (i in 1:length(object@statData$DifferentialMetabolites)) {
+    for (i in 1:length(object@advancedAna$DifferentialMetabolites)) {
 
 
-      diff.table <- object@statData$DifferentialMetabolites[[i]]%>%
+      diff.table <- object@advancedAna$DifferentialMetabolites[[i]]%>%
         dplyr::mutate(p = case_when(p.adjusted~p.fdr,
                                     T~p.value),
                       log10p = -log10(p),
@@ -584,7 +584,7 @@ analyzeMSdevPathway <- function(object,method = "global.test",p.adjusted=F){
                                         T~ "no"),
                       kegg.id = metabolites.table$kegg.id[match(.$feature_id,metabolites.table$feature_id)]
         )%>%data.table::as.data.table()
-      diff.title <- names(object@statData$DifferentialMetabolites)[i]
+      diff.title <- names(object@advancedAna$DifferentialMetabolites)[i]
 
       pathway.table <- rbind(analyzePathwayHypertest(diff.table$kegg.id[diff.table$diff=="down"])%>%
                                dplyr::mutate(diff = "down"),
@@ -593,7 +593,7 @@ analyzeMSdevPathway <- function(object,method = "global.test",p.adjusted=F){
                              analyzePathwayHypertest(diff.table$kegg.id[diff.table$diff%in% c("up","down")])%>%
                                dplyr::mutate(diff = "all"))
 
-      object@statData$PathwayEnrichment[[diff.title]] <- pathway.table
+      object@advancedAna$PathwayEnrichment[[diff.title]] <- pathway.table
 
     }
 
@@ -606,12 +606,12 @@ analyzeMSdevPathway <- function(object,method = "global.test",p.adjusted=F){
 
 analyzeMSdevDEP <- function(object){
 
-  data.se <-object@statData$data.se$data.raw$data.raw
+  data.se <-object@advancedAna$data.se$data.raw$data.raw
   sample.info <- SummarizedExperiment::colData(data.se)%>%as.data.frame()
   sample.groups <- unique(sample.info$group)
   groups.comb <- combn(sample.groups,2)
 
-  object@statData$data.se$data.diff<-NULL
+  object@advancedAna$data.se$data.diff<-NULL
   for (i in 1:ncol(groups.comb)) {
     groups.pair <- groups.comb[,i]%>%
       groupStringFactor()
@@ -626,7 +626,7 @@ analyzeMSdevDEP <- function(object){
     data.diff <- data.se[,diff.sample.info$ID]
     data.diff <- DEP.test.diff(data.diff)
 
-    object@statData$data.se$data.diff[[list_DEP_contrast(data.diff)]] <- data.diff
+    object@advancedAna$data.se$data.diff[[list_DEP_contrast(data.diff)]] <- data.diff
 
   }
 
@@ -646,14 +646,14 @@ analyzeMSdevDEP <- function(object){
 MSdev_export <- function(object,candi = F){
 
   dir.create(paste0(object@projectInfo$projectDir,"/Statistic"),recursive = T,showWarnings = F)
-  DEP_export_data(object@statData$metabolite.se,
+  DEP_export_data(object@advancedAna$metabolite.se,
                   file = paste0(object@projectInfo$projectDir,"/Statistic/Metabolites.xlsx")
                   )
-  DEP_export_data(object@statData$feature.se,
+  DEP_export_data(object@advancedAna$feature.se,
                   file = paste0(object@projectInfo$projectDir,"/Statistic/Features.xlsx")
   )
   if (candi)
-  DEP_export_data(object@statData$candidate.se,
+  DEP_export_data(object@advancedAna$candidate.se,
                   file = paste0(object@projectInfo$projectDir,"/Statistic/Candidates.xlsx")
   )
 }

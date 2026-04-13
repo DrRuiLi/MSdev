@@ -7,7 +7,7 @@ setClass("MSdev",
            xcmsData = "list",
            spectra = "list",
            annotation = "list",
-           statData = "list"
+           advancedAna = "list"
            ))
 
 

@@ -7,7 +7,7 @@ get_MSIP_compound_info <- function(object,
   if ("all" %in% vars) {
     vars <- avalible.vars
     }
-  iso.list <- object@statData$MSIP$isotopologues_data
+  iso.list <- object@advancedAna$MSIP$isotopologues_data
 
   suppressWarnings(
   compound_info <-  lapply(iso.list, function(x){

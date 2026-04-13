@@ -144,7 +144,7 @@ PAVE2 <- function(object){
         if (T) {
 
           cn.temp <- data.table::rbindlist(cn.net.list.hit)
-          object@statData$PAVE2_temp[[pol]]$CNfinder <- cn.net %>%
+          object@advancedAna$PAVE2_temp[[pol]]$CNfinder <- cn.net %>%
             dplyr::mutate(pave_cor = cn.temp$pave_cor[match(ion1,cn.temp$ion1)])
 
         }
@@ -172,8 +172,8 @@ PAVE2 <- function(object){
                                                      cn.net.eval[!(cn.hit),rt.diff])
       rt.tol.dyn <- rt.fit$sd * qnorm(0.99)
 
-      object@statData$PAVE2_temp[[pol]][["mz.dyn"]] <- ppm.fit
-      object@statData$PAVE2_temp[[pol]][["rt.dyn"]] <- rt.fit
+      object@advancedAna$PAVE2_temp[[pol]][["mz.dyn"]] <- ppm.fit
+      object@advancedAna$PAVE2_temp[[pol]][["rt.dyn"]] <- rt.fit
 
       cols <- c("TRUE" = "red","FALSE" = "#888888")
 
@@ -736,7 +736,7 @@ PAVE2 <- function(object){
     }
 
 
-    object@statData$PAVE2[[pol]] <- cn.peaks.annotation.df
+    object@advancedAna$PAVE2[[pol]] <- cn.peaks.annotation.df
 
 
   }

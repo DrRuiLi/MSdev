@@ -1239,7 +1239,7 @@ get_MSIP_intensity_consistency_cor_data <- function(msdev,
                                                     min_sp = 3,
                                                     min_isotopologue = 3){
 
-  msip.data <- msdev@statData$MSIP$isotopologues_data
+  msip.data <- msdev@advancedAna$MSIP$isotopologues_data
 
   fg_cos_all_list <- list()
   for (i in seq_along(msip.data)) {

@@ -55,7 +55,7 @@ MSIP_demo <- function(object){
 
 ### Natural iso
   {
-    x.iso.cfm <- msdev.combine@statData$MSIP$MSIP_result[[66]]
+    x.iso.cfm <- msdev.combine@advancedAna$MSIP$MSIP_result[[66]]
     ratio_matrix <- x.iso.cfm$compound_info$ratio_matrix
     natural.ratio.matrix <- get_iso_natural_ratio(
       formula = x.iso.cfm$compound_info$formula,

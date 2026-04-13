@@ -27,8 +27,8 @@ MSdev_get_Inclusion_Queue <- function(object){
                     queued.in.list = "",
                     queued.time = 0)
 
-    object@statData[[paste0("DDA_mine_queue_",polarity)]] <- dda.mine.queue
-    object@statData[[paste0("DDA_mine_list_",polarity)]] <- list()
+    object@advancedAna[[paste0("DDA_mine_queue_",polarity)]] <- dda.mine.queue
+    object@advancedAna[[paste0("DDA_mine_list_",polarity)]] <- list()
 
   }
 
@@ -41,7 +41,7 @@ MSdev_get_Inclusion_List <- function(object){
 
   for (i in 0:1) {
     polarity <-ifelse(i==0,"Negative","Positive")
-    DDA.queue <- object@statData[[paste0("DDA_mine_queue_",polarity)]]
+    DDA.queue <- object@advancedAna[[paste0("DDA_mine_queue_",polarity)]]
     if ( is.null(DDA.queue)) next
 
     DDA.mine.list <- DDA.queue%>%
@@ -57,7 +57,7 @@ MSdev_get_Inclusion_List <- function(object){
       dplyr::mutate(feature.id = paste0(feature.id ,"_", CE.tag))
 
     ### update list
-    queue.list <- object@statData[[paste0("DDA_mine_list_",polarity)]]
+    queue.list <- object@advancedAna[[paste0("DDA_mine_list_",polarity)]]
     if (length(queue.list)) {
 
       list.name =str_add( max(names(queue.list)),1)
@@ -70,7 +70,7 @@ MSdev_get_Inclusion_List <- function(object){
       queue.list <- list("DDA_mine_list001" = DDA.mine.list)
 
     }
-    object@statData[[paste0("DDA_mine_list_",polarity)]] <-queue.list
+    object@advancedAna[[paste0("DDA_mine_list_",polarity)]] <-queue.list
 
     DDA.mine.list.qe <- QE_list_2feature_def(DDA.mine.list)
     write.csv(DDA.mine.list.qe,
@@ -85,7 +85,7 @@ MSdev_get_Inclusion_List <- function(object){
         queued.time = case_when(
           DDA.id %in% DDA.mine.list$feature.id ~ queued.time+1,
           T~queued.time))
-    DDA.queue -> object@statData[[paste0("DDA_mine_queue_",polarity)]]
+    DDA.queue -> object@advancedAna[[paste0("DDA_mine_queue_",polarity)]]
 
   }
 
@@ -118,7 +118,7 @@ MSdev_get_MS2acquisitionStat <- function(object){
   for (i in 0:1) {
 
     polarity <-ifelse(i==0,"Negative","Positive")
-    DDA.queue <- object@statData[[paste0("DDA_mine_queue_",polarity)]]
+    DDA.queue <- object@advancedAna[[paste0("DDA_mine_queue_",polarity)]]
     if ( is.null(DDA.queue)) next
     sample.info <- object@sampleInfo%>%
       dplyr::filter(polarity %in% c(i,-1),
@@ -165,7 +165,7 @@ MSdev_get_MS2acquisitionStat <- function(object){
 
     }
 
-    DDA.queue -> object@statData[[paste0("DDA_mine_queue_",polarity)]]
+    DDA.queue -> object@advancedAna[[paste0("DDA_mine_queue_",polarity)]]
 
 
 

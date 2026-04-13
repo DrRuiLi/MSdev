@@ -652,9 +652,9 @@ dropSpectra <- function(object){
 adjustFeatureByIS <-function(object,to.adjust = "featureRaw"){
 
   object <- findISMSdev(object,corr.thred = 0.3)
-  features <- object@statData[[to.adjust]]%>%
-    dplyr::mutate(internal_standard =object@statData$featureRaw$internal_standard[match(
-      feature_id ,object@statData$featureRaw$feature_id
+  features <- object@advancedAna[[to.adjust]]%>%
+    dplyr::mutate(internal_standard =object@advancedAna$featureRaw$internal_standard[match(
+      feature_id ,object@advancedAna$featureRaw$feature_id
     )],.before = qc_rsd )
   sample.info <- object@sampleInfo%>%
     dplyr::filter(xcmsProcessing%in% c("Both","MS1"),
@@ -700,7 +700,7 @@ adjustFeatureByIS <-function(object,to.adjust = "featureRaw"){
   features[,sample.info$sample.name] <- feature.matrix
 
 
-  features -> object@statData[["feature"]]
+  features -> object@advancedAna[["feature"]]
 
   return(object)
 
@@ -717,7 +717,7 @@ adjustFeatureByGQC <- function(msdev.object,to.adjust = "featureRaw"){
   GQC.sampleinfo <- msdev.object@sampleInfo%>%
     dplyr::filter(sample.type == "GQC")
 
-  sample.matrix <- msdev.object@statData[[to.adjust]]%>%
+  sample.matrix <- msdev.object@advancedAna[[to.adjust]]%>%
     column_to_rownames("feature_id")%>%
     dplyr::select(sampleinfo$sample.name)%>%t
 
@@ -743,9 +743,9 @@ adjustFeatureByGQC <- function(msdev.object,to.adjust = "featureRaw"){
 
 
   adjusted.matrix  <- apply(sample.matrix,2, .adjust.fun)%>%t
-  msdev.object@statData[["feature"]] <- msdev.object@statData[[to.adjust]]
-  msdev.object@statData[["feature"]][ ,sampleinfo$sample.name] <-adjusted.matrix[,sampleinfo$sample.name]
-  msdev.object@statData[["feature"]] <- msdev.object@statData[["feature"]]%>%
+  msdev.object@advancedAna[["feature"]] <- msdev.object@advancedAna[[to.adjust]]
+  msdev.object@advancedAna[["feature"]][ ,sampleinfo$sample.name] <-adjusted.matrix[,sampleinfo$sample.name]
+  msdev.object@advancedAna[["feature"]] <- msdev.object@advancedAna[["feature"]]%>%
     dplyr::mutate(gqc_r2 = adjusted.matrix[,"r2"],.before = qc_rsd)
 
   msdev.object
@@ -762,7 +762,7 @@ findFeature <- function(object,
   rt.err <- ifelse(is.na(retention_time),Inf, rt.err)
   retention_time <- ifelse(is.na(retention_time),0, retention_time)
 
-  feature <- object@statData$featureRaw
+  feature <- object@advancedAna$featureRaw
   feature_matched <- feature%>%
     dplyr::filter( ion_mode == ion_mode_char,
                    mz > ion_mz-ion_mz*ppm/1e6,
@@ -776,8 +776,8 @@ findFeature <- function(object,
 #' @title Find internal standard features in MSdev
 #' @description Find features of internal standards listed in `object@experimentInfo@Internal_Standard`
 #' by `Exact_mass` and `Retention_time` (if provided).
-#' Only `\[M+H\]` and `\[M-H\]` adducts are considered. Correlation and intensity will be plotted based on `object@statData[["featureRaw"]]`.
-#' A column "internal_standard" will be added to `object@statData[["featureRaw"]]`
+#' Only `\[M+H\]` and `\[M-H\]` adducts are considered. Correlation and intensity will be plotted based on `object@advancedAna[["featureRaw"]]`.
+#' A column "internal_standard" will be added to `object@advancedAna[["featureRaw"]]`
 #'
 #' @param object MSdev
 #' @param corr.thred cor
@@ -789,7 +789,7 @@ findFeature <- function(object,
 findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 
   internal.standard <- object@experimentInfo@Internal_Standard%>%as.data.frame()
-  feature <-  object@statData[[to.adjust]]%>%
+  feature <-  object@advancedAna[[to.adjust]]%>%
     dplyr::mutate( .before = qc_rsd,
                    internal_standard = NA)
   for (i in 1:nrow(internal.standard)) {
@@ -875,7 +875,7 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 
     }
 
-  object@statData$featureRaw <-feature
+  object@advancedAna$featureRaw <-feature
   return(object)
 
 
@@ -969,7 +969,7 @@ plot_MSdev_sample_peaks <- function(object, target = "PositiveMS1", top_n = Inf)
 
 plot_MSdev_feature_spectrum <- function(MSdev.obj,feature.id  ){
 
-  feature.data <- MSdev.obj@statData$featureRaw%>%
+  feature.data <- MSdev.obj@advancedAna$featureRaw%>%
     dplyr::filter(feature_id == feature.id)
   feature.annotation <- MSdev.obj@annotation[[paste0(feature.data$ion_mode,"Annotation")]][[which(
     rownames(MSdev.obj@xcmsData[[paste0(feature.data$ion_mode,"Feature")]])==
@@ -1559,7 +1559,7 @@ MSdev_annotation <- function(object,
 #' @param candi logical, whether to include all candidates in output
 #' @param metabolite logical, whether to filter for metabolite features only
 #' @param ... additional arguments
-#' @return MSdev object with statData populated
+#' @return MSdev object with advancedAna populated
 #' @export
 #'
 MSdev_get_Stat <- function(object,
@@ -1641,7 +1641,7 @@ MSdev_get_Stat <- function(object,
 
 
 
-    object@statData$feature.se <- feature.se
+    object@advancedAna$feature.se <- feature.se
 
   }
 
@@ -1671,7 +1671,7 @@ MSdev_get_Stat <- function(object,
 
     }
 
-    object@statData$candidate.se <- candi.se
+    object@advancedAna$candidate.se <- candi.se
   }
 
 
@@ -1702,7 +1702,7 @@ MSdev_get_Stat <- function(object,
 
 
     metabolite.se <- feature.se[rownames(feature.se)%in%rda.filter$feature_id,]
-    object@statData$metabolite.se <- metabolite.se
+    object@advancedAna$metabolite.se <- metabolite.se
 
   }
 

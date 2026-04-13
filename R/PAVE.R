@@ -53,7 +53,7 @@ PAVE_get_atom_count <- function(object, BPPARAM = SnowParam(workers = 6,progress
     {
 
       cn.list <- PAVE_find_xcms_CN(xcms.xcms,BPPARAM = BPPARAM)
-      object@statData$PAVE[[polarity.index[as.character(i.pol)]]] <- cn.list
+      object@advancedAna$PAVE[[polarity.index[as.character(i.pol)]]] <- cn.list
 
     }
 
@@ -91,7 +91,7 @@ PAVE_junk_remover <- function(object,ppm = 10,rt.tol = 20){
 
       pol <- ifelse(i.pol==0,"Negative","Positive")
 
-      cn.list <- object@statData$PAVE[[pol]]
+      cn.list <- object@advancedAna$PAVE[[pol]]
       cn.seed <- lapply(cn.list,function(x){
         x %>%dplyr::mutate(pave_formula = paste0("C",max(C_count),
                                                  "N",max(N_count)))%>%
@@ -370,7 +370,7 @@ PAVE_junk_remover <- function(object,ppm = 10,rt.tol = 20){
     for (i.pol in 0:1) {
 
       pol <- ifelse(i.pol==0,"Negative","Positive")
-      cn.list <- object@statData$PAVE[[pol]]
+      cn.list <- object@advancedAna$PAVE[[pol]]
       cn.seed.pol <- cn.seed%>%
         dplyr::filter(polarity == i.pol)%>%
         dplyr::mutate(tmp = feature_id)%>%
@@ -385,7 +385,7 @@ PAVE_junk_remover <- function(object,ppm = 10,rt.tol = 20){
 
 
 
-      cn.list.junkremoved -> object@statData$PAVE[[pol]]
+      cn.list.junkremoved -> object@advancedAna$PAVE[[pol]]
 
     }
 
@@ -404,7 +404,7 @@ PAVE_junk_remover <- function(object,ppm = 10,rt.tol = 20){
 PAVE_formula_assign <- function(object,ppm = 10,rt.tol = 20){
 
 
-  #object@statData$PAVE
+  #object@advancedAna$PAVE
   cpdb_path = "C:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite"
   cpdb <- CompoundDb::CompDb(cpdb_path)
 
@@ -421,7 +421,7 @@ PAVE_formula_assign <- function(object,ppm = 10,rt.tol = 20){
                                                 ppm = ppm)
     xcms.fdf <- featureDefinitions(xcms.xcms)
 
-    cn.list <- object@statData$PAVE[[pol]]
+    cn.list <- object@advancedAna$PAVE[[pol]]
     cn.seed <- lapply(cn.list,function(x){
       x %>%dplyr::mutate(pave_formula = paste0("C",max(C_count),
                                                "N",max(N_count)))%>%
@@ -462,7 +462,7 @@ PAVE_formula_assign <- function(object,ppm = 10,rt.tol = 20){
     for (i.pol in 0:1) {
 
       pol <- ifelse(i.pol==0,"Negative","Positive")
-      cn.list <- object@statData$PAVE[[pol]]
+      cn.list <- object@advancedAna$PAVE[[pol]]
       cn.seed.pol <- cn.list.pol[[pol]]%>%
         dplyr::filter(polarity == i.pol)%>%
         dplyr::mutate(tmp = feature_id)%>%
@@ -476,7 +476,7 @@ PAVE_formula_assign <- function(object,ppm = 10,rt.tol = 20){
 
 
 
-      cn.list.formula.assigned -> object@statData$PAVE[[pol]]
+      cn.list.formula.assigned -> object@advancedAna$PAVE[[pol]]
 
     }
 
@@ -500,7 +500,7 @@ PAVE_report <- function(object,file = tempfile(fileext = "pdf"),mzr = c(0,Inf)){
       as.data.frame()%>%
       dplyr::filter(between.range(mzmed,mzr))
 
-    cn.list <- object@statData$PAVE[[pol]]
+    cn.list <- object@advancedAna$PAVE[[pol]]
     cn.peaks <- cn.list%>%
       data.table::rbindlist()%>%
       as.data.frame()%>%

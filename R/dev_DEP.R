@@ -8,7 +8,7 @@ get_MSdev_DEP_se <- function(object,
                              preprocess = T,...){
 
   from <- match.arg(from)
-  data.se <- object@statData[[from]]
+  data.se <- object@advancedAna[[from]]
 
   ### format to DEP
   {

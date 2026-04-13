@@ -22,7 +22,7 @@ MSIP_shiny_server <- function(object){
     ### reactiveval
     {
       fid.selected <- reactiveVal()
-      iso.data.list <- reactiveVal( object@statData$MSIP$isotopologues_data)
+      iso.data.list <- reactiveVal( object@advancedAna$MSIP$isotopologues_data)
       iso.data <- reactiveVal()
       msip.core.data <- reactiveVal()
 
@@ -552,7 +552,7 @@ MSIP_shiny_server <- function(object){
 #' @return MSdev
 MSIP_shiny_Acq_server <- function(object){
 
-  acq.list <- object@statData$MSIP$isotopologues_table
+  acq.list <- object@advancedAna$MSIP$isotopologues_table
   rt.range <- range(rtime(object@xcmsData$PositiveMS1),
                     rtime(object@xcmsData$NegativeMS1))
   col.sample.source <- make_group_color(object@sampleInfo$sample.source,palette = "npg")
@@ -597,9 +597,9 @@ MSIP_shiny_Acq_server <- function(object){
       DT::dataTableProxy("feature_tab")%>%
         DT::showCols(show = 1:6,reset = T)
 
-      ratio_matrix(object@statData$MSIP$isotopologues_matrix$ratio_to_seed
+      ratio_matrix(object@advancedAna$MSIP$isotopologues_matrix$ratio_to_seed
                    [[input$select_polarity]]    )
-      purity_matrix(object@statData$MSIP$isotopologues_matrix$ms1_purity
+      purity_matrix(object@advancedAna$MSIP$isotopologues_matrix$ms1_purity
                    [[input$select_polarity]]    )
 
       xchrom.selected.polarity(xcms.chrom.data[[paste0(input$select_polarity,"_Chromatograms")]])
@@ -715,7 +715,7 @@ MSIP_shiny_Acq_server <- function(object){
     })
     output$test_info <- renderPrint({
 
-     #object@statData$MSIP$isotopologues_table$Positive%>%
+     #object@advancedAna$MSIP$isotopologues_table$Positive%>%
      #   dplyr::pull(selected_to_acq,name = feature_id)
       #head(ratio_matrix())
     })
@@ -724,23 +724,23 @@ MSIP_shiny_Acq_server <- function(object){
     observeEvent(input$save_button,{
       message_with_time("observeEvent 535")
 
-      object@statData$MSIP$isotopologues_table$Positive$selected_to_acq <-
-        acq.selected()$Positive[object@statData$MSIP$isotopologues_table$Positive$feature_id]
-      object@statData$MSIP$isotopologues_table$Negative$selected_to_acq <-
-        acq.selected()$Negative[object@statData$MSIP$isotopologues_table$Negative$feature_id]
+      object@advancedAna$MSIP$isotopologues_table$Positive$selected_to_acq <-
+        acq.selected()$Positive[object@advancedAna$MSIP$isotopologues_table$Positive$feature_id]
+      object@advancedAna$MSIP$isotopologues_table$Negative$selected_to_acq <-
+        acq.selected()$Negative[object@advancedAna$MSIP$isotopologues_table$Negative$feature_id]
 
     })
 
     observeEvent(input$quit_button,{
       message_with_time("observeEvent 545")
-      #object@statData$iso.acq.list$Positive$selected_to_acq <-
+      #object@advancedAna$iso.acq.list$Positive$selected_to_acq <-
       #  selected()$Positive
-      #object@statData$iso.acq.list$Negative$selected_to_acq <-
+      #object@advancedAna$iso.acq.list$Negative$selected_to_acq <-
       #  selected()$Negative
-      object@statData$MSIP$isotopologues_table$Positive$selected_to_acq <-
-        acq.selected()$Positive[object@statData$MSIP$isotopologues_table$Positive$feature_id]
-      object@statData$MSIP$isotopologues_table$Negative$selected_to_acq <-
-        acq.selected()$Negative[object@statData$MSIP$isotopologues_table$Negative$feature_id]
+      object@advancedAna$MSIP$isotopologues_table$Positive$selected_to_acq <-
+        acq.selected()$Positive[object@advancedAna$MSIP$isotopologues_table$Positive$feature_id]
+      object@advancedAna$MSIP$isotopologues_table$Negative$selected_to_acq <-
+        acq.selected()$Negative[object@advancedAna$MSIP$isotopologues_table$Negative$feature_id]
 
       stopApp(object)
     })
