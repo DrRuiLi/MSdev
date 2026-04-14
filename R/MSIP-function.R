@@ -2137,13 +2137,13 @@ MSIP_get_isotopomer_data <- function(object,
   # Set default temp_dir if not provided
   if (is.null(temp_dir)) {
     if (is.null(object@projectInfo$CompoundDB_path)) {
-      temp_dir <- tempfile("msip_cfmd_")
+      temp_dir <- get_dir_expand_from_onedrive("/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb_cfmd")
     } else {
       temp_dir <- paste0(object@projectInfo$CompoundDB_path, "_cfmd")
     }
-    # Save temp_dir into msdev object for reuse
-    object@projectInfo$MSIP_cfmd_tempdir <- temp_dir
   }
+  # Save temp_dir into msdev object for reuse
+  object@projectInfo$MSIP_cfmd_tempdir <- temp_dir
 
   # ============================================================================
   # Step 1: Check if compound_table exists
@@ -2194,8 +2194,9 @@ MSIP_get_isotopomer_data <- function(object,
   }
 
   # ============================================================================
-  # Step 3: Loop through each compound
+  # Step 3: Loop through each compound (only for targeted mode)
   # ============================================================================
+  if (mode == "targeted") {
   for (i in seq_len(nrow(compound_table))) {
     cp <- compound_table[i, ]
     compound_id <- cp$compound_id
@@ -2493,6 +2494,7 @@ MSIP_get_isotopomer_data <- function(object,
     )
 
   }  # End loop through compounds
+  }  # End if mode == "targeted"
 
   # ============================================================================
   # Step 4: Package result as list of MSIPCoreData matrices
