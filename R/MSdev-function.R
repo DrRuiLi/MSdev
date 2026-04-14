@@ -1404,6 +1404,21 @@ MSdev_extract_Spectra <- function(object,
 
   }
 
+  ### sample.source
+  {
+    if ("sample.source"%in% colnames(sampleInfo)) {
+      if (1 %in% msLevel(sp)) {
+        sp.ms1$sample.source <- sampleInfo$sample.source[match(sampleNames(sp.ms1),
+                                     basename(sampleInfo$msData.files))]
+      }
+      if (2 %in% msLevel(sp)) {
+        sp.ms2$sample.source <- sampleInfo$sample.source[match(sampleNames(sp.ms2),
+                                     basename(sampleInfo$msData.files))]
+      }
+    }
+
+  }
+
 
   ### save on disk
   {
