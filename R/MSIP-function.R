@@ -2197,7 +2197,7 @@ MSIP_get_isotopomer_data <- function(object,
   # Call targeted function if mode is targeted
   # ============================================================================
   if (mode == "targeted") {
-    isotopomer_data_list <- MSIP_get_isotopomer_data.targeted(
+    isotopomer_data_list <- get_MSIP_isotopomer_data.targeted(
       sp.ms2 = sp.ms2,
       compound_table = compound_table,
       sample_sources = sample_sources,
@@ -2265,7 +2265,7 @@ MSIP_get_isotopomer_data <- function(object,
 #' @return List of isotopomer data results
 #' @keywords internal
 #'
-MSIP_get_isotopomer_data.targeted <- function(sp.ms2,
+get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
                                                compound_table,
                                                sample_sources,
                                                target_ele,

@@ -169,9 +169,82 @@ MSIPMetaboliteData
 
 # FUNCTION
 
+## MSIP_get_isotopomer_data.targeted
+
+### *Prompt*
+
+
+``` text
+Write a function 'MSIP_get_isotopomer_data'
+Input: 
+	1. MSdev object
+	2. mode, could be "untargeted" (default) or "targeted"
+Output: 
+	1. MSdev object with obj@advancedAna$MSIP$isotopomer_data
+Untargeted Workflow: 
+	1. Check if there are obj@advancedAna$MSIP$compound_table, if not, message and stop
+	2. Check the format of the compound_table
+	3. For cycle for each compound in compound_table:
+		a. Calculate the mz of all possible isotopologue, and their adduct (M+H and M-H)
+		b. Check if Spectra (in obj@spectra) exist for the isotopologue by matching mz and rt
+		c. Separate the spectra by isotopologue and sample.source
+		d. Construct cfmdata using get_CFM_data_from_smiles
+		e. Construct msipcoredata using get_MSIPCoreData
+		f. Solve by MSIPCore_solve
+		g. Construct the list of MSIPcoredata as a matrix, row as isotopologue, such as ([13]C1, [13]C2…) and column as sample.source
+	4. Package the result as a list of MSIPcoredata matrix
+	5. Store the list in obj@advancedAna$MSIP$isotopomer_data
+
+```
+### *Review*
+``` text
+Update1: 
+	1. If creat tempdir for cfmd cache, save it into msdev obj
+	2. iso_count_max default set to 30
+	3. sp.ms2$sample.source  should be determined in  MSdev_extract_Spectra(), not match in this function
+	4. Use sp.pol$isolationWindowTargetMz instead of precursorMZ, rtime instead of retentionTime
+```
+``` text
+Update2:
+	1. In step 2, the iso_form are not integrated in all_matched
+	2. In step 3 and the following step, do not use iso_counts, just iso_forms
+```
+``` text
+Update3:
+	1. There no all_matched$iso_mz
+```
+``` text
+Update4:
+	1. Do not use iso_labels (M0, M1, M2…), just use iso_form as label([13]C0, [13]C1, [13]C2… )
+```
+``` text
+Update5:
+	1. You miss the polarity of the spectra, thus all spectra are input into pos or neg adduct 
+	2. When message solved… also include adduct, and if there are no spectra, skip if there are no sp, and not message
+```
+``` text
+Update6: 
+	1. The cycle for "Process each isotopologue and sample combination" should be:
+		a. Iso_form
+		b. Sample_source
+		c. Polarity, After solve pos and neg, MSIPCore_merge() them
+```
+``` text
+Update7: 
+	1. The sp.ms2 <- onDiskData_retrieve(object@spectra$MS2_Spectra) should be placed outside the loop, not repeatly I/O
+```
+``` text
+Update8: 
+	1. The default cache dir should be get_dir_expand_from_onedrive("/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb_cfmd") when CompoundDB_path miss
+	2.  the above procedure should be placed under a ifelse(mode == "targeted")
+
+
+```
+
 ## MSIP_get_isotopologues_data.untargeted
 
 *Wed Apr 15 12:43:07 2026*
+
 
 ### *Prompt*
 
