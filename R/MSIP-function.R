@@ -2107,7 +2107,7 @@ MSIP_get_Molecule_igraph <- function(object,fraction_thresh = 0.001){
 #'
 #' @param object MSdev object
 #' @param mode Mode: "untargeted" (default) or "targeted"
-#' @param iso_ele Isotope element, default "[13]C"
+#' @param iso_ele Isotope element, default `"[13]C"`
 #' @param ppm PPM tolerance for m/z matching, default 10
 #' @param rt.tol RT tolerance in seconds, default 10
 #' @param int_thresh Intensity threshold for MSIPCore_solve, default 10^3.8
