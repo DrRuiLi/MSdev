@@ -1,0 +1,58 @@
+---
+title: "MSIP_Structural_Elucidation_Evaluation"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{MSIP_Structural_Elucidation_Evaluation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+# Workflow
+
+
+# Development
+
+## Function
+
+### get_MSIP_structural_elucidation_score
+
+#### *Prompt*
+
+``` text
+
+
+# Task: Implement Structural Elucidation Scoring for MSIP
+
+Please write a core R function `get_MSIP_structural_elucidation_score` . This function will evaluate how well experimental MS2 spectra can elucidate the structural and isotopic labeling positions of a metabolite by mapping them to in-silico theoretical fragments (CFMD).
+
+## 1. Inputs
+- `spectra`: Spectra of experimental MS2 peaks (columns: `mz`, `intensity`).
+- `cfmd`: CFM_data defined in MSdev
+- `ppm`: Numeric, m/z tolerance for peak matching in ppm (default: 10).
+
+## 2. Core Logic & Steps
+
+**Step 1: Spectra Preprocessing & Matching (Coverage)**
+- Match the `mz` of `spectra` against the `mz` of `cfmd` using the specified `mz_tol` (ppm).
+- Identify the "covered fragments" (theoretical fragments that have a corresponding experimental peak).
+
+**Step 2: Atomic Position Localization**
+- For all "covered fragments" identified in Step 1, extract their `atom_indices`.
+- Calculate the union of all elucidated atomic positions (i.e., which specific atoms in the original skeleton are covered by the detected fragments).
+
+**Step 3: Scoring**
+- Calculate the `Fragment_Coverage`: (Number of matched CFMD fragments) / (Total CFMD fragments).
+- Calculate the `Structural_Elucidation_Score`: (Number of unique atoms covered) / (Total number of atoms in the intact molecule). 
+
+## 3. Output
+Return a list (or a structured S3/S4 object if appropriate for MSdev) containing:
+- `$Score`: The overall Structural Elucidation Score (numeric 0-1).
+- `$Fragment_Coverage`: The fragment matching ratio (numeric 0-1).
+- `$Matched_Fragments`: A data.frame of the matched subset from `cfmd`.
+- `$Covered_Atoms`: A unique numeric vector of the elucidated atomic indices.
+
+Please write clean, robust R code with `roxygen2` documentation headers. 
+```
