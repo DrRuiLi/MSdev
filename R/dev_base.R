@@ -411,3 +411,9 @@ calculate_pulse <- function(x = 1000, mt = F, qr = T, guru = 0.028,rc = 1.02*0.9
   x  - r * rc
 
 }
+
+
+start_rmd_render <- function(){
+
+  xaringan:::inf_mr()
+}
