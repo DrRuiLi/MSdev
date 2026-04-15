@@ -1,6 +1,10 @@
 ---
 title: "MSIP_note"
-output: rmarkdown::html_vignette
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
 vignette: >
   %\VignetteIndexEntry{MSIP_note}
   %\VignetteEngine{knitr::rmarkdown}
@@ -19,11 +23,11 @@ This vignette documents the core **data structures** used by the MSdev package f
 -   the `MSdev` *project container* object (MS data processing + analysis state)
 -   the MSIP *isotopologue/isotopomer* objects (fragment/atom mapping + solving)
 
-## The `MSdev` object
+# The `MSdev` object
 
 `MSdev` is an S4 class used as a **project-level container** for mass spectrometry workflows (raw data import/convert, xcms processing, spectra extraction, annotation, and downstream statistics).
 
-### Slots (fields)
+## Slots (fields)
 
 The class is defined in `R/MSdev-class.R` as:
 
@@ -44,7 +48,7 @@ The class is defined in `R/MSdev-class.R` as:
 -   **`annotation`** *(list)*: annotation intermediates and results (database paths, candidates, scores, etc.).
 -   **`advancedAna`** *(list)*: analysis-ready objects/tables (e.g. `SummarizedExperiment` outputs like `feature.se`, `metabolite.se`).
 
-### Typical lifecycle
+## Typical lifecycle
 
 The workflow in `R/MSdev-workflow.R` shows a typical pipeline:
 
@@ -55,7 +59,7 @@ The workflow in `R/MSdev-workflow.R` shows a typical pipeline:
 5.  Annotate: `MSdev_annotation()`
 6.  Build stats-ready objects: `MSdev_get_Stat()`
 
-### Inspecting an `MSdev` object
+## Inspecting an `MSdev` object
 
 ```{r, eval = FALSE}
 msdev <- MSdev(rawDataDir = "path/to/raw/data")
@@ -71,7 +75,7 @@ names(msdev@annotation)
 names(msdev@advancedAna)
 ```
 
-## MSIP (isotope labeling) data structures
+# MSIP data structures
 
 The MSIP-related classes are a small set of S4 objects focused on:
 
@@ -80,7 +84,7 @@ The MSIP-related classes are a small set of S4 objects focused on:
 -   storing solved isotopomer models (`MSIPIsotopomerMap`)
 -   metabolite-centric isotopologue bundles (`MSIPMetaboliteData`, `MSIPIsotopologueData`)
 
-### `MSIPFragmentMap`
+## `MSIPFragmentMap`
 
 Defined in `R/MSIPCoreData.R`:
 
@@ -90,7 +94,7 @@ Defined in `R/MSIPCoreData.R`:
 
 The `show()` method prints a short summary like “Map of N fragment group, M atom, K labeled”.
 
-### `MSIPCoreData`
+## `MSIPCoreData`
 
 Also in `R/MSIPCoreData.R`, this is the main “working object” during MSIP solving:
 
@@ -103,7 +107,7 @@ Also in `R/MSIPCoreData.R`, this is the main “working object” during MSIP so
 
 `isEmpty(MSIPCoreData)` is defined as `isEmpty(FG_map)` (empty when `nrow(FG.atom.matrix) == 0`).
 
-### `MSIPIsotopomerMap`
+## `MSIPIsotopomerMap`
 
 Also in `R/MSIPCoreData.R`, this represents the solved isotopomer model:
 
@@ -113,7 +117,7 @@ Also in `R/MSIPCoreData.R`, this represents the solved isotopomer model:
 -   **`isotopomer.probability`** *(numeric)*: inferred isotopomer probabilities.
 -   **`solve`** *(list)*: additional solver details/metadata.
 
-### `MSIPIsotopologueData` and `MSIPMetaboliteData`
+## `MSIPIsotopologueData` and `MSIPMetaboliteData`
 
 Defined in `R/MSIP-class.R`:
 
@@ -125,7 +129,7 @@ Defined in `R/MSIP-class.R`:
     -   **`Spectra`** *(list)*: spectra associated with the metabolite
     -   **`MSIPIsotopologueDatas`** *(`MSIPIsotopologueData`)*: isotopologue bundle for that metabolite
 
-### Inspecting MSIP objects
+## Inspecting MSIP objects
 
 ```{r, eval = FALSE}
 # Given an MSIPCoreData object (example name: core)
@@ -142,7 +146,7 @@ slotNames(m)
 names(m@MSIPIsotopologueDatas)
 ```
 
-## At-a-glance relationship map
+# At-a-glance relationship map
 
 ``` text
 MSdev
@@ -162,3 +166,39 @@ MSIPMetaboliteData
   ├─ Spectra
   └─ MSIPIsotopologueDatas (MSIPIsotopologueData; list-like)
 ```
+
+# FUNCTION
+
+## MSIP_get_isotopologues_data.untargeted
+
+*Wed Apr 15 12:43:07 2026*
+
+### *Prompt*
+
+Write a function `MSIP_get_isotopologues_data.untargeted` in new file
+
+- input: MSdev object
+- output: MSdev object with isotopomer data
+- to do:
+    1. check wheather there are isotopologue table
+
+
+# **Workflow**
+
+## Untargeted analysis
+
+An untargeted MSIP analysis generally include such steps: 
+
+
+1. MS1 full scan or DDA analysis
+2. Screen isotopologues
+3. Targeted MS2 acquisition for isotopologues
+4. MSIP analysis
+
+
+### 1. MS1 full scan or DDA analysis
+
+### 2. Screen isotopologues
+
+## Targeted analysis
+
