@@ -187,18 +187,225 @@ Write a function `MSIP_get_isotopologues_data.untargeted` in new file
 
 ## Untargeted analysis
 
-An untargeted MSIP analysis generally include such steps: 
-
+An untargeted MSIP analysis generally include such steps:
 
 1. MS1 full scan or DDA analysis
 2. Screen isotopologues
 3. Targeted MS2 acquisition for isotopologues
 4. MSIP analysis
 
-
 ### 1. MS1 full scan or DDA analysis
 
 ### 2. Screen isotopologues
 
 ## Targeted analysis
+
+The targeted MSIP workflow is designed for compounds with known identity (formula, SMILES, RT) and involves the following steps:
+
+### Step 1: Import Compound Table
+
+Prepare a compound table with the following required columns:
+- `compound_id`: Unique identifier for each compound
+- `name`: Human-readable compound name
+- `formula`: Molecular formula (e.g., "C6H12O6")
+- `smiles`: SMILES string for structure representation
+- `rt`: Retention time (in seconds)
+
+```{r, eval=FALSE}
+# Import compound table from CSV
+object <- MSIP_import_compound_table(object, table.path = "path/to/compound_table.csv")
+```
+
+### Step 2: Find Isotopologues from Compound Table
+
+For each compound in the table, calculate the m/z of all possible isotopologues (based on the target isotope element, default [13]C) and their adducts (M+H and M-H).
+
+```{r, eval=FALSE}
+# Find isotopologues for compounds in the table
+object <- MSIP_find_isotopologue_from_compound_table(object)
+```
+
+This function:
+- Calculates the base m/z for each compound with M+H and M-H adducts
+- Generates isotopologue m/z grid based on the maximum number of target atoms
+- Stores results in `object@advancedAna$MSIP$isotopologues_table`
+
+### Step 3: Export Acquisition List (Optional)
+
+Generate an acquisition list for targeted MS2 acquisition of the identified isotopologues.
+
+```{r, eval=FALSE}
+# Export acquisition list for targeted MS2
+MSIP_export_isotopologues_acquisition_list(object)
+```
+
+This creates a list of:
+- Precursor m/z values for each isotopologue
+- Collision energies for fragmentation
+- Retention time windows
+
+### Step 4: Perform Targeted MS2 Acquisition
+
+Using the acquisition list, perform targeted MS2 acquisition on a QTRAP or similar instrument. This step is experimental and generates MS2 spectra for each isotopologue at specified collision energies.
+
+### Step 5: Extract MS2 Spectra
+
+After MS2 acquisition, extract and organize the spectra data.
+
+```{r, eval=FALSE}
+# Extract MS2 spectra and link to samples
+object <- MSdev_extract_Spectra(object)
+
+# Match MS2 spectra to features
+object <- MSdev_match_Spectra_to_feature(object)
+
+# Assign MS2 spectra to isotopologues
+object <- MSIP_assign_MS2(object, rt.tol = 10)
+```
+
+Key functions:
+- `MSdev_extract_Spectra()`: Loads MS2 spectra into `object@spectra$MS2_Spectra`
+- `MSdev_match_Spectra_to_feature()`: Links MS2 spectra to MS1 features
+- `MSIP_assign_MS2()`: Assigns MS2 spectra to isotopologues based on m/z and RT matching
+
+### Step 6: Get CFM Annotation
+
+Generate CFM (Cognitive-Focused Metabolomics) annotations for each compound.
+
+```{r, eval=FALSE}
+# Get CFM annotation for compounds
+object <- MSIP_get_isotopologues_CFM_annotation(object)
+```
+
+This function:
+- Uses `get_CFM_data_from_smiles()` to generate predicted fragment spectra
+- Creates fragment-to-atom mappings with isotope labeling
+- Caches results in a temporary directory for reuse
+
+### Step 7: Build Compound Database (Optional)
+
+If working with a custom compound database.
+
+```{r, eval=FALSE}
+# Build compound database
+object <- MSIP_build_compoundDB(cpdb = CompDb("path/to/CompDb"))
+```
+
+### Step 8: Get Isotopomer Data (Main MSIP Analysis)
+
+This is the core MSIP function that performs the complete isotopomer analysis pipeline.
+
+```{r, eval=FALSE}
+# Run MSIP isotopomer analysis (targeted mode)
+object <- MSIP_get_isotopomer_data(
+  object,
+  mode = "targeted",
+  iso_ele = "[13]C",
+  ppm = 10,
+  rt.tol = 10,
+  int_thresh = 10^3.8,
+  certainty_thresh = 0.6,
+  iso_count_max = 30
+)
+```
+
+#### Workflow Details of `MSIP_get_isotopomer_data`
+
+**For each compound in the compound_table:**
+
+1. **Calculate isotopologue m/z values**
+   - Get base m/z for M+H and M-H adducts using `MSCC::chemform_adduct()`
+   - Calculate maximum isotopologue count based on target element (e.g., number of carbon atoms)
+   - Build isotopologue m/z grid using `MSCC::get_isotope_mass_diff()`
+
+2. **Match MS2 spectra by m/z and RT**
+   - Filter MS2 spectra by polarity (positive/negative)
+   - Match isotopologue m/z values to spectra using `match_mz_rt()`
+   - Uses `isolationWindowTargetMz` and `rtime()` accessors
+
+3. **Separate spectra by isotopologue and sample.source**
+   - Group matched spectra by isotopologue form (e.g., [13]C0, [13]C1, [13]C2)
+   - Split further by sample source
+   - Track polarity for each spectrum group
+
+4. **Construct CFM data**
+   - Call `get_CFM_data_from_smiles()` to generate predicted fragments
+   - Creates atom mapping with isotope labels
+   - Results cached in temp directory
+
+5. **Construct and solve MSIPCoreData**
+   - For each isotopologue × sample combination:
+     - Filter spectra by polarity
+     - Construct MSIPCoreData using `get_MSIPCoreData()`
+     - Solve using `MSIPCore_solve()` with specified thresholds
+   - Merge positive and negative polarity results via `MSIPCore_merge()`
+
+6. **Store results**
+   - Results stored in `object@advancedAna$MSIP$isotopomer_data`
+   - Structure: List of compounds, each containing:
+     - `CompoundInfo`: metadata (compound_id, name, formula, smiles, rt, adduct, polarity, etc.)
+     - `MSIPCoreData_matrix`: Matrix of solved MSIPCoreData objects (rows = isotopologues, cols = sample sources)
+
+### Step 9: Solve Isotopologues (Alternative Entry Point)
+
+If you have pre-processed isotopologue data and want to solve separately.
+
+```{r, eval=FALSE}
+# Solve isotopologues with specific parameters
+object <- MSIP_solve_isotopologues(
+  object,
+  int_thresh = 10^3.8,
+  certainty_thresh = 0.6,
+  ppm = 20,
+  timeout = 60
+)
+```
+
+### Step 10: Get Molecule igraph
+
+Generate molecular graphs for visualization of isotopomer distributions.
+
+```{r, eval=FALSE}
+# Get molecule igraphs for isotopomer visualization
+object <- MSIP_get_Molecule_igraph(object, fraction_thresh = 0.001)
+```
+
+Results stored in `object@advancedAna$MSIP$isotopomer_Molecule_igraph`.
+
+### Step 11: Export Results
+
+Export isotopologues table and analysis results.
+
+```{r, eval=FALSE}
+# Export isotopologues table
+MSIP_export_isotopologues_table(object)
+
+# Export acquisition list
+MSIP_export_isotopologues_acquisition_list(object)
+```
+
+### Summary of Key Data Structures
+
+After targeted MSIP analysis, the main results are stored in:
+
+| Slot | Content |
+|------|---------|
+| `object@advancedAna$MSIP$compound_table` | Input compound table |
+| `object@advancedAna$MSIP$isotopomer_data` | Solved isotopomer data (MSIPCoreData matrices) |
+| `object@advancedAna$MSIP$isotopomer_Molecule_igraph` | Molecular graphs for visualization |
+| `object@projectInfo$MSIP_cfmd_tempdir` | Cached CFM data directory |
+
+### Function Dependency Chain
+
+```
+MSIP_import_compound_table
+    ↓
+MSIP_find_isotopologue_from_compound_table
+    ↓
+MSIP_get_isotopologues_CFM_annotation
+    ↓
+MSIP_get_isotopomer_data (targeted mode)
+    ↓
+MSIP_get_Molecule_igraph (optional visualization)
+```
 
