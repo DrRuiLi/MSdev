@@ -2194,9 +2194,97 @@ MSIP_get_isotopomer_data <- function(object,
   }
 
   # ============================================================================
-  # Step 3: Loop through each compound (only for targeted mode)
+  # Call targeted function if mode is targeted
   # ============================================================================
   if (mode == "targeted") {
+    isotopomer_data_list <- MSIP_get_isotopomer_data.targeted(
+      sp.ms2 = sp.ms2,
+      compound_table = compound_table,
+      sample_sources = sample_sources,
+      target_ele = target_ele,
+      iso_count_max = iso_count_max,
+      temp_dir = temp_dir,
+      check_temp = check_temp,
+      ppm = ppm,
+      rt.tol = rt.tol,
+      int_thresh = int_thresh,
+      certainty_thresh = certainty_thresh,
+      weight_fun = weight_fun,
+      iso_ele = iso_ele
+    )
+  }
+
+  # ============================================================================
+  # Package result as list of MSIPCoreData matrices
+  # ============================================================================
+  final_result <- list(
+    isotopomer_data = isotopomer_data_list,
+    metadata = list(
+      iso_ele = iso_ele,
+      target_ele = target_ele,
+      mode = mode,
+      ppm = ppm,
+      rt_tol = rt.tol,
+      int_thresh = int_thresh,
+      certainty_thresh = certainty_thresh,
+      timestamp = Sys.time()
+    )
+  )
+
+  # ============================================================================
+  # Step 5: Store in object@advancedAna$MSIP$isotopomer_data
+  # ============================================================================
+  object@advancedAna$MSIP$isotopomer_data <- final_result
+
+  message_with_time("MSIP_get_isotopomer_data completed. ",
+                   "Processed ", length(isotopomer_data_list), " compounds.")
+
+  return(object)
+}
+
+
+#' @title Targeted MSIP isotopomer data extraction
+#' @description Internal function for targeted MSIP isotopomer analysis.
+#' Processes each compound in the compound table: calculates m/z of isotopologues,
+#' matches MS2 spectra, constructs CFM data and MSIPCoreData, and solves.
+#'
+#' @param sp.ms2 MS2 spectra object (onDiskData retrieved)
+#' @param compound_table Compound table from MSdev object
+#' @param sample_sources Unique sample sources
+#' @param target_ele Target element (result of get_ele_uniso)
+#' @param iso_count_max Maximum isotopologue count
+#' @param temp_dir Temp directory for CFM cache
+#' @param check_temp Whether to check/use temp cache
+#' @param ppm PPM tolerance
+#' @param rt.tol RT tolerance
+#' @param int_thresh Intensity threshold
+#' @param certainty_thresh Certainty threshold
+#' @param weight_fun Weight function
+#' @param iso_ele Isotope element string
+#'
+#' @return List of isotopomer data results
+#' @keywords internal
+#'
+MSIP_get_isotopomer_data.targeted <- function(sp.ms2,
+                                               compound_table,
+                                               sample_sources,
+                                               target_ele,
+                                               iso_count_max,
+                                               temp_dir,
+                                               check_temp,
+                                               ppm,
+                                               rt.tol,
+                                               int_thresh,
+                                               certainty_thresh,
+                                               weight_fun,
+                                               iso_ele) {
+
+  # Initialize result list
+  isotopomer_data_list <- list()
+
+  # ============================================================================
+  # Loop through each compound
+  # ============================================================================
   for (i in seq_len(nrow(compound_table))) {
     cp <- compound_table[i, ]
     compound_id <- cp$compound_id
@@ -2494,32 +2582,6 @@ MSIP_get_isotopomer_data <- function(object,
     )
 
   }  # End loop through compounds
-  }  # End if mode == "targeted"
 
-  # ============================================================================
-  # Step 4: Package result as list of MSIPCoreData matrices
-  # ============================================================================
-  final_result <- list(
-    isotopomer_data = isotopomer_data_list,
-    metadata = list(
-      iso_ele = iso_ele,
-      target_ele = target_ele,
-      mode = mode,
-      ppm = ppm,
-      rt_tol = rt.tol,
-      int_thresh = int_thresh,
-      certainty_thresh = certainty_thresh,
-      timestamp = Sys.time()
-    )
-  )
-
-  # ============================================================================
-  # Step 5: Store in object@advancedAna$MSIP$isotopomer_data
-  # ============================================================================
-  object@advancedAna$MSIP$isotopomer_data <- final_result
-
-  message_with_time("MSIP_get_isotopomer_data completed. ",
-                   "Processed ", length(isotopomer_data_list), " compounds.")
-
-  return(object)
+  return(isotopomer_data_list)
 }
