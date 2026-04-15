@@ -56,3 +56,30 @@ Return a list (or a structured S3/S4 object if appropriate for MSdev) containing
 
 Please write clean, robust R code with `roxygen2` documentation headers. 
 ```
+#### *Reivew*
+
+``` text
+update1:
+1. the example should be loaded from msdb, and debug using this demo:
+    - cpdb <- MSdb::get_CompoundDB()
+    - cid_filter <-CompoundDb::CompoundIdFilter( "HMDB0000125")
+    - sp <- CompoundDb::Spectra(cpdb,filter = cid_filter)
+    - cpd <- CompoundDb::compounds(cpdb , filter = cid_filter)
+    - cfmd <- get_CFM_data_from_smiles(cpd$smiles)
+    - get_MSIP_structural_elucidation_score( sp, cfmd) 
+```
+
+``` text
+update2:
+1. add a param 'target_ele', the analysis 
+
+```
+
+
+#### *Problem*
+
+1. The Spectra from MSdb are normalized and the noise are nod distinct, lead to potential mis-match
+2. High quality spectra from YLab not available
+3. CFM_data should update
+
+
