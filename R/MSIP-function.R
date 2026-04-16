@@ -2438,15 +2438,15 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
     }
 
     # --------------------------------------------------------------------------
-    # Step 3d: Construct CFM data using get_CFM_data_from_smiles
+    # Step 3d: Construct MSIPAtomMap using get_MSIPAtomMap_from_smiles
     # --------------------------------------------------------------------------
-    cfmd_list <- list()
+    msipAtomMap_list <- list()
     for (idx in seq_along(adducts)) {
       adduct <- adducts[idx]
       polarity_val <- polarity_vals[idx]
 
-      cfmd <- tryCatch({
-        get_CFM_data_from_smiles(
+      msipAtomMap <- tryCatch({
+        get_MSIPAtomMap_from_smiles(
           smiles = smiles,
           compound_id = compound_id,
           ppm = ppm,
@@ -2456,20 +2456,20 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
           temp_dir = temp_dir
         )
       }, error = function(e) {
-        message_with_time("  CFM error for ", compound_id, " ", adduct, ": ", e$message)
+        message_with_time("  MSIPAtomMap error for ", compound_id, " ", adduct, ": ", e$message)
         return(NULL)
       })
 
-      if (!is.null(cfmd)) {
-        cfmd_list[[adduct]] <- list(
-          cfmd = cfmd,
+      if (!is.null(msipAtomMap)) {
+        msipAtomMap_list[[adduct]] <- list(
+          msipAtomMap = msipAtomMap,
           polarity = polarity_val
         )
       }
     }
 
-    if (length(cfmd_list) == 0) {
-      message_with_time("  Skipping ", compound_id, ": could not generate CFM data")
+    if (length(msipAtomMap_list) == 0) {
+      message_with_time("  Skipping ", compound_id, ": could not generate MSIPAtomMap data")
       next
     }
 
@@ -2507,7 +2507,7 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
         for (pol_idx in seq_along(polarity_vals)) {
           polarity_val <- polarity_vals[pol_idx]
           adduct <- adducts[pol_idx]
-          cfmd_info <- cfmd_list[[adduct]]
+          msipAtomMap_info <- msipAtomMap_list[[adduct]]
 
           # Get spectra for this polarity
           sp.pol <- sp.iso[sp.iso$polarity == polarity_val]
@@ -2517,7 +2517,7 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
             # Construct MSIPCoreData
             msip.core <- get_MSIPCoreData(
               sp.iso = sp.pol,
-              cfmd = cfmd_info$cfmd,
+              cfmd = msipAtomMap_info$msipAtomMap,
               iso_count_max = this_iso_count_max,
               iso_ele = iso_ele,
               ppm = ppm
@@ -2569,7 +2569,7 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
       smiles = smiles,
       rt = rt_ref,
       adduct = adduct,
-      polarity = cfmd_info$polarity,
+      polarity = msipAtomMap_info$polarity,
       max_iso_count = max_iso,
       iso_ele = iso_ele,
       target_ele = target_ele
