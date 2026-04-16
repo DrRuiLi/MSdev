@@ -176,7 +176,7 @@ get_MSIP_structural_elucidation_score <- function(spectra,
   {
     # Get total atoms from parent molecule (first fragment in fragment_igraph)
     if (length(cfmd@fragment_igraph) == 0) {
-      stop("CFMD does not contain fragment_igraph. Run CFM_data_get_igraph() first.")
+      stop("MSIPAtomMap does not contain fragment_igraph. Run MSIPAtomMap_get_igraph() first.")
     }
 
     parent_igraph <- cfmd@fragment_igraph[[1]]

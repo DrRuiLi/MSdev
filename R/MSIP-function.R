@@ -1200,7 +1200,7 @@ get_MSIP_solve_computation_evaluate <- function(object,
     cfmd <-this.msip.mtbd@CompoundInfo[[grep("CFM",names(this.msip.mtbd@CompoundInfo),value = T)[1]]]
 
     if (is.null(cfmd)) next
-    cfmd.ig <- get_cfm_data_sdf_igraph(cfmd)
+    cfmd.ig <- get_MSIPAtomMap_sdf_igraph(cfmd)
     this.atom <- get_sdf_igraph_atom(cfmd.ig,ele = target_ele)
     this.ele.count <-length(this.atom)
     iso_count <- names(this.msip.mtbd@Spectra)%>%
@@ -1549,7 +1549,7 @@ get_MSIP_result_Statistic <- function(object,
 
     cfmd <- iso.data[[i]][[grep("CFM",names(iso.data[[i]]),value = T)[1]]]
     if (is.null(cfmd)) next
-    cfmd.ig <- get_cfm_data_sdf_igraph(cfmd)
+    cfmd.ig <- get_MSIPAtomMap_sdf_igraph(cfmd)
     this.atom <- get_sdf_igraph_atom(cfmd.ig,ele = target_ele)
     this.ele.count <-length(this.atom)
     iso_count <- names(iso.data[[i]]$Spectra)%>%
