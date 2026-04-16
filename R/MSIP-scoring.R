@@ -5,8 +5,9 @@
 #'
 #' @param spectra A data.frame of experimental MS2 peaks with columns \code{mz} and
 #'   \code{intensity}. Alternatively, a \code{Spectra} object.
-#' @param cfmd A \code{CFM_data} object containing theoretical fragment information,
-#'   typically obtained from \code{\link{CFM_predict}} or \code{\link{CFM_annotate_by_predict}}.
+#' @param msipAtomMap A \code{MSIPAtomMap} object containing theoretical fragment information,
+#'   typically obtained from \code{\link{get_MSIPAtomMap_from_smiles}} (or constructed from a
+#'   \code{CFM_data} object via \code{\link{get_MSIPAtomMap_from_cfmd}}).
 #' @param ppm Numeric, m/z tolerance for peak matching in parts per million (default: 10).
 #' @param energy Character, which collision energy level to use from CFMD peak_assignment.
 #'   One of "energy0", "energy1", "energy2", or "all" (default: "all").
@@ -25,6 +26,11 @@
 #' \describe{
 #'   \item{Score}{The overall Structural Elucidation Score (numeric 0-1), defined as
 #'     the ratio of unique atoms covered to total atoms in the molecule.}
+#'   \item{solve_ratio}{Ratio of \code{solved_atom_count / total_atom_count}, where
+#'     \code{total_atom_count} is the number of parent atoms that are covered by the set of
+#'     theoretical fragments available in the selected spectra energy (i.e., "spectra covered fragments").}
+#'   \item{solved_atom_count}{Number of unique parent atoms solved (covered) by matched fragments.}
+#'   \item{total_atom_count}{Number of unique parent atoms present in "spectra covered fragments".}
 #'   \item{Fragment_Coverage}{The fragment matching ratio (numeric 0-1), defined as
 #'     the number of matched CFMD fragments divided by total CFMD fragments.}
 #'   \item{Matched_Fragments}{A data.frame of the matched subset from \code{cfmd},
@@ -48,9 +54,10 @@
 #'
 #' # 2. Generate CFM data from SMILES
 #' cfmd <- get_CFM_data_from_smiles(cpd$smiles)
+#' msipAtomMap <- get_MSIPAtomMap_from_cfmd(cfmd)
 #'
 #' # 3. Calculate structural elucidation score
-#' result <- get_MSIP_structural_elucidation_score(sp, cfmd)
+#' result <- get_MSIP_structural_elucidation_score(sp, msipAtomMap)
 #'
 #' # Access results
 #' result$Score
@@ -58,14 +65,20 @@
 #' result$Covered_Atoms
 #' }
 get_MSIP_structural_elucidation_score <- function(spectra,
-                                                   cfmd,
+                                                   msipAtomMap,
                                                    ppm = 10,
                                                    energy = "all") {
 
   ### Input validation and preprocessing
   {
-    if (!is(cfmd, "CFM_data")) {
-      stop("'cfmd' must be a CFM_data S4 object.")
+    if (is(msipAtomMap, "CFM_data")) {
+      .Deprecated(msg = paste(
+        "Passing a 'CFM_data' object is deprecated.",
+        "Please pass an 'MSIPAtomMap' object instead.",
+        "You can create it via get_MSIPAtomMap_from_cfmd()."
+      ))
+    } else if (!is(msipAtomMap, "MSIPAtomMap")) {
+      stop("'msipAtomMap' must be an MSIPAtomMap S4 object.")
     }
 
     # Convert Spectra object to data.frame if needed
@@ -99,9 +112,9 @@ get_MSIP_structural_elucidation_score <- function(spectra,
   }
 
 
-  ### Step 1: Get CFMD theoretical fragment m/z values
+  ### Step 1: Get theoretical fragment m/z values
   {
-    cfm_peaks <- cfmd@peak_assignment
+    cfm_peaks <- msipAtomMap@peak_assignment
 
     # Filter by energy if specified
     if (energy != "all") {
@@ -109,7 +122,7 @@ get_MSIP_structural_elucidation_score <- function(spectra,
     }
 
     # Get unique fragment definitions
-    fragment_define <- cfmd@fragment_define
+    fragment_define <- msipAtomMap@fragment_define
 
     # Use fragment_define for m/z matching (unique fragments)
     if (nrow(fragment_define) == 0) {
@@ -127,6 +140,13 @@ get_MSIP_structural_elucidation_score <- function(spectra,
     fragment_mz <- fragment_define$fragment_mz
     fragment_ids <- fragment_define$fragment_id
     total_fragments <- length(fragment_ids)
+
+    # Define which fragments are "spectra covered" under the selected energy.
+    spectra_covered_fragment_ids <- unique(na.omit(cfm_peaks$fragment_id))
+    spectra_covered_fragment_ids <- intersect(spectra_covered_fragment_ids, fragment_ids)
+    if (!length(spectra_covered_fragment_ids)) {
+      spectra_covered_fragment_ids <- fragment_ids
+    }
   }
 
 
@@ -175,20 +195,20 @@ get_MSIP_structural_elucidation_score <- function(spectra,
   ### Step 3: Extract atom indices from matched fragments
   {
     # Get total atoms from parent molecule (first fragment in fragment_igraph)
-    if (length(cfmd@fragment_igraph) == 0) {
+    if (length(msipAtomMap@fragment_igraph) == 0) {
       stop("MSIPAtomMap does not contain fragment_igraph. Run MSIPAtomMap_get_igraph() first.")
     }
 
-    parent_igraph <- cfmd@fragment_igraph[[1]]
+    parent_igraph <- msipAtomMap@fragment_igraph[[1]]
     all_atoms <- get_sdf_igraph_atom(parent_igraph)
     total_atoms <- length(all_atoms)
 
     # Extract covered atoms from fragment_atom_map
     covered_atoms_list <- list()
 
-    if (length(cfmd@fragment_atom_map) > 0) {
+    if (length(msipAtomMap@fragment_atom_map) > 0) {
       # fragment_atom_map is available - use it for precise atom mapping
-      fragment_atom_map <- cfmd@fragment_atom_map
+      fragment_atom_map <- msipAtomMap@fragment_atom_map
 
       for (frag_id in matched_fragment_ids) {
         if (frag_id %in% names(fragment_atom_map)) {
@@ -200,11 +220,11 @@ get_MSIP_structural_elucidation_score <- function(spectra,
           }
         }
       }
-    } else if (length(cfmd@fragment_igraph) > 0) {
+    } else if (length(msipAtomMap@fragment_igraph) > 0) {
       # Fallback: extract atoms directly from fragment igraph objects
       for (frag_id in matched_fragment_ids) {
-        if (frag_id %in% names(cfmd@fragment_igraph)) {
-          frag_ig <- cfmd@fragment_igraph[[frag_id]]
+        if (frag_id %in% names(msipAtomMap@fragment_igraph)) {
+          frag_ig <- msipAtomMap@fragment_igraph[[frag_id]]
           frag_atoms <- get_sdf_igraph_atom(frag_ig)
           covered_atoms_list[[frag_id]] <- frag_atoms
         }
@@ -214,6 +234,27 @@ get_MSIP_structural_elucidation_score <- function(spectra,
     # Compute union of all covered atoms
     covered_atoms <- unique(unlist(covered_atoms_list))
     n_covered_atoms <- length(covered_atoms)
+
+    # Total parent atoms that are present in "spectra covered fragments"
+    total_atoms_in_spectra_covered_fragments <- all_atoms
+    if (length(msipAtomMap@fragment_atom_map) > 0) {
+      fragment_atom_map <- msipAtomMap@fragment_atom_map
+      total_atoms_in_spectra_covered_fragments <- unique(unlist(lapply(
+        spectra_covered_fragment_ids,
+        function(fid) {
+          if (!fid %in% names(fragment_atom_map)) return(character(0))
+          atom_matrix <- fragment_atom_map[[fid]]
+          if (is.null(atom_matrix) || identical(atom_matrix, NA)) return(character(0))
+          rownames(atom_matrix)[rowSums(atom_matrix, na.rm = TRUE) > 0]
+        }
+      )))
+      if (!length(total_atoms_in_spectra_covered_fragments)) {
+        total_atoms_in_spectra_covered_fragments <- all_atoms
+      }
+    }
+    total_atom_count <- length(total_atoms_in_spectra_covered_fragments)
+    solved_atom_count <- n_covered_atoms
+    solve_ratio <- if (total_atom_count > 0) solved_atom_count / total_atom_count else 0
   }
 
 
@@ -254,6 +295,9 @@ get_MSIP_structural_elucidation_score <- function(spectra,
   ### Return results
   result <- list(
     Score = structural_elucidation_score,
+    solve_ratio = solve_ratio,
+    solved_atom_count = solved_atom_count,
+    total_atom_count = total_atom_count,
     Fragment_Coverage = fragment_coverage,
     Matched_Fragments = matched_fragments_df,
     Covered_Atoms = covered_atoms,
