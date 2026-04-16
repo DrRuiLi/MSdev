@@ -754,8 +754,18 @@ CFM_annotate_isotopologues <- function(sp,
                                  iso_count = 0 ,
                                  ppm = 20){
 
-  if (!"fragment_group"%in% colnames(cfmd@peak_assignment)) {
-    cfmd <- cfm_data_get_fragment_group(cfmd)
+  # Check if fragment_group exists in peak_assignment
+  # For MSIPAtomMap, fragment_group should already be set by MSIPAtomMap_get_FG_map
+  if (!"fragment_group" %in% colnames(cfmd@peak_assignment)) {
+    # If fragment_group is not in peak_assignment, try to match from fragment_define
+    if ("fragment_group" %in% colnames(cfmd@fragment_define)) {
+      cfmd@peak_assignment$fragment_group <-
+        cfmd@fragment_define$fragment_group[match(
+          cfmd@peak_assignment$fragment_id,
+          cfmd@fragment_define$fragment_id)]
+    } else {
+      warning("fragment_group not found. Run MSIPAtomMap_get_FG_map() first.")
+    }
   }
 
   cfm.peaks.data <- cfmd@peak_assignment%>%
@@ -1046,10 +1056,10 @@ CFM_spectra_data_remove_natural <-function(sp.data,
 }
 
 
-get_CFM_data_MSIPFragmentMap<- function(cfmd){
+get_CFM_data_MSIPFragmentMap<- function(msipAtomMap){
 
-  cfmd.sp <- get_CFM_data_Spectra(cfmd)
-  cfmd.msip.core <- get_MSIPCoreData(cfmd.sp,cfmd,0)
+  cfmd.sp <- get_CFM_data_Spectra(msipAtomMap)
+  cfmd.msip.core <- get_MSIPCoreData(cfmd.sp,msipAtomMap,0)
   cfmd.fg.map <- cfmd.msip.core@FG_map
 
   cfmd.fg.map

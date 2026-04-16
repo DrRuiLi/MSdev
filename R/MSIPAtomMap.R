@@ -8,7 +8,7 @@
 #' @slot peak_assignment Data frame containing peak assignment data with fragment mappings
 #' @slot fragment_define Data frame containing fragment definitions with SMILES and formulas
 #' @slot fragment_transition Data frame containing fragment transition relationships
-#' @slot fragment_igraph List of igraph objects representing molecular graphs for each fragment
+#' @slot fragment_igraph List of Molecule_igraph objects representing molecular graphs for each fragment
 #' @slot fragment_sdf SDFset containing SDF representations of fragments
 #' @slot fragment_atom_map List of matrices containing atom-to-atom mapping probabilities
 #' @slot fragment_group Data frame containing fragment group definitions and statistics
@@ -625,7 +625,7 @@ get_MSIPAtomMap_trans_igraph <- function(object){
 
 #' Get MSIPAtomMap from CFM_data
 #' @title Get MSIPAtomMap from CFM_data
-#' @description Creates MSIPAtomMap object from CFM_data by adding seed fragment, 
+#' @description Creates MSIPAtomMap object from CFM_data by adding seed fragment,
 #' igraph, atom maps, and fragment groups.
 #'
 #' @param cfm_data A CFM_data object
@@ -642,12 +642,12 @@ get_MSIPAtomMap_from_cfmd <- function(cfm_data,
 
   # Create MSIPAtomMap from CFM_data
   msipAtomMap <- MSIPAtomMap_from_CFM_data(cfm_data)
-  
+
   # Add seed fragment if smiles is provided
   if (!is.null(smiles)) {
     msipAtomMap <- MSIPAtomMap_add_seed(msipAtomMap, smiles)
   }
-  
+
   msipAtomMap <- MSIPAtomMap_get_igraph(msipAtomMap)
 
   message_with_time("MSIPAtomMap_get_atom_map")
@@ -695,20 +695,20 @@ get_MSIPAtomMap_from_smiles <- function(smiles = "NCC(O)=O",
   }
 
   start.time <- Sys.time()
-  
+
   # Step 1: Get CFM_data
   cfm_data <- get_CFM_data_from_smiles(smiles = smiles,
                                         compound_id = compound_id,
                                         ppm = ppm,
                                         adduct = adduct)
-  
+
   # Step 2: Create MSIPAtomMap from CFM_data
   msipAtomMap <- get_MSIPAtomMap_from_cfmd(cfm_data = cfm_data,
                                             smiles = smiles,
                                             iso_ele = iso_ele)
-  
+
   map.time <- (Sys.time()-start.time)%>%as.numeric(units = "mins")
-  
+
   # Save to cache
   if(check_temp){
     dir.create(temp_dir,showWarnings = F,recursive = T)
@@ -723,6 +723,6 @@ get_MSIPAtomMap_from_smiles <- function(smiles = "NCC(O)=O",
     cat(paste0(paste0(log.info,collapse = ","),"\n"),
         file = paste0(temp_dir,"/atm_msip.log"),append = T)
   }
-  
+
   return(msipAtomMap)
 }

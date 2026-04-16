@@ -1036,7 +1036,7 @@ MSIP_solve_isotopologues <- function(object,
     this.sp.iso <-this.msip.mtbd@Spectra[[str_isotope2_num(this.iso.count)]][[this.sample]]
     #if(!length(this.sp.iso)) return(NULL)
     msip.core <- get_MSIPCoreData(sp.iso = this.sp.iso,
-                                  cfmd = this.cfmd,
+                                  msipAtomMap = this.cfmd,
                                   iso_count_max = this.iso.count,
                                   ppm = ppm)
     msip.core <- MSIPCore_solve(msip.core,
@@ -2517,7 +2517,7 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
             # Construct MSIPCoreData
             msip.core <- get_MSIPCoreData(
               sp.iso = sp.pol,
-              cfmd = msipAtomMap_info$msipAtomMap,
+              msipAtomMap = msipAtomMap_info$msipAtomMap,
               iso_count_max = this_iso_count_max,
               iso_ele = iso_ele,
               ppm = ppm
