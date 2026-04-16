@@ -1,5 +1,5 @@
 get_MSIPCoreData <- function(sp.iso,
-                             cfmd,
+                             msipAtomMap,
                              iso_count_max,
                              iso_ele = "[13]C",
                              ppm = 10){
@@ -10,10 +10,10 @@ get_MSIPCoreData <- function(sp.iso,
   #                                           iso_count = iso_count)
   #sp.frag.data <- CFM_spectra_data_merge(sp.frag.data,iso_count)
 
-  sp.iso <- Spectra_annotate_cfmd(sp = sp.iso,cfmd = cfmd,iso_ele ,iso_count_max = iso_count_max,ppm )
+  sp.iso <- Spectra_annotate_MSIPAtomMap(sp = sp.iso, msipAtomMap = msipAtomMap, iso_ele ,iso_count_max = iso_count_max,ppm )
   sp.iso <- Spectra_calculate_fragment_iso_ratio(sp.iso)
   fg.map <- get_MSIPFragmentMap(sp.iso,
-                                cfmd,
+                                msipAtomMap,
                                 iso_count_max = iso_count_max)
 
 
@@ -180,7 +180,7 @@ get_MSIPFragmentMap_to_remove <- function(sp.frag.data,
   ### FG - atom
   {
 
-    target_atoms <- get_sdf_igraph_atom(get_cfm_data_sdf_igraph(cfmd),get_ele_uniso(iso_ele))
+    target_atoms <- get_sdf_igraph_atom(get_MSIPAtomMap_sdf_igraph(cfmd),get_ele_uniso(iso_ele))
     frag.atom.matrix <- matrix(ncol = length(target_atoms),
                             nrow = length(fg.idx),
                             dimnames = list(names(fg.idx),
@@ -912,7 +912,7 @@ get_atom_prob_from_MSIPIsotopomerMap <- function(MSIPIsotopomerMap){
 
 MSIPCore_vis_isotopomer <- function(MSIPCoreData,cfmd,id,...){
 
-  ig <- get_cfm_data_sdf_igraph(cfmd)
+  ig <- get_MSIPAtomMap_sdf_igraph(cfmd)
   atom.to.show <- MSIPCoreData@solve$MSIPIsotopomerMap@isotopomer.defination[[id]]
   message(names(MSIPCoreData@solve$MSIPIsotopomerMap@isotopomer.defination)[id])
   vis_sdf_igraph(ig,highlight = atom.to.show,...)
@@ -1465,9 +1465,9 @@ vis_MSIPcore_isotopomer <- function(msip.core,
 
 
 
-Spectra_annotate_cfmd <- function(
+Spectra_annotate_MSIPAtomMap <- function(
     sp,
-    cfmd,
+    msipAtomMap,
     iso_ele = "[13]C",
     iso_count_max = 3 ,
     ppm = 10
@@ -1479,11 +1479,21 @@ Spectra_annotate_cfmd <- function(
 
     if (is.null(sp)) return(sp)
 
-    if (!"fragment_group"%in% colnames(cfmd@peak_assignment)) {
-      cfmd <- cfm_data_get_fragment_group(cfmd)
+    # Check if fragment_group exists in peak_assignment
+    # For MSIPAtomMap, fragment_group should already be set by MSIPAtomMap_get_FG_map
+    if (!"fragment_group" %in% colnames(msipAtomMap@peak_assignment)) {
+      # If fragment_group is not in peak_assignment, try to match from fragment_define
+      if ("fragment_group" %in% colnames(msipAtomMap@fragment_define)) {
+        msipAtomMap@peak_assignment$fragment_group <-
+          msipAtomMap@fragment_define$fragment_group[match(
+            msipAtomMap@peak_assignment$fragment_id,
+            msipAtomMap@fragment_define$fragment_id)]
+      } else {
+        warning("fragment_group not found. Run MSIPAtomMap_get_FG_map() first.")
+      }
     }
 
-    cfm.peaks.data <- cfmd@peak_assignment%>%
+    cfm.peaks.data <- msipAtomMap@peak_assignment%>%
       dplyr::filter(!is.na(fragment_id))%>%
       dplyr::mutate(collisionEnergy = case_when(energy == "energy0"~10,
                                                 energy == "energy1"~20,
@@ -1491,7 +1501,7 @@ Spectra_annotate_cfmd <- function(
       ))
 
     if (!nrow(cfm.peaks.data))
-      cfm.peaks.data <-  cfmd@peak_assignment%>%
+      cfm.peaks.data <-  msipAtomMap@peak_assignment%>%
       dplyr::mutate(mz = 0)
   }
 
@@ -1533,6 +1543,23 @@ Spectra_annotate_cfmd <- function(
 
 
   return(sp)
+}
+
+Spectra_annotate_cfmd <- function(
+    sp,
+    msipAtomMap,
+    iso_ele = "[13]C",
+    iso_count_max = 3 ,
+    ppm = 10
+){
+  .Deprecated("Spectra_annotate_MSIPAtomMap")
+  Spectra_annotate_MSIPAtomMap(
+    sp = sp,
+    msipAtomMap = msipAtomMap,
+    iso_ele = iso_ele,
+    iso_count_max = iso_count_max,
+    ppm = ppm
+  )
 }
 
 
@@ -1856,14 +1883,14 @@ get_Spectra_fg_ratio_se_merge <- function(se , keep_all_cos = F){
 
 
 get_MSIPFragmentMap <- function(sp,
-                                cfmd,
+                                msipAtomMap,
                                 iso_ele = "[13]C",
                                 iso_count_max = 3,
                                 ppm= 10){
 
 
 
-  fg.map <- get_MSIPFragmentMap_from_cfmd(cfmd = cfmd,
+  fg.map <- get_MSIPFragmentMap_from_MSIPAtomMap(msipAtomMap = msipAtomMap,
                                           iso_count_max=iso_count_max,
                                           target_ele = get_ele_uniso(iso_ele))
 
@@ -1875,7 +1902,7 @@ get_MSIPFragmentMap <- function(sp,
   {
 
     if ( !"fragment_group" %in% Spectra::spectraVariables(sp)) {
-      sp <- Spectra_annotate_cfmd(sp = sp,cfmd = cfmd,iso_ele ,iso_count_max,ppm )
+      sp <- Spectra_annotate_MSIPAtomMap(sp = sp, msipAtomMap = msipAtomMap, iso_ele ,iso_count_max,ppm )
       sp <- Spectra_calculate_fragment_iso_ratio(sp)
     }
 
@@ -1890,7 +1917,7 @@ get_MSIPFragmentMap <- function(sp,
   ### FG - atom
   {
 
-    target_atoms <- get_sdf_igraph_atom(get_cfm_data_sdf_igraph(cfmd),get_ele_uniso(iso_ele))
+    target_atoms <- get_sdf_igraph_atom(get_MSIPAtomMap_sdf_igraph(msipAtomMap),get_ele_uniso(iso_ele))
     frag.atom.matrix <- matrix(ncol = length(target_atoms),
                                nrow = nrow(fg.se),
                                dimnames = list(rownames(fg.se),
@@ -1899,7 +1926,7 @@ get_MSIPFragmentMap <- function(sp,
 
       this.frag.group <- i.fg
 
-      this.frag.c <-cfmd@fragment_group_map[this.frag.group,]
+      this.frag.c <-msipAtomMap@fragment_group_map[this.frag.group,]
       frag.atom.matrix[this.frag.group,names(this.frag.c)] <- this.frag.c
     }
 
@@ -1919,15 +1946,14 @@ get_MSIPFragmentMap <- function(sp,
   fg.map@FG.atom.matrix <- frag.atom.matrix[fg.data$fragment_group,,drop = F]
   fg.map@FG.ratio.matrix <- assay(fg.se)[fg.data$fragment_group,,drop = F]
   fg.map@FG.data <- fg.data
-
   return(fg.map)
 
 
 
 
-
-
 }
+
+
 
 
 plot_MSIPCore_result <- function(msip.core){

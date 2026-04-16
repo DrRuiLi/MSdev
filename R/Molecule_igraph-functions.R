@@ -78,9 +78,14 @@ get_Molecule_igraph_from_smiles <- function(smiles = "NCC(O)=O",id ="A",canonica
 
 
 
-get_Molecule_igraph_from_cfmd <- function(cfmd,fragment.id = 1){
+get_Molecule_igraph_from_MSIPAtomMap <- function(msipAtomMap, fragment.id = 1){
 
-  get_Molecule_igraph_from_sdf(cfmd@fragment_sdf[[fragment.id]])
+  get_Molecule_igraph_from_sdf(msipAtomMap@fragment_sdf[[fragment.id]])
+}
+
+get_Molecule_igraph_from_cfmd <- function(cfmd, fragment.id = 1){
+  .Deprecated("get_Molecule_igraph_from_MSIPAtomMap")
+  get_Molecule_igraph_from_MSIPAtomMap(msipAtomMap = cfmd, fragment.id = fragment.id)
 }
 
 #' Add isotopomer to Molecule Igraph
