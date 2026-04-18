@@ -18,8 +18,8 @@ get_MSIPCoreData <- function(sp.iso,
 
 
   MSIPCoreData <- new("MSIPCoreData")
-  MSIPCoreData@Spectra_data <- sp.iso
-  MSIPCoreData@FG_map <- fg.map
+  MSIPCoreData@Spectra <- sp.iso
+  MSIPCoreData@MSIPFragmentMap <- fg.map
 
   return(MSIPCoreData)
 
@@ -32,11 +32,11 @@ MSIPCore_correct_natural <- function(MSIPCoreData,
 
   ### check status
   {
-    if (is.null(MSIPCoreData@solve$MSIPIsotopomerMap))
-      MSIPCoreData@solve$MSIPIsotopomerMap <- get_MSIPIsotopomerMap(MSIPCoreData)
+    if (is.null(MSIPCoreData@Solve$MSIPIsotopomerMap))
+      MSIPCoreData@Solve$MSIPIsotopomerMap <- get_MSIPIsotopomerMap(MSIPCoreData)
 
 
-    natural_corrected <- MSIPCoreData@solve$natural_corrected
+    natural_corrected <- MSIPCoreData@Solve$natural_corrected
     natural_corrected <- ifelse(is.null(natural_corrected),F,natural_corrected)
     if (natural_corrected) {
       return(MSIPCoreData)
@@ -53,7 +53,7 @@ MSIPCore_correct_natural <- function(MSIPCoreData,
   ### correct
   {
 
-    MSIPIsotopomerMap <- MSIPCoreData@solve$MSIPIsotopomerMap
+    MSIPIsotopomerMap <- MSIPCoreData@Solve$MSIPIsotopomerMap
     FSIS.prob <- MSIPIsotopomerMap@solve$isotopomer.set.prob
     FSIS.natural <- lengths(MSIPIsotopomerMap@solve$isotopomer.set)%>%
       `/`(sum(.))
@@ -74,10 +74,10 @@ MSIPCore_correct_natural <- function(MSIPCoreData,
     MSIPIsotopomerMap@isotopomer.probability <- isotopomer.prob
 
 
-    MSIPCoreData@solve$Atom_prob <- get_atom_prob_from_MSIPIsotopomerMap(MSIPIsotopomerMap)
-    MSIPCoreData@solve$MSIPIsotopomerMap <- MSIPIsotopomerMap
-    MSIPCoreData@solve$natural_corrected <- T
-    MSIPCoreData@solve$natural_ratio  <- natural.ratio
+    MSIPCoreData@Solve$Atom_prob <- get_atom_prob_from_MSIPIsotopomerMap(MSIPIsotopomerMap)
+    MSIPCoreData@Solve$MSIPIsotopomerMap <- MSIPIsotopomerMap
+    MSIPCoreData@Solve$natural_corrected <- T
+    MSIPCoreData@Solve$natural_ratio  <- natural.ratio
   }
 
 
@@ -95,11 +95,11 @@ MSIPCore_solve <- function(MSIPCoreData,
 
 
   ### set all include
-  MSIPCoreData@FG_map@FG.data$include <- MSIPCoreData@FG_map@FG.data$include |T
+  MSIPCoreData@MSIPFragmentMap@FG.data$include <- MSIPCoreData@MSIPFragmentMap@FG.data$include |T
   #MSIPFragmentMap_reduced <- MSIPFragmentMap_reduce_fragment(MSIPFragmentMap_reduced)
-  MSIPFragmentMap_temp <- MSIPFragmentMap_filter_intensity(MSIPCoreData@FG_map,int_thresh = int_thresh)
+  MSIPFragmentMap_temp <- MSIPFragmentMap_filter_intensity(MSIPCoreData@MSIPFragmentMap,int_thresh = int_thresh)
   MSIPFragmentMap_temp <- MSIPFragmentMap_filter_certainty(MSIPFragmentMap_temp,certainty_thresh = certainty_thresh)
-  MSIPCoreData@FG_map <- MSIPFragmentMap_temp
+  MSIPCoreData@MSIPFragmentMap <- MSIPFragmentMap_temp
 
   MSIPFragmentMap_reduced <- MSIPFragmentMap_include_fragment(MSIPFragmentMap_temp)%>%
     MSIPFragmentMap_add_constraint()
@@ -110,8 +110,8 @@ MSIPCore_solve <- function(MSIPCoreData,
 
   }
   MSIPCoreData.temp <- MSIPCoreData
-  MSIPCoreData.temp@FG_map <- MSIPFragmentMap_reduced
-  if(re_split_isotopomers)  MSIPCoreData.temp@solve <- list()
+  MSIPCoreData.temp@MSIPFragmentMap <- MSIPFragmentMap_reduced
+  if(re_split_isotopomers)  MSIPCoreData.temp@Solve <- list()
 
   MSIPIsotopomerMap <- get_MSIPIsotopomerMap(MSIPCoreData.temp)
   MSIPIsotopomerMap <- MSIPIsotopomerMap_set_split(MSIPIsotopomerMap,
@@ -120,18 +120,18 @@ MSIPCore_solve <- function(MSIPCoreData,
 
   MSIPIsotopomerMap <- MSIPIsotopomerMap_set_solve_QP(MSIPIsotopomerMap,
                                                       weight_fun = weight_fun)
-  MSIPCoreData@solve$MSIPIsotopomerMap <- MSIPIsotopomerMap
-  MSIPCoreData@solve$Atom_prob <- get_atom_prob_from_MSIPIsotopomerMap(MSIPIsotopomerMap)
-  MSIPCoreData@solve$int_thresh <- int_thresh
-  MSIPCoreData@solve$certainty_thresh <- certainty_thresh
+  MSIPCoreData@Solve$MSIPIsotopomerMap <- MSIPIsotopomerMap
+  MSIPCoreData@Solve$Atom_prob <- get_atom_prob_from_MSIPIsotopomerMap(MSIPIsotopomerMap)
+  MSIPCoreData@Solve$int_thresh <- int_thresh
+  MSIPCoreData@Solve$certainty_thresh <- certainty_thresh
   return(MSIPCoreData)
 }
 
 MSIPCore_drop <- function(MSIPCoreData){
 
-  solve <- MSIPCoreData@solve
+  solve <- MSIPCoreData@Solve
   solve <- solve["Atom_prob"]
-  solve -> MSIPCoreData@solve
+  solve -> MSIPCoreData@Solve
   return(MSIPCoreData)
 }
 
@@ -245,15 +245,15 @@ get_MSIPIsotopomerMap <- function(MSIPCoreData){
   {
     #if (!is.null(MSIPCoreData@solve$MSIPIsotopomerMap)) {
     if(F){
-      MSIPIsotopomerMap <- MSIPCoreData@solve$MSIPIsotopomerMap
-      frag.ratio.matrix <- MSIPCoreData@FG_map@FG.ratio.matrix
+      MSIPIsotopomerMap <- MSIPCoreData@Solve$MSIPIsotopomerMap
+      frag.ratio.matrix <- MSIPCoreData@MSIPFragmentMap@FG.ratio.matrix
       isotopomer.ratio <- lapply(rownames(frag.ratio.matrix),function(fg.id){
         z <- frag.ratio.matrix[fg.id,]
         names(z) <- paste0(fg.id,"_",names(z))
         return(z)
       })
       isotopomer.ratio <- unlist(isotopomer.ratio)
-      isotopomer.intensity <- MSIPCoreData@FG_map@FG.data[gsub(x = names(isotopomer.ratio),
+      isotopomer.intensity <- MSIPCoreData@MSIPFragmentMap@FG.data[gsub(x = names(isotopomer.ratio),
                                                                pattern = "_M.*",replacement = ""),
                                                           "int_sum"]
       names(isotopomer.intensity) <- names(isotopomer.ratio)
@@ -270,8 +270,8 @@ get_MSIPIsotopomerMap <- function(MSIPCoreData){
   ### required info
   {
 
-    frag.atom.matrix <- MSIPCoreData@FG_map@FG.atom.matrix
-    frag.ratio.matrix <-MSIPCoreData@FG_map@FG.ratio.matrix
+    frag.atom.matrix <- MSIPCoreData@MSIPFragmentMap@FG.atom.matrix
+    frag.ratio.matrix <-MSIPCoreData@MSIPFragmentMap@FG.ratio.matrix
     frag.max.iso <- max(str_extract_num(colnames(frag.ratio.matrix)))
     MSIPIsotopomerMap <- new("MSIPIsotopomerMap")
     if (!nrow(frag.atom.matrix)) {
@@ -331,7 +331,7 @@ get_MSIPIsotopomerMap <- function(MSIPCoreData){
       return(z)
     })
     isotopomer.ratio <- unlist(isotopomer.ratio)
-    Labeled.FG.data <- MSIPCoreData@FG_map@FG.data[gsub(x = names(isotopomer.ratio),
+    Labeled.FG.data <- MSIPCoreData@MSIPFragmentMap@FG.data[gsub(x = names(isotopomer.ratio),
                                                              pattern = "_M.*",replacement = ""),
                                                         ]
     Labeled.FG.data$labeled.FG <- names(isotopomer.ratio)
@@ -450,7 +450,7 @@ get_MSIPFragmentMap_certainty <- function(MSIPFragmentMap){
 }
 
 get_MSIPCore_ATM_certainty <- function(msip.core){
-  get_MSIPFragmentMap_certainty(msip.core@FG_map)
+  get_MSIPFragmentMap_certainty(msip.core@MSIPFragmentMap)
 }
 
 MSIPFragmentMap_merge_duplicate <- function(MSIPFragmentMap){
@@ -561,17 +561,21 @@ MSIPFragmentMap_merge_complementary <- function(MSIPFragmentMap){
 #'
 #' @return ComplexHeatmap object
 #' @export
-heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
-                                    show_ratio = F){
+setGeneric("heatmap_MSIPFragmentMap",
+           function(x, show_ratio = FALSE) standardGeneric("heatmap_MSIPFragmentMap"))
+
+#' @rdname heatmap_MSIPFragmentMap
+setMethod("heatmap_MSIPFragmentMap", "MSIPFragmentMap",
+          function(x, show_ratio = FALSE){
 
   ### size
   {
     ppi <- 72
     mhpx <- 500
     mwpx <- 800
-    nr <- nrow(MSIPFragmentMap@FG.atom.matrix)
-    nc <- ncol(MSIPFragmentMap@FG.atom.matrix)+
-      ncol(MSIPFragmentMap@FG.ratio.matrix)
+    nr <- nrow(x@FG.atom.matrix)
+    nc <- ncol(x@FG.atom.matrix)+
+      ncol(x@FG.ratio.matrix)
     cell.unit <- "inches"
     length.unit <- 0.3
     max.height <- mhpx/ppi
@@ -583,9 +587,9 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
 
   }
 
-  frag.atom.matrix <- MSIPFragmentMap@FG.atom.matrix
-  frag.ratio.matrix <- MSIPFragmentMap@FG.ratio.matrix
-  frag.include <- MSIPFragmentMap@FG.data$include
+  frag.atom.matrix <- x@FG.atom.matrix
+  frag.ratio.matrix <- x@FG.ratio.matrix
+  frag.include <- x@FG.data$include
   cf <- circlize::colorRamp2(breaks = c(0,0.5,1),
                              c("white","#888888","#111111"))
   h1 <- ComplexHeatmap::Heatmap(frag.atom.matrix,
@@ -616,7 +620,7 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
     }
   }else cellfun <- NULL
 
-  lgint <- round(log10(MSIPFragmentMap@FG.data$int_sum),1)
+  lgint <- round(log10(x@FG.data$int_sum),1)
   lgint <- c(lgint,0)
   h2 <- ComplexHeatmap::Heatmap(frag.ratio.matrix,
                                 na_col  ="#999999",
@@ -645,13 +649,24 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
        padding = unit(c(0,0,0.2,1), "inches"),
        background  = "#00000000")
   #open_plot_win(h1+h2,10,5)
-}
+          })
 
-heatmap_MSIPIsotopomerMap <- function(MSIPIsotopomerMap){
+setMethod("heatmap_MSIPFragmentMap", "MSIPCoreData",
+          function(x, show_ratio = FALSE){
+            heatmap_MSIPFragmentMap(x@MSIPFragmentMap, show_ratio = show_ratio)
+          })
 
-  isotopomer.set.map <- MSIPIsotopomerMap@solve$isotopomer.set.map
-  isotopomer.prob <- MSIPIsotopomerMap@isotopomer.probability
-  isotopomer.ratio <- MSIPIsotopomerMap@Labeled.FG.data
+
+setGeneric("heatmap_MSIPIsotopomerMap",
+           function(x) standardGeneric("heatmap_MSIPIsotopomerMap"))
+
+#' @rdname heatmap_MSIPIsotopomerMap
+setMethod("heatmap_MSIPIsotopomerMap", "MSIPIsotopomerMap",
+          function(x){
+
+  isotopomer.set.map <- x@solve$isotopomer.set.map
+  isotopomer.prob <- x@isotopomer.probability
+  isotopomer.ratio <- x@Labeled.FG.data
   isotopomer.ratio <- isotopomer.ratio[rownames(isotopomer.set.map),"ratio"]
   top.anno <-ComplexHeatmap::HeatmapAnnotation(
       ifp = isotopomer.prob,
@@ -664,7 +679,7 @@ heatmap_MSIPIsotopomerMap <- function(MSIPIsotopomerMap){
 
 
   ComplexHeatmap::Heatmap(
-    MSIPIsotopomerMap@isotopomer.contribution,
+    x@isotopomer.contribution,
           border = T,
           border_gp = gpar(col = "#808080"),
           row_split = str_extract(rownames(isotopomer.set.map),".*(?=_M)"),
@@ -688,7 +703,16 @@ heatmap_MSIPIsotopomerMap <- function(MSIPIsotopomerMap){
             width  = unit(20,"inch")),
           show_heatmap_legend = F,
           col = colramp(colors = c("white","white","black")))
-}
+          })
+
+setMethod("heatmap_MSIPIsotopomerMap", "MSIPCoreData",
+          function(x){
+            im <- x@Solve$MSIPIsotopomerMap
+            if (is.null(im)) {
+              im <- get_MSIPIsotopomerMap(x)
+            }
+            heatmap_MSIPIsotopomerMap(im)
+          })
 
 
 MSIPIsotopomerMap_set_split <- function(MSIPIsotopomerMap,
@@ -913,8 +937,8 @@ get_atom_prob_from_MSIPIsotopomerMap <- function(MSIPIsotopomerMap){
 MSIPCore_vis_isotopomer <- function(MSIPCoreData,cfmd,id,...){
 
   ig <- get_MSIPAtomMap_sdf_igraph(cfmd)
-  atom.to.show <- MSIPCoreData@solve$MSIPIsotopomerMap@isotopomer.defination[[id]]
-  message(names(MSIPCoreData@solve$MSIPIsotopomerMap@isotopomer.defination)[id])
+  atom.to.show <- MSIPCoreData@Solve$MSIPIsotopomerMap@isotopomer.defination[[id]]
+  message(names(MSIPCoreData@Solve$MSIPIsotopomerMap@isotopomer.defination)[id])
   vis_sdf_igraph(ig,highlight = atom.to.show,...)
 
 }
@@ -922,7 +946,7 @@ MSIPCore_vis_isotopomer <- function(MSIPCoreData,cfmd,id,...){
 
 plotly_MSIPCore_pred_nature_prob  <- function(MSIPCoreData){
 
-  im <- MSIPCoreData@solve$MSIPIsotopomerMap
+  im <- MSIPCoreData@Solve$MSIPIsotopomerMap
 
   df <- data.frame(
     natural.prob =lengths(im@solve$isotopomer.set)/length(im@isotopomer.defination),
@@ -983,9 +1007,9 @@ MSIPCore_merge <- function(MSIPCoreData1,
   {
 
 
-    MSIPCoreData@Spectra_data <-
-      bind_rows(MSIPCoreData1@Spectra_data,
-            MSIPCoreData2@Spectra_data)
+    MSIPCoreData@Spectra <-
+      bind_rows(MSIPCoreData1@Spectra,
+            MSIPCoreData2@Spectra)
 
   }
 
@@ -996,32 +1020,32 @@ MSIPCore_merge <- function(MSIPCoreData1,
     ### FG.atom.matrix
     {
 
-      MSIPCoreData@FG_map@FG.atom.matrix <-
-        rbind(MSIPCoreData1@FG_map@FG.atom.matrix,
-            MSIPCoreData2@FG_map@FG.atom.matrix)
+      MSIPCoreData@MSIPFragmentMap@FG.atom.matrix <-
+        rbind(MSIPCoreData1@MSIPFragmentMap@FG.atom.matrix,
+            MSIPCoreData2@MSIPFragmentMap@FG.atom.matrix)
     }
 
     ### FG.ratio.matrix
     {
 
-      MSIPCoreData@FG_map@FG.ratio.matrix <-
-        rbind(MSIPCoreData1@FG_map@FG.ratio.matrix,
-              MSIPCoreData2@FG_map@FG.ratio.matrix)
+      MSIPCoreData@MSIPFragmentMap@FG.ratio.matrix <-
+        rbind(MSIPCoreData1@MSIPFragmentMap@FG.ratio.matrix,
+              MSIPCoreData2@MSIPFragmentMap@FG.ratio.matrix)
     }
 
     ### FG.intensity
     {
 
-      MSIPCoreData@FG_map@FG.data <-
-        rbind(MSIPCoreData1@FG_map@FG.data,
-              MSIPCoreData2@FG_map@FG.data)
+      MSIPCoreData@MSIPFragmentMap@FG.data <-
+        rbind(MSIPCoreData1@MSIPFragmentMap@FG.data,
+              MSIPCoreData2@MSIPFragmentMap@FG.data)
     }
 
 
 
   }
 
-  MSIPCoreData@solve <- list()
+  MSIPCoreData@Solve <- list()
 
   return(MSIPCoreData)
 
@@ -1029,20 +1053,73 @@ MSIPCore_merge <- function(MSIPCoreData1,
 
 plot_MSIPCore_spectra_consistency <- function(MSIPCoreData){
 
+  .MSIPCore_peak_df <- function(x){
+    if (is.null(x)) return(data.frame())
+    if (inherits(x, "Spectra")) {
+      sp <- x
+      sp.names <- Spectra::spectraNames(sp)
+      if (is.null(sp.names)) sp.names <- paste0("sp_", seq_along(sp))
+      vars <- Spectra::spectraVariables(sp)
+      has_fg <- "fragment_group" %in% vars
+      has_isoc <- "iso_count" %in% vars
+      has_ratio <- "fragment_group_ratio" %in% vars
+      has_int_sum <- "fragment_group_int_sum" %in% vars
 
-  plot.data <- MSIPCoreData@Spectra_data%>%
-    dplyr::filter(!is.na(fragment_group),!merged)%>%
+      out <- lapply(seq_along(sp), function(i){
+        pd <- Spectra::peaksData(sp)[[i]]
+        if (is.null(pd) || !nrow(pd)) return(NULL)
+        df <- as.data.frame(pd)
+        if (!all(c("mz","intensity") %in% colnames(df))) {
+          colnames(df)[1:2] <- c("mz","intensity")
+        }
+        df$sp.id <- sp.names[[i]]
+        df$collisionEnergy <- if ("collisionEnergy" %in% vars) sp$collisionEnergy[[i]] else NA
+        df$rtime <- if ("rtime" %in% vars) ProtGenerics::rtime(sp)[[i]] else NA
+        df$fragment_group <- if (has_fg) sp$fragment_group[[i]] else NA
+        df$iso_count <- if (has_isoc) sp$iso_count[[i]] else NA
+        df$ratio <- if (has_ratio) sp$fragment_group_ratio[[i]] else NA
+        df$int_sum <- if (has_int_sum) sp$fragment_group_int_sum[[i]] else NA
+        df$merged <- FALSE
+        df
+      })
+      out <- out[!vapply(out, is.null, logical(1))]
+      if (!length(out)) return(data.frame())
+      return(data.table::rbindlist(out, fill = TRUE) %>% as.data.frame())
+    }
+
+    if (is.data.frame(x)) return(x)
+    data.frame()
+  }
+
+  sp.data <- .MSIPCore_peak_df(MSIPCoreData@Spectra)
+
+  plot.data <- sp.data %>%
+    dplyr::filter(!is.na(fragment_group), !merged) %>%
     dplyr::mutate(name = paste0(fragment_group,"_",iso_count),
                   log_int = log10(intensity))
 
-  label.data <-MSIPCoreData@Spectra_data%>%
-    dplyr::filter(!is.na(fragment_group),merged)%>%
-    dplyr::mutate(name = paste0(fragment_group,"_",iso_count),
-                  icc = format(icc,digit=2),
-                  cos = format(cos,digit=2),
-                  label = paste0("icc = ",icc,";cos = ",cos))
+  label.data <- data.frame()
+  if (!isEmpty(MSIPCoreData)) {
+    fgm <- MSIPCoreData@MSIPFragmentMap@FG.ratio.matrix
+    fgdf <- MSIPCoreData@MSIPFragmentMap@FG.data
+    if (!is.null(fgm) && nrow(fgm) && ncol(fgm) && !is.null(fgdf) && nrow(fgdf)) {
+      label.data <- as.data.frame(fgm) %>%
+        tibble::rownames_to_column("fragment_group") %>%
+        tidyr::pivot_longer(dplyr::starts_with("M"),
+                            names_to = "iso_count",
+                            values_to = "ratio") %>%
+        dplyr::mutate(
+          iso_count = str_extract_num(iso_count),
+          icc = format(fgdf[fragment_group,"icc"], digit = 2),
+          cos = format(fgdf[fragment_group,"cos"], digit = 2),
+          label = paste0("icc = ", icc, ";cos = ", cos),
+          name = paste0(fragment_group,"_",iso_count),
+          merged = TRUE
+        )
+    }
+  }
 
-  ggplot(plot.data,aes(x = ratio , y = name ))+
+  ggplot(plot.data, aes(x = ratio, y = name))+
     geom_boxplot(outliers = F)+
     geom_jitter(aes(col = log_int),width = 0,height = 0.2)+
     geom_text(data = label.data,hjust = 0,
@@ -1069,8 +1146,8 @@ plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
 
 
 
-  sp <-  MSIPCoreData@Spectra_data
-  se <- get_Spectra_fg_ratio_se(sp,iso_count_max = max(str_extract_num(colnames(MSIPCoreData@FG_map@FG.ratio.matrix))))
+  sp <-  MSIPCoreData@Spectra
+  se <- get_Spectra_fg_ratio_se(sp,iso_count_max = max(str_extract_num(colnames(MSIPCoreData@MSIPFragmentMap@FG.ratio.matrix))))
 
 
 
@@ -1257,7 +1334,7 @@ get_MSIP_intensity_consistency_cor_data <- function(msdev,
         message(paste0(i.sample,"_",i,"_",i.istpl))
         this.msip.core <- this.mtbl@MSIPIsotopologueDatas[[i.istpl]][[i.sample]]
         {
-          sp <-  this.msip.core@Spectra_data
+          sp <-  this.msip.core@Spectra
           se <- get_Spectra_fg_ratio_se(sp,
                                         iso_count_max = format_isotopologue(i.istpl,"n"))
           if (!ncol(se)) next
@@ -1289,8 +1366,8 @@ MSIPCore_FG_suffix <- function(MSIPCoreData,
   ### Spectra_data
   {
 
-    MSIPCoreData@Spectra_data$fragment_group <-
-      sapply(MSIPCoreData@Spectra_data$fragment_group,function(x){
+    MSIPCoreData@Spectra$fragment_group <-
+      sapply(MSIPCoreData@Spectra$fragment_group,function(x){
         if(is.na(x)){
           return(NA)
         }else
@@ -1305,23 +1382,23 @@ MSIPCore_FG_suffix <- function(MSIPCoreData,
   {
     ### FG.atom.matrix
     {
-      rownames(MSIPCoreData@FG_map@FG.atom.matrix) %<>%
+      rownames(MSIPCoreData@MSIPFragmentMap@FG.atom.matrix) %<>%
         paste0(.,"_",suffix)
 
     }
 
     ### FG.ratio.matrix
     {
-      rownames(MSIPCoreData@FG_map@FG.ratio.matrix) %<>%
+      rownames(MSIPCoreData@MSIPFragmentMap@FG.ratio.matrix) %<>%
         paste0(.,"_",suffix)
 
     }
 
     ### FG.data
     {
-      rownames(MSIPCoreData@FG_map@FG.data) %<>%
+      rownames(MSIPCoreData@MSIPFragmentMap@FG.data) %<>%
         paste0(.,"_",suffix)
-      MSIPCoreData@FG_map@FG.data$fragment_group%<>%
+      MSIPCoreData@MSIPFragmentMap@FG.data$fragment_group%<>%
         paste0(.,"_",suffix)
     }
 
@@ -1329,7 +1406,7 @@ MSIPCore_FG_suffix <- function(MSIPCoreData,
 
   }
 
-  MSIPCoreData@solve <- list()
+  MSIPCoreData@Solve <- list()
 
   return(MSIPCoreData)
 
@@ -1339,9 +1416,9 @@ MSIPCore_FG_suffix <- function(MSIPCoreData,
 
 get_MSIPCore_isotopomer_data <- function(MSIPCoreData){
 
-  FSIS.def <- MSIPCoreData@solve$MSIPIsotopomerMap@solve$isotopomer.set
-  FSIS.prob <- MSIPCoreData@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob
-  isotopomer.def <-  MSIPCoreData@solve$MSIPIsotopomerMap@isotopomer.defination
+  FSIS.def <- MSIPCoreData@Solve$MSIPIsotopomerMap@solve$isotopomer.set
+  FSIS.prob <- MSIPCoreData@Solve$MSIPIsotopomerMap@solve$isotopomer.set.prob
+  isotopomer.def <-  MSIPCoreData@Solve$MSIPIsotopomerMap@isotopomer.defination
 
   data.frame(
     FSIS = names(FSIS.def)
@@ -1366,7 +1443,7 @@ MSIPCore_get_spectra_coverage <-
 
     ### peaks intensity, annotated peaks / total peaks
     {
-      sp.data <- MSIPCoreData@Spectra_data
+      sp.data <- MSIPCoreData@Spectra
 
       coverage.peaks <- sp.data %>%
         dplyr::filter(!merged)%>%
@@ -1389,8 +1466,8 @@ MSIPCore_get_spectra_coverage <-
       coverage.fg <- sum(fg.detected %in% fg.total)/length(fg.total)
     }
 
-    MSIPCoreData@solve$coverage_peak <- coverage.peaks
-    MSIPCoreData@solve$coverage_FG <- coverage.fg
+    MSIPCoreData@Solve$coverage_peak <- coverage.peaks
+    MSIPCoreData@Solve$coverage_FG <- coverage.fg
 
     return(MSIPCoreData)
 
@@ -1421,11 +1498,11 @@ vis_MSIPcore_isotopoer_set <- function(msip.core,
     return(NULL)
   }
   if (class(is.idx)=="character") {
-    is.idx <- match(is.idx,names(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set))
+    is.idx <- match(is.idx,names(msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set))
   }
-  is.prob <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob[[is.idx]]
-  isotopomer.idx <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set[[is.idx]]
-  isotopomer.list <- msip.core@solve$MSIPIsotopomerMap@isotopomer.defination[isotopomer.idx]
+  is.prob <- msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set.prob[[is.idx]]
+  isotopomer.idx <- msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set[[is.idx]]
+  isotopomer.list <- msip.core@Solve$MSIPIsotopomerMap@isotopomer.defination[isotopomer.idx]
   iso_count <- unique( lengths(isotopomer.list))
   atom.prob <- table(unlist(isotopomer.list))/length(isotopomer.list)*is.prob
   mol.ig%>%
@@ -1447,11 +1524,11 @@ vis_MSIPcore_isotopomer <- function(msip.core,
     return(NULL)
   }
   if (class(is.idx)=="character") {
-    is.idx <- match(is.idx,names(msip.core@solve$MSIPIsotopomerMap@isotopomer.defination))
+    is.idx <- match(is.idx,names(msip.core@Solve$MSIPIsotopomerMap@isotopomer.defination))
   }
-  is.prob <- msip.core@solve$MSIPIsotopomerMap@isotopomer.probability[[is.idx]]
+  is.prob <- msip.core@Solve$MSIPIsotopomerMap@isotopomer.probability[[is.idx]]
   isotopomer.idx <-is.idx
-  isotopomer.list <- msip.core@solve$MSIPIsotopomerMap@isotopomer.defination[isotopomer.idx]
+  isotopomer.list <- msip.core@Solve$MSIPIsotopomerMap@isotopomer.defination[isotopomer.idx]
   iso_count <- unique( lengths(isotopomer.list))
   atom.prob <- table(unlist(isotopomer.list))/length(isotopomer.list)*is.prob
   mol.ig%>%
@@ -1960,13 +2037,13 @@ plot_MSIPCore_result <- function(msip.core){
 
 
   solve.data <- data.frame(
-    is = names(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set),
-    Prob =msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob
+    is = names(msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set),
+    Prob =msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set.prob
   )
 
   is.data <- solve.data%>%
     dplyr::filter(Prob > 0.01)
-  isotopomers <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set[is.data$is]
+  isotopomers <- msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set[is.data$is]
 
   plot.data <- lapply(isotopomers,function(x){
     isotopomer.name <- x

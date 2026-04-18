@@ -6,21 +6,21 @@ setClass(Class = "MSIPFragmentMap",
          ))
 setClass(Class = "MSIPCoreData",
          slots = list(
-           "Spectra_data" = "ANY",
-           "FG_map" = "MSIPFragmentMap",
-           "solve" = "list"
+          "Spectra" = "ANY",
+          "MSIPFragmentMap" = "MSIPFragmentMap",
+          "Solve" = "list"
          ))
 
 setMethod(f = "show",signature = "MSIPCoreData",
           definition = function(object){
 
-            show(object@FG_map)
+            show(object@MSIPFragmentMap)
 })
 
 
 setMethod(f = "isEmpty",signature = "MSIPCoreData",
           definition = function(x){
-            isEmpty(x@FG_map)
+            isEmpty(x@MSIPFragmentMap)
           })
 
 #### MSIPFragmentMap

@@ -340,7 +340,7 @@ MSIP_shiny_server <- function(object){
         updateSliderInput(inputId = "int_thresh",
                           value = msip.core.int_thresh)
         updateSliderInput(inputId = "certainty_thresh",
-                          value = msip.core.data()@solve$certainty_thresh)
+                          value = msip.core.data()@Solve$certainty_thresh)
 
 
       })
@@ -352,7 +352,7 @@ MSIP_shiny_server <- function(object){
         message_with_time("shiny_heatmap_fgmap")
         shiny_heatmap_fgmap(msip.core.data())
       },
-      height = reactive(nrow(msip.core.data()@FG_map@FG.atom.matrix)*50+50)
+      height = reactive(nrow(msip.core.data()@MSIPFragmentMap@FG.atom.matrix)*50+50)
       )
 
 

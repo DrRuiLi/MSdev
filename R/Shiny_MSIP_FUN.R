@@ -191,7 +191,7 @@ shiny_get_sp_data <- function(iso_data,
   }else{
     msip.core.m0 <-iso_data$MSIP_result[["M0"]][[sample]]
     if (!is.null(msip.core.m0)) {
-      sp.m0.frag.data <- msip.core.m0@Spectra_data%>%
+      sp.m0.frag.data <- msip.core.m0@Spectra%>%
         dplyr::mutate(sp.id="M0",x = mz,
                       y =intensity)
     }else{
@@ -205,7 +205,7 @@ shiny_get_sp_data <- function(iso_data,
     if (is.null(msip.core)){
       sp.iso.frag.data<- sp.m0.frag.data[0,]
     }else{
-      sp.iso.frag.data <-msip.core@Spectra_data%>%
+      sp.iso.frag.data <-msip.core@Spectra%>%
         dplyr::filter(sp.id == "combined_sp"|is.na(fragment_group  ))%>%
         dplyr::arrange(sp.id)
       suppressWarnings(
@@ -763,7 +763,7 @@ shiny_get_C_prob <- function(msip.core.data){
   if (is.null(msip.core.data)){
     return(NULL)
   }
-  prob <- msip.core.data@solve$Atom_prob
+  prob <- msip.core.data@Solve$Atom_prob
   return(prob)
 }
 
@@ -779,7 +779,7 @@ shiny_DT_fg_include <- function(msip.core.data){
   #}else{
   #  frag.include <- msip.core.data$fg.map$frag.include
   #}
-  frag.include <- msip.core.data@FG_map@fragment.include
+  frag.include <- msip.core.data@MSIPFragmentMap@fragment.include
   data.frame(#fragment.group = names(frag.include),
              include = as.HTML.checkbox.checked(frag.include)
              )
@@ -788,7 +788,7 @@ shiny_DT_fg_include <- function(msip.core.data){
 
 shiny_get_fg_include <- function(msip.core.data){
 
-  if (isEmpty(msip.core.data@FG_map)) {
+  if (isEmpty(msip.core.data@MSIPFragmentMap)) {
     return(NULL)
   }
   #if (all(is.null(msip.core.data$fg.map$frag.include))) {
@@ -797,7 +797,7 @@ shiny_get_fg_include <- function(msip.core.data){
   #}else{
   #  frag.include <- msip.core.data$fg.map$frag.include
   #}
-  frag.include <- msip.core.data@FG_map@FG.data$include
+  frag.include <- msip.core.data@MSIPFragmentMap@FG.data$include
   return(frag.include)
 }
 
@@ -811,7 +811,7 @@ shiny_update_fg_include <- function(frag.include,x){
 
 shiny_update_msip_core_data <- function(msip.core.data,frag.include){
 
-  msip.core.data@FG_map@fragment.include <- frag.include
+  msip.core.data@MSIPFragmentMap@fragment.include <- frag.include
   return(msip.core.data)
 }
 
@@ -828,8 +828,7 @@ shiny_heatmap_fgmap <- function(msip.core.data){
     plot.new()
     title("no data")
   }else{
-    fg.map <- msip.core.data@FG_map
-    heatmap_MSIPFragmentMap(fg.map )
+    heatmap_MSIPFragmentMap(msip.core.data)
 
   }
 
@@ -872,7 +871,7 @@ shiny_get_frag_iso_distribution<- function(msip.core,fg.id){
 
 
   if (is.null(msip.core)) return(NULL)
-  msip.fgmap <- msip.core@FG_map
+  msip.fgmap <- msip.core@MSIPFragmentMap
 
   if (is.null(msip.fgmap)|isEmpty(msip.fgmap)) return(NULL)
 
@@ -925,7 +924,7 @@ shiny_get_int_thresh <- function(msip.core){
     return(0)
   }
 
-  int_thresh <- msip.core@solve[["int_thresh"]]
+  int_thresh <- msip.core@Solve[["int_thresh"]]
   if (is.null(int_thresh)) {
     return(0)
   }else
@@ -936,9 +935,9 @@ shiny_get_int_thresh <- function(msip.core){
 shiny_get_FSIS_table <- function(msip.core){
 
   data.frame(
-    FSIS = names(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set),
-    isotopomer.count =unname(lengths(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set)),
-    prob = msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob
+    FSIS = names(msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set),
+    isotopomer.count =unname(lengths(msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set)),
+    prob = msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set.prob
   )%>%
     #dplyr::filter(prob>0.001)%>%
     dplyr::mutate(
@@ -952,11 +951,11 @@ shiny_get_FSIS_table <- function(msip.core){
 shiny_get_isotopomer_table <- function(msip.core){
 
 
-  x <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set
+  x <- msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set
   x <- make_vector(rep(names(x),lengths(x)),unlist(x))
   data.frame(
-    Isotopomer = names(msip.core@solve$MSIPIsotopomerMap@isotopomer.probability),
-    Probability = msip.core@solve$MSIPIsotopomerMap@isotopomer.probability
+    Isotopomer = names(msip.core@Solve$MSIPIsotopomerMap@isotopomer.probability),
+    Probability = msip.core@Solve$MSIPIsotopomerMap@isotopomer.probability
   )%>%
     #dplyr::filter(prob>0.001)%>%
     dplyr::mutate(

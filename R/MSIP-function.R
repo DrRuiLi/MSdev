@@ -1047,7 +1047,7 @@ MSIP_solve_isotopologues <- function(object,
       msip.core <- MSIPCore_correct_natural(msip.core, natural.ratio = this.natural.ratio)
     }
     time_consume <- Sys.time()-start_time
-    MSIPIsotopomerMap <- msip.core@solve$MSIPIsotopomerMap
+    MSIPIsotopomerMap <- msip.core@Solve$MSIPIsotopomerMap
     if (is.null(MSIPIsotopomerMap )){
       n_isotopomers <- 0
     }else{
@@ -1243,12 +1243,12 @@ get_MSIP_solve_computation_evaluate <- function(object,
 
 
     if (comp.eval$solved[j]) {
-      comp.eval$sp.consistency.icc[j] <- mean(msip.core@FG_map@FG.data$icc,na.rm = T)
-      comp.eval$sp.consistency.cos[j] <- mean(msip.core@FG_map@FG.data$cos,na.rm = T)
+      comp.eval$sp.consistency.icc[j] <- mean(msip.core@MSIPFragmentMap@FG.data$icc,na.rm = T)
+      comp.eval$sp.consistency.cos[j] <- mean(msip.core@MSIPFragmentMap@FG.data$cos,na.rm = T)
 
-      if(!isEmpty(msip.core@solve$MSIPIsotopomerMap)){
-        #length(msip.core@solve$MSIPIsotopomerMap@)
-        comp.eval$FSIS.count[j] <-length(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set)
+      if(!isEmpty(msip.core@Solve$MSIPIsotopomerMap)){
+        #length(msip.core@Solve$MSIPIsotopomerMap@)
+        comp.eval$FSIS.count[j] <-length(msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set)
       }
     }
   }
@@ -1486,7 +1486,7 @@ get_MSIP_M1_Statistic <- function(object){
     if (is.null(msip.core)|isEmpty(msip.core)) {
       next
     }
-    msip.ifmap <- msip.core@solve$MSIPIsotopomerMap
+    msip.ifmap <- msip.core@Solve$MSIPIsotopomerMap
     x <- lengths(msip.ifmap@solve$isotopomer.set)
     y <- msip.ifmap@solve$isotopomer.set.prob
     if (length(x)) {
@@ -1521,8 +1521,8 @@ get_MSIP_fragment_Statistic <- function(object){
     if (is.null(msip.core)|isEmpty(msip.core)) {
       next
     }
-    msip.map <- msip.core@FG_map
-    msip.ifmap<- msip.core@solve$MSIPIsotopomerMap
+    msip.map <- msip.core@MSIPFragmentMap
+    msip.ifmap<- msip.core@Solve$MSIPIsotopomerMap
     process.info.fg$fragment.count[i]  <- sum(msip.map@fragment.include)
     process.info.fg$is.count[i] <- length( lengths(msip.ifmap@solve$isotopomer.set))
 
@@ -1589,11 +1589,11 @@ get_MSIP_result_Statistic <- function(object,
       comp.eval$FSIS.exist <- NA
       comp.eval$isotopomer.exist <- NA
       if (comp.eval$solved[j]) {
-        if(!isEmpty(msip.core@solve$MSIPIsotopomerMap)){
-          #length(msip.core@solve$MSIPIsotopomerMap@)
-          comp.eval$FSIS.count[j] <-length(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set)
-          comp.eval$FSIS.exist[j]  <- sum(msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set.prob>0.00001)
-          comp.eval$isotopomer.exist[j] <- sum(msip.core@solve$MSIPIsotopomerMap@isotopomer.probability>0.00001)
+        if(!isEmpty(msip.core@Solve$MSIPIsotopomerMap)){
+          #length(msip.core@Solve$MSIPIsotopomerMap@)
+          comp.eval$FSIS.count[j] <-length(msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set)
+          comp.eval$FSIS.exist[j]  <- sum(msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set.prob>0.00001)
+          comp.eval$isotopomer.exist[j] <- sum(msip.core@Solve$MSIPIsotopomerMap@isotopomer.probability>0.00001)
         }
       }
     }
@@ -1684,10 +1684,10 @@ get_MSIP_Molecule_igraph <- function(object,fraction_thresh = 0.001){
           )
 
         }else{
-          isotopomers.ele <- msip.core@solve$MSIPIsotopomerMap@isotopomer.defination
+          isotopomers.ele <- msip.core@Solve$MSIPIsotopomerMap@isotopomer.defination
           istp <- rownames(isotopomers.ele)
-          isotopomers.prob <- msip.core@solve$MSIPIsotopomerMap@isotopomer.probability[istp]
-          isotopomers.FSIS <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set%>%
+          isotopomers.prob <- msip.core@Solve$MSIPIsotopomerMap@isotopomer.probability[istp]
+          isotopomers.FSIS <- msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set%>%
             lapply(function(x){data.frame(isotopomer = x)})%>%
             data.table::rbindlist(idcol = "FSIS")%>%
             dplyr::mutate(FSIS = paste0(k,"_",FSIS))%>%
@@ -1768,10 +1768,10 @@ get_MSIPIsotopologueData_Molecule_igraphs  <- function(object,fraction_thresh = 
           )
 
         }else{
-          isotopomers.ele <- msip.core@solve$MSIPIsotopomerMap@isotopomer.defination
+          isotopomers.ele <- msip.core@Solve$MSIPIsotopomerMap@isotopomer.defination
           istp <- rownames(isotopomers.ele)
-          isotopomers.prob <- msip.core@solve$MSIPIsotopomerMap@isotopomer.probability[istp]
-          isotopomers.FSIS <- msip.core@solve$MSIPIsotopomerMap@solve$isotopomer.set%>%
+          isotopomers.prob <- msip.core@Solve$MSIPIsotopomerMap@isotopomer.probability[istp]
+          isotopomers.FSIS <- msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set%>%
             lapply(function(x){data.frame(isotopomer = x)})%>%
             data.table::rbindlist(idcol = "FSIS")%>%
             dplyr::mutate(FSIS = paste0(k,"_",FSIS))%>%
@@ -1879,7 +1879,7 @@ Report_MSIP_raw_data <- function(object,
 
         this.cfmd <- this.data@CompoundInfo$CFM_annotation
         this.msip.core <- this.data@MSIPIsotopologueDatas[[format_isotopologue(this.isotopologue,"M")]][[this.sample]]
-        this.sp <- this.msip.core@Spectra_data
+        this.sp <- this.msip.core@Spectra
         this.mz <- this.data@CompoundInfo$mz + 1.003355484 * this.isotopologue
 
 
