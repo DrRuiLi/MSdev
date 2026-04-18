@@ -348,7 +348,7 @@ heatmap_set_size <- function(hm,width  = 5,height= 5){
 
 
 get_ggplot_from_heatmap <- function(hm){
-  wrap_elements(grid.grabExpr(draw(hm)))
+  wrap_elements(grid::grid.grabExpr(draw(hm)))
 }
 
 ggplot_irange <- function(IR, scale = 1e-6){

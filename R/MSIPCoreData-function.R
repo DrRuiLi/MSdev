@@ -612,7 +612,7 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
   h1
   if(show_ratio){
     cellfun <- function(j, i, x, y, width, height, fill) {
-      grid.text(sprintf("%.2f", frag.ratio.matrix[i, j]), x, y, gp = gpar(col = "black", fontsize = 10))
+      grid::grid.text(sprintf("%.2f", frag.ratio.matrix[i, j]), x, y, gp = gpar(col = "black", fontsize = 10))
     }
   }else cellfun <- NULL
 
@@ -649,22 +649,22 @@ heatmap_MSIPFragmentMap <- function(MSIPFragmentMap,
 
 heatmap_MSIPIsotopomerMap <- function(MSIPIsotopomerMap){
 
-  isotopomer.set.map <- MSIPIsotopomerMap@isotopomer.map
+  isotopomer.set.map <- MSIPIsotopomerMap@solve$isotopomer.set.map
   isotopomer.prob <- MSIPIsotopomerMap@isotopomer.probability
-  isotopomer.ratio <- MSIPIsotopomerMap@isotopomer.ratio
-  isotopomer.ratio <- isotopomer.ratio[rownames(isotopomer.set.map)]
-  top.anno <- HeatmapAnnotation(
+  isotopomer.ratio <- MSIPIsotopomerMap@Labeled.FG.data
+  isotopomer.ratio <- isotopomer.ratio[rownames(isotopomer.set.map),"ratio"]
+  top.anno <-ComplexHeatmap::HeatmapAnnotation(
       ifp = isotopomer.prob,
       col = list(ifp = colramp(c(0,0.00000001,max(isotopomer.prob)),
                                c("grey","white","#0095D4"))),
-      annotation_label  = list(ifp = "iso form probability"),
+      annotation_label  = list(ifp = "isotopomers probability"),
       show_annotation_name = F,
       which = "c"
     )
 
 
-  Heatmap(isotopomer.set.map,
-
+  ComplexHeatmap::Heatmap(
+    MSIPIsotopomerMap@isotopomer.contribution,
           border = T,
           border_gp = gpar(col = "#808080"),
           row_split = str_extract(rownames(isotopomer.set.map),".*(?=_M)"),
@@ -675,11 +675,11 @@ heatmap_MSIPIsotopomerMap <- function(MSIPIsotopomerMap){
           show_column_dend = T,
           show_row_names = T,
           row_names_side  = "l",
-          column_title = "Iso form set",
+          column_title = "Isotopomers set",
           column_title_gp = gpar(fontsize = 30),
           cluster_columns = T,
           top_annotation = top.anno,
-          left_annotation = HeatmapAnnotation(
+          left_annotation = ComplexHeatmap::HeatmapAnnotation(
             Ratio = isotopomer.ratio,
             col = list(Ratio = colramp(c(0,0.0000001,0.5,1),
                                        c("grey","white","#F7844F","#B20C26"))),
@@ -1531,7 +1531,7 @@ Spectra_annotate_MSIPAtomMap <- function(
 
 
     idx <- lapply(mz(sp),function(x){
-      match_mz(x,mz.labeled.m$mz, mz.ppm = ppm) })
+      match_mz(unname(x),mz.labeled.m$mz, mz.ppm = ppm)})
 
     sp$iso_count <- lapply(idx,function(x)mz.labeled.m$iso_count[x])#%>%as("IntegerList")
     sp$fragment_group <- lapply(idx,function(x)mz.labeled.m$fragment_group[x])#%>%as("CharacterList")

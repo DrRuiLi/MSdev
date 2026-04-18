@@ -1,4 +1,6 @@
-get_MSIPFragmentMap_from_MSIPAtomMap <- function(msipAtomMap, iso_count_max = 0, target_ele){
+get_MSIPFragmentMap_from_MSIPAtomMap <- function(msipAtomMap,
+                                                 iso_count_max = 0,
+                                                 target_ele = "[13]C"){
 
 
   fg.map <- new("MSIPFragmentMap")

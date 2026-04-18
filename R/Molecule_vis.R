@@ -121,8 +121,8 @@ vis_cfm_data_fragment <- function(cfmd,fragment_id,
 vis_cfm_data_FG_mapped <- function(cfmd,FG,
                                    show_id= T){
 
-  atom.prob <- get_cfm_data_fragment_group_atom_map(cfmd,FG)
-  get_cfm_data_sdf_igraph(cfmd)%>%
+  atom.prob <- get_MSIPAtomMap_fragment_group_atom_map(cfmd,FG)
+  get_MSIPAtomMap_sdf_igraph(cfmd)%>%
     sdf_igraph_add_border_color(value = atom.prob)%>%
     vis_sdf_igraph(show_id)
 }
