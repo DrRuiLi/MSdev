@@ -670,6 +670,7 @@ get_MSIPAtomMap_from_cfmd <- function(cfm_data,
 #' @param adduct Adduct type (default: "\[M+H\]+")
 #' @param iso_ele Isotope element specification (default: "\[13\]C")
 #' @param check_temp Whether to check/use temporary files (default: TRUE)
+#' @param overide Logical. If TRUE, force override cached files (default: FALSE).
 #' @param temp_dir Directory for temporary files
 #' @param ... Additional arguments
 #'
@@ -681,13 +682,14 @@ get_MSIPAtomMap_from_smiles <- function(smiles = "NCC(O)=O",
                                         adduct = "[M+H]+",
                                         iso_ele = "[13]C",
                                         check_temp = T,
+                                        overide = FALSE,
                                         temp_dir = get_dir_expand_from_onedrive("/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb_cfmd"),
                                         ...){
   # Check cache
   if(check_temp){
     if (!dir.exists(temp_dir)) dir.create(temp_dir,recursive = T,showWarnings = F)
     temp_file <- paste0(temp_dir,"/",compound_id,"_",adduct,"_msipAtomMap.rds")
-    if(file.exists(temp_file)){
+    if(!isTRUE(overide) && file.exists(temp_file)){
       message_with_time("loading MSIPAtomMap from temp:",temp_file)
       msipAtomMap <- readRDS(temp_file)
       return(msipAtomMap)
