@@ -307,3 +307,32 @@ get_MSIP_structural_elucidation_score <- function(spectra,
 
   return(result)
 }
+
+
+
+calculate_resolvable_structures <- function(A) {
+  m <- ncol(A)
+  rank_A <- Matrix::rankMatrix(A)[1]
+
+  if (rank_A == m) {
+    message("Full rank! All individual atoms can be resolved.")
+    return(1)
+  } else {
+    message("Rank deficient. Searching for resolvable indicator vectors...")
+    resolvable_count <- 0
+
+
+    all_combinations <- expand.grid(replicate(m, 0:1, simplify = FALSE))
+
+    for (i in 1:nrow(all_combinations)) {
+      v <- as.numeric(all_combinations[i, ])
+
+
+      aug_matrix <- cbind(t(A), v)
+      if (rankMatrix(t(A))[1] == rankMatrix(aug_matrix)[1]) {
+        resolvable_count <- resolvable_count + 1
+      }
+    }
+    return(resolvable_count/2^m)
+  }
+}
