@@ -494,10 +494,10 @@ plot_Spectra<- function(sp,label.top = 10){
   label.df <- dplyr::filter(sp.data , int.rank  < label.top)
   ymax.abs <- max(abs(sp.data$intensity))
   ggplot(sp.data)+
-    geom_hline(yintercept = 0 , size = 0.2,col = "grey")+
+    geom_hline(yintercept = 0 , linewidth = 0.2,col = "grey")+
     geom_segment(aes(x = x,y =y,xend = xend,
                      yend = yend,col = matched),
-                 size = 0.2,
+                 linewidth = 0.2,
                  show.legend = F)+
     geom_point(aes(x = x, y = yend , alpha = matched,col = matched),
                show.legend = F,size = 0.5)+

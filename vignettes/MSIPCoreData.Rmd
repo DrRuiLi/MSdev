@@ -1,0 +1,34 @@
+---
+title: "MSIPCoreData"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{MSIPCoreData}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Development
+
+## Method
+
+### update
+
+``` text
+update: 
+1. update the slots of 'MSIPCoreData', 'Spectra_data' >> 'Spectra', 'FG_map' >> 'MSIPFragmentMap', 'solve' >> 'Solve'
+2. these function take class 'MSIPFragmentMap' and 'heatmap_MSIPIsotopomerMap' as input:
+    - heatmap_MSIPFragmentMap()
+    - heatmap_MSIPIsotopomerMap()
+  both are part of class 'MSIPCoreData', update them to method, which could be called directly to 'MSIPCoreData', not only 'MSIPFragmentMap' and 'heatmap_MSIPIsotopomerMap'
+3.  'plot_MSIPCore_spectra_consistency' get error:   no applicable method for 'filter' applied to an object of class "c('Spectra', 'Spectra_OR_Null')", fix it
+    
+```
+
+### to do
+
+
+``` text
+
+
+```
+

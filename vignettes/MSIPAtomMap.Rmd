@@ -99,10 +99,16 @@ update1:
 
 ```
 
+``` text
+update:
+1. in function 'get_MSIPAtomMap_from_smiles', add a param 'overide' to force overide the cached files, the default value is 'FALSE'
+
+```
+
 #### to do
 ``` text
 update:
-1. in function 'get_MSIPAtomMap_from_smiles', add a param 'overide' to force overide the cached files
+1. in function 'get_MSIPAtomMap_from_smiles' and 'get_CFM_data_from_smiles', the param 'adduct' could accept input 0 ([M-H]-) or 1 ([M+H]+) and '-' or '+'
 
 ```
 
