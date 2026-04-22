@@ -1074,7 +1074,8 @@ get_CFM_data_MSIPFragmentMap<- function(msipAtomMap){
 #' @param smiles SMILES string of the molecule
 #' @param compound_id Identifier for the compound (default: "temp_id")
 #' @param ppm Mass tolerance in ppm (default: 5)
-#' @param adduct Adduct type (default: "\[M+H\]+")
+#' @param adduct Adduct type (default: "\[M+H\]+"). Also accepts 0/1 (0 = "\[M-H\]-", 1 = "\[M+H\]+")
+#'   and '-'/'+' as shorthand.
 #' @param ... Additional arguments
 #'
 #' @return A CFM_data object containing fragment data
@@ -1084,6 +1085,19 @@ get_CFM_data_from_smiles <- function(smiles = "NCC(O)=O",
                                      ppm = 5,
                                      adduct = "[M+H]+",
                                      ...){
+  # Normalize adduct input (accept 0/1 and +/-)
+  if (length(adduct) == 1) {
+    if (is.numeric(adduct) || is.integer(adduct)) {
+      if (adduct == 0) adduct <- "[M-H]-"
+      if (adduct == 1) adduct <- "[M+H]+"
+    } else {
+      if (identical(adduct, "-")) adduct <- "[M-H]-"
+      if (identical(adduct, "+")) adduct <- "[M+H]+"
+      if (identical(adduct, "0")) adduct <- "[M-H]-"
+      if (identical(adduct, "1")) adduct <- "[M+H]+"
+    }
+  }
+
   message_with_time("CFM_annotate_by_predict")
   cfm_data <- CFM_annotate_by_predict(smiles_or_inchi = smiles,
                                   id = compound_id,

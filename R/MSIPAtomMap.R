@@ -667,7 +667,8 @@ get_MSIPAtomMap_from_cfmd <- function(cfm_data,
 #' @param smiles SMILES string of the molecule
 #' @param compound_id Identifier for the compound (default: "temp_id")
 #' @param ppm Mass tolerance in ppm (default: 5)
-#' @param adduct Adduct type (default: "\[M+H\]+")
+#' @param adduct Adduct type (default: "\[M+H\]+"). Also accepts 0/1 (0 = "\[M-H\]-", 1 = "\[M+H\]+")
+#'   and '-'/'+' as shorthand.
 #' @param iso_ele Isotope element specification (default: "\[13\]C")
 #' @param check_temp Whether to check/use temporary files (default: TRUE)
 #' @param overide Logical. If TRUE, force override cached files (default: FALSE).
@@ -685,6 +686,19 @@ get_MSIPAtomMap_from_smiles <- function(smiles = "NCC(O)=O",
                                         overide = FALSE,
                                         temp_dir = get_dir_expand_from_onedrive("/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb_cfmd"),
                                         ...){
+  # Normalize adduct input (accept 0/1 and +/-)
+  if (length(adduct) == 1) {
+    if (is.numeric(adduct) || is.integer(adduct)) {
+      if (adduct == 0) adduct <- "[M-H]-"
+      if (adduct == 1) adduct <- "[M+H]+"
+    } else {
+      if (identical(adduct, "-")) adduct <- "[M-H]-"
+      if (identical(adduct, "+")) adduct <- "[M+H]+"
+      if (identical(adduct, "0")) adduct <- "[M-H]-"
+      if (identical(adduct, "1")) adduct <- "[M+H]+"
+    }
+  }
+
   # Check cache
   if(check_temp){
     if (!dir.exists(temp_dir)) dir.create(temp_dir,recursive = T,showWarnings = F)
