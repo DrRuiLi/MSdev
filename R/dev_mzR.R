@@ -62,8 +62,20 @@ get_MSinfo_mzR<- function(msDataFiles){
     msinstru <- mzR::instrumentInfo(msmzR)
     msheader <- mzR::header(msmzR)
     msdata$ExpTime[i] <- msrunInfo$startTimeStamp
-    msdata$msLevels[i] <- case_when(rlang::is_empty(msrunInfo$msLevels)~NA,
-                                 T~max(msrunInfo$msLevels))
+    msdata$msLevels[i] <- dplyr::case_when(
+      rlang::is_empty(msrunInfo$msLevels) ~ NA_character_,
+      TRUE ~ {
+        lv <- sort(unique(as.integer(msrunInfo$msLevels)))
+        lv <- lv[!is.na(lv)]
+        if (!length(lv)) {
+          NA_character_
+        } else if (all(c(1L, 2L) %in% lv)) {
+          "1;2"
+        } else {
+          as.character(lv[[length(lv)]])
+        }
+      }
+    )
     msdata$polarity[i] <- case_when(rlang::is_empty(unique(msheader$polarity))~NA,
                                     T~paste0(unique(msheader$polarity),collapse = ";"))
     msdata$manufacturer[i] <- msinstru$manufacturer

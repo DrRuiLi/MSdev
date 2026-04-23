@@ -46,6 +46,22 @@ MSdev_load <- function(file_to_load){
 
   object@sampleInfo -> sampleInfo
 
+  if ("msLevels" %in% colnames(sampleInfo)) {
+    if (!"xcmsProcessing" %in% colnames(sampleInfo) || any(is.na(sampleInfo$xcmsProcessing))) {
+      sampleInfo <- sampleInfo %>%
+        dplyr::mutate(
+          xcmsProcessing = dplyr::case_when(
+            !is.na(xcmsProcessing) ~ xcmsProcessing,
+            msLevels == "1" ~ "MS1",
+            msLevels == "2" ~ "MS2",
+            msLevels == "1;2" ~ "Both",
+            TRUE ~ NA
+          )
+        )
+      object@sampleInfo <- sampleInfo
+    }
+  }
+
   if ("scanType"%in% colnames(sampleInfo)) {
     object@projectInfo$msAcquisition <- unique(sampleInfo$scanType)
   }
@@ -109,14 +125,20 @@ MSdev_get_MSinfo <- function(object){
     sampleInfo <-object@sampleInfo%>%
       dplyr::mutate(get_MSinfo_mzR(msData.files),
                     msType = model.df$type[match(model,model.df$model)],
-                    scanType = case_when(msType=="HRMS"&msLevels=="1" ~ "FS",
-                                         msType=="HRMS"&msLevels=="2" ~ "DDA",
-                                         msType=="TQMS" ~ "MRM",
-                                         T~NA),
-                    xcmsProcessing = case_when(scanType=="FS"~ "MS1",
-                                               scanType=="DDA" ~ "Both",
-                                               scanType=="MRM" ~ "MRM",
-                                               T~NA))%>%
+                    scanType = case_when(
+                      msType == "TQMS" ~ "MRM",
+                      msType == "HRMS" & msLevels == "1" ~ "FS",
+                      msType == "HRMS" & msLevels == "2" ~ "MS2",
+                      msType == "HRMS" & msLevels == "1;2" ~ "DDA",
+                      TRUE ~ NA
+                    ),
+                    xcmsProcessing = case_when(
+                      msType == "TQMS" ~ "MRM",
+                      msLevels == "1" ~ "MS1",
+                      msLevels == "2" ~ "MS2",
+                      msLevels == "1;2" ~ "Both",
+                      TRUE ~ NA
+                    ))%>%
       dplyr::group_by(sample.name)%>%
       dplyr::mutate(polarity_paired = case_when(
         "0"%in%polarity&"1"%in%polarity~T,

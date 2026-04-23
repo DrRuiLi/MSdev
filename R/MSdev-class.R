@@ -108,6 +108,7 @@ MSdev <- function(rawDataDir =
     .Object@sampleInfo <- get_MS_sampleinfo(.Object@projectInfo$rawDataDir,
                                             rawDataFormat = .Object@projectInfo$rawDataFormat,
                                             verbose = F)
+    .Object <- MSdev_get_MSinfo(.Object)
     .Object <- .updateProjectInfoFromSampleInfo(.Object )
     .Object@processingInfo$readInRawData$done <- T
     MSdev_save(.Object)
