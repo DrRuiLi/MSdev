@@ -2354,22 +2354,41 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
       if (length(sp.pol) == 0) next
       sp.pol.idx <- which(sp.ms2$polarity == polarity_val)
 
-      # Match mz and rt
+      # Match mz first, then match rt
+      match_res <- match_mz_rt(
+        mz1 = iso_grid$iso_mz,
+        mz2 = sp.pol$isolationWindowTargetMz,
+        mz.ppm = ppm
+      )
+      if (nrow(match_res) == 0) next
+
+      # If rt reference is available, filter by rt
       if (!is.na(rt_ref) && !is.null(rt_ref)) {
-        match_res <- match_mz_rt(
-          mz1 = iso_grid$iso_mz,
-          rt1 = rt_ref,
-          mz2 = sp.pol$isolationWindowTargetMz,
-          rt2 = rtime(sp.pol),
-          mz.ppm = ppm,
-          rt.tol = rt.tol
-        )
-      } else {
-        match_res <- match_mz_rt(
-          mz1 = iso_grid$iso_mz,
-          mz2 = sp.pol$isolationWindowTargetMz,
-          mz.ppm = ppm
-        )
+        rt2 <- rtime(sp.pol)[match_res$ion2]
+        in_rt <- abs(rt2 - rt_ref) <= rt.tol
+
+        if (!any(in_rt)) {
+          rt_target <- rt_ref + c(-rt.tol, rt.tol)
+          rt_selected <- range(rt2, na.rm = TRUE)
+          message_with_time(
+            nrow(match_res), " sp targeted to ", compound_id,
+            " with rt range: ", format(rt_target[1], digits = 4), " - ", format(rt_target[2], digits = 4),
+            ", selected 0 sp with rt range: ", format(rt_selected[1], digits = 4), " - ", format(rt_selected[2], digits = 4)
+          )
+          next
+        }
+
+        if (sum(in_rt) < nrow(match_res)) {
+          rt_target <- rt_ref + c(-rt.tol, rt.tol)
+          rt_selected <- range(rt2[in_rt], na.rm = TRUE)
+          message_with_time(
+            nrow(match_res), " sp targeted to ", compound_id,
+            " with rt range: ", format(rt_target[1], digits = 4), " - ", format(rt_target[2], digits = 4),
+            ", selected ", sum(in_rt), " sp with rt range: ", format(rt_selected[1], digits = 4), " - ", format(rt_selected[2], digits = 4)
+          )
+        }
+
+        match_res <- match_res[in_rt, , drop = FALSE]
       }
 
       if (nrow(match_res) == 0) next
@@ -2517,27 +2536,11 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
               iso_ele = iso_ele,
               ppm = ppm
             )
-
-            # Solve
-            msip.core <- MSIPCore_solve(
-              msip.core,
-              int_thresh = int_thresh,
-              certainty_thresh = certainty_thresh,
-              weight_fun = weight_fun
-            )
-            msip.core@Solve$iso_count_max <- this_iso_count_max
-            msip.core@Solve$iso_form <- iso_form
-            msip.core@Solve$iso_ele <- iso_ele
-            msip.core@Solve$ppm <- ppm
-            msip.core@Solve$rt_tol <- rt.tol
-
             if (polarity_val == 1) {
               msip.core.pos <- msip.core
             } else {
               msip.core.neg <- msip.core
             }
-
-            message_with_time("  Solved ", compound_id, " ", iso_form, " ", adduct, " ", sample_src)
 
           }, error = function(e) {
             message_with_time("  Error solving ", compound_id, " ", iso_form, " ",
@@ -2545,16 +2548,33 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
           })
         }
 
-        # Merge pos and neg if both exist
+        # Merge pos/neg first, then solve
+        msip.core.merged <- NULL
         if (!is.null(msip.core.pos) && !is.null(msip.core.neg)) {
           msip.core.merged <- MSIPCore_merge(msip.core.pos, msip.core.neg,
-                                            suffix1 = "Positive", suffix2 = "Negative")
-          result_matrix[iso_form, sample_src] <- list(msip.core.merged)
+                                             suffix1 = "Positive", suffix2 = "Negative")
         } else if (!is.null(msip.core.pos)) {
-          result_matrix[iso_form, sample_src] <- list(msip.core.pos)
+          msip.core.merged <- msip.core.pos
         } else if (!is.null(msip.core.neg)) {
-          result_matrix[iso_form, sample_src] <- list(msip.core.neg)
+          msip.core.merged <- msip.core.neg
         }
+
+        if (!is.null(msip.core.merged) && !isEmpty(msip.core.merged)) {
+          msip.core.merged <- MSIPCore_solve(
+            msip.core.merged,
+            int_thresh = int_thresh,
+            certainty_thresh = certainty_thresh,
+            weight_fun = weight_fun
+          )
+          msip.core.merged@Solve$iso_count_max <- this_iso_count_max
+          msip.core.merged@Solve$iso_form <- iso_form
+          msip.core.merged@Solve$iso_ele <- iso_ele
+          msip.core.merged@Solve$ppm <- ppm
+          msip.core.merged@Solve$rt_tol <- rt.tol
+          message_with_time("  Solved ", compound_id, " ", iso_form, " ", sample_src)
+        }
+
+        result_matrix[iso_form, sample_src] <- list(msip.core.merged)
       }
     }
 
