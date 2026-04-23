@@ -98,14 +98,14 @@ The `show()` method prints a short summary like “Map of N fragment group, M at
 
 Also in `R/MSIPCoreData.R`, this is the main “working object” during MSIP solving:
 
--   **`Spectra_data`** *(ANY)*: spectra backing data (kept flexible; can be a `Spectra` object, list, etc.).
--   **`FG_map`** *(`MSIPFragmentMap`)*: the fragment mapping described above.
--   **`solve`** *(list)*: cached solver state and results, e.g.:
+-   **`Spectra`** *(ANY)*: spectra backing data (kept flexible; can be a `Spectra` object, list, etc.).
+-   **`MSIPFragmentMap`** *(`MSIPFragmentMap`)*: the fragment mapping described above.
+-   **`Solve`** *(list)*: cached solver state and results (including parameters used for filtering/solving), e.g.:
     -   isotopomer maps used in inference
     -   natural abundance correction flags/ratios
     -   thresholds used for filtering/solving
 
-`isEmpty(MSIPCoreData)` is defined as `isEmpty(FG_map)` (empty when `nrow(FG.atom.matrix) == 0`).
+`isEmpty(MSIPCoreData)` is defined as `isEmpty(MSIPFragmentMap)` (empty when `nrow(FG.atom.matrix) == 0`).
 
 ## `MSIPIsotopomerMap`
 
@@ -157,9 +157,9 @@ MSdev
   └─ advancedAna -> analysis-ready objects (e.g. SummarizedExperiment)
 
 MSIPCoreData
-  ├─ Spectra_data
-  ├─ FG_map (MSIPFragmentMap: FG.atom.matrix / FG.ratio.matrix / FG.data)
-  └─ solve (list; may include MSIPIsotopomerMap + probabilities)
+  ├─ Spectra
+  ├─ MSIPFragmentMap (MSIPFragmentMap: FG.atom.matrix / FG.ratio.matrix / FG.data)
+  └─ Solve (list; may include MSIPIsotopomerMap + probabilities + parameters)
 
 MSIPMetaboliteData
   ├─ CompoundInfo
@@ -239,6 +239,23 @@ Update8:
 	2.  the above procedure should be placed under a ifelse(mode == "targeted")
 
 
+```
+
+### *To Do*
+``` text
+update MSIP data structure msdev.aa@advancedAna$MSIP$isotopomer_data:
+1. remove 'metadata', these param: ppm, rt_tol, thresh, et al. should be stored in the MSIPCore's 'solve' slot
+2. remove 'CompoundInfo' 
+3. the new structure should be :
+  - msdev
+    - advancedAna
+      - MSIP
+        - compound_table: a data.frame of compound info
+        - isotopomer_data: a list of compound
+          - MSIPCoreData_matrix: named as compound_id
+          - MSIPCoreData_matrix: named as compound_id
+          ......
+          - MSIPCoreData_matrix: named as compound_id
 ```
 
 ## MSIP_get_isotopologues_data.untargeted
@@ -415,9 +432,8 @@ object <- MSIP_get_isotopomer_data(
 
 6. **Store results**
    - Results stored in `object@advancedAna$MSIP$isotopomer_data`
-   - Structure: List of compounds, each containing:
-     - `CompoundInfo`: metadata (compound_id, name, formula, smiles, rt, adduct, polarity, etc.)
-     - `MSIPCoreData_matrix`: Matrix of solved MSIPCoreData objects (rows = isotopologues, cols = sample sources)
+   - Structure: named list of compounds, where each element name is `compound_id`
+     and each element value is the `MSIPCoreData_matrix` (rows = isotopologues, cols = sample sources).
 
 ### Step 9: Solve Isotopologues (Alternative Entry Point)
 

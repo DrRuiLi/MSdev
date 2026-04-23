@@ -2217,24 +2217,10 @@ MSIP_get_isotopomer_data <- function(object,
   # ============================================================================
   # Package result as list of MSIPCoreData matrices
   # ============================================================================
-  final_result <- list(
-    isotopomer_data = isotopomer_data_list,
-    metadata = list(
-      iso_ele = iso_ele,
-      target_ele = target_ele,
-      mode = mode,
-      ppm = ppm,
-      rt_tol = rt.tol,
-      int_thresh = int_thresh,
-      certainty_thresh = certainty_thresh,
-      timestamp = Sys.time()
-    )
-  )
-
   # ============================================================================
   # Step 5: Store in object@advancedAna$MSIP$isotopomer_data
   # ============================================================================
-  object@advancedAna$MSIP$isotopomer_data <- final_result
+  object@advancedAna$MSIP$isotopomer_data <- isotopomer_data_list
 
   message_with_time("MSIP_get_isotopomer_data completed. ",
                    "Processed ", length(isotopomer_data_list), " compounds.")
@@ -2561,25 +2547,8 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
     # --------------------------------------------------------------------------
     # Step 3g: Store compound result
     # --------------------------------------------------------------------------
-    # Create compound info list
-    compound_info <- list(
-      compound_id = compound_id,
-      name = name,
-      formula = formula,
-      smiles = smiles,
-      rt = rt_ref,
-      adduct = adduct,
-      polarity = msipAtomMap_info$polarity,
-      max_iso_count = max_iso,
-      iso_ele = iso_ele,
-      target_ele = target_ele
-    )
-
-    # Store in result list
-    isotopomer_data_list[[compound_id]] <- list(
-      CompoundInfo = compound_info,
-      MSIPCoreData_matrix = result_matrix
-    )
+    # Store in result list (named by compound_id)
+    isotopomer_data_list[[compound_id]] <- result_matrix
 
   }  # End loop through compounds
 
