@@ -590,6 +590,7 @@ setMethod("heatmap_MSIPFragmentMap", "MSIPFragmentMap",
   frag.atom.matrix <- x@FG.atom.matrix
   frag.ratio.matrix <- x@FG.ratio.matrix
   frag.include <- x@FG.data$include
+  colnames(frag.ratio.matrix) <- gsub("^M", "M+", colnames(frag.ratio.matrix))
   cf <- circlize::colorRamp2(breaks = c(0,0.5,1),
                              c("white","#888888","#111111"))
   h1 <- ComplexHeatmap::Heatmap(frag.atom.matrix,

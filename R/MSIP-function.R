@@ -2352,6 +2352,7 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
       # Filter spectra by polarity
       sp.pol <- filterPolarity(sp.ms2, polarity_val)
       if (length(sp.pol) == 0) next
+      sp.pol.idx <- which(sp.ms2$polarity == polarity_val)
 
       # Match mz and rt
       if (!is.na(rt_ref) && !is.null(rt_ref)) {
@@ -2376,6 +2377,7 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
       # Add iso_form and iso_mz to match_res from iso_grid
       match_res$iso_form <- iso_grid$iso_form[match_res$ion1]
       match_res$iso_mz <- iso_grid$iso_mz[match_res$ion1]
+      match_res$sp_idx <- sp.pol.idx[match_res$ion2]
 
       # Store matched spectra info
       match_res$adduct <- adduct
@@ -2400,12 +2402,8 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
     # Split spectra by isotopologue form and polarity and sample.source
     spectra_by_isotope <- list()
     for (iso_form in iso_forms) {
-      # Get spectra indices for this isotopologue
-      iso_mz_val <- all_matched$iso_mz[all_matched$iso_form == iso_form][1]
-      sp_indices <- which(
-        abs(sp.ms2$isolationWindowTargetMz - iso_mz_val) < iso_mz_val * ppm / 1e6
-      )
-
+      # Get spectra indices (in sp.ms2) for this isotopologue across polarities
+      sp_indices <- unique(all_matched$sp_idx[all_matched$iso_form == iso_form])
       if (length(sp_indices) == 0) next
 
       sp.iso <- sp.ms2[sp_indices]
@@ -2422,7 +2420,7 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
 
       spectra_by_isotope[[iso_form]] <- list(
         sp = sp.split,
-        mz = iso_mz_val,
+        mz = unique(all_matched$iso_mz[all_matched$iso_form == iso_form]),
         polarity = sp.polarity
       )
     }
