@@ -659,6 +659,185 @@ get_MSIPAtomMap_from_cfmd <- function(cfm_data,
 }
 
 
+#' Merge two MSIPAtomMap objects (e.g. negative + positive)
+#'
+#' @description
+#' Concatenates slots analogously to \code{MSIPCore_merge()}: data frames and matrices are
+#' row-bound; lists of igraph / atom maps are combined; \code{SDFset} objects are concatenated
+#' with \code{c()} when both are non-empty. Fragment groups should already carry
+#' polarity-specific suffixes (e.g. `_0` / `_1`) upstream, matching merged `MSIPCoreData`.
+#'
+#' @param MSIPAtomMap1 First `MSIPAtomMap` (e.g. positive).
+#' @param MSIPAtomMap2 Second `MSIPAtomMap` (e.g. negative).
+#' @param suffix1,suffix2 Reserved for API symmetry with \code{MSIPCore_merge()}; not used for
+#'   relabeling (polarity is encoded in fragment ids / groups).
+#'
+#' @return A single merged `MSIPAtomMap`.
+#' @export
+MSIPAtomMap_merge <- function(MSIPAtomMap1,
+                              MSIPAtomMap2,
+                              suffix1 = "Positive",
+                              suffix2 = "Negative") {
+  force(suffix1)
+  force(suffix2)
+  .empty_map <- function(x) {
+    is.null(x) ||
+      !methods::is(x, "MSIPAtomMap") ||
+      !nrow(x@fragment_define)
+  }
+
+  if (.empty_map(MSIPAtomMap1)) {
+    if (.empty_map(MSIPAtomMap2)) {
+      return(NULL)
+    }
+    return(MSIPAtomMap2)
+  }
+  if (.empty_map(MSIPAtomMap2)) {
+    return(MSIPAtomMap1)
+  }
+
+  out <- MSIPAtomMap1
+
+  out@peak_assignment <- dplyr::bind_rows(
+    MSIPAtomMap1@peak_assignment,
+    MSIPAtomMap2@peak_assignment
+  )
+
+  out@fragment_define <- dplyr::bind_rows(
+    MSIPAtomMap1@fragment_define,
+    MSIPAtomMap2@fragment_define
+  )
+  if (any(duplicated(out@fragment_define$fragment_id))) {
+    warning("Duplicated `fragment_id` after MSIPAtomMap_merge; check polarity suffixes.")
+  }
+
+  out@fragment_transition <- dplyr::bind_rows(
+    MSIPAtomMap1@fragment_transition,
+    MSIPAtomMap2@fragment_transition
+  )
+
+  out@fragment_igraph <- c(
+    MSIPAtomMap1@fragment_igraph,
+    MSIPAtomMap2@fragment_igraph
+  )
+  if (any(duplicated(names(out@fragment_igraph)))) {
+    names(out@fragment_igraph) <- make.unique(names(out@fragment_igraph), sep = "_")
+  }
+
+  .merge_sdf <- function(s1, s2) {
+    n1 <- if (methods::is(s1, "SDFset")) length(s1) else 0L
+    n2 <- if (methods::is(s2, "SDFset")) length(s2) else 0L
+    if (!n1) {
+      return(s2)
+    }
+    if (!n2) {
+      return(s1)
+    }
+    c(s1, s2)
+  }
+  out@fragment_sdf <- .merge_sdf(
+    MSIPAtomMap1@fragment_sdf,
+    MSIPAtomMap2@fragment_sdf
+  )
+
+  out@fragment_atom_map <- c(
+    MSIPAtomMap1@fragment_atom_map,
+    MSIPAtomMap2@fragment_atom_map
+  )
+  if (any(duplicated(names(out@fragment_atom_map)))) {
+    names(out@fragment_atom_map) <- make.unique(names(out@fragment_atom_map), sep = "_")
+  }
+
+  out@fragment_group <- dplyr::bind_rows(
+    MSIPAtomMap1@fragment_group,
+    MSIPAtomMap2@fragment_group
+  )
+  if (any(duplicated(out@fragment_group$fragment_group))) {
+    warning("Duplicated `fragment_group` rows in @fragment_group after merge; keeping first occurrence.")
+    out@fragment_group <- out@fragment_group[
+      !duplicated(out@fragment_group$fragment_group),
+      ,
+      drop = FALSE
+    ]
+  }
+
+  .merge_fg_matrix <- function(m1, m2) {
+    .fg_map_nonempty <- function(m) {
+      if (!is.matrix(m)) {
+        return(FALSE)
+      }
+      if (!nrow(m) || !ncol(m)) {
+        return(FALSE)
+      }
+      if (nrow(m) == 1L && ncol(m) == 1L && is.null(rownames(m)) &&
+          is.null(colnames(m)) && isTRUE(is.na(m[1L, 1L]))) {
+        return(FALSE)
+      }
+      TRUE
+    }
+    if (!.fg_map_nonempty(m1)) {
+      return(m2)
+    }
+    if (!.fg_map_nonempty(m2)) {
+      return(m1)
+    }
+    cn <- union(colnames(m1), colnames(m2))
+
+    o1 <- m1[, cn, drop = FALSE]
+    o2 <- m2[, cn, drop = FALSE]
+    rbind(o1, o2)
+  }
+  out@fragment_group_map <- .merge_fg_matrix(
+    MSIPAtomMap1@fragment_group_map,
+    MSIPAtomMap2@fragment_group_map
+  )
+
+  return(out)
+}
+
+
+#' Load cached MSIPAtomMap for both adducts and merge
+#'
+#' @description
+#' Reads `compound_id_[M-H]-_msipAtomMap.rds` and `compound_id_[M+H]+_msipAtomMap.rds`
+#' from `temp_dir` (same naming as \code{get_MSIPAtomMap_from_smiles()}), then merges them
+#' with \code{MSIPAtomMap_merge()} in the same order as \code{MSIPCore_merge()} (positive then
+#' negative) when both exist.
+#'
+#' @param compound_id Compound id used in cache file names.
+#' @param temp_dir Cache directory (default matches \code{get_MSIPAtomMap_from_smiles()}).
+#' @param pos_first If TRUE (default), merge order is `[M+H]+` then `[M-H]-`.
+#'
+#' @return A merged `MSIPAtomMap`, or a single map if only one cache file exists.
+#' @export
+get_MSIPAtomMap_cached <- function(
+    compound_id,
+    temp_dir = get_dir_expand_from_onedrive("/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb_cfmd"),
+    pos_first = TRUE) {
+  if (!nzchar(compound_id)) {
+    stop("`compound_id` must be non-empty.")
+  }
+  path_neg <- paste0(temp_dir, "/", compound_id, "_", "[M-H]-", "_msipAtomMap.rds")
+  path_pos <- paste0(temp_dir, "/", compound_id, "_", "[M+H]+", "_msipAtomMap.rds")
+  mneg <- if (file.exists(path_neg)) readRDS(path_neg) else NULL
+  mpos <- if (file.exists(path_pos)) readRDS(path_pos) else NULL
+  if (is.null(mneg) && is.null(mpos)) {
+    stop("No cached MSIPAtomMap for compound_id \"", compound_id, "\" in ", temp_dir)
+  }
+  if (is.null(mneg)) {
+    return(mpos)
+  }
+  if (is.null(mpos)) {
+    return(mneg)
+  }
+  if (isTRUE(pos_first)) {
+    MSIPAtomMap_merge(mpos, mneg)
+  } else {
+    MSIPAtomMap_merge(mneg, mpos)
+  }
+}
+
+
 #' Get MSIPAtomMap from SMILES
 #' @title Get MSIPAtomMap from SMILES
 #' @description Wrapper function that creates MSIPAtomMap object from SMILES by running

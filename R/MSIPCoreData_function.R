@@ -1307,6 +1307,57 @@ plot_MSIPCore_fragment_coverage <- function(MSIPCoreData, MSIPAtomMap) {
     stop("`MSIPAtomMap` must be a `MSIPAtomMap`.")
   }
 
+  .MSIPCore_merged_polarities <- function(x) {
+    fgmap <- x@MSIPFragmentMap
+    nm <- character(0)
+    if (methods::.hasSlot(fgmap, "FG.data") &&
+        !is.null(fgmap@FG.data) &&
+        nrow(fgmap@FG.data) &&
+        "fragment_group" %in% colnames(fgmap@FG.data)) {
+      nm <- fgmap@FG.data$fragment_group
+    } else if (methods::.hasSlot(fgmap, "FG.ratio.matrix") &&
+               is.matrix(fgmap@FG.ratio.matrix) &&
+               nrow(fgmap@FG.ratio.matrix)) {
+      nm <- rownames(fgmap@FG.ratio.matrix)
+    }
+    nm <- nm[!is.na(nm)]
+    has0 <- any(grepl("_0$", nm))
+    has1 <- any(grepl("_1$", nm))
+    list(merged = has0 && has1, has0 = has0, has1 = has1)
+  }
+
+  .MSIPAtomMap_merged_polarities <- function(x) {
+    fd <- x@fragment_define
+    if (!nrow(fd)) {
+      return(list(merged = FALSE, has0 = FALSE, has1 = FALSE))
+    }
+    if ("polarity" %in% colnames(fd)) {
+      pols <- unique(stats::na.omit(as.numeric(fd$polarity)))
+      has0 <- 0 %in% pols
+      has1 <- 1 %in% pols
+      return(list(merged = has0 && has1, has0 = has0, has1 = has1))
+    }
+    fg <- fd$fragment_group[!is.na(fd$fragment_group)]
+    has0 <- any(grepl("_0$", fg))
+    has1 <- any(grepl("_1$", fg))
+    list(merged = has0 && has1, has0 = has0, has1 = has1)
+  }
+
+  core_pol <- .MSIPCore_merged_polarities(MSIPCoreData)
+  map_pol <- .MSIPAtomMap_merged_polarities(MSIPAtomMap)
+  if (!core_pol$merged) {
+    message("MSIPCoreData is single-polarity (not merged across neg/pos).")
+  }
+  if (!map_pol$merged) {
+    message("MSIPAtomMap is single-polarity (not merged across neg/pos).")
+  }
+  if (core_pol$merged != map_pol$merged) {
+    message(
+      "MSIPCoreData and MSIPAtomMap differ: one is merged across polarities and the other is not. ",
+      "Align with MSIPAtomMap_merge() or get_MSIPAtomMap_cached() when combining with merged MSIPCoreData."
+    )
+  }
+
   fg.def <- MSIPAtomMap@fragment_define
   if (!nrow(fg.def)) {
     stop("`MSIPAtomMap@fragment_define` is empty.")
@@ -1316,24 +1367,15 @@ plot_MSIPCore_fragment_coverage <- function(MSIPCoreData, MSIPAtomMap) {
   }
 
   fg.all <- fg.def %>%
-    dplyr::filter(!is.na(fragment_group)) %>%
-    dplyr::distinct(fragment_group, polarity = dplyr::if_else(
-      "polarity" %in% colnames(fg.def),
-      as.numeric(polarity),
-      dplyr::case_when(
-        grepl("_0$", fragment_group) ~ 0,
-        grepl("_1$", fragment_group) ~ 1,
-        TRUE ~ NA_real_
-      )
-    ))
+    dplyr::filter(!is.na(fragment_group))
 
   fg.map <- MSIPCoreData@MSIPFragmentMap
   int.vec <- NULL
-  if (methods::hasSlot(fg.map, "fragment.intensity")) {
+  if (methods::.hasSlot(fg.map, "fragment.intensity")) {
     int.vec <- fg.map@fragment.intensity
   }
   if (is.null(int.vec) || !length(int.vec)) {
-    if (methods::hasSlot(fg.map, "FG.data") && nrow(fg.map@FG.data) && "int_sum" %in% colnames(fg.map@FG.data)) {
+    if (methods::.hasSlot(fg.map, "FG.data") && nrow(fg.map@FG.data) && "int_sum" %in% colnames(fg.map@FG.data)) {
       int.vec <- fg.map@FG.data$int_sum
       names(int.vec) <- fg.map@FG.data$fragment_group
     } else {
@@ -1341,28 +1383,51 @@ plot_MSIPCore_fragment_coverage <- function(MSIPCoreData, MSIPAtomMap) {
     }
   }
 
+  .intensity_bin_levels <- paste0("1e", 0:6)
+  .intensity_fill_cols <- stats::setNames(
+    grDevices::colorRampPalette(c("grey", "#FE9D71", "#CE4736", "#B80C27"))(7L),
+    .intensity_bin_levels
+  )
+
   .make_panel <- function(pol) {
     fg.pol <- fg.all %>%
-      dplyr::filter(polarity == pol) %>%
+      dplyr::filter(!is.na(polarity), polarity == pol) %>%
       dplyr::pull(fragment_group)
+
+    title <- ifelse(pol == 0, "FG Coverage\nand Intensity\nNegative", "FG Coverage\nand Intensity\nPositive")
+
+    if (!length(fg.pol)) {
+      return(
+        ggplot2::ggplot() +
+          ggplot2::annotate(
+            "text",
+            x = 0.5,
+            y = 0.5,
+            label = paste0(title, "\n(no fragment_group)")
+          ) +
+          ggplot2::xlim(0, 1) +
+          ggplot2::ylim(0, 1) +
+          ggplot2::theme_void()
+      )
+    }
 
     df <- tibble::tibble(fragment_group = fg.pol) %>%
       dplyr::mutate(
-        int = int.vec[fragment_group],
-        int = ifelse(is.na(int), 1, int),
-        int = floor(log10(int)),
-        int = factor(paste0("1e", int), levels = paste0("1e", sort(unique(int))))
+        int_raw = suppressWarnings(as.numeric(int.vec[fragment_group])),
+        int_raw = dplyr::coalesce(int_raw, 1),
+        int_raw = dplyr::if_else(int_raw <= 0, 1, int_raw),
+        exp10 = floor(log10(int_raw)),
+        exp10 = pmin(pmax(exp10, 0L), 6L),
+        int = factor(paste0("1e", exp10), levels = .intensity_bin_levels)
       ) %>%
       dplyr::count(int, name = "n") %>%
       dplyr::mutate(label.y = rev(cumsum(rev(n))))
 
-    title <- ifelse(pol == 0, "FG Coverage\nand Intensity\nNegative", "FG Coverage\nand Intensity\nPositive")
-
     ggplot2::ggplot(df) +
       ggplot2::geom_bar(ggplot2::aes(x = 0, y = n, fill = int), stat = "identity", show.legend = FALSE) +
-      ggplot2::geom_text(ggplot2::aes(x = -1.5, y = 0, label = title)) +
-      ggplot2::scale_fill_manual(values = c("grey", "#FE9D71", "#CE4736", "#B80C27")) +
-      ggplot2::scale_y_continuous(breaks = df$label.y, labels = levels(df$int)) +
+      ggplot2::annotate("text", x = -1.5, y = 0, label = title) +
+      ggplot2::scale_fill_manual(values = .intensity_fill_cols, drop = FALSE) +
+      ggplot2::scale_y_continuous(breaks = df$label.y, labels = as.character(df$int)) +
       ggplot2::xlim(-1.5, 0.5) +
       ggplot2::coord_polar("y") +
       ggplot2::theme_void() +
