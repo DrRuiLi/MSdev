@@ -981,12 +981,9 @@ MSIPCore_merge <- function(MSIPCoreData1,
                            suffix1 = "Positive",
                            suffix2 = "Negative"){
 
-
-  if (!(is.null(MSIPCoreData1)|isEmpty(MSIPCoreData1))) {
-    MSIPCoreData1 <- MSIPCore_FG_suffix(MSIPCoreData1,suffix1)
-  }
-  if (!(is.null(MSIPCoreData2)|isEmpty(MSIPCoreData2))) {
-    MSIPCoreData2 <- MSIPCore_FG_suffix(MSIPCoreData2,suffix2)
+  if (!missing(suffix1) || !missing(suffix2)) {
+    # Polarity-specific fragment-group suffixing is no longer needed because
+    # fragment groups are already labeled upstream (e.g. with _0/_1).
   }
 
 
@@ -1009,8 +1006,21 @@ MSIPCore_merge <- function(MSIPCoreData1,
 
 
     MSIPCoreData@Spectra <-
-      bind_rows(MSIPCoreData1@Spectra,
-            MSIPCoreData2@Spectra)
+      {
+        sp1 <- MSIPCoreData1@Spectra
+        sp2 <- MSIPCoreData2@Spectra
+        if (inherits(sp1, "Spectra") && inherits(sp2, "Spectra")) {
+          c(sp1, sp2)
+        } else if (is.data.frame(sp1) && is.data.frame(sp2)) {
+          dplyr::bind_rows(sp1, sp2)
+        } else if (is.null(sp1)) {
+          sp2
+        } else if (is.null(sp2)) {
+          sp1
+        } else {
+          list(sp1 = sp1, sp2 = sp2)
+        }
+      }
 
   }
 
@@ -1024,6 +1034,10 @@ MSIPCore_merge <- function(MSIPCoreData1,
       MSIPCoreData@MSIPFragmentMap@FG.atom.matrix <-
         rbind(MSIPCoreData1@MSIPFragmentMap@FG.atom.matrix,
             MSIPCoreData2@MSIPFragmentMap@FG.atom.matrix)
+      if (any(duplicated(rownames(MSIPCoreData@MSIPFragmentMap@FG.atom.matrix)))) {
+        rownames(MSIPCoreData@MSIPFragmentMap@FG.atom.matrix) <-
+          make.unique(rownames(MSIPCoreData@MSIPFragmentMap@FG.atom.matrix))
+      }
     }
 
     ### FG.ratio.matrix
@@ -1032,6 +1046,10 @@ MSIPCore_merge <- function(MSIPCoreData1,
       MSIPCoreData@MSIPFragmentMap@FG.ratio.matrix <-
         rbind(MSIPCoreData1@MSIPFragmentMap@FG.ratio.matrix,
               MSIPCoreData2@MSIPFragmentMap@FG.ratio.matrix)
+      if (any(duplicated(rownames(MSIPCoreData@MSIPFragmentMap@FG.ratio.matrix)))) {
+        rownames(MSIPCoreData@MSIPFragmentMap@FG.ratio.matrix) <-
+          make.unique(rownames(MSIPCoreData@MSIPFragmentMap@FG.ratio.matrix))
+      }
     }
 
     ### FG.intensity
@@ -1040,6 +1058,10 @@ MSIPCore_merge <- function(MSIPCoreData1,
       MSIPCoreData@MSIPFragmentMap@FG.data <-
         rbind(MSIPCoreData1@MSIPFragmentMap@FG.data,
               MSIPCoreData2@MSIPFragmentMap@FG.data)
+      if (any(duplicated(rownames(MSIPCoreData@MSIPFragmentMap@FG.data)))) {
+        rownames(MSIPCoreData@MSIPFragmentMap@FG.data) <-
+          make.unique(rownames(MSIPCoreData@MSIPFragmentMap@FG.data))
+      }
     }
 
 
