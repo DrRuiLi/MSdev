@@ -591,6 +591,7 @@ setMethod("heatmap_MSIPFragmentMap", "MSIPFragmentMap",
   frag.ratio.matrix <- x@FG.ratio.matrix
   frag.include <- x@FG.data$include
   colnames(frag.ratio.matrix) <- gsub("^M", "M+", colnames(frag.ratio.matrix))
+  frag.ratio.matrix <- frag.ratio.matrix[, order(str_extract_num(colnames(frag.ratio.matrix))), drop = FALSE]
   cf <- circlize::colorRamp2(breaks = c(0,0.5,1),
                              c("white","#888888","#111111"))
   h1 <- ComplexHeatmap::Heatmap(frag.atom.matrix,
@@ -1196,10 +1197,7 @@ plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
     row.data <- rowData(se)%>%
       as.data.frame()%>%
       dplyr::mutate(log_int = log10(totIonCurrent))%>%
-      dplyr::arrange(collisionEnergy,rtime)
-
-    row.anno.df <- row.data%>%
-      dplyr::select(log_int,collisionEnergy)
+      dplyr::arrange(rtime)
 
   }
 
@@ -1212,7 +1210,7 @@ plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
     ComplexHeatmap::Heatmap(
       hm.data,name = "ratio",
       col = colramp(),
-      rect_gp = gpar(col = "black"),
+      rect_gp = gpar(col = NA, lwd = 0),
 
       column_split = col.data$fragment_group,
       column_title = title,
@@ -1233,12 +1231,16 @@ plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
       ),
 
       left_annotation =ComplexHeatmap::rowAnnotation(
-        df = row.anno.df,
-        #label = ComplexHeatmap::anno_text(row.anno.df$collisionEnergy),
-        col = list(collisionEnergy= colramp(c(0,25,50),colors = c("white","#B09C85","#7E6148")),
-                   log_int= colramp(breaks = c(3,5,7),colors = c("white","#FFC2B3","#E64B35"))),
+        CE = row.data$collisionEnergy,
+        TIC = ComplexHeatmap::anno_points(
+          row.data$log_int,
+          gp = grid::gpar(col = "#555555"),
+          pch = 16,
+          size = unit(1, "mm")
+        ),
+        col = list(CE = colramp(c(0,25,50),colors = c("white","#B09C85","#7E6148"))),
         annotation_name_side= "top",
-        annotation_label = c("Log int","CE")
+        annotation_label = c("CE","Log10\nTIC")
       ),
 
       cluster_columns = F,
