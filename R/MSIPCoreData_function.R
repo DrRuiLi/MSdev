@@ -1188,6 +1188,16 @@ plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
         icc =fg.data[fragment_group,"icc"],
         cos =fg.data[fragment_group,"cos"]
       )
+    col.data <- col.data %>%
+      dplyr::mutate(
+        polarity = dplyr::case_when(
+          grepl("_0$", fragment_group) ~ 0,
+          grepl("_1$", fragment_group) ~ 1,
+          TRUE ~ NA_real_
+        ),
+        polarity = factor(polarity, levels = c(0, 1), labels = c("Negative", "Positive")),
+        fragment_group_base = sub("_(0|1)$", "", fragment_group)
+      )
     col.anno.df <- col.data%>%
       dplyr::select(icc,cos)
   }
@@ -1198,6 +1208,17 @@ plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
       as.data.frame()%>%
       dplyr::mutate(log_int = log10(totIonCurrent))%>%
       dplyr::arrange(rtime)
+
+    sp.meta <- Spectra::spectraData(sp) %>%
+      as.data.frame()
+    if ("sp_id" %in% colnames(sp.meta) && "polarity" %in% colnames(sp.meta)) {
+      row.data$polarity <- sp.meta$polarity[match(row.data$sp_id, sp.meta$sp_id)]
+    } else if ("polarity" %in% colnames(sp.meta)) {
+      row.data$polarity <- sp.meta$polarity[match(row.data$sp_id, rownames(sp.meta))]
+    } else {
+      row.data$polarity <- NA_real_
+    }
+    row.data$polarity <- factor(row.data$polarity, levels = c(0, 1), labels = c("Negative", "Positive"))
 
   }
 
@@ -1212,13 +1233,19 @@ plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
       col = colramp(),
       rect_gp = gpar(col = NA, lwd = 0),
 
-      column_split = col.data$fragment_group,
+      column_split = data.frame(
+        polarity = col.data$polarity,
+        FG = col.data$fragment_group_base
+      ),
       column_title = title,
 
 
       #row_names_side = "NULL",
       show_row_names = F,
-      row_split = row.data$collisionEnergy,
+      row_split = data.frame(
+        Polarity = row.data$polarity,
+        CE = row.data$collisionEnergy
+      ),
       row_title = NULL,
 
 
@@ -1231,16 +1258,21 @@ plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
       ),
 
       left_annotation =ComplexHeatmap::rowAnnotation(
+        Polarity = row.data$polarity,
         CE = row.data$collisionEnergy,
         TIC = ComplexHeatmap::anno_points(
           row.data$log_int,
           gp = grid::gpar(col = "#555555"),
           pch = 16,
-          size = unit(1, "mm")
+          size = unit(1, "mm"),
+          axis_param = list(direction  = "reverse")
         ),
-        col = list(CE = colramp(c(0,25,50),colors = c("white","#B09C85","#7E6148"))),
+        col = list(
+          Polarity = c("Negative" = "#4D75A5", "Positive" = "#E64B35"),
+          CE = colramp(c(0,25,50),colors = c("white","#B09C85","#7E6148"))
+        ),
         annotation_name_side= "top",
-        annotation_label = c("CE","Log10\nTIC")
+        annotation_label = c("Polarity","CE","Log10\nTIC")
       ),
 
       cluster_columns = F,
@@ -1253,6 +1285,93 @@ plot_MSIPCore_spectra_consistency_hm <- function(MSIPCoreData,title = NULL){
 
 
 
+}
+
+
+#' Plot MSIP fragment coverage
+#'
+#' @description
+#' Summarize detected fragment-group coverage and intensities (by polarity) for a
+#' single `MSIPCoreData`, using fragment groups defined in `MSIPAtomMap`.
+#'
+#' @param MSIPCoreData A `MSIPCoreData` object.
+#' @param MSIPAtomMap A `MSIPAtomMap` object.
+#'
+#' @return A ggplot/patchwork object.
+#' @export
+plot_MSIPCore_fragment_coverage <- function(MSIPCoreData, MSIPAtomMap) {
+  if (!methods::is(MSIPCoreData, "MSIPCoreData")) {
+    stop("`MSIPCoreData` must be a `MSIPCoreData`.")
+  }
+  if (!methods::is(MSIPAtomMap, "MSIPAtomMap")) {
+    stop("`MSIPAtomMap` must be a `MSIPAtomMap`.")
+  }
+
+  fg.def <- MSIPAtomMap@fragment_define
+  if (!nrow(fg.def)) {
+    stop("`MSIPAtomMap@fragment_define` is empty.")
+  }
+  if (!("fragment_group" %in% colnames(fg.def))) {
+    stop("`MSIPAtomMap@fragment_define` must contain `fragment_group`.")
+  }
+
+  fg.all <- fg.def %>%
+    dplyr::filter(!is.na(fragment_group)) %>%
+    dplyr::distinct(fragment_group, polarity = dplyr::if_else(
+      "polarity" %in% colnames(fg.def),
+      as.numeric(polarity),
+      dplyr::case_when(
+        grepl("_0$", fragment_group) ~ 0,
+        grepl("_1$", fragment_group) ~ 1,
+        TRUE ~ NA_real_
+      )
+    ))
+
+  fg.map <- MSIPCoreData@MSIPFragmentMap
+  int.vec <- NULL
+  if (methods::hasSlot(fg.map, "fragment.intensity")) {
+    int.vec <- fg.map@fragment.intensity
+  }
+  if (is.null(int.vec) || !length(int.vec)) {
+    if (methods::hasSlot(fg.map, "FG.data") && nrow(fg.map@FG.data) && "int_sum" %in% colnames(fg.map@FG.data)) {
+      int.vec <- fg.map@FG.data$int_sum
+      names(int.vec) <- fg.map@FG.data$fragment_group
+    } else {
+      stop("No fragment intensity found in `MSIPCoreData@MSIPFragmentMap`.")
+    }
+  }
+
+  .make_panel <- function(pol) {
+    fg.pol <- fg.all %>%
+      dplyr::filter(polarity == pol) %>%
+      dplyr::pull(fragment_group)
+
+    df <- tibble::tibble(fragment_group = fg.pol) %>%
+      dplyr::mutate(
+        int = int.vec[fragment_group],
+        int = ifelse(is.na(int), 1, int),
+        int = floor(log10(int)),
+        int = factor(paste0("1e", int), levels = paste0("1e", sort(unique(int))))
+      ) %>%
+      dplyr::count(int, name = "n") %>%
+      dplyr::mutate(label.y = rev(cumsum(rev(n))))
+
+    title <- ifelse(pol == 0, "FG Coverage\nand Intensity\nNegative", "FG Coverage\nand Intensity\nPositive")
+
+    ggplot2::ggplot(df) +
+      ggplot2::geom_bar(ggplot2::aes(x = 0, y = n, fill = int), stat = "identity", show.legend = FALSE) +
+      ggplot2::geom_text(ggplot2::aes(x = -1.5, y = 0, label = title)) +
+      ggplot2::scale_fill_manual(values = c("grey", "#FE9D71", "#CE4736", "#B80C27")) +
+      ggplot2::scale_y_continuous(breaks = df$label.y, labels = levels(df$int)) +
+      ggplot2::xlim(-1.5, 0.5) +
+      ggplot2::coord_polar("y") +
+      ggplot2::theme_void() +
+      ggplot2::theme(axis.text.x = ggplot2::element_text())
+  }
+
+  p1 <- .make_panel(0)
+  p2 <- .make_panel(1)
+  p1 + p2
 }
 
 
