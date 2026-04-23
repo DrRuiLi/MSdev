@@ -244,6 +244,13 @@ combineSpectra_groupby_ce <- function(sp,
                                       plot = F,
                                       ...){
 
+  if (inherits(sp, "Spectra")) {
+    sp <- tryCatch(
+      Spectra::applyProcessing(sp, BPPARAM = SerialParam()),
+      error = function(e) sp
+    )
+  }
+
   sp.ce <- Spectra::combineSpectra(sp,
                                    peaks = "intersect",
                                    intensityFun = mean,
@@ -536,6 +543,12 @@ plot_Spectra_quality <- function(sp){
 
 plot_Spectra_CE<-function(sp){
 
+  if (inherits(sp, "Spectra")) {
+    sp <- tryCatch(
+      Spectra::applyProcessing(sp, BPPARAM = SerialParam()),
+      error = function(e) sp
+    )
+  }
 
   sp.data <- get_Spectra_data(sp)%>%
     dplyr::mutate(x = mz,
