@@ -119,6 +119,70 @@ filterSpectraIntensity <- function(sp,ratio = 0.05){
 }
 
 
+#' Filter Spectra by TIC (Top N per group)
+#'
+#' @description
+#' Split a `Spectra` object by metadata variables and keep the top-N spectra by
+#' total ion current (TIC) in each split.
+#'
+#' @param sp A `Spectra` object.
+#' @param topN Integer. Number of spectra to keep per split (default 10). If
+#'   `NULL` or `Inf`, returns `sp` unchanged.
+#' @param split_var Character vector of column names (default
+#'   `c("sample.source","CE","polarity")`). Variables not present in
+#'   `Spectra::spectraData(sp)` are ignored. `"CE"` is treated as an alias for
+#'   `"collisionEnergy"`.
+#'
+#' @return A filtered `Spectra` object.
+#' @export
+Spectra_filter_TIC <- function(sp,
+                               topN = 10,
+                               split_var = c("sample.source", "CE", "polarity")) {
+  if (!inherits(sp, "Spectra")) stop("`sp` must be a `Spectra` object.")
+  if (!length(sp)) return(sp)
+  if (is.null(topN) || is.infinite(topN)) return(sp)
+  topN <- as.integer(topN)
+  if (is.na(topN) || topN <= 0) return(sp[0])
+
+  sp <- tryCatch(
+    Spectra::applyProcessing(sp, BPPARAM = SerialParam()),
+    error = function(e) sp
+  )
+
+  sp.meta <- Spectra::spectraData(sp) %>% as.data.frame()
+  sp.meta$row_id___ <- seq_len(nrow(sp.meta))
+
+  # Ensure TIC exists as a numeric vector
+  if (!("totIonCurrent" %in% colnames(sp.meta))) {
+    sp$totIonCurrent <- Spectra::tic(sp)
+    sp.meta <- Spectra::spectraData(sp) %>% as.data.frame()
+    sp.meta$row_id___ <- seq_len(nrow(sp.meta))
+  }
+  sp.meta$totIonCurrent <- as.numeric(sp.meta$totIonCurrent)
+
+  # Resolve split vars (ignore missing; CE alias)
+  split_var <- unique(split_var)
+  split_var <- ifelse(split_var == "CE", "collisionEnergy", split_var)
+  split_var <- split_var[split_var %in% colnames(sp.meta)]
+  if (!length(split_var)) split_var <- character(0)
+
+  sp.meta$.__group_key <- if (length(split_var)) {
+    do.call(interaction, c(sp.meta[, split_var, drop = FALSE], list(drop = TRUE, lex.order = TRUE)))
+  } else {
+    factor(rep("all", nrow(sp.meta)))
+  }
+
+  keep_ids <- sp.meta %>%
+    dplyr::group_by(.__group_key) %>%
+    dplyr::arrange(dplyr::desc(totIonCurrent), .by_group = TRUE) %>%
+    dplyr::slice_head(n = topN) %>%
+    dplyr::ungroup() %>%
+    dplyr::pull(row_id___)
+
+  sp[keep_ids]
+}
+
+
 filterSpectra_below_PrecursorMz <- function(sp){
 
   if (!length(sp)) return(sp)
@@ -541,15 +605,16 @@ plot_Spectra_quality <- function(sp){
 
 }
 
-plot_Spectra_CE<-function(sp){
+plot_Spectra_CE<-function(sp,minProp = 0.3,ppm = 5){
 
+
+  sp <- combineSpectra_groupby_ce(sp,minProp = minProp,ppm = ppm)
   if (inherits(sp, "Spectra")) {
     sp <- tryCatch(
       Spectra::applyProcessing(sp, BPPARAM = SerialParam()),
       error = function(e) sp
     )
   }
-
   sp.data <- get_Spectra_data(sp)%>%
     dplyr::mutate(x = mz,
                   xend = mz,

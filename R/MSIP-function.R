@@ -2110,6 +2110,9 @@ MSIP_get_Molecule_igraph <- function(object,fraction_thresh = 0.001){
 #' @param iso_ele Isotope element, default `"[13]C"`
 #' @param ppm PPM tolerance for m/z matching, default 10
 #' @param rt.tol RT tolerance in seconds, default 10
+#' @param sp_top Optional integer. If provided, keep only the top-N spectra (by
+#'   TIC) within each split group before constructing MSIPCoreData. See
+#'   `Spectra_filter_TIC()`.
 #' @param int_thresh Intensity threshold for MSIPCore_solve, default 10^3.8
 #' @param certainty_thresh Certainty threshold for MSIPCore_solve, default 0.6
 #' @param weight_fun Weight function for MSIPCore_solve, default .intensity_weight
@@ -2126,6 +2129,7 @@ MSIP_get_isotopomer_data <- function(object,
                                       iso_ele = "[13]C",
                                       ppm = 5,
                                       rt.tol = 30,
+                                      sp_top = NULL,
                                       int_thresh = 10^3.8,
                                       certainty_thresh = 0.6,
                                       weight_fun = .intensity_weight,
@@ -2207,6 +2211,7 @@ MSIP_get_isotopomer_data <- function(object,
       check_temp = check_temp,
       ppm = ppm,
       rt.tol = rt.tol,
+      sp_top = sp_top,
       int_thresh = int_thresh,
       certainty_thresh = certainty_thresh,
       weight_fun = weight_fun,
@@ -2260,6 +2265,7 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
                                                check_temp,
                                                ppm,
                                                rt.tol,
+                                               sp_top,
                                                int_thresh,
                                                certainty_thresh,
                                                weight_fun,
@@ -2526,6 +2532,14 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
           # Get spectra for this polarity
           sp.pol <- sp.iso[sp.iso$polarity == polarity_val]
           if (length(sp.pol) == 0) next
+          if (!is.null(sp_top)) {
+            sp.pol <- Spectra_filter_TIC(
+              sp.pol,
+              topN = sp_top,
+              split_var = c("sample.source", "collisionEnergy", "polarity")
+            )
+            if (!length(sp.pol)) next
+          }
 
           tryCatch({
             # Construct MSIPCoreData
