@@ -2268,6 +2268,15 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
   # Initialize result list
   isotopomer_data_list <- list()
 
+  .infer_iso_count_max_from_iso_form <- function(iso_form, iso_ele = "[13]C") {
+    if (is.null(iso_form) || is.na(iso_form) || !nzchar(iso_form)) return(0)
+    if (!grepl(iso_ele, iso_form, fixed = TRUE)) return(0)
+    x <- gsub(iso_ele, "", iso_form, fixed = TRUE)
+    x <- gsub("[^0-9]", "", x)
+    if (!nzchar(x)) return(1)
+    as.integer(x)
+  }
+
   # ============================================================================
   # Loop through each compound
   # ============================================================================
@@ -2462,9 +2471,6 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
     # --------------------------------------------------------------------------
     # Step 3e & 3f: Construct MSIPCoreData and solve for each isotopologue/sample
     # --------------------------------------------------------------------------
-    # Determine max iso count for this compound
-    this_iso_count_max <- min(max_iso, iso_count_max)
-
     # Build result matrix: rows = isotopologues ([13]C0, [13]C1, [13]C2...), cols = sample.source
     result_matrix <- matrix(
       list(),
@@ -2475,6 +2481,11 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
 
     # Process each isotopologue and sample combination
     for (iso_form in names(spectra_by_isotope)) {
+      # Determine iso_count_max from iso_form & iso_ele (e.g. "[13]C1" -> 1)
+      this_iso_count_max <- .infer_iso_count_max_from_iso_form(iso_form, iso_ele = iso_ele)
+      if (is.na(this_iso_count_max)) this_iso_count_max <- 0
+      this_iso_count_max <- min(this_iso_count_max, max_iso, iso_count_max)
+
       iso_data <- spectra_by_isotope[[iso_form]]
       sp.by.pol <- iso_data$sp
 
@@ -2516,6 +2527,11 @@ get_MSIP_isotopomer_data.targeted <- function(sp.ms2,
               certainty_thresh = certainty_thresh,
               weight_fun = weight_fun
             )
+            msip.core@Solve$iso_count_max <- this_iso_count_max
+            msip.core@Solve$iso_form <- iso_form
+            msip.core@Solve$iso_ele <- iso_ele
+            msip.core@Solve$ppm <- ppm
+            msip.core@Solve$rt_tol <- rt.tol
 
             if (polarity_val == 1) {
               msip.core.pos <- msip.core
