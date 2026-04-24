@@ -11,7 +11,7 @@
 #'   \itemize{
 #'     \item \code{colData}: \code{sample.source}, \code{group}
 #'     \item \code{rowData}: \code{isotopomer_id}, \code{compound_id},
-#'       \code{isotopomer_set}, \code{isotopomer_total}, \code{isotopologue_form}
+#'       \code{isotopologue_id}, \code{isotopologue_form}, \code{isotopomer_average_mix}
 #'   }
 #' @export
 get_MSIP_Isotopomer_SE <- function(object) {
@@ -79,8 +79,7 @@ get_MSIP_Isotopomer_SE <- function(object) {
     sets <- im@solve$isotopomer.set
     if (is.null(sets)) sets <- list()
 
-    isotopomer_set <- rep(NA_character_, length(iso_names))
-    isotopomer_total <- rep(NA_integer_, length(iso_names))
+    isotopomer_mix <- rep(NA_real_, length(iso_names))
     if (length(sets) > 0) {
       set_sizes <- lengths(sets)
       for (set_nm in names(sets)) {
@@ -88,8 +87,7 @@ get_MSIP_Isotopomer_SE <- function(object) {
         members <- as.character(members)
         idx <- iso_names %in% members
         if (any(idx)) {
-          isotopomer_set[idx] <- set_nm
-          isotopomer_total[idx] <- as.integer(set_sizes[[set_nm]])
+          isotopomer_mix[idx] <- as.numeric(set_sizes[[set_nm]])
         }
       }
     }
@@ -97,8 +95,7 @@ get_MSIP_Isotopomer_SE <- function(object) {
     list(
       iso_names = iso_names,
       prob = as.numeric(prob),
-      isotopomer_set = isotopomer_set,
-      isotopomer_total = isotopomer_total
+      isotopomer_mix = isotopomer_mix
     )
   }
 
@@ -123,12 +120,12 @@ get_MSIP_Isotopomer_SE <- function(object) {
       meta <- .extract_isotopomer_meta(msip.core.rep)
       if (is.null(meta)) next
 
-      isotopomer_id <- paste0(compound_id, iso_form, meta$iso_names)
+      isotopomer_id <- paste0(compound_id, "_", meta$iso_names)
+      isotopologue_id <- paste0(compound_id, "_", iso_form)
       rows[[paste0(compound_id, "::", iso_form)]] <- data.frame(
         isotopomer_id = isotopomer_id,
         compound_id = compound_id,
-        isotopomer_set = meta$isotopomer_set,
-        isotopomer_total = meta$isotopomer_total,
+        isotopologue_id = isotopologue_id,
         isotopologue_form = iso_form,
         iso_name = meta$iso_names,
         stringsAsFactors = FALSE
@@ -141,20 +138,18 @@ get_MSIP_Isotopomer_SE <- function(object) {
   }
 
   row.df <- do.call(rbind, rows)
+  if (anyDuplicated(row.df$isotopomer_id)) {
+    warning("Duplicated isotopomer_id detected (same compound_id + isotopomer name across isotopologues). ",
+            "Making rownames unique with make.unique().")
+    row.df$isotopomer_id <- make.unique(row.df$isotopomer_id)
+  }
   rownames(row.df) <- row.df$isotopomer_id
-  # keep only requested rowData columns
-  rda <- S4Vectors::DataFrame(
-    isotopomer_id = row.df$isotopomer_id,
-    compound_id = row.df$compound_id,
-    isotopomer_set = row.df$isotopomer_set,
-    isotopomer_total = row.df$isotopomer_total,
-    isotopologue_form = row.df$isotopologue_form,
-    row.names = row.df$isotopomer_id
-  )
 
   # assay matrix: probabilities aligned to master rows
   prob.mat <- matrix(NA_real_, nrow = nrow(row.df), ncol = length(sample.sources),
                      dimnames = list(row.df$isotopomer_id, sample.sources))
+  mix.mat <- matrix(NA_real_, nrow = nrow(row.df), ncol = length(sample.sources),
+                    dimnames = list(row.df$isotopomer_id, sample.sources))
 
   for (compound_id in names(isotopomer_data)) {
     mat <- isotopomer_data[[compound_id]]
@@ -167,14 +162,28 @@ get_MSIP_Isotopomer_SE <- function(object) {
         meta <- .extract_isotopomer_meta(msip.core)
         if (is.null(meta)) next
 
-        row_ids <- paste0(compound_id, iso_form, meta$iso_names)
+        row_ids <- paste0(compound_id, "_", meta$iso_names)
         keep <- row_ids %in% rownames(prob.mat)
         if (any(keep)) {
           prob.mat[row_ids[keep], ss] <- meta$prob[keep]
+          mix.mat[row_ids[keep], ss] <- meta$isotopomer_mix[keep]
         }
       }
     }
   }
+
+  isotopomer_average_mix <- rowMeans(mix.mat, na.rm = TRUE)
+  isotopomer_average_mix[is.nan(isotopomer_average_mix)] <- NA_real_
+
+  # keep only requested rowData columns
+  rda <- S4Vectors::DataFrame(
+    isotopomer_id = row.df$isotopomer_id,
+    compound_id = row.df$compound_id,
+    isotopologue_id = row.df$isotopologue_id,
+    isotopologue_form = row.df$isotopologue_form,
+    isotopomer_average_mix = isotopomer_average_mix,
+    row.names = row.df$isotopomer_id
+  )
 
   SummarizedExperiment::SummarizedExperiment(
     assays = list(probability = prob.mat),
