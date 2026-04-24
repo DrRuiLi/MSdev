@@ -11,7 +11,9 @@
 #'   \itemize{
 #'     \item \code{colData}: \code{sample.source}, \code{group}
 #'     \item \code{rowData}: \code{isotopomer_id}, \code{compound_id},
-#'       \code{isotopologue_id}, \code{isotopologue_form}, \code{isotopomer_average_mix}
+#'       \code{compound_name}, \code{isotopologue_id}, \code{isotopologue_form},
+#'       \code{isotopome_form}, \code{label.isotopomer}, \code{label.isotopologue},
+#'       \code{isotopomer_average_mix}
 #'   }
 #' @export
 get_MSIP_Isotopomer_SE <- function(object) {
@@ -30,6 +32,21 @@ get_MSIP_Isotopomer_SE <- function(object) {
   sample.info <- tryCatch({
     as.data.frame(object@sampleInfo)
   }, error = function(e) NULL)
+
+  compound_table <- tryCatch({
+    object@advancedAna$MSIP$compound_table
+  }, error = function(e) NULL)
+  compound_name_map <- NULL
+  if (!is.null(compound_table) &&
+      is.data.frame(compound_table) &&
+      nrow(compound_table) > 0 &&
+      "compound_id" %in% colnames(compound_table)) {
+    name_col <- intersect(c("name", "compound_name"), colnames(compound_table))[1]
+    if (!is.na(name_col) && !is.null(name_col)) {
+      compound_name_map <- as.character(compound_table[[name_col]])
+      names(compound_name_map) <- as.character(compound_table$compound_id)
+    }
+  }
 
   # Collect all sample sources present in the stored matrices
   sample.sources <- unique(unlist(lapply(isotopomer_data, function(mat) {
@@ -122,12 +139,37 @@ get_MSIP_Isotopomer_SE <- function(object) {
 
       isotopomer_id <- paste0(compound_id, "_", meta$iso_names)
       isotopologue_id <- paste0(compound_id, "_", iso_form)
+      compound_name <- if (!is.null(compound_name_map) && compound_id %in% names(compound_name_map)) {
+        compound_name_map[[compound_id]]
+      } else {
+        NA_character_
+      }
+
+      # isotopologue form is like "[13]C1", extract trailing count -> 1
+      iso_form_num <- suppressWarnings(as.integer(sub(".*?([0-9]+)$", "\\1", iso_form)))
+      if (is.na(iso_form_num)) iso_form_num <- NA_integer_
+      isotopologue_mplus <- if (is.na(iso_form_num)) NA_character_ else paste0("M+", iso_form_num)
+      # label isotopomer should align with isotopomer_id form
+      label_isotopomer <- if (is.na(compound_name)) {
+        rep(NA_character_, length(meta$iso_names))
+      } else {
+        paste0(compound_name, "_", meta$iso_names)
+      }
+      label_isotopologue <- if (is.na(compound_name) | is.na(isotopologue_mplus)) {
+        rep(NA_character_, length(meta$iso_names))
+      } else {
+        rep(paste0(compound_name, "_", isotopologue_mplus), length(meta$iso_names))
+      }
+
       rows[[paste0(compound_id, "::", iso_form)]] <- data.frame(
         isotopomer_id = isotopomer_id,
         compound_id = compound_id,
+        compound_name = compound_name,
         isotopologue_id = isotopologue_id,
         isotopologue_form = iso_form,
         iso_name = meta$iso_names,
+        label.isotopomer = label_isotopomer,
+        label.isotopologue = label_isotopologue,
         stringsAsFactors = FALSE
       )
     }
@@ -179,8 +221,12 @@ get_MSIP_Isotopomer_SE <- function(object) {
   rda <- S4Vectors::DataFrame(
     isotopomer_id = row.df$isotopomer_id,
     compound_id = row.df$compound_id,
+    compound_name = row.df$compound_name,
     isotopologue_id = row.df$isotopologue_id,
     isotopologue_form = row.df$isotopologue_form,
+    isotopome_form = row.df$iso_name,
+    label.isotopomer = row.df$label.isotopomer,
+    label.isotopologue = row.df$label.isotopologue,
     isotopomer_average_mix = isotopomer_average_mix,
     row.names = row.df$isotopomer_id
   )
