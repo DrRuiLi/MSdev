@@ -11,161 +11,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
-```
 
-This vignette documents the core **data structures** used by the MSdev package for:
-
--   the `MSdev` *project container* object (MS data processing + analysis state)
--   the MSIP *isotopologue/isotopomer* objects (fragment/atom mapping + solving)
-
-# The `MSdev` object
-
-`MSdev` is an S4 class used as a **project-level container** for mass spectrometry workflows (raw data import/convert, xcms processing, spectra extraction, annotation, and downstream statistics).
-
-## Slots (fields)
-
-The class is defined in `R/MSdev-class.R` as:
-
--   **`projectInfo`** *(list)*: project metadata and paths, including:
-    -   `rawDataDir`, `projectDir`, detected `rawDataFormat`
-    -   file/sample counts and acquisition summary (MS level, polarity, etc.)
-    -   the default path for saving the object (`MSdevFile`)
--   **`processingInfo`** *(list)*: processing parameters and “done” flags, e.g.:
-    -   `readInRawData$done` (initialized in the constructor)
-    -   `rawDataConvert` (set after conversion)
-    -   `MSdevParam` (xcms parameter list used for processing)
--   **`sampleInfo`** *(data.frame)*: sample/file table derived from filenames and mzR metadata:
-    -   sample names/types (Sample/QC/Blank, etc.), polarity, file paths
-    -   acquisition tags such as `scanType` and `xcmsProcessing`
--   **`experimentInfo`** *(`MS_Exp`)*: experiment metadata (e.g., internal standards, gradients) used for defaults.
--   **`xcmsData`** *(list)*: xcms objects and derived products (often keyed by polarity, e.g. `PositiveMS1`, `NegativeMS1`).
--   **`spectra`** *(list)*: MS1/MS2 spectra objects (often stored as on-disk `.rds` via helpers).
--   **`annotation`** *(list)*: annotation intermediates and results (database paths, candidates, scores, etc.).
--   **`advancedAna`** *(list)*: analysis-ready objects/tables (e.g. `SummarizedExperiment` outputs like `feature.se`, `metabolite.se`).
-
-## Typical lifecycle
-
-The workflow in `R/MSdev-workflow.R` shows a typical pipeline:
-
-1.  Create: `MSdev(rawDataDir, projectDir, experimentInfo)`
-2.  (Optional) Convert raw → mzML: `MSdev_msConvert()`
-3.  xcms processing: `MSdev_xcmsProcessing()`
-4.  Extract spectra + match MS2 to features: `MSdev_extract_Spectra()` then `MSdev_match_Spectra_to_feature()`
-5.  Annotate: `MSdev_annotation()`
-6.  Build stats-ready objects: `MSdev_get_Stat()`
-
-## Inspecting an `MSdev` object
-
-```{r, eval = FALSE}
-msdev <- MSdev(rawDataDir = "path/to/raw/data")
-
-msdev              # calls the S4 show() method
-slotNames(msdev)   # list top-level slots
-
-str(msdev@projectInfo, max.level = 1)
-head(msdev@sampleInfo)
-names(msdev@xcmsData)
-names(msdev@spectra)
-names(msdev@annotation)
-names(msdev@advancedAna)
-```
-
-# MSIP data structures
-
-The MSIP-related classes are a small set of S4 objects focused on:
-
--   representing **fragment-group ↔ atom** relationships (`MSIPFragmentMap`)
--   bundling spectra + maps + solving results (`MSIPCoreData`)
--   storing solved isotopomer models (`MSIPIsotopomerMap`)
--   metabolite-centric isotopologue bundles (`MSIPMetaboliteData`, `MSIPIsotopologueData`)
-
-## `MSIPFragmentMap`
-
-Defined in `R/MSIPCoreData.R`:
-
--   **`FG.atom.matrix`** *(matrix)*: fragment-group × atom membership (which atoms belong to which fragment groups).
--   **`FG.ratio.matrix`** *(matrix)*: fragment-group × labeled-state ratios (observed labeling ratios/intensities per fragment group).
--   **`FG.data`** *(data.frame)*: per-fragment-group metadata used by filtering/solving.
-
-The `show()` method prints a short summary like “Map of N fragment group, M atom, K labeled”.
-
-## `MSIPCoreData`
-
-Also in `R/MSIPCoreData.R`, this is the main “working object” during MSIP solving:
-
--   **`Spectra`** *(ANY)*: spectra backing data (kept flexible; can be a `Spectra` object, list, etc.).
--   **`MSIPFragmentMap`** *(`MSIPFragmentMap`)*: the fragment mapping described above.
--   **`Solve`** *(list)*: cached solver state and results (including parameters used for filtering/solving), e.g.:
-    -   isotopomer maps used in inference
-    -   natural abundance correction flags/ratios
-    -   thresholds used for filtering/solving
-
-`isEmpty(MSIPCoreData)` is defined as `isEmpty(MSIPFragmentMap)` (empty when `nrow(FG.atom.matrix) == 0`).
-
-## `MSIPIsotopomerMap`
-
-Also in `R/MSIPCoreData.R`, this represents the solved isotopomer model:
-
--   **`isotopomer.defination`** *(matrix)*: isotopomer definitions (label state per atom).
--   **`isotopomer.contribution`** *(matrix)*: how isotopomers contribute to labeled fragments.
--   **`Labeled.FG.data`** *(data.frame)*: labeled fragment data used for solving.
--   **`isotopomer.probability`** *(numeric)*: inferred isotopomer probabilities.
--   **`solve`** *(list)*: additional solver details/metadata.
-
-## `MSIPIsotopologueData` and `MSIPMetaboliteData`
-
-Defined in `R/MSIP-class.R`:
-
--   **`MSIPIsotopologueData`** *(contains `list`)*: a list-like container of isotopologues, typically keyed by names containing `"M"` (e.g. `M+0`, `M+1`, ...). Its `show()` prints how many isotopologues and their formatted names.
-
--   **`MSIPMetaboliteData`**: a metabolite-centric container with:
-
-    -   **`CompoundInfo`** *(list)*: compound metadata
-    -   **`Spectra`** *(list)*: spectra associated with the metabolite
-    -   **`MSIPIsotopologueDatas`** *(`MSIPIsotopologueData`)*: isotopologue bundle for that metabolite
-
-## Inspecting MSIP objects
-
-```{r, eval = FALSE}
-# Given an MSIPCoreData object (example name: core)
-slotNames(core)
-core@FG_map
-str(core@solve, max.level = 1)
-
-# Given an MSIPIsotopomerMap object (example name: isoMap)
-slotNames(isoMap)
-isoMap
-
-# Given an MSIPMetaboliteData object (example name: m)
-slotNames(m)
-names(m@MSIPIsotopologueDatas)
-```
-
-# At-a-glance relationship map
-
-``` text
-MSdev
-  ├─ projectInfo / processingInfo / sampleInfo / experimentInfo
-  ├─ xcmsData  -> processed features (by polarity/acquisition)
-  ├─ spectra   -> MS1/MS2 spectra + feature links
-  ├─ annotation
-  └─ advancedAna -> analysis-ready objects (e.g. SummarizedExperiment)
-
-MSIPCoreData
-  ├─ Spectra
-  ├─ MSIPFragmentMap (MSIPFragmentMap: FG.atom.matrix / FG.ratio.matrix / FG.data)
-  └─ Solve (list; may include MSIPIsotopomerMap + probabilities + parameters)
-
-MSIPMetaboliteData
-  ├─ CompoundInfo
-  ├─ Spectra
-  └─ MSIPIsotopologueDatas (MSIPIsotopologueData; list-like)
-```
 
 # FUNCTION
 
@@ -241,8 +87,8 @@ Update8:
 
 ```
 
-### *To Do*
 ``` text
+# Thu Apr 23 15:10:36 2026 ------------------------------
 update MSIP data structure msdev.aa@advancedAna$MSIP$isotopomer_data:
 1. remove 'metadata', these param: ppm, rt_tol, thresh, et al. should be stored in the MSIPCore's 'solve' slot
 2. remove 'CompoundInfo' 
@@ -256,15 +102,100 @@ update MSIP data structure msdev.aa@advancedAna$MSIP$isotopomer_data:
           - MSIPCoreData_matrix: named as compound_id
           ......
           - MSIPCoreData_matrix: named as compound_id
+
 ```
+``` text
+# Thu Apr 23 15:22:57 2026 ------------------------------
+when process isotopomer_data, the 'iso_count_max' of 'MSIPCoreData' should be determined by the 'iso_form' and 'iso_ele', such as iso_form == "[13]C1', the iso_count_max should be 1
+```  
+``` text
+# Thu Apr 23 16:00:21 2026 ------------------------------
+1. in 'get_MSIP_isotopomer_data.targeted', when '# Split spectra by isotopologue form and polarity and sample.source', the step '# Get spectra indices for this isotopologue' only select 'iso_mz_val' of the first one (usually be positive) and thus miss the negative spectra, fix it
+2. in 'heatmap_MSIPFragmentMap', the column name of M0, M1... should be update to M+0, M+1 ....
+```
+``` text
+# Thu Apr 23 16:04:35 2026 ------------------------------
+
+1. the function 'MSIPCore_merge' are not updated for the current class and functions, update it to adapt current data structure, the suffix is no need with '_0' and '_1' already added in MSIPATOMMAP
+```
+``` text
+# Thu Apr 23 16:14:46 2026 ------------------------------
+
+1. in 'get_MSIP_isotopomer_data.targeted',  when extract spectra, first match mz before match rt, if there are spectras with mz matched, but rt miss, message: "n sp targeted to xxx with rt range: xx - xx, selected m sp with rt range: xx - xx"
+2. the step of 'MSIPCore_solve' should move after 'MSIPCore_merge'
+```
+
+``` text
+# Thu Apr 23 17:30:58 2026 ------------------------------
+
+1. 'heatmap_MSIPFragmentMap':
+  - do not cluster clomun, arrange with isotopomer set
+2. 'plot_MSIPCore_spectra_consistency_hm': 
+  - remove black border in rect_gp 
+  - arrange row by rt, and replace the 'Log int' row_anno to a point plot to indicate the log10(Spectra$totIonCurrent)
+2. 'plot_Spectra_CE', 'combineSpectra_groupby_ce' before process data and plot
+```
+
+``` text
+# Thu Apr 23 18:18:14 2026 ------------------------------
+
+1. 'plot_MSIPCore_spectra_consistency_hm': 
+  - add row annotation to show polarity
+  - the row should be splited by both CE and polarity
+2. there are codes to show the fragment coverage in "Script/Agent.R", but it was writen for the previous data structure, update it to adapt new data structure. write a function 'plot_MSIPCore_fragment_coverage', it input a MSIPCoreData and MSIPAtomMap, output the coverage figure
+```
+``` text
+# Thu Apr 23 18:47:17 2026 ------------------------------
+
+1. 'plot_MSIPCore_spectra_consistency_hm': 
+  - the Log10 TIC panel's x axis should be reversed: from right to left, min to max
+```
+
+#### Thu Apr 23 19:11:18 2026 ------------------------------
+``` text
+
+1. add a param 'sp_top' in 'MSIP_get_isotopomer_data', to filter spectra including in MSIPCore
+  - this need a helper function 'Spectra_filter_TIC':
+    - input sp, topN (default 10), split_var (default: c("sample.source","CE","polarity"))
+    - split sp by split_var
+    - select topN TIC sp in every splited sp
+    - return selected sp
+  - use 'Spectra_filter_TIC' to filter sp_top sp and input to MSIPCore
+2. in 'get_MSIP_isotopomer_data.targeted', 'Spectra_filter_TIC' should be placed after spliting spectra for every sample, polarity, isotopologue, and before 'get_MSIPCoreData', not applied to total spectra
+```
+
+#### Thu Apr 23 19:48:51 2026 ------------------------------
+``` text
+
+the 'plot_MSIPCore_fragment_coverage' run error because there are gap between input msipcore and msipatommap: the msipcore is merged from both pos and neg, but msipatommap not, so we should make them align.
+1. write function 'MSIPAtomMap_merge', this function merge MSIPAtomMap like 'MSIPCore_merge'
+2. write function 'get_MSIPAtomMap_cached'
+  - input compound_id, temp_dir (default same as 'get_MSIPAtomMap_from_smiles' )
+  - retrieve cached MSIPAtomMap
+  - MSIPAtomMap_merge
+  - retrn merged MSIPAtomMap
+3. update plot_MSIPCore_fragment_coverage to adapt both merged and un-merged MSIPAtomMap and MSIPCoreData, if anyone input is unmerged, message
+
+```
+#### Fri Apr 24 11:26:15 2026 ------------------------------
+
+``` text
+in 'plot_MSIPCore_fragment_coverage', the color scale should be fixed:
+ggplot2::scale_fill_manual(values = c("grey", "#FE9D71", "#CE4736", "#B80C27")) should be replaced with a named vec, from "1e0" to "1e6", if the value more than 1e6, colored with '1e6'
+
+```
+### *To Do*
+
+
+
 
 ## MSIP_get_isotopologues_data.untargeted
 
-*Wed Apr 15 12:43:07 2026*
+
 
 
 ### *Prompt*
-
+*Wed Apr 15 12:43:07 2026*
 Write a function `MSIP_get_isotopologues_data.untargeted` in new file
 
 - input: MSdev object
@@ -273,228 +204,64 @@ Write a function `MSIP_get_isotopologues_data.untargeted` in new file
     1. check wheather there are isotopologue table
 
 
-# **Workflow**
 
-## Untargeted analysis
+## get_MSIP_Isotopomer_SE
 
-An untargeted MSIP analysis generally include such steps:
+### *Prompt*
+Fri Apr 24 13:19:06 2026 ------------------------------
 
-1. MS1 full scan or DDA analysis
-2. Screen isotopologues
-3. Targeted MS2 acquisition for isotopologues
-4. MSIP analysis
-
-### 1. MS1 full scan or DDA analysis
-
-### 2. Screen isotopologues
-
-## Targeted analysis
-
-The targeted MSIP workflow is designed for compounds with known identity (formula, SMILES, RT) and involves the following steps:
-
-### Step 1: Import Compound Table
-
-Prepare a compound table with the following required columns:
-- `compound_id`: Unique identifier for each compound
-- `name`: Human-readable compound name
-- `formula`: Molecular formula (e.g., "C6H12O6")
-- `smiles`: SMILES string for structure representation
-- `rt`: Retention time (in seconds)
-
-```{r, eval=FALSE}
-# Import compound table from CSV
-object <- MSIP_import_compound_table(object, table.path = "path/to/compound_table.csv")
-```
-
-### Step 2: Find Isotopologues from Compound Table
-
-For each compound in the table, calculate the m/z of all possible isotopologues (based on the target isotope element, default [13]C) and their adducts (M+H and M-H).
-
-```{r, eval=FALSE}
-# Find isotopologues for compounds in the table
-object <- MSIP_find_isotopologue_from_compound_table(object)
-```
-
-This function:
-- Calculates the base m/z for each compound with M+H and M-H adducts
-- Generates isotopologue m/z grid based on the maximum number of target atoms
-- Stores results in `object@advancedAna$MSIP$isotopologues_table`
-
-### Step 3: Export Acquisition List (Optional)
-
-Generate an acquisition list for targeted MS2 acquisition of the identified isotopologues.
-
-```{r, eval=FALSE}
-# Export acquisition list for targeted MS2
-MSIP_export_isotopologues_acquisition_list(object)
-```
-
-This creates a list of:
-- Precursor m/z values for each isotopologue
-- Collision energies for fragmentation
-- Retention time windows
-
-### Step 4: Perform Targeted MS2 Acquisition
-
-Using the acquisition list, perform targeted MS2 acquisition on a QTRAP or similar instrument. This step is experimental and generates MS2 spectra for each isotopologue at specified collision energies.
-
-### Step 5: Extract MS2 Spectra
-
-After MS2 acquisition, extract and organize the spectra data.
-
-```{r, eval=FALSE}
-# Extract MS2 spectra and link to samples
-object <- MSdev_extract_Spectra(object)
-
-# Match MS2 spectra to features
-object <- MSdev_match_Spectra_to_feature(object)
-
-# Assign MS2 spectra to isotopologues
-object <- MSIP_assign_MS2(object, rt.tol = 10)
-```
-
-Key functions:
-- `MSdev_extract_Spectra()`: Loads MS2 spectra into `object@spectra$MS2_Spectra`
-- `MSdev_match_Spectra_to_feature()`: Links MS2 spectra to MS1 features
-- `MSIP_assign_MS2()`: Assigns MS2 spectra to isotopologues based on m/z and RT matching
-
-### Step 6: Get CFM Annotation
-
-Generate CFM (Cognitive-Focused Metabolomics) annotations for each compound.
-
-```{r, eval=FALSE}
-# Get CFM annotation for compounds
-object <- MSIP_get_isotopologues_CFM_annotation(object)
-```
-
-This function:
-- Uses `get_CFM_data_from_smiles()` to generate predicted fragment spectra
-- Creates fragment-to-atom mappings with isotope labeling
-- Caches results in a temporary directory for reuse
-
-### Step 7: Build Compound Database (Optional)
-
-If working with a custom compound database.
-
-```{r, eval=FALSE}
-# Build compound database
-object <- MSIP_build_compoundDB(cpdb = CompDb("path/to/CompDb"))
-```
-
-### Step 8: Get Isotopomer Data (Main MSIP Analysis)
-
-This is the core MSIP function that performs the complete isotopomer analysis pipeline.
-
-```{r, eval=FALSE}
-# Run MSIP isotopomer analysis (targeted mode)
-object <- MSIP_get_isotopomer_data(
-  object,
-  mode = "targeted",
-  iso_ele = "[13]C",
-  ppm = 10,
-  rt.tol = 10,
-  int_thresh = 10^3.8,
-  certainty_thresh = 0.6,
-  iso_count_max = 30
-)
-```
-
-#### Workflow Details of `MSIP_get_isotopomer_data`
-
-**For each compound in the compound_table:**
-
-1. **Calculate isotopologue m/z values**
-   - Get base m/z for M+H and M-H adducts using `MSCC::chemform_adduct()`
-   - Calculate maximum isotopologue count based on target element (e.g., number of carbon atoms)
-   - Build isotopologue m/z grid using `MSCC::get_isotope_mass_diff()`
-
-2. **Match MS2 spectra by m/z and RT**
-   - Filter MS2 spectra by polarity (positive/negative)
-   - Match isotopologue m/z values to spectra using `match_mz_rt()`
-   - Uses `isolationWindowTargetMz` and `rtime()` accessors
-
-3. **Separate spectra by isotopologue and sample.source**
-   - Group matched spectra by isotopologue form (e.g., [13]C0, [13]C1, [13]C2)
-   - Split further by sample source
-   - Track polarity for each spectrum group
-
-4. **Construct CFM data**
-   - Call `get_CFM_data_from_smiles()` to generate predicted fragments
-   - Creates atom mapping with isotope labels
-   - Results cached in temp directory
-
-5. **Construct and solve MSIPCoreData**
-   - For each isotopologue × sample combination:
-     - Filter spectra by polarity
-     - Construct MSIPCoreData using `get_MSIPCoreData()`
-     - Solve using `MSIPCore_solve()` with specified thresholds
-   - Merge positive and negative polarity results via `MSIPCore_merge()`
-
-6. **Store results**
-   - Results stored in `object@advancedAna$MSIP$isotopomer_data`
-   - Structure: named list of compounds, where each element name is `compound_id`
-     and each element value is the `MSIPCoreData_matrix` (rows = isotopologues, cols = sample sources).
-
-### Step 9: Solve Isotopologues (Alternative Entry Point)
-
-If you have pre-processed isotopologue data and want to solve separately.
-
-```{r, eval=FALSE}
-# Solve isotopologues with specific parameters
-object <- MSIP_solve_isotopologues(
-  object,
-  int_thresh = 10^3.8,
-  certainty_thresh = 0.6,
-  ppm = 20,
-  timeout = 60
-)
-```
-
-### Step 10: Get Molecule igraph
-
-Generate molecular graphs for visualization of isotopomer distributions.
-
-```{r, eval=FALSE}
-# Get molecule igraphs for isotopomer visualization
-object <- MSIP_get_Molecule_igraph(object, fraction_thresh = 0.001)
-```
-
-Results stored in `object@advancedAna$MSIP$isotopomer_Molecule_igraph`.
-
-### Step 11: Export Results
-
-Export isotopologues table and analysis results.
-
-```{r, eval=FALSE}
-# Export isotopologues table
-MSIP_export_isotopologues_table(object)
-
-# Export acquisition list
-MSIP_export_isotopologues_acquisition_list(object)
-```
-
-### Summary of Key Data Structures
-
-After targeted MSIP analysis, the main results are stored in:
-
-| Slot | Content |
-|------|---------|
-| `object@advancedAna$MSIP$compound_table` | Input compound table |
-| `object@advancedAna$MSIP$isotopomer_data` | Solved isotopomer data (MSIPCoreData matrices) |
-| `object@advancedAna$MSIP$isotopomer_Molecule_igraph` | Molecular graphs for visualization |
-| `object@projectInfo$MSIP_cfmd_tempdir` | Cached CFM data directory |
-
-### Function Dependency Chain
+``` text
+write a function 'get_MSIP_Isotopomer_SE' to extract quantification data from 'msdev@advancedAna$MSIP$isotopomer_data':
+  - the return should be a SummarizedExperiment, column as sample, row as isotopomer
+    - colData include: 
+      - sample.source: from colname of msipcorematrix, also as column name
+      - group: from sample.info
+    - rowData include: 
+      - isotopomer_id: paste0(compound_id,iso_form), also asrow name
+      - compound_id
+      - isotopomer_set: in which msip.core@Solve$MSIPIsotopomerMap@solve$isotopomer.set
+      - isotopomer_total: count of isotopomer in the isotopomer_set
+      - isotopologue_form: such as '[13]C1', '[13]C2'
+  - for each samples' isotopomer data, extract from 'msip.core@Solve$MSIPIsotopomerMap@isotopomer.probability'
 
 ```
-MSIP_import_compound_table
-    ↓
-MSIP_find_isotopologue_from_compound_table
-    ↓
-MSIP_get_isotopologues_CFM_annotation
-    ↓
-MSIP_get_isotopomer_data (targeted mode)
-    ↓
-MSIP_get_Molecule_igraph (optional visualization)
+
+
+### *Review*
+Fri Apr 24 13:37:09 2026 ------------------------------
+
+``` text
+update 'get_MSIP_Isotopomer_SE':
+1. in the result se's rowdata:
+  - the 'isotopomer_id' should be like 'HMDB0000123_101', not 'HMDB0000123[13]C101'
+  - add 'isotopologue_id', the value should be like 'HMDB0000123_[13]C1'
+  - remove 'isotopomer_total', 'isotopomer_set'
+  - add 'isotopomer_average_mix', calculated by:
+    - for each sample, each isotopomer have a value 'mix', represent by the count of isotopomers in its isotopomer.set
+    - for each isotopomer, calc the average of 'mix' across samples
+
 ```
+Fri Apr 24 13:49:27 2026 ------------------------------
+``` text
+in the result se's rowdata:
+  - add 'compound_name'
+  - add 'label.isotopomer', use compound name + isotopomer form, such as 'Glutamate_10000'
+  - add 'label.isotopologue', use compound name + isotopologue form, such as 'Glutamate_M+1', 'Glutamate_M+2'
+```
+Fri Apr 24 14:06:30 2026 ------------------------------
+``` text
+in the result se's rowdata:
+  - the 'label.isotopomer' is fixed '001', i want it as the isotopomer's form like 'isotopomer_id'
+  - the 'label.isotopologue' just extract number, "[13]C1" become 'M+131', but it should be "M+1" 
+```
+
+### *To Do*
+
+``` text
+in the result se's rowdata:
+  - I fix the problem where 'label.isotopomer' is fixed '001', the ifelse input length 1 vec and than output the first ele of meta$iso_names
+  - the 'iso_name' should also be included in the rowdata, rename it to 'isotopome_form' and export to return
+```
+
+
 

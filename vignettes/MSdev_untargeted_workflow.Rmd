@@ -1,0 +1,23 @@
+---
+title: "MSdev_untargeted_workflow"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{MSdev_untargeted_workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+# Update
+``` text
+# Thu Apr 23 14:06:27 2026 ------------------------------
+update 'MSdev' initialize, 'MSdev_get_MSinfo' and .updateProjectInfoFromSampleInfo:
+1. the sampleInfo$msLevels should be "1", "2" or "1;2", according to every files' mslevel
+2. the sampleInfo$xcmsProcessing should be 'MS1' (when msLevels == '1'), 'MS2' (when msLevels == '2') or 'Both'(when msLevels == '1;2')
+
+```
+# to do 
+```
+1. when ini MSdev, the info from 'get_MSinfo_mzR()' are not ready, thus lead to message: "Warning message: Unknown or uninitialised column: `manufacturer`.", fix it 
+
+```
