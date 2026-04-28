@@ -2037,6 +2037,105 @@ chromPeaks_Sta <- function(xcms.xcms){
 }
 
 
+#' @title Build xcms centWave roiList from mz/rt targets
+#' @description
+#' Construct a \code{roiList} accepted by \code{xcms::CentWaveParam(roiList = ...)}.
+#' Input a matrix/data.frame with columns \code{mz} and \code{rt} (seconds). For each
+#' target, \code{mzmin/mzmax} are calculated using ppm tolerance and the RT window
+#' \code{rtmin/rtmax} is mapped to scan indices. Because scan numbers differ across
+#' samples/files, the returned ROI uses the **union scan range** (min start to max end)
+#' across all files for that RT window.
+#'
+#' @param mzrt matrix/data.frame with columns \code{mz} and \code{rt}.
+#' @param xcms.xcms \code{XCMSnExp} object used to map RT to scan indices.
+#' @param ppm numeric, ppm tolerance for mz window.
+#' @param rt_tol numeric, RT tolerance in seconds.
+#' @param ion_mode optional integer 1 (positive) or 0 (negative). If NULL, inferred
+#'   from \code{Biobase::fData(xcms.xcms)$polarity}; must be unique.
+#'
+#' @return list of ROI objects (each ROI is a list with \code{scmin, scmax, mzmin, mzmax, length, intensity}).
+#' @export
+get_xcms_roi_list <- function(mzrt,
+                              xcms.xcms,
+                              ppm = 10,
+                              rt_tol = 30,
+                              ion_mode = NULL) {
+
+  if (is.null(mzrt) || length(mzrt) == 0) return(list())
+  mzrt <- as.data.frame(mzrt, stringsAsFactors = FALSE)
+  if (!all(c("mz", "rt") %in% colnames(mzrt))) {
+    stop("mzrt must have columns: mz, rt")
+  }
+  mzrt$mz <- suppressWarnings(as.numeric(mzrt$mz))
+  mzrt$rt <- suppressWarnings(as.numeric(mzrt$rt))
+  mzrt <- mzrt[is.finite(mzrt$mz) & is.finite(mzrt$rt), , drop = FALSE]
+  if (!nrow(mzrt)) return(list())
+
+  fdat <- Biobase::fData(xcms.xcms)
+  if (is.null(fdat) || nrow(fdat) == 0) {
+    stop("xcms.xcms has empty fData; cannot derive scan indices for roiList.")
+  }
+  need_cols <- c("fileIdx", "msLevel", "retentionTime", "polarity")
+  if (!all(need_cols %in% colnames(fdat))) {
+    stop("xcms.xcms fData must contain columns: ", paste(need_cols, collapse = ", "), ".")
+  }
+
+  if (is.null(ion_mode)) {
+    ion_mode <- unique(fdat$polarity[fdat$msLevel == 1])
+    ion_mode <- ion_mode[!is.na(ion_mode)]
+    if (length(ion_mode) != 1) {
+      stop("Cannot infer ion_mode (multiple polarities in MS1 scans). Provide ion_mode = 0/1.")
+    }
+  }
+
+  files <- seq_along(MSnbase::fileNames(xcms.xcms))
+  ms1_rt_by_file <- lapply(files, function(fi) {
+    idx <- which(fdat$fileIdx == fi & fdat$msLevel == 1 & fdat$polarity == ion_mode)
+    if (!length(idx)) return(NULL)
+    rt <- fdat$retentionTime[idx]
+    rt[order(rt)]
+  })
+
+  roi_list <- vector("list", length = nrow(mzrt))
+  kept <- logical(nrow(mzrt))
+
+  for (i in seq_len(nrow(mzrt))) {
+    mz <- mzrt$mz[[i]]
+    rt <- mzrt$rt[[i]]
+    mzmin <- mz - mz * ppm / 1e6
+    mzmax <- mz + mz * ppm / 1e6
+    rtmin <- rt - rt_tol
+    rtmax <- rt + rt_tol
+
+    scmins <- integer()
+    scmaxs <- integer()
+    for (fi in files) {
+      rts <- ms1_rt_by_file[[fi]]
+      if (is.null(rts)) next
+      in_rt <- which(rts >= rtmin & rts <= rtmax)
+      if (!length(in_rt)) next
+      scmins <- c(scmins, min(in_rt))
+      scmaxs <- c(scmaxs, max(in_rt))
+    }
+
+    if (!length(scmins)) next
+    scmin <- min(scmins)
+    scmax <- max(scmaxs)
+    roi_list[[i]] <- list(
+      scmin = as.integer(scmin),
+      scmax = as.integer(scmax),
+      mzmin = as.numeric(mzmin),
+      mzmax = as.numeric(mzmax),
+      length = as.integer(scmax - scmin + 1L),
+      intensity = 0
+    )
+    kept[[i]] <- TRUE
+  }
+
+  roi_list[kept]
+}
+
+
 #' @title xcmsProcessingMS1
 #' @description Import `msDataFiles`, filter `ion_mode`, find peaks using `centWaveParam`, correct RT, group peaks using `peaksGroup`, fill peaks by xcms at MS1 Level
 #' @param msDataFiles `char` ms file (full) paths

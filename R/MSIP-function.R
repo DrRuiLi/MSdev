@@ -1898,49 +1898,26 @@ MSIP_xcms_processing.targeted <- function(object,
     cwp
   }
 
-  .build_roiList <- function(xcms.xcms, ion_mode, compound_table,
-                             iso_ele = "[13]C",
-                             mz_ppm = 10,
-                             rt_tol = 30,
-                             max_iso = NULL) {
-    # ROI definition for xcms::CentWaveParam(roiList = ...)
-    # Each ROI must include: scmin, scmax, mzmin, mzmax, length, intensity.
+  .compound_table_to_mzrt <- function(compound_table,
+                                     ion_mode,
+                                     iso_ele = "[13]C",
+                                     max_iso = NULL) {
     target_ele <- get_ele_uniso(iso_ele)
-
-    fdat <- Biobase::fData(xcms.xcms)
-    if (is.null(fdat) || nrow(fdat) == 0) {
-      stop("xcms.xcms has empty fData; cannot derive scan indices for roiList.")
-    }
-    if (!all(c("fileIdx", "msLevel", "retentionTime", "polarity") %in% colnames(fdat))) {
-      stop("xcms.xcms fData must contain columns: fileIdx, msLevel, retentionTime, polarity.")
-    }
-
-    files <- seq_along(MSnbase::fileNames(xcms.xcms))
-    # Precompute per-file MS1 scan mapping (scan number within MS1 scans of that file)
-    ms1_scan_map <- lapply(files, function(fi) {
-      idx <- which(fdat$fileIdx == fi & fdat$msLevel == 1 & fdat$polarity == ion_mode)
-      if (!length(idx)) return(NULL)
-      rt <- fdat$retentionTime[idx]
-      o <- order(rt)
-      list(idx_sorted = idx[o], rt_sorted = rt[o])
-    })
-
-    # Isotopologue mz generation (by formula + adduct of ion mode)
     adduct <- ifelse(ion_mode == 1, "[M+H]+", "[M-H]-")
 
-    roi_list <- list()
+    out <- list()
     k <- 0L
 
     for (j in seq_len(nrow(compound_table))) {
-      cp <- compound_table[j, , drop = FALSE]
-      formula <- cp$formula[[1]]
-      rt_ref <- suppressWarnings(as.numeric(cp$rt[[1]]))
+      formula <- compound_table$formula[[j]]
+      rt_ref <- suppressWarnings(as.numeric(compound_table$rt[[j]]))
+      if (is.na(rt_ref) || !is.finite(rt_ref)) next
       if (is.na(formula) || !nzchar(formula)) next
 
       cp_adduct <- MSCC::chemform_adduct(formula, adduct, value = "all")
       if (is.null(cp_adduct) || nrow(cp_adduct) == 0) next
       seed_mz <- cp_adduct$chemform.adduct.mz[1]
-      if (is.na(seed_mz)) next
+      if (!is.finite(seed_mz)) next
 
       max_ele <- get_formula_ele_count(formula, target_ele)
       if (is.na(max_ele) || max_ele <= 0) next
@@ -1950,41 +1927,20 @@ MSIP_xcms_processing.targeted <- function(object,
       ele_counts <- setNames(list(max_ele), target_ele)
       iso_grid <- do.call(MSCC::get_isotope_mass_diff, ele_counts)
       if (is.null(iso_grid) || nrow(iso_grid) == 0) next
-      iso_mz <- seed_mz + iso_grid$mass_diff
 
-      # RT window: if missing rt, we can't create scan ranges -> skip
-      if (is.na(rt_ref)) next
-      rtmin <- rt_ref - rt_tol
-      rtmax <- rt_ref + rt_tol
-
-      # For each isotopologue and each file, create an ROI with scan indices
-      for (ii in seq_len(length(iso_mz))) {
-        mz <- iso_mz[[ii]]
-        if (!is.finite(mz)) next
-        mzmin <- mz - mz * mz_ppm / 1e6
-        mzmax <- mz + mz * mz_ppm / 1e6
-
-        for (fi in files) {
-          sm <- ms1_scan_map[[fi]]
-          if (is.null(sm)) next
-          in_rt <- which(sm$rt_sorted >= rtmin & sm$rt_sorted <= rtmax)
-          if (!length(in_rt)) next
-          scmin <- min(in_rt)
-          scmax <- max(in_rt)
-          k <- k + 1L
-          roi_list[[k]] <- list(
-            scmin = as.integer(scmin),
-            scmax = as.integer(scmax),
-            mzmin = as.numeric(mzmin),
-            mzmax = as.numeric(mzmax),
-            length = as.integer(scmax - scmin + 1L),
-            intensity = 0
-          )
-        }
-      }
+      mzs <- seed_mz + iso_grid$mass_diff
+      k <- k + 1L
+      out[[k]] <- data.frame(
+        mz = mzs,
+        rt = rep(rt_ref, length(mzs)),
+        stringsAsFactors = FALSE
+      )
     }
 
-    roi_list
+    if (!length(out)) return(matrix(numeric(), ncol = 2, dimnames = list(NULL, c("mz", "rt"))))
+    mzrt <- do.call(rbind, out)
+    mzrt <- unique(mzrt)
+    as.matrix(mzrt[, c("mz", "rt"), drop = FALSE])
   }
 
   # ---------------------------------------------------------------------------
@@ -2006,14 +1962,18 @@ MSIP_xcms_processing.targeted <- function(object,
     )
 
     message_with_time("Build roiList from compound_table (", polarity.tag, ") ...")
-    roiList <- .build_roiList(
-      xcms.xcms = xcms.xcms,
-      ion_mode = i,
+    mzrt <- .compound_table_to_mzrt(
       compound_table = compound_table,
+      ion_mode = i,
       iso_ele = iso_ele,
-      mz_ppm = mz_ppm,
-      rt_tol = rt_tol,
       max_iso = max_iso
+    )
+    roiList <- get_xcms_roi_list(
+      mzrt = mzrt,
+      xcms.xcms = xcms.xcms,
+      ppm = mz_ppm,
+      rt_tol = rt_tol,
+      ion_mode = i
     )
     message_with_time("roiList size: ", length(roiList))
 
