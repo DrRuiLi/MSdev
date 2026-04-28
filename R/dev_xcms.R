@@ -2136,6 +2136,48 @@ get_xcms_roi_list <- function(mzrt,
 }
 
 
+xcms_filter_peaks_NA <- function(xcms.xcms, verbose = TRUE) {
+
+  pks <- xcms::chromPeaks(xcms.xcms)
+  if (is.null(pks) || length(pks) == 0 || nrow(pks) == 0) {
+    if (isTRUE(verbose)) {
+      message("xcms_filter_peaks_NA: no chromPeaks to filter")
+    }
+    return(xcms.xcms)
+  }
+
+  mz_col <- NULL
+  if ("mz" %in% colnames(pks)) mz_col <- "mz"
+  if (is.null(mz_col) && "mzmed" %in% colnames(pks)) mz_col <- "mzmed"
+  if (is.null(mz_col)) {
+    if (isTRUE(verbose)) {
+      message("xcms_filter_peaks_NA: no mz column found in chromPeaks")
+    }
+    return(xcms.xcms)
+  }
+
+  mzv <- as.numeric(pks[, mz_col])
+  bad <- is.na(mzv) | is.nan(mzv)
+  n_bad <- sum(bad)
+  n_total <- nrow(pks)
+  ratio <- if (n_total == 0) 0 else n_bad / n_total
+
+  if (isTRUE(verbose)) {
+    message(sprintf(
+      "xcms_filter_peaks_NA: %d/%d (%.4f) chromPeaks have mz NA/NaN",
+      n_bad, n_total, ratio
+    ))
+  }
+
+  if (n_bad > 0) {
+    pks2 <- pks[!bad, , drop = FALSE]
+    xcms::chromPeaks(xcms.xcms) <- pks2
+  }
+
+  return(xcms.xcms)
+}
+
+
 #' @title xcmsProcessingMS1
 #' @description Import `msDataFiles`, filter `ion_mode`, find peaks using `centWaveParam`, correct RT, group peaks using `peaksGroup`, fill peaks by xcms at MS1 Level
 #' @param msDataFiles `char` ms file (full) paths
@@ -2173,6 +2215,8 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
                             param = xcms_param$findChromPeaks,
                             BPPARAM  = BPPARAM,...)
+
+  xcms.xcms <- xcms_filter_peaks_NA(xcms.xcms)
   #xcms.xcms <- xcms_get_peak_fill(xcms.xcms)
   #mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
   #xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
