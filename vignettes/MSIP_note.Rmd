@@ -184,7 +184,34 @@ in 'plot_MSIPCore_fragment_coverage', the color scale should be fixed:
 ggplot2::scale_fill_manual(values = c("grey", "#FE9D71", "#CE4736", "#B80C27")) should be replaced with a named vec, from "1e0" to "1e6", if the value more than 1e6, colored with '1e6'
 
 ```
+#### Tue Apr 28 14:19:35 2026 ------------------------------
+
+``` text
+write a function 'MSIP_xcms_processing.targeted':
+  - this function performance xcms analysis like 'MSdev_xcmsProcessing':
+    - filter samples according to sample.info
+    - find peaks 
+    - rt adjust
+    - group peaks 
+    - fill features
+  - the difference to 'MSdev_xcmsProcessing' include:
+    - find peaks with param 'CentWaveParam(roiList )'
+    - the 'roiList' should be calculated by the 'msdev@advancedAna$MSIP$compound_table':
+      - simulate all possible isotopologue of each compound
+      - calculate isotopologues' mz
+      - construct a roiList according to the mz and rt
+  - the return should be similar to 'MSdev_xcmsProcessing', stored feature's defination  
+```
 ### *To Do*
+
+``` text
+1. the part of roilist construction should be warpped in another function 'get_xcms_roi_list':
+  - input a matrix with column: mz and rt, return a centwave aceeptable roilist
+  - in given ppm and rt tolerance, calc mzmin, mzmax, rtmin, rtmax
+  - match rtmin and rtmax to scan number
+  - the scan number in different sample are different, pick the union range for each 
+2. in 'MSIP_xcms_processing.targeted', just call the 'get_xcms_roi_list'
+```
 
 
 
@@ -228,7 +255,7 @@ write a function 'get_MSIP_Isotopomer_SE' to extract quantification data from 'm
 
 
 ### *Review*
-Fri Apr 24 13:37:09 2026 ------------------------------
+#### Fri Apr 24 13:37:09 2026 ------------------------------
 
 ``` text
 update 'get_MSIP_Isotopomer_SE':
@@ -241,27 +268,28 @@ update 'get_MSIP_Isotopomer_SE':
     - for each isotopomer, calc the average of 'mix' across samples
 
 ```
-Fri Apr 24 13:49:27 2026 ------------------------------
+#### Fri Apr 24 13:49:27 2026 ------------------------------
 ``` text
 in the result se's rowdata:
   - add 'compound_name'
   - add 'label.isotopomer', use compound name + isotopomer form, such as 'Glutamate_10000'
   - add 'label.isotopologue', use compound name + isotopologue form, such as 'Glutamate_M+1', 'Glutamate_M+2'
 ```
-Fri Apr 24 14:06:30 2026 ------------------------------
+#### Fri Apr 24 14:06:30 2026 ------------------------------
 ``` text
 in the result se's rowdata:
   - the 'label.isotopomer' is fixed '001', i want it as the isotopomer's form like 'isotopomer_id'
   - the 'label.isotopologue' just extract number, "[13]C1" become 'M+131', but it should be "M+1" 
 ```
-
-### *To Do*
+#### Fri Apr 24 20:20:50 2026 ------------------------------
 
 ``` text
 in the result se's rowdata:
   - I fix the problem where 'label.isotopomer' is fixed '001', the ifelse input length 1 vec and than output the first ele of meta$iso_names
   - the 'iso_name' should also be included in the rowdata, rename it to 'isotopome_form' and export to return
 ```
+
+### *To Do*
 
 
 
