@@ -118,11 +118,11 @@ MSdev_get_MSinfo <- function(object){
 
 
   ### update SampleInfo
-  if (
-    !"manufacturer"%in%colnames(object@sampleInfo)|
-    any(is.na(object@sampleInfo$manufacturer))
-  ) {
-    sampleInfo <-object@sampleInfo%>%
+  si <- object@sampleInfo
+  needs_msinfo <- (!("manufacturer" %in% colnames(si))) ||
+    any(is.na(si[["manufacturer"]]))
+  if (isTRUE(needs_msinfo)) {
+    sampleInfo <- si %>%
       dplyr::mutate(get_MSinfo_mzR(msData.files),
                     msType = model.df$type[match(model,model.df$model)],
                     scanType = case_when(
@@ -223,6 +223,15 @@ MSdev_xcmsProcessing <- function(object,...){
 
 
 MSdev_get_xcms <- function(object){
+
+  if (is.list(object@xcmsData)) {
+    if (!is.null(object@xcmsData$PositiveMS1) && !identical(object@xcmsData$PositiveMS1, NA)) {
+      return(object)
+    }
+    if (!is.null(object@xcmsData$NegativeMS1) && !identical(object@xcmsData$NegativeMS1, NA)) {
+      return(object)
+    }
+  }
 
   polarity.index <- c("0" = "Negative",
                       "1"="Positive")
