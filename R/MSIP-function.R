@@ -306,7 +306,7 @@ MSIP_get_isotopologues_table <- function(object,
                                            expandRt = Inf,
                                            filled = T,
                                            BPPARAM = SnowParam(
-                                             workers  = min(snowWorkers(), length(fileNames(xcms.xcms))),
+                                             workers  = min(snowWorkers(), length(MSnbase::fileNames(xcms.xcms))),
                                              progressbar = T)
         )
         xcms.chrom <- onDiskData(xcms.chrom,
@@ -1820,6 +1820,222 @@ get_MSIPIsotopologueData_Molecule_igraphs  <- function(object,fraction_thresh = 
 MSIP_clear_previous_data <- function(object){
 
   object@advancedAna$MSIP$isotopologues_data <- list()
+  return(object)
+}
+
+
+#' @title Targeted xcms processing for MSIP
+#' @description
+#' Perform xcms MS1 processing similar to \code{\link{MSdev_xcmsProcessing}} but
+#' with targeted peak detection using \code{xcms::CentWaveParam(roiList = ...)}.
+#' The \code{roiList} is constructed from \code{object@advancedAna$MSIP$compound_table}
+#' by simulating all possible isotopologues for each compound (default: \code{[13]C})
+#' and creating RT/mz ROIs around expected signals.
+#'
+#' @param object MSdev object.
+#' @param iso_ele character, isotope element, default \code{"[13]C"}.
+#' @param mz_ppm numeric, ppm tolerance used to construct ROI mz ranges.
+#' @param rt_tol numeric, RT tolerance (seconds) used to construct ROI RT ranges.
+#' @param max_iso integer, optional cap for maximum isotopologue count per compound.
+#' @param adjustRT logical, whether to perform retention time adjustment.
+#' @param BPPARAM BiocParallel backend passed to \code{xcms::findChromPeaks()}.
+#' @param ... passed to \code{xcms::findChromPeaks()}.
+#'
+#' @return MSdev object with processed \code{object@xcmsData$PositiveMS1} and/or
+#' \code{object@xcmsData$NegativeMS1}.
+#' @export
+MSIP_xcms_processing.targeted <- function(object,
+                                         iso_ele = "[13]C",
+                                         mz_ppm = 10,
+                                         rt_tol = 30,
+                                         max_iso = NULL,
+                                         adjustRT = F,
+                                         BPPARAM = BiocParallel::SnowParam(
+                                           workers = 4,
+                                           progressbar = TRUE
+                                         ),
+                                         ...) {
+
+  if (is.null(object@advancedAna$MSIP$compound_table)) {
+    stop("compound_table not found in object@advancedAna$MSIP$compound_table. ",
+         "Run MSIP_import_compound_table() first.")
+  }
+
+  compound_table <- object@advancedAna$MSIP$compound_table
+  required_cols <- c("compound_id", "name", "formula", "smiles", "rt")
+  missing_cols <- setdiff(required_cols, colnames(compound_table))
+  if (length(missing_cols) > 0) {
+    stop("compound_table missing required columns: ", paste(missing_cols, collapse = ", "))
+  }
+
+  # Ensure xcmsData exists
+  object <- MSdev_get_xcms(object)
+
+  # Filter samples: keep MS1/Both and available msData.files
+  sampleInfo <- dplyr::filter(object@sampleInfo, xcmsProcessing %in% c("MS1", "Both")) %>%
+    dplyr::filter(!is.na(msData.files))
+
+  if (nrow(sampleInfo) == 0) {
+    message_with_time("No MS1/Both samples with msData.files; skip targeted xcms processing.")
+    return(object)
+  }
+
+  # ---------------------------------------------------------------------------
+  # Internal helpers
+  # ---------------------------------------------------------------------------
+  .as_centwave_with_roi <- function(param_obj, roiList) {
+    cwp <- xcms::CentWaveParam()
+    if (inherits(param_obj, "CentWaveParam")) {
+      # copy common slots if present; avoid failing on version differences
+      for (slot_nm in intersect(slotNames(cwp), slotNames(param_obj))) {
+        if (slot_nm %in% c("roiList")) next
+        try({
+          methods::slot(cwp, slot_nm) <- methods::slot(param_obj, slot_nm)
+        }, silent = TRUE)
+      }
+    }
+    cwp@roiList <- roiList
+    cwp
+  }
+
+  .build_roiList <- function(xcms.xcms, ion_mode, compound_table,
+                             iso_ele = "[13]C",
+                             mz_ppm = 10,
+                             rt_tol = 30,
+                             max_iso = NULL) {
+    # ROI definition for xcms::CentWaveParam(roiList = ...)
+    # Each ROI must include: scmin, scmax, mzmin, mzmax, length, intensity.
+    target_ele <- get_ele_uniso(iso_ele)
+
+    fdat <- Biobase::fData(xcms.xcms)
+    if (is.null(fdat) || nrow(fdat) == 0) {
+      stop("xcms.xcms has empty fData; cannot derive scan indices for roiList.")
+    }
+    if (!all(c("fileIdx", "msLevel", "retentionTime", "polarity") %in% colnames(fdat))) {
+      stop("xcms.xcms fData must contain columns: fileIdx, msLevel, retentionTime, polarity.")
+    }
+
+    files <- seq_along(MSnbase::fileNames(xcms.xcms))
+    # Precompute per-file MS1 scan mapping (scan number within MS1 scans of that file)
+    ms1_scan_map <- lapply(files, function(fi) {
+      idx <- which(fdat$fileIdx == fi & fdat$msLevel == 1 & fdat$polarity == ion_mode)
+      if (!length(idx)) return(NULL)
+      rt <- fdat$retentionTime[idx]
+      o <- order(rt)
+      list(idx_sorted = idx[o], rt_sorted = rt[o])
+    })
+
+    # Isotopologue mz generation (by formula + adduct of ion mode)
+    adduct <- ifelse(ion_mode == 1, "[M+H]+", "[M-H]-")
+
+    roi_list <- list()
+    k <- 0L
+
+    for (j in seq_len(nrow(compound_table))) {
+      cp <- compound_table[j, , drop = FALSE]
+      formula <- cp$formula[[1]]
+      rt_ref <- suppressWarnings(as.numeric(cp$rt[[1]]))
+      if (is.na(formula) || !nzchar(formula)) next
+
+      cp_adduct <- MSCC::chemform_adduct(formula, adduct, value = "all")
+      if (is.null(cp_adduct) || nrow(cp_adduct) == 0) next
+      seed_mz <- cp_adduct$chemform.adduct.mz[1]
+      if (is.na(seed_mz)) next
+
+      max_ele <- get_formula_ele_count(formula, target_ele)
+      if (is.na(max_ele) || max_ele <= 0) next
+      if (!is.null(max_iso)) max_ele <- min(max_ele, as.integer(max_iso))
+      if (max_ele <= 0) next
+
+      ele_counts <- setNames(list(max_ele), target_ele)
+      iso_grid <- do.call(MSCC::get_isotope_mass_diff, ele_counts)
+      if (is.null(iso_grid) || nrow(iso_grid) == 0) next
+      iso_mz <- seed_mz + iso_grid$mass_diff
+
+      # RT window: if missing rt, we can't create scan ranges -> skip
+      if (is.na(rt_ref)) next
+      rtmin <- rt_ref - rt_tol
+      rtmax <- rt_ref + rt_tol
+
+      # For each isotopologue and each file, create an ROI with scan indices
+      for (ii in seq_len(length(iso_mz))) {
+        mz <- iso_mz[[ii]]
+        if (!is.finite(mz)) next
+        mzmin <- mz - mz * mz_ppm / 1e6
+        mzmax <- mz + mz * mz_ppm / 1e6
+
+        for (fi in files) {
+          sm <- ms1_scan_map[[fi]]
+          if (is.null(sm)) next
+          in_rt <- which(sm$rt_sorted >= rtmin & sm$rt_sorted <= rtmax)
+          if (!length(in_rt)) next
+          scmin <- min(in_rt)
+          scmax <- max(in_rt)
+          k <- k + 1L
+          roi_list[[k]] <- list(
+            scmin = as.integer(scmin),
+            scmax = as.integer(scmax),
+            mzmin = as.numeric(mzmin),
+            mzmax = as.numeric(mzmax),
+            length = as.integer(scmax - scmin + 1L),
+            intensity = 0
+          )
+        }
+      }
+    }
+
+    roi_list
+  }
+
+  # ---------------------------------------------------------------------------
+  # Run targeted MS1 processing for each polarity
+  # ---------------------------------------------------------------------------
+  polarity.index <- c("0" = "Negative", "1" = "Positive")
+  xcms.param <- get_MSdev_param(object)
+
+  for (i in c(0, 1)) {
+    sample.info.polarity <- sampleInfo %>%
+      dplyr::filter(grepl(i, polarity))
+    polarity.tag <- paste0(polarity.index[as.character(i)], "MS1")
+    if (!nrow(sample.info.polarity)) next
+
+    xcms.xcms <- filterFile(
+      object@xcmsData[[polarity.tag]],
+      which(Biobase::pData(object@xcmsData[[polarity.tag]])$sample.name %in%
+              sample.info.polarity$sample.name)
+    )
+
+    message_with_time("Build roiList from compound_table (", polarity.tag, ") ...")
+    roiList <- .build_roiList(
+      xcms.xcms = xcms.xcms,
+      ion_mode = i,
+      compound_table = compound_table,
+      iso_ele = iso_ele,
+      mz_ppm = mz_ppm,
+      rt_tol = rt_tol,
+      max_iso = max_iso
+    )
+    message_with_time("roiList size: ", length(roiList))
+
+    cwp <- .as_centwave_with_roi(xcms.param$findChromPeaks, roiList = roiList)
+    xcms_param_targeted <- list(
+      findChromPeaks = cwp,
+      groupChromPeaks = xcms.param$groupChromPeaks
+    )
+
+    xcms.xcms <- xcmsProcessingMS1(
+      xcms.xcms = xcms.xcms,
+      ion_mode = i,
+      xcms_param = xcms_param_targeted,
+      adjustRT = adjustRT,
+      BPPARAM = BPPARAM,
+      ...
+    )
+
+    xcms.xcms <- xcms_get_feature_stat(xcms.xcms)
+    object@xcmsData[[polarity.tag]] <- xcms.xcms
+  }
+
   return(object)
 }
 
