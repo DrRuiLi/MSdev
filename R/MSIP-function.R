@@ -536,8 +536,8 @@ MSIP_assign_MS2 <- function(object,rt.tol = 10){
 
 #' @title Build MSIP isotopologue-level SummarizedExperiment
 #' @description
-#' Construct \code{\link{MSIPIsotopologueData}} objects (one per compound) and store
-#' them into \code{object@advancedAna$MSIP$isotopologue_data}. This is the updated
+#' Construct \code{\link{MSIPIsotopologueData}} objects (one per compound) and return
+#' them as a named list. This is the updated
 #' isotopologue-level container: a \code{SummarizedExperiment} with assays
 #' \code{intensity}, \code{ratio} and \code{purity} across \code{sample.source}.
 #'
@@ -554,7 +554,7 @@ MSIP_assign_MS2 <- function(object,rt.tol = 10){
 #' @param assay_fun function used to aggregate replicates within the same \code{sample.source};
 #'   default \code{mean}.
 #'
-#' @return MSdev object with \code{advancedAna$MSIP$isotopologue_data}.
+#' @return named list of \code{MSIPIsotopologueData}, one element per \code{compound_id}.
 #' @export
 get_MSIPIsotopologueData <- function(object,
                                      compound_id = NULL,
@@ -817,9 +817,7 @@ get_MSIPIsotopologueData <- function(object,
   if (is.null(iso_all_df) || !nrow(iso_all_df)) {
     legacy.out <- .build_from_legacy_nested(object, iso_ele = iso_ele)
     if (!is.null(legacy.out)) {
-      object@advancedAna[["MSIP"]][["isotopologue_data"]] <- legacy.out
-      object@advancedAna[["MSIP"]][["isotopologues_table"]] <- NULL
-      return(object)
+      return(legacy.out)
     }
     stop("No isotopologue mapping found in xcms featureDefinitions. ",
          "Check that features are annotated with compound_id and isotopologue info.")
@@ -931,20 +929,27 @@ get_MSIPIsotopologueData <- function(object,
     )
   }
 
-  object@advancedAna[["MSIP"]][["isotopologue_data"]] <- out
-  # remove deprecated container in new structure
-  object@advancedAna[["MSIP"]][["isotopologues_table"]] <- NULL
-  return(object)
+  return(out)
 }
 
 
-# ---------------------------------------------------------------------------
-# Deprecations
-# ---------------------------------------------------------------------------
+#' @title Populate isotopologue data into MSdev
+#' @description
+#' Build isotopologue-level \code{MSIPIsotopologueData} objects with
+#' \code{\link{get_MSIPIsotopologueData}} and store them in
+#' \code{object@advancedAna$MSIP$isotopologue_data}. This function returns the
+#' updated \code{MSdev} object.
+#'
+#' @param object MSdev object.
+#' @param ... additional arguments passed to \code{get_MSIPIsotopologueData()}.
+#'
+#' @return MSdev object with \code{advancedAna$MSIP$isotopologue_data} updated.
+#' @export
 MSIP_get_isotopologues_data <- function(object, ...) {
-  .Deprecated("get_MSIPIsotopologueData",
-              msg = "MSIP_get_isotopologues_data() is deprecated. Use get_MSIPIsotopologueData() which stores results in object@advancedAna$MSIP$isotopologue_data.")
-  get_MSIPIsotopologueData(object, ...)
+  iso.list <- get_MSIPIsotopologueData(object, ...)
+  object@advancedAna[["MSIP"]][["isotopologue_data"]] <- iso.list
+  object@advancedAna[["MSIP"]][["isotopologues_table"]] <- NULL
+  object
 }
 
 

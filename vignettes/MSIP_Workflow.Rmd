@@ -345,6 +345,7 @@ After targeted MSIP analysis, the main results are stored in:
 |------|---------|
 | `object@advancedAna$MSIP$compound_table` | Input compound table |
 | `object@advancedAna$MSIP$isotopomer_data` | Solved isotopomer data (MSIPCoreData matrices) |
+| `object@advancedAna$MSIP$isotopologue_data` | Isotopologue-level quantification (`list` of `MSIPIsotopologueData`) |
 | `object@advancedAna$MSIP$isotopomer_Molecule_igraph` | Molecular graphs for visualization |
 | `object@projectInfo$MSIP_cfmd_tempdir` | Cached CFM data directory |
 
@@ -358,6 +359,10 @@ MSIP_find_isotopologue_from_compound_table
 MSIP_get_isotopologues_CFM_annotation
     ↓
 MSIP_get_isotopomer_data (targeted mode)
+    ↓
+get_MSIPIsotopologueData (returns list)
+    ↓
+MSIP_get_isotopologues_data (deprecated wrapper; writes list back to MSdev)
     ↓
 MSIP_get_Molecule_igraph (optional visualization)
 ```
@@ -373,14 +378,40 @@ MSdev
   ├─ spectra   -> MS1/MS2 spectra + feature links
   ├─ annotation
   └─ advancedAna -> analysis-ready objects (e.g. SummarizedExperiment)
+    - MSIP
+      - compound_table
+      - isotopomer_data
+        - compound_001: a matrix of MSIPCoreData, column as sample, row as isotopologue form
+        - compound_002
+        - ...
+      - isotopologue_data
+        - compound_001: a MSIPIsotopologueData
+        - compound_002
+        - ...
 
 MSIPCoreData
   ├─ Spectra
   ├─ MSIPFragmentMap (MSIPFragmentMap: FG.atom.matrix / FG.ratio.matrix / FG.data)
   └─ Solve (list; may include MSIPIsotopomerMap + probabilities + parameters)
 
-MSIPMetaboliteData
-  ├─ CompoundInfo
-  ├─ Spectra
-  └─ MSIPIsotopologueDatas (MSIPIsotopologueData; list-like)
+MSIPIsotopologueData
+  - inherits SummarizedExperiment
+  - rowData:  
+    - isotopologue_form, such as "[13]C1", "[13]C2"
+    - isotopologue_id, such as "HMDB_0000001_[13]C1"
+    - compound_id
+    - compound_name
+    - label.isotopologue
+  - colData:
+    - sample.source
+    - group
+  - assay
+    - intensity
+    - ratio
+    - purity
+
+Function returns:
+  - get_MSIPIsotopologueData(object): returns a list of MSIPIsotopologueData
+  - MSIP_get_isotopologues_data(object): returns MSdev object and stores the list in
+    object@advancedAna$MSIP$isotopologue_data (deprecated wrapper)
 ```
