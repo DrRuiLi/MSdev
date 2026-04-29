@@ -542,7 +542,8 @@ MSIP_assign_MS2 <- function(object,rt.tol = 10){
 #' \code{intensity}, \code{ratio} and \code{purity} across \code{sample.source}.
 #'
 #' The function uses existing xcms/MSIP outputs:
-#' - \code{object@advancedAna$MSIP$isotopologues_table} (feature ↔ compound ↔ iso_count)
+#' - xcms feature definitions (\code{featureDefinitions(object@xcmsData[[...]] )})
+#'   for feature ↔ compound ↔ isotopologue mapping
 #' - optional matrices in \code{object@advancedAna$MSIP$isotopologues_matrix}:
 #'   \code{ratio_to_seed} and \code{ms1_purity}
 #' - intensities quantified from \code{object@xcmsData} via \code{get_xcms_quantify_MSIP()}.
@@ -559,23 +560,39 @@ get_MSIPIsotopologueData <- function(object,
                                      compound_id = NULL,
                                      iso_ele = get_MSdev_iso_ele(object),
                                      assay_fun = mean) {
-
-  if (is.null(object@advancedAna$MSIP$compound_table)) {
-    stop("compound_table not found in object@advancedAna$MSIP$compound_table. ",
-         "Run MSIP_import_compound_table() first.")
+  msip <- object@advancedAna[["MSIP"]]
+  if (is.null(msip)) {
+    stop("object@advancedAna[['MSIP']] is missing.")
   }
-  compound_table <- object@advancedAna$MSIP$compound_table
-  if (!("compound_id" %in% colnames(compound_table))) {
-    stop("compound_table must contain column: compound_id")
+
+  .extract_compound_table <- function(x, max_iter = 12L) {
+    need <- c("compound_id", "name", "formula", "smiles", "rt")
+    cur <- x
+    for (i in seq_len(max_iter)) {
+      if (is.data.frame(cur) && all(need %in% colnames(cur))) return(cur)
+      if (!is.list(cur)) break
+      if ("compound_table" %in% names(cur)) {
+        cur <- cur[["compound_table"]]
+        next
+      }
+      if ("MSIP" %in% names(cur)) {
+        nxt <- cur[["MSIP"]]
+        if (identical(nxt, cur)) break
+        cur <- nxt
+        next
+      }
+      break
+    }
+    NULL
+  }
+
+  compound_table <- .extract_compound_table(msip)
+  if (is.null(compound_table)) {
+    stop("compound_table not found or invalid in object@advancedAna$MSIP. ",
+         "Expected columns: compound_id, name, formula, smiles, rt.")
   }
   if (is.null(compound_id)) compound_id <- as.character(compound_table$compound_id)
   compound_id <- unique(as.character(compound_id))
-
-  if (is.null(object@advancedAna$MSIP$isotopologues_table) ||
-      !length(object@advancedAna$MSIP$isotopologues_table)) {
-    stop("object@advancedAna$MSIP$isotopologues_table not found/empty. ",
-         "Run MSIP_find_isotopologue_from_compound_table() first (or MSIP_get_isotopologues_table()).")
-  }
 
   # helper: aggregate per-sample columns to sample.source
   .agg_to_source <- function(mat, sources, fun = mean) {
@@ -599,7 +616,11 @@ get_MSIPIsotopologueData <- function(object,
     xcms.xcms <- object@xcmsData[[paste0(pol, "MS1")]]
     if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) return(NULL)
 
-    se <- get_xcms_quantify_MSIP(xcms.xcms)
+    se <- tryCatch(
+      get_xcms_quantify_MSIP(xcms.xcms),
+      error = function(e) NULL
+    )
+    if (is.null(se)) return(NULL)
     int <- SummarizedExperiment::assay(se)
     colnames(int) <- Biobase::pData(xcms.xcms)$sample.name
     sources <- Biobase::pData(xcms.xcms)$sample.source
@@ -610,7 +631,7 @@ get_MSIPIsotopologueData <- function(object,
     # optional matrices created by MSIP_get_isotopologues_table
     ratio.src <- NULL
     purity.src <- NULL
-    msip_mat <- object@advancedAna$MSIP$isotopologues_matrix
+    msip_mat <- msip[["isotopologues_matrix"]]
     if (!is.null(msip_mat$ratio_to_seed[[pol]])) {
       ratio <- msip_mat$ratio_to_seed[[pol]]
       ratio <- ratio[rownames(int), , drop = FALSE]
@@ -637,27 +658,178 @@ get_MSIPIsotopologueData <- function(object,
     list(intensity = int.src, ratio = ratio.src, purity = purity.src, colData = cda)
   }
 
-  # collect polarity tables + matrices
-  iso_tbl <- object@advancedAna$MSIP$isotopologues_table
+  # helper: derive iso_count robustly from featureDefinitions
+  .derive_iso_count <- function(df, iso_ele = "[13]C") {
+    n <- nrow(df)
+    iso_count <- rep(NA_integer_, n)
+    if ("iso_count" %in% colnames(df)) {
+      iso_count <- suppressWarnings(as.integer(df$iso_count))
+    }
+    if (all(is.na(iso_count)) && "isotopologue_form" %in% colnames(df)) {
+      x <- as.character(df$isotopologue_form)
+      num <- suppressWarnings(as.integer(gsub(".*?([0-9]+)$", "\\1", x)))
+      num[is.na(num) & !is.na(x) & nzchar(x)] <- 0L
+      iso_count <- num
+    }
+    if (all(is.na(iso_count)) && "isotope_element" %in% colnames(df)) {
+      x <- as.character(df$isotope_element)
+      x0 <- ifelse(is.na(x), "", x)
+      x0 <- gsub(iso_ele, "", x0, fixed = TRUE)
+      x0 <- gsub("[^0-9]", "", x0)
+      num <- suppressWarnings(as.integer(x0))
+      num[is.na(num) & !is.na(df$isotope_element)] <- 0L
+      iso_count <- num
+    }
+    if ("feature_id" %in% colnames(df) && "iso_seed" %in% colnames(df)) {
+      is_seed <- !is.na(df$iso_seed) & as.character(df$feature_id) == as.character(df$iso_seed)
+      iso_count[is_seed & is.na(iso_count)] <- 0L
+    }
+    iso_count
+  }
+
+  # helper: build compound/isotopologue map from xcms featureDefinitions
+  .get_iso_map_from_fdf <- function(ion_mode) {
+    pol <- ifelse(ion_mode == 0, "Negative", "Positive")
+    xcms.xcms <- object@xcmsData[[paste0(pol, "MS1")]]
+    if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) return(NULL)
+    fdf <- xcms::featureDefinitions(xcms.xcms) %>% as.data.frame()
+    if (!nrow(fdf) || !("feature_id" %in% colnames(fdf))) return(NULL)
+
+    if (!("compound_id" %in% colnames(fdf))) fdf$compound_id <- NA_character_
+    if (!("name" %in% colnames(fdf))) fdf$name <- NA_character_
+    if (!("iso_seed" %in% colnames(fdf))) fdf$iso_seed <- NA_character_
+
+    fdf$iso_count <- .derive_iso_count(fdf, iso_ele = iso_ele)
+
+    # propagate compound/name within iso_seed group when only seed has annotation
+    if (any(!is.na(fdf$iso_seed))) {
+      fdf <- fdf %>%
+        dplyr::group_by(iso_seed) %>%
+        dplyr::mutate(
+          compound_id = {
+            x <- unique(stats::na.omit(as.character(compound_id)))
+            if (length(x)) x[[1]] else NA_character_
+          },
+          name = {
+            x <- unique(stats::na.omit(as.character(name)))
+            if (length(x)) x[[1]] else NA_character_
+          }
+        ) %>%
+        dplyr::ungroup()
+    }
+
+    fdf <- fdf %>%
+      dplyr::mutate(
+        compound_id = as.character(compound_id),
+        name = as.character(name),
+        feature_id = as.character(feature_id),
+        iso_count = suppressWarnings(as.integer(iso_count))
+      ) %>%
+      dplyr::filter(!is.na(compound_id), !is.na(feature_id), !is.na(iso_count)) %>%
+      dplyr::select(feature_id, compound_id, name, iso_count) %>%
+      dplyr::distinct()
+    if (!nrow(fdf)) return(NULL)
+    fdf
+  }
+
+  .build_from_legacy_nested <- function(object, iso_ele = "[13]C") {
+    # Legacy payload observed in old saved objects:
+    # (A) msip$isotopologue_data[[1]]$compound_table + $isotopomer_data
+    # (B) msip$compound_table + msip$isotopomer_data
+    legacy_candidates <- list(
+      msip[["isotopologue_data"]],
+      msip
+    )
+    cpt <- NULL
+    iso_mat_list <- NULL
+    for (cand in legacy_candidates) {
+      if (is.null(cand)) next
+      if (is.list(cand) && all(c("compound_table", "isotopomer_data") %in% names(cand))) {
+        cpt <- cand[["compound_table"]]
+        iso_mat_list <- cand[["isotopomer_data"]]
+      } else if (is.list(cand) && length(cand) && is.list(cand[[1]]) &&
+                 all(c("compound_table", "isotopomer_data") %in% names(cand[[1]]))) {
+        cpt <- cand[[1]][["compound_table"]]
+        iso_mat_list <- cand[[1]][["isotopomer_data"]]
+      }
+      if (is.data.frame(cpt) && is.list(iso_mat_list)) break
+    }
+    if (!is.data.frame(cpt) || !is.list(iso_mat_list)) return(NULL)
+    if (!all(c("compound_id", "name") %in% colnames(cpt))) return(NULL)
+
+    # sample.source -> group from sampleInfo
+    sample.info <- as.data.frame(object@sampleInfo)
+    src_group <- NULL
+    if (all(c("sample.source", "group") %in% colnames(sample.info))) {
+      src_group <- tapply(as.character(sample.info$group),
+                          as.character(sample.info$sample.source),
+                          function(z) paste(unique(stats::na.omit(z)), collapse = ";"))
+    }
+
+    out <- list()
+    cids <- intersect(as.character(cpt$compound_id), names(iso_mat_list))
+    for (cid in cids) {
+      m <- iso_mat_list[[cid]]
+      if (is.null(dim(m)) || is.null(rownames(m)) || is.null(colnames(m))) next
+      iso_form <- rownames(m)
+      sample_src <- colnames(m)
+      iso_count <- suppressWarnings(as.integer(gsub(".*?([0-9]+)$", "\\1", iso_form)))
+      iso_count[is.na(iso_count)] <- seq_along(iso_form) - 1L
+      iso_id <- paste0(cid, "_", iso_form)
+      cp_name <- cpt$name[match(cid, cpt$compound_id)]
+      cp_name <- ifelse(length(cp_name) && !is.na(cp_name), as.character(cp_name[[1]]), NA_character_)
+
+      rda <- S4Vectors::DataFrame(
+        isotopologue_form = iso_form,
+        isotopologue_id = iso_id,
+        compound_id = rep(cid, length(iso_form)),
+        compound_name = rep(cp_name, length(iso_form)),
+        label.isotopologue = ifelse(is.na(cp_name), NA_character_, paste0(cp_name, "_M+", iso_count)),
+        row.names = iso_id
+      )
+      cda <- data.frame(
+        sample.source = sample_src,
+        group = if (is.null(src_group)) rep(NA_character_, length(sample_src)) else as.character(src_group[sample_src]),
+        row.names = sample_src,
+        stringsAsFactors = FALSE
+      )
+      na_mat <- matrix(NA_real_, nrow = length(iso_form), ncol = length(sample_src),
+                       dimnames = list(iso_id, sample_src))
+      out[[cid]] <- MSIPIsotopologueData(
+        assays = list(intensity = na_mat, ratio = na_mat, purity = na_mat),
+        rowData = rda,
+        colData = S4Vectors::DataFrame(cda)
+      )
+    }
+    if (!length(out)) return(NULL)
+    out
+  }
+
+  # collect polarity mapping + matrices
   iso_all <- list()
   pol_mats <- list()
   for (ion_mode in 0:1) {
     pol <- ifelse(ion_mode == 0, "Negative", "Positive")
-    if (!is.null(iso_tbl[[pol]]) && nrow(iso_tbl[[pol]])) {
-      iso_all[[pol]] <- iso_tbl[[pol]]
-    }
+    iso_all[[pol]] <- .get_iso_map_from_fdf(ion_mode)
     pol_mats[[pol]] <- .get_pol_mats(ion_mode)
   }
   iso_all_df <- do.call(rbind, iso_all)
   if (is.null(iso_all_df) || !nrow(iso_all_df)) {
-    stop("No rows found in object@advancedAna$MSIP$isotopologues_table.")
+    legacy.out <- .build_from_legacy_nested(object, iso_ele = iso_ele)
+    if (!is.null(legacy.out)) {
+      object@advancedAna[["MSIP"]][["isotopologue_data"]] <- legacy.out
+      object@advancedAna[["MSIP"]][["isotopologues_table"]] <- NULL
+      return(object)
+    }
+    stop("No isotopologue mapping found in xcms featureDefinitions. ",
+         "Check that features are annotated with compound_id and isotopologue info.")
   }
 
-  # ensure required columns exist
+  # ensure required columns exist in derived map
   need <- c("compound_id", "name", "iso_count", "feature_id")
   miss <- setdiff(need, colnames(iso_all_df))
   if (length(miss)) {
-    stop("isotopologues_table missing required columns: ", paste(miss, collapse = ", "))
+    stop("isotopologue mapping missing required columns: ", paste(miss, collapse = ", "))
   }
   iso_all_df$compound_id <- as.character(iso_all_df$compound_id)
   iso_all_df$name <- as.character(iso_all_df$name)
@@ -759,7 +931,9 @@ get_MSIPIsotopologueData <- function(object,
     )
   }
 
-  object@advancedAna$MSIP$isotopologue_data <- out
+  object@advancedAna[["MSIP"]][["isotopologue_data"]] <- out
+  # remove deprecated container in new structure
+  object@advancedAna[["MSIP"]][["isotopologues_table"]] <- NULL
   return(object)
 }
 

@@ -8,13 +8,13 @@ MSIPIsotopologueData <- function(assays,
                                  rowData = S4Vectors::DataFrame(),
                                  colData = S4Vectors::DataFrame(),
                                  metadata = list()) {
-  new(
-    "MSIPIsotopologueData",
+  se <- SummarizedExperiment::SummarizedExperiment(
     assays = assays,
     rowData = rowData,
     colData = colData,
     metadata = metadata
   )
+  methods::as(se, "MSIPIsotopologueData")
 }
 
 
