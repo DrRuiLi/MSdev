@@ -1,30 +1,44 @@
 
 
 setClass(Class = "MSIPIsotopologueData",
-         contains = "list")
+         contains = "SummarizedExperiment")
 
 
-MSIPIsotopologueData <- function(...){
-
-
-  x <- new("MSIPIsotopologueData")
-
-  input <- list(...)
-  for (i in seq_along(input)) {
-    x[names(input)] <- input[[i]]
-  }
-  return(x)
-
+MSIPIsotopologueData <- function(assays,
+                                 rowData = S4Vectors::DataFrame(),
+                                 colData = S4Vectors::DataFrame(),
+                                 metadata = list()) {
+  new(
+    "MSIPIsotopologueData",
+    assays = assays,
+    rowData = rowData,
+    colData = colData,
+    metadata = metadata
+  )
 }
 
 
-setMethod(f = "show",signature = "MSIPIsotopologueData",
-          definition = function(object){
-            xn <- names(object)
-            xn <- xn[grepl("M",xn)]
-            l <- paste0(format_isotopologue(xn,"+"),collapse = ";")
-            cat(length(xn),"isotopologues: ",l )
-
+setMethod(f = "show", signature = "MSIPIsotopologueData",
+          definition = function(object) {
+            rda <- SummarizedExperiment::rowData(object)
+            if (!nrow(rda)) {
+              cat("MSIPIsotopologueData (empty)\n")
+              return(invisible())
+            }
+            iso_form <- NULL
+            if ("isotopologue_form" %in% colnames(rda)) {
+              iso_form <- as.character(rda$isotopologue_form)
+            } else {
+              iso_form <- rownames(rda)
+            }
+            iso_form <- iso_form[!is.na(iso_form) & nzchar(iso_form)]
+            if (!length(iso_form)) {
+              cat("MSIPIsotopologueData (", nrow(rda), " rows)\n", sep = "")
+              return(invisible())
+            }
+            l <- paste0(utils::head(iso_form, 10), collapse = "; ")
+            if (length(iso_form) > 10) l <- paste0(l, "; ...")
+            cat(length(iso_form), " isotopologues: ", l, "\n", sep = "")
           })
 
 
@@ -32,7 +46,8 @@ setClass(Class = "MSIPMetaboliteData",
          slots = list(
            "CompoundInfo" = "list",
            "Spectra" = "list",
-           "MSIPIsotopologueDatas" = "MSIPIsotopologueData"
+           # legacy container; kept flexible for backward compatibility
+           "MSIPIsotopologueDatas" = "ANY"
          ))
 
 MSIPMetaboliteData <- function(CompoundInfo = list(),
