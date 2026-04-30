@@ -628,21 +628,69 @@ get_MSIPIsotopologueData <- function(object,
 
     int.src <- .agg_to_source(int, sources, fun = assay_fun)
 
-    # optional matrices created by MSIP_get_isotopologues_table
+    # ratio: compute isotopologue fraction (ratio to seed) per feature
     ratio.src <- NULL
-    purity.src <- NULL
-    msip_mat <- msip[["isotopologues_matrix"]]
-    if (!is.null(msip_mat$ratio_to_seed[[pol]])) {
-      ratio <- msip_mat$ratio_to_seed[[pol]]
-      ratio <- ratio[rownames(int), , drop = FALSE]
-      colnames(ratio) <- Biobase::pData(xcms.xcms)$sample.name
-      ratio.src <- .agg_to_source(ratio, sources, fun = assay_fun)
+    ratio.matrix <- tryCatch(get_xcms_iso_fraction(xcms.xcms), error = function(e) NULL)
+    if (!is.null(ratio.matrix)) {
+      pdata <- Biobase::pData(xcms.xcms)
+      ratio.col <- colnames(ratio.matrix)
+      src_ratio <- pdata$sample.source[match(ratio.col, pdata$sample.name)]
+      if (all(is.na(src_ratio)) && "sampleNames" %in% colnames(pdata)) {
+        src_ratio <- pdata$sample.source[match(ratio.col, pdata$sampleNames)]
+      }
+      nm_ratio <- pdata$sample.name[match(ratio.col, pdata$sample.name)]
+      nm_ratio[is.na(nm_ratio)] <- ratio.col[is.na(nm_ratio)]
+      colnames(ratio.matrix) <- nm_ratio
+      ratio.src <- .agg_to_source(ratio.matrix, src_ratio, fun = assay_fun)
     }
-    if (!is.null(msip_mat$ms1_purity[[pol]])) {
-      purity <- msip_mat$ms1_purity[[pol]]
-      purity <- purity[rownames(int), , drop = FALSE]
-      colnames(purity) <- Biobase::pData(xcms.xcms)$sample.name
-      purity.src <- .agg_to_source(purity, sources, fun = assay_fun)
+
+    # purity: compute MS1 purity matrix (feature-by-sample) from MS1 Spectra, then aggregate
+    purity.src <- NULL
+
+    # If MS1 purity is not already available, try to compute from MS1 spectra.
+    if (is.null(purity.src)) {
+      ms1.sp <- NULL
+      if (is.null(object@spectra$MS1_Spectra)) {
+        message("[get_MSIPIsotopologueData] ", pol,
+                ": object@spectra$MS1_Spectra is NULL; purity will be NA.")
+      } else {
+        ms1.sp <- tryCatch(onDiskData_retrieve(object@spectra$MS1_Spectra), error = function(e) {
+          message("[get_MSIPIsotopologueData] ", pol,
+                  ": failed to retrieve MS1 Spectra: ", conditionMessage(e))
+          NULL
+        })
+      }
+      if (!is.null(ms1.sp) && inherits(ms1.sp, "Spectra")) {
+        ms1.sp <- tryCatch(ProtGenerics::filterPolarity(ms1.sp, ion_mode), error = function(e) ms1.sp)
+        if (!length(ms1.sp)) {
+          message("[get_MSIPIsotopologueData] ", pol,
+                  ": MS1 Spectra has 0 spectra after polarity filter; purity will be NA.")
+          ms1.sp <- NULL
+        }
+      }
+      purity.matrix <- tryCatch(
+        get_xcms_feature_purity_matrix(
+          xcms.xcms,
+          xcms.ms1.sp = ms1.sp,
+          ppm = 10,
+          isolation_half_window = 0.2
+        ),
+        error = function(e) {
+          message("[get_MSIPIsotopologueData] ", pol,
+                  ": get_xcms_feature_purity_matrix() failed: ", conditionMessage(e))
+          NULL
+        }
+      )
+      if (!is.null(purity.matrix)) {
+        purity.matrix <- purity.matrix[rownames(int), , drop = FALSE]
+        pdata <- Biobase::pData(xcms.xcms)
+        pur.col <- colnames(purity.matrix)
+        src_pur <- pdata$sample.source[match_path(pur.col, pdata$sampleNames)]
+        nm_pur <- pdata$sample.name[match_path(pur.col, pdata$sampleNames)]
+        nm_pur[is.na(nm_pur)] <- pur.col[is.na(nm_pur)]
+        colnames(purity.matrix) <- nm_pur
+        purity.src <- .agg_to_source(purity.matrix, src_pur, fun = assay_fun)
+      }
     }
 
     # colData by sample.source
@@ -695,6 +743,16 @@ get_MSIPIsotopologueData <- function(object,
     fdf <- xcms::featureDefinitions(xcms.xcms) %>% as.data.frame()
     if (!nrow(fdf) || !("feature_id" %in% colnames(fdf))) return(NULL)
 
+    # diagnostic: report when featureDefinitions lacks isotopologue-matching variables
+    match_vars <- c("compound_id", "name", "iso_seed",
+                    "isotopologue_form", "isotope_element")
+    if (!any(match_vars %in% colnames(fdf))) {
+      message("[get_MSIPIsotopologueData] ", pol,
+              ": featureDefinitions lacks isotopologue-matching variables ",
+              "(compound_id/name/iso_seed/isotopologue_form/isotope_element). ",
+              "No isotopologue mapping can be derived for this polarity.")
+    }
+
     if (!("compound_id" %in% colnames(fdf))) fdf$compound_id <- NA_character_
     if (!("name" %in% colnames(fdf))) fdf$name <- NA_character_
     if (!("iso_seed" %in% colnames(fdf))) fdf$iso_seed <- NA_character_
@@ -723,10 +781,11 @@ get_MSIPIsotopologueData <- function(object,
         compound_id = as.character(compound_id),
         name = as.character(name),
         feature_id = as.character(feature_id),
-        iso_count = suppressWarnings(as.integer(iso_count))
+        iso_count = suppressWarnings(as.integer(iso_count)),
+        polarity = pol
       ) %>%
       dplyr::filter(!is.na(compound_id), !is.na(feature_id), !is.na(iso_count)) %>%
-      dplyr::select(feature_id, compound_id, name, iso_count) %>%
+      dplyr::select(feature_id, compound_id, name, iso_count, polarity) %>%
       dplyr::distinct()
     if (!nrow(fdf)) return(NULL)
     fdf
@@ -793,10 +852,61 @@ get_MSIPIsotopologueData <- function(object,
         row.names = sample_src,
         stringsAsFactors = FALSE
       )
-      na_mat <- matrix(NA_real_, nrow = length(iso_form), ncol = length(sample_src),
-                       dimnames = list(iso_id, sample_src))
+
+      .msipcore_intensity <- function(x) {
+        # Return a single numeric intensity proxy (TIC sum) from legacy MSIPCoreData-like objects.
+        if (is.null(x)) return(NA_real_)
+        # Many saved objects store MSIPCoreData cells as data.frame already.
+        if (methods::is(x, "MSIPCoreData")) {
+          sp <- x@Spectra
+          if (inherits(sp, "Spectra")) {
+            ints <- Spectra::intensity(sp)
+            return(sum(vapply(ints, function(v) sum(v, na.rm = TRUE), numeric(1)), na.rm = TRUE))
+          }
+          if (is.data.frame(sp) && all(c("sp_id", "intensity") %in% colnames(sp))) {
+            return(sum(as.numeric(sp$intensity), na.rm = TRUE))
+          }
+          return(NA_real_)
+        }
+        if (inherits(x, "Spectra")) {
+          ints <- Spectra::intensity(x)
+          return(sum(vapply(ints, function(v) sum(v, na.rm = TRUE), numeric(1)), na.rm = TRUE))
+        }
+        if (is.data.frame(x)) {
+          if ("totIonCurrent" %in% colnames(x)) return(sum(as.numeric(x$totIonCurrent), na.rm = TRUE))
+          if ("intensity" %in% colnames(x)) return(sum(as.numeric(x$intensity), na.rm = TRUE))
+          return(NA_real_)
+        }
+        if (is.list(x) && length(x) == 1) {
+          return(.msipcore_intensity(x[[1]]))
+        }
+        NA_real_
+      }
+
+      intensity.mat <- matrix(NA_real_, nrow = length(iso_form), ncol = length(sample_src),
+                              dimnames = list(iso_id, sample_src))
+      purity.mat <- intensity.mat
+      for (i_row in seq_along(iso_form)) {
+        for (i_col in seq_along(sample_src)) {
+          cell <- m[i_row, i_col][[1]]
+          intensity.mat[i_row, i_col] <- .msipcore_intensity(cell)
+        }
+      }
+
+      ratio.mat <- intensity.mat
+      if (nrow(intensity.mat) >= 1) {
+        denom <- intensity.mat[1, ]
+        ratio.mat <- sweep(intensity.mat, 2, denom, `/`)
+      }
       out[[cid]] <- MSIPIsotopologueData(
-        assays = list(intensity = na_mat, ratio = na_mat, purity = na_mat),
+        assays = list(
+          intensity.positive = intensity.mat,
+          intensity.negative = purity.mat,
+          ratio.positive = ratio.mat,
+          ratio.negative = purity.mat,
+          purity.positive = purity.mat,
+          purity.negative = purity.mat
+        ),
         rowData = rda,
         colData = S4Vectors::DataFrame(cda)
       )
@@ -824,7 +934,7 @@ get_MSIPIsotopologueData <- function(object,
   }
 
   # ensure required columns exist in derived map
-  need <- c("compound_id", "name", "iso_count", "feature_id")
+  need <- c("compound_id", "name", "iso_count", "feature_id", "polarity")
   miss <- setdiff(need, colnames(iso_all_df))
   if (length(miss)) {
     stop("isotopologue mapping missing required columns: ", paste(miss, collapse = ", "))
@@ -866,49 +976,53 @@ get_MSIPIsotopologueData <- function(object,
       cda <- cda[all_sources, , drop = FALSE]
     }
 
-    intensity.mat <- matrix(NA_real_, nrow = length(iso_counts), ncol = length(all_sources),
+    intensity.pos <- matrix(NA_real_, nrow = length(iso_counts), ncol = length(all_sources),
                             dimnames = list(iso_id, all_sources))
-    ratio.mat <- intensity.mat
-    purity.mat <- intensity.mat
+    intensity.neg <- intensity.pos
+    ratio.pos <- intensity.pos
+    ratio.neg <- intensity.pos
+    purity.pos <- intensity.pos
+    purity.neg <- intensity.pos
 
     for (k in seq_along(iso_counts)) {
       ic <- iso_counts[[k]]
-      fids <- this.df$feature_id[this.df$iso_count %in% ic]
-      fids <- unique(na.omit(as.character(fids)))
-      if (!length(fids)) next
 
-      # collect across polarities, then average
-      mats.int <- list()
-      mats.rat <- list()
-      mats.pur <- list()
-      for (pol in c("Negative", "Positive")) {
-        pm <- pol_mats[[pol]]
-        if (is.null(pm)) next
-        fi <- intersect(fids, rownames(pm$intensity))
-        if (!length(fi)) next
-        mats.int[[pol]] <- pm$intensity[fi, , drop = FALSE]
-        if (!is.null(pm$ratio)) mats.rat[[pol]] <- pm$ratio[fi, , drop = FALSE]
-        if (!is.null(pm$purity)) mats.pur[[pol]] <- pm$purity[fi, , drop = FALSE]
+      # Negative
+      fids.neg <- this.df$feature_id[this.df$iso_count %in% ic & this.df$polarity %in% "Negative"]
+      fids.neg <- unique(na.omit(as.character(fids.neg)))
+      if (length(fids.neg) && !is.null(pol_mats$Negative)) {
+        pm <- pol_mats$Negative
+        fi <- intersect(fids.neg, rownames(pm$intensity))
+        if (length(fi)) {
+          intensity.neg[k, ] <- apply(pm$intensity[fi, , drop = FALSE], 2, mean, na.rm = TRUE)
+        }
+        if (!is.null(pm$ratio)) {
+          fi <- intersect(fids.neg, rownames(pm$ratio))
+          if (length(fi)) ratio.neg[k, ] <- apply(pm$ratio[fi, , drop = FALSE], 2, mean, na.rm = TRUE)
+        }
+        if (!is.null(pm$purity)) {
+          fi <- intersect(fids.neg, rownames(pm$purity))
+          if (length(fi)) purity.neg[k, ] <- apply(pm$purity[fi, , drop = FALSE], 2, mean, na.rm = TRUE)
+        }
       }
 
-      if (length(mats.int)) {
-        v <- do.call(rbind, mats.int)
-        intensity.mat[k, colnames(v)] <- apply(v, 2, mean, na.rm = TRUE)
-      }
-      if (length(mats.rat)) {
-        v <- do.call(rbind, mats.rat)
-        ratio.mat[k, colnames(v)] <- apply(v, 2, mean, na.rm = TRUE)
-      }
-      if (length(mats.pur)) {
-        v <- do.call(rbind, mats.pur)
-        purity.mat[k, colnames(v)] <- apply(v, 2, mean, na.rm = TRUE)
-      }
-    }
-
-    # If ratio matrix is missing (all NA), derive from intensity relative to M0
-    if (all(is.na(ratio.mat))) {
-      if (nrow(intensity.mat) && !all(is.na(intensity.mat[1, ]))) {
-        ratio.mat <- sweep(intensity.mat, 2, intensity.mat[1, ], `/`)
+      # Positive
+      fids.pos <- this.df$feature_id[this.df$iso_count %in% ic & this.df$polarity %in% "Positive"]
+      fids.pos <- unique(na.omit(as.character(fids.pos)))
+      if (length(fids.pos) && !is.null(pol_mats$Positive)) {
+        pm <- pol_mats$Positive
+        fi <- intersect(fids.pos, rownames(pm$intensity))
+        if (length(fi)) {
+          intensity.pos[k, ] <- apply(pm$intensity[fi, , drop = FALSE], 2, mean, na.rm = TRUE)
+        }
+        if (!is.null(pm$ratio)) {
+          fi <- intersect(fids.pos, rownames(pm$ratio))
+          if (length(fi)) ratio.pos[k, ] <- apply(pm$ratio[fi, , drop = FALSE], 2, mean, na.rm = TRUE)
+        }
+        if (!is.null(pm$purity)) {
+          fi <- intersect(fids.pos, rownames(pm$purity))
+          if (length(fi)) purity.pos[k, ] <- apply(pm$purity[fi, , drop = FALSE], 2, mean, na.rm = TRUE)
+        }
       }
     }
 
@@ -921,7 +1035,14 @@ get_MSIPIsotopologueData <- function(object,
       row.names = iso_id
     )
 
-    assays <- list(intensity = intensity.mat, ratio = ratio.mat, purity = purity.mat)
+    assays <- list(
+      intensity.positive = intensity.pos,
+      intensity.negative = intensity.neg,
+      ratio.positive = ratio.pos,
+      ratio.negative = ratio.neg,
+      purity.positive = purity.pos,
+      purity.negative = purity.neg
+    )
     out[[cid]] <- MSIPIsotopologueData(
       assays = assays,
       rowData = rda,

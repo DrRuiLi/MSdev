@@ -2719,22 +2719,33 @@ simulate_prm <- function(xcms.fdf,
 }
 
 
+#' @title Compute MS1 purity matrix for xcms features
+#' @description
+#' Calculate a feature-by-sample MS1 purity matrix by extracting, for each feature
+#' in \code{xcms.xcms}, the closest MS1 scan (by retention time) from \code{xcms.ms1.sp}
+#' in each sample file (matched by \code{Spectra::dataOrigin}). Purity is calculated
+#' by \code{get_spectra_ion_purity()} within an isolation window around the feature m/z.
+#'
+#' Note: this function requires MS1 \code{Spectra}. It does **not** import spectra
+#' from \code{xcms.xcms} automatically. Use \code{object@spectra$MS1_Spectra} from
+#' \code{MSdev_extract_Spectra()} (recommended) or build MS1 Spectra yourself.
+#'
+#' @param xcms.xcms \code{XCMSnExp} with grouped features (must have \code{featureDefinitions}).
+#' @param xcms.ms1.sp MS1 \code{Spectra} object covering the same files as \code{xcms.xcms}.
+#' @param ppm numeric, ppm tolerance for m/z window.
+#' @param isolation_half_window numeric, half isolation window (m/z).
+#'
+#' @return numeric matrix with rows = \code{feature_id}, columns = sample files (by \code{dataOrigin}).
+#' @export
 get_xcms_feature_purity_matrix <- function(xcms.xcms,
-                                           xcms.ms1.sp = NULL,
+                                           xcms.ms1.sp,
                                            ppm = 10,
                                            isolation_half_window = 0.2){
 
   xcms.fdf <- featureDefinitions(xcms.xcms)
 
-  ### sp process
-  {
-
-    if (is.null(xcms.ms1.sp)) {
-      message_with_time("Import ms1 spectra")
-      xcms.sp <- get_xcms_Spectra(xcms.xcms)
-      xcms.ms1.sp <- xcms.sp[msLevel(xcms.sp)==1]
-    }
-
+  if (missing(xcms.ms1.sp) || is.null(xcms.ms1.sp)) {
+    stop("xcms.ms1.sp (MS1 Spectra) must be provided.")
   }
 
   ### calc ms1_purity by ms1.sp
@@ -2766,7 +2777,7 @@ get_xcms_feature_purity_matrix <- function(xcms.xcms,
 
 
 xcms_get_feature_purity <- function(xcms.xcms,
-                                    xcms.ms1.sp = NULL,
+                                    xcms.ms1.sp,
                                     ms1_purity_matrix = NULL,
                                     split_source = F,
                                     selected.sample =which( pData(xcms.xcms)$sample.type !="Blank"),
