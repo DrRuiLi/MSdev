@@ -36,6 +36,11 @@ MSIP_import_compound_table <- function(obj, table.path) {
 #' Calculates expected m/z for each isotope label combination using formula and isotope mass differences,
 #' then matches to xcms features by m/z and rt. Stores result in 'obj@advancedAna$MSIP$isotopologues_table'.
 #'
+#' @details
+#' \lifecycle{deprecated}
+#' This function is deprecated. Use \code{MSIP_xcms_processing.targeted()} instead,
+#' which handles isotopologue annotation and M+0 injection automatically.
+#'
 #' @param obj MSdev object with compound table in advancedAna$MSIP$compound_table
 #' @param iso_ele isotope element, default "\[13\]C"
 #' @param ppm ppm tolerance for m/z matching, default 10
@@ -48,6 +53,10 @@ MSIP_find_isotopologue_from_compound_table <- function(obj,
                                                         iso_ele = "[13]C",
                                                         ppm = 10,
                                                         rt.tol = 10) {
+  .Deprecated("MSIP_xcms_processing.targeted",
+              package = "MSdev",
+              msg = "MSIP_find_isotopologue_from_compound_table is deprecated. \\
+Use MSIP_xcms_processing.targeted() which handles isotopologue annotation automatically.")
 
   compound_table <- obj@advancedAna$MSIP$compound_table
   if (is.null(compound_table)) {
@@ -2372,17 +2381,33 @@ MSIP_clear_previous_data <- function(object){
 #' by simulating all possible isotopologues for each compound (default: \code{[13]C})
 #' and creating RT/mz ROIs around expected signals.
 #'
+#' After xcms processing, the function annotates \code{featureDefinitions} with
+#' isotopologue metadata (\code{compound_id}, \code{name}, \code{iso_count},
+#' \code{iso_form}, \code{iso_seed}) by matching detected features to the
+#' theoretical isotopologue grid.
+#'
+#' If a compound's M+0 (unlabeled) feature is missing from the detected features,
+#' a synthetic feature is injected with zero intensity. This ensures downstream
+#' functions like \code{\link{get_MSIPIsotopologueData}} can construct a complete
+#' isotopologue series for every compound.
+#'
 #' @param object MSdev object.
 #' @param iso_ele character, isotope element, default \code{"[13]C"}.
-#' @param mz_ppm numeric, ppm tolerance used to construct ROI mz ranges.
-#' @param rt_tol numeric, RT tolerance (seconds) used to construct ROI RT ranges.
+#' @param mz_ppm numeric, ppm tolerance used to construct ROI mz ranges and
+#'   to match detected features to theoretical isotopologues.
+#' @param rt_tol numeric, RT tolerance (seconds) used to construct ROI RT ranges
+#'   and to match detected features to theoretical isotopologues.
 #' @param max_iso integer, optional cap for maximum isotopologue count per compound.
 #' @param adjustRT logical, whether to perform retention time adjustment.
 #' @param BPPARAM BiocParallel backend passed to \code{xcms::findChromPeaks()}.
 #' @param ... passed to \code{xcms::findChromPeaks()}.
 #'
 #' @return MSdev object with processed \code{object@xcmsData$PositiveMS1} and/or
-#' \code{object@xcmsData$NegativeMS1}.
+#' \code{object@xcmsData$NegativeMS1}. The \code{featureDefinitions} of each
+#' polarity object are annotated with isotopologue columns
+#' (\code{compound_id}, \code{name}, \code{iso_count}, \code{iso_form},
+#' \code{iso_seed}). Missing M+0 features are injected as zero-intensity
+#' synthetic peaks.
 #' @export
 MSIP_xcms_processing.targeted <- function(object,
                                          iso_ele = "[13]C",
@@ -2605,7 +2630,12 @@ MSIP_xcms_processing.targeted <- function(object,
     # ---- append synthetic chromPeaks ----
     if (length(new_pk_list)) {
       pk_new_mat <- do.call(rbind, new_pk_list)
-      pk_combined <- rbind(pks, pk_new_mat)
+      # align columns to match existing chromPeaks matrix exactly
+      pk_template <- matrix(NA_real_, nrow = nrow(pk_new_mat), ncol = ncol(pks),
+                            dimnames = list(rownames(pk_new_mat), colnames(pks)))
+      shared <- intersect(colnames(pk_new_mat), colnames(pks))
+      pk_template[, shared] <- pk_new_mat[, shared, drop = FALSE]
+      pk_combined <- rbind(pks, pk_template)
       xcms::chromPeaks(xcms.xcms) <- pk_combined
 
       # update chromPeakData to match new row count
@@ -2617,6 +2647,11 @@ MSIP_xcms_processing.targeted <- function(object,
           is_filled = rep(TRUE, n_new),
           stringsAsFactors = FALSE
         )
+        # align columns with existing chromPeakData
+        for (nm in setdiff(colnames(cpd), colnames(cpd_extra))) {
+          cpd_extra[[nm]] <- NA
+        }
+        cpd_extra <- cpd_extra[, colnames(cpd), drop = FALSE]
         xcms::chromPeakData(xcms.xcms) <- S4Vectors::DataFrame(
           rbind(as.data.frame(cpd), cpd_extra)
         )

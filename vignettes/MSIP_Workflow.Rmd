@@ -111,7 +111,12 @@ Also in `R/MSIPCoreData.R`, this represents the solved isotopomer model:
 
 Defined in `R/MSIP-class.R`:
 
--   **`MSIPIsotopologueData`** *(contains `list`)*: a list-like container of isotopologues, typically keyed by names containing `"M"` (e.g. `M+0`, `M+1`, ...). Its `show()` prints how many isotopologues and their formatted names.
+-   **`MSIPIsotopologueData`** *(contains `SummarizedExperiment`)*: a per-compound container of isotopologue quantification. Rows represent isotopologues (M+0, M+1, ...) and columns represent sample sources. Six assays are stored:
+    -   `intensity.positive` / `intensity.negative`: peak intensity from `get_xcms_quantify_MSIP()`
+    -   `ratio.positive` / `ratio.negative`: isotopologue fraction from `get_xcms_iso_fraction()`
+    -   `purity.positive` / `purity.negative`: MS1 feature purity from `get_xcms_feature_purity_matrix()`
+
+    Row metadata (`rowData`) includes `compound_id`, `compound_name`, `isotopologue_form`, `isotopologue_id`, and `label.isotopologue`. Column metadata (`colData`) includes `sample.source` and `group`.
 
 -   **`MSIPMetaboliteData`**: a metabolite-centric container with:
 
@@ -170,19 +175,26 @@ Prepare a compound table with the following required columns:
 object <- MSIP_import_compound_table(object, table.path = "path/to/compound_table.csv")
 ```
 
-### Step 2: Find Isotopologues from Compound Table
+### Step 2: Targeted xcms Processing
 
-For each compound in the table, calculate the m/z of all possible isotopologues (based on the target isotope element, default [13]C) and their adducts (M+H and M-H).
+Perform targeted xcms peak detection and isotopologue annotation in a single step.
+This replaces the old `MSIP_find_isotopologue_from_compound_table()` (now deprecated).
 
 ```{r, eval=FALSE}
-# Find isotopologues for compounds in the table
-object <- MSIP_find_isotopologue_from_compound_table(object)
+# Run targeted xcms processing with isotopologue annotation
+object <- MSIP_xcms_processing.targeted(
+  object,
+  iso_ele = "[13]C",
+  mz_ppm = 10,
+  rt_tol = 30
+)
 ```
 
 This function:
-- Calculates the base m/z for each compound with M+H and M-H adducts
-- Generates isotopologue m/z grid based on the maximum number of target atoms
-- Stores results in `object@advancedAna$MSIP$isotopologues_table`
+- Constructs a `roiList` from the compound table by simulating all possible isotopologues
+- Runs xcms peak detection (`CentWaveParam` with roiList), grouping, and filling
+- **Annotates** `featureDefinitions` with isotopologue metadata (`compound_id`, `name`, `iso_count`, `iso_form`, `iso_seed`) by matching detected features to the theoretical isotopologue grid
+- **Injects missing M+0 features**: if a compound's unlabeled (M+0) peak was not detected, a synthetic zero-intensity feature is added so that downstream isotopologue quantification has a complete series
 
 ### Step 3: Export Acquisition List (Optional)
 
@@ -344,6 +356,7 @@ After targeted MSIP analysis, the main results are stored in:
 | Slot | Content |
 |------|---------|
 | `object@advancedAna$MSIP$compound_table` | Input compound table |
+| `featureDefinitions(xcms.xcms)` | Detected features annotated with `compound_id`, `name`, `iso_count`, `iso_form`, `iso_seed` (by `MSIP_xcms_processing.targeted`) |
 | `object@advancedAna$MSIP$isotopomer_data` | Solved isotopomer data (MSIPCoreData matrices) |
 | `object@advancedAna$MSIP$isotopologue_data` | Isotopologue-level quantification (`list` of `MSIPIsotopologueData`) |
 | `object@advancedAna$MSIP$isotopomer_Molecule_igraph` | Molecular graphs for visualization |
@@ -354,15 +367,16 @@ After targeted MSIP analysis, the main results are stored in:
 ```
 MSIP_import_compound_table
     ↓
-MSIP_find_isotopologue_from_compound_table
+MSIP_xcms_processing.targeted
+  (targeted peak detection + featureDefinitions annotation + M+0 injection)
     ↓
 MSIP_get_isotopologues_CFM_annotation
     ↓
 MSIP_get_isotopomer_data (targeted mode)
     ↓
-get_MSIPIsotopologueData (returns list)
+get_MSIPIsotopologueData (returns list of MSIPIsotopologueData)
     ↓
-MSIP_get_isotopologues_data (deprecated wrapper; writes list back to MSdev)
+MSIP_get_isotopologues_data (writes list back to MSdev)
     ↓
 MSIP_get_Molecule_igraph (optional visualization)
 ```
@@ -375,6 +389,8 @@ MSIP_get_Molecule_igraph (optional visualization)
 MSdev
   ├─ projectInfo / processingInfo / sampleInfo / experimentInfo
   ├─ xcmsData  -> processed features (by polarity/acquisition)
+  │   - featureDefinitions annotated by MSIP_xcms_processing.targeted:
+  │     compound_id, name, iso_count, iso_form, iso_seed
   ├─ spectra   -> MS1/MS2 spectra + feature links
   ├─ annotation
   └─ advancedAna -> analysis-ready objects (e.g. SummarizedExperiment)
