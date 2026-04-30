@@ -2438,10 +2438,10 @@ MSIP_xcms_processing.targeted <- function(object,
     cwp
   }
 
-  .compound_table_to_mzrt <- function(compound_table,
-                                     ion_mode,
-                                     iso_ele = "[13]C",
-                                     max_iso = NULL) {
+  .compound_table_to_iso_grid <- function(compound_table,
+                                         ion_mode,
+                                         iso_ele = "[13]C",
+                                         max_iso = NULL) {
     target_ele <- get_ele_uniso(iso_ele)
     adduct <- ifelse(ion_mode == 1, "[M+H]+", "[M-H]-")
 
@@ -2468,19 +2468,177 @@ MSIP_xcms_processing.targeted <- function(object,
       iso_grid <- do.call(MSCC::get_isotope_mass_diff, ele_counts)
       if (is.null(iso_grid) || nrow(iso_grid) == 0) next
 
-      mzs <- seed_mz + iso_grid$mass_diff
+      n_iso <- nrow(iso_grid)
       k <- k + 1L
       out[[k]] <- data.frame(
-        mz = mzs,
-        rt = rep(rt_ref, length(mzs)),
+        compound_id = rep(compound_table$compound_id[[j]], n_iso),
+        name = rep(compound_table$name[[j]], n_iso),
+        iso_form = iso_grid$chemform_diff,
+        iso_count = seq(0L, length.out = n_iso),
+        mz = seed_mz + iso_grid$mass_diff,
+        rt = rep(rt_ref, n_iso),
         stringsAsFactors = FALSE
       )
     }
 
-    if (!length(out)) return(matrix(numeric(), ncol = 2, dimnames = list(NULL, c("mz", "rt"))))
-    mzrt <- do.call(rbind, out)
-    mzrt <- unique(mzrt)
-    as.matrix(mzrt[, c("mz", "rt"), drop = FALSE])
+    if (!length(out)) {
+      return(data.frame(compound_id = character(0), name = character(0),
+                        iso_form = character(0), iso_count = integer(0),
+                        mz = numeric(0), rt = numeric(0),
+                        stringsAsFactors = FALSE))
+    }
+    do.call(rbind, out)
+  }
+
+  # Extract mzrt matrix (mz, rt) from iso_grid for roiList construction
+  .iso_grid_to_mzrt <- function(iso_grid) {
+    if (!nrow(iso_grid)) {
+      return(matrix(numeric(), ncol = 2, dimnames = list(NULL, c("mz", "rt"))))
+    }
+    mzrt <- unique(iso_grid[, c("mz", "rt"), drop = FALSE])
+    as.matrix(mzrt)
+  }
+
+  # Annotate featureDefinitions with isotopologue info and inject missing M+0
+  .annotate_fdf_with_iso <- function(xcms.xcms, iso_grid, ion_mode,
+                                     mz_ppm = 10, rt_tol = 30) {
+    pol <- ifelse(ion_mode == 0, "Negative", "Positive")
+    fdf <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
+
+    if (!nrow(fdf) || !all(c("mzmed", "rtmed") %in% colnames(fdf))) {
+      message("[MSIP_xcms_processing.targeted] ", pol,
+              ": no featureDefinitions to annotate.")
+      return(xcms.xcms)
+    }
+
+    # Add annotation columns (initialised to NA)
+    if (!("compound_id" %in% colnames(fdf))) fdf$compound_id <- NA_character_
+    if (!("name"          %in% colnames(fdf))) fdf$name          <- NA_character_
+    if (!("iso_count"     %in% colnames(fdf))) fdf$iso_count     <- NA_integer_
+    if (!("iso_form"      %in% colnames(fdf))) fdf$iso_form      <- NA_character_
+    if (!("iso_seed"      %in% colnames(fdf))) fdf$iso_seed      <- NA_character_
+
+    # ---- match each row in iso_grid to the closest feature ----
+    for (j in seq_len(nrow(iso_grid))) {
+      ig <- iso_grid[j, ]
+      mz_err <- abs(fdf$mzmed - ig$mz) / ig$mz
+      rt_err <- abs(fdf$rtmed - ig$rt)
+
+      hit <- which(mz_err < mz_ppm * 1e-6 & rt_err < rt_tol)
+      if (!length(hit)) next
+
+      # pick the closest by m/z error
+      best <- hit[which.min(mz_err[hit])]
+      fdf$compound_id[best] <- ig$compound_id
+      fdf$name[best]          <- ig$name
+      fdf$iso_count[best]     <- as.integer(ig$iso_count)
+      fdf$iso_form[best]      <- ig$iso_form
+    }
+
+    # ---- set iso_seed: for each compound, the feature with iso_count == 0 ----
+    compounds <- unique(na.omit(fdf$compound_id))
+    for (cid in compounds) {
+      sel <- which(fdf$compound_id == cid & !is.na(fdf$iso_count))
+      if (!length(sel)) next
+      seed_rows <- sel[fdf$iso_count[sel] == 0L]
+      seed_fid <- if (length(seed_rows)) rownames(fdf)[seed_rows[[1]]] else NA_character_
+      fdf$iso_seed[sel] <- seed_fid
+    }
+
+    # ---- inject missing M+0 features ----
+    nsamples <- length(MSnbase::fileNames(xcms.xcms))
+    pks <- xcms::chromPeaks(xcms.xcms)  # numeric matrix; "sample" col = file index
+    n_injected <- 0L
+
+    new_pk_list <- list()
+    new_fdf_list <- list()
+
+    for (cid in compounds) {
+      # check: does this compound have iso_count == 0?
+      sel <- which(fdf$compound_id == cid & !is.na(fdf$iso_count))
+      has_m0 <- any(fdf$iso_count[sel] == 0L)
+      if (has_m0) next
+
+      # get theoretical M+0 from iso_grid
+      m0_rows <- iso_grid[iso_grid$compound_id == cid & iso_grid$iso_count == 0, ]
+      if (!nrow(m0_rows)) next
+      m0_mz <- m0_rows$mz[[1]]
+      m0_rt <- m0_rows$rt[[1]]
+      m0_name <- m0_rows$name[[1]]
+      m0_form <- m0_rows$iso_form[[1]]
+
+      mz_ppm_half <- m0_mz * mz_ppm / 1e6
+
+      # create one synthetic chromPeak per file (intensity = 0)
+      n_existing_pks <- nrow(pks) + length(new_pk_list)
+      peak_row_ids <- integer(nsamples)
+      for (fi in seq_len(nsamples)) {
+        pid <- sprintf("CPM0_%s_%d", cid, fi)
+        peak_row_ids[fi] <- n_existing_pks + fi
+        new_pk_list[[pid]] <- c(
+          mz = m0_mz, mzmin = m0_mz - mz_ppm_half, mzmax = m0_mz + mz_ppm_half,
+          rt = m0_rt, rtmin = m0_rt - rt_tol, rtmax = m0_rt + rt_tol,
+          into = 0, maxo = 0, sn = NA_real_, sample = fi
+        )
+      }
+
+      fid_new <- sprintf("CPM0_%s", cid)
+      n_injected <- n_injected + 1L
+
+      new_fdf_list[[fid_new]] <- data.frame(
+        feature_id = fid_new,
+        mzmed = m0_mz, mzmin = m0_mz - mz_ppm_half, mzmax = m0_mz + mz_ppm_half,
+        rtmed = m0_rt, rtmin = m0_rt - rt_tol, rtmax = m0_rt + rt_tol,
+        npeaks = nsamples,
+        peakidx = I(list(peak_row_ids)),
+        compound_id = cid, name = m0_name,
+        iso_count = 0L, iso_form = m0_form, iso_seed = fid_new,
+        stringsAsFactors = FALSE, check.names = FALSE
+      )
+    }
+
+    if (n_injected > 0L) {
+      message("[MSIP_xcms_processing.targeted] ", pol,
+              ": injected ", n_injected, " missing M+0 feature(s) with zero intensity.")
+    }
+
+    # ---- append synthetic chromPeaks ----
+    if (length(new_pk_list)) {
+      pk_new_mat <- do.call(rbind, new_pk_list)
+      pk_combined <- rbind(pks, pk_new_mat)
+      xcms::chromPeaks(xcms.xcms) <- pk_combined
+
+      # update chromPeakData to match new row count
+      cpd <- xcms::chromPeakData(xcms.xcms)
+      n_new <- nrow(pk_combined) - nrow(cpd)
+      if (n_new > 0) {
+        cpd_extra <- data.frame(
+          msLevel = rep(1L, n_new),
+          is_filled = rep(TRUE, n_new),
+          stringsAsFactors = FALSE
+        )
+        xcms::chromPeakData(xcms.xcms) <- S4Vectors::DataFrame(
+          rbind(as.data.frame(cpd), cpd_extra)
+        )
+      }
+    }
+
+    # ---- append new featureDefinitions rows ----
+    if (length(new_fdf_list)) {
+      fdf_new <- do.call(rbind, new_fdf_list)
+      # ensure peakidx exists in original fdf
+      if (!"peakidx" %in% colnames(fdf)) {
+        fdf$peakidx <- I(rep(list(integer(0)), nrow(fdf)))
+      }
+      # align columns
+      common <- intersect(colnames(fdf), colnames(fdf_new))
+      fdf_combined <- rbind(fdf[, common, drop = FALSE], fdf_new[, common, drop = FALSE])
+    } else {
+      fdf_combined <- fdf
+    }
+
+    xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(fdf_combined)
+    xcms.xcms
   }
 
   # ---------------------------------------------------------------------------
@@ -2502,12 +2660,13 @@ MSIP_xcms_processing.targeted <- function(object,
     )
 
     message_with_time("Build roiList from compound_table (", polarity.tag, ") ...")
-    mzrt <- .compound_table_to_mzrt(
+    iso_grid <- .compound_table_to_iso_grid(
       compound_table = compound_table,
       ion_mode = i,
       iso_ele = iso_ele,
       max_iso = max_iso
     )
+    mzrt <- .iso_grid_to_mzrt(iso_grid)
     roiList <- get_xcms_roi_list(
       mzrt = mzrt,
       xcms.xcms = xcms.xcms,
@@ -2533,6 +2692,9 @@ MSIP_xcms_processing.targeted <- function(object,
     )
 
     xcms.xcms <- xcms_get_feature_stat(xcms.xcms)
+    message_with_time("Annotate featureDefinitions with isotopologue info (", polarity.tag, ") ...")
+    xcms.xcms <- .annotate_fdf_with_iso(xcms.xcms, iso_grid, ion_mode = i,
+                                         mz_ppm = mz_ppm, rt_tol = rt_tol)
     object@xcmsData[[polarity.tag]] <- xcms.xcms
   }
 
