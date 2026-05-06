@@ -1,11 +1,28 @@
 #' @title Import compound table into MSdev
-#' @description Read a compound table from file (.xlsx or .csv) and store it in obj@advancedAna$MSIP$compound_table.
-#' The table must contain columns: compound_id, name, formula, smiles, rt.
+#' @description Read a compound table from file (.xlsx or .csv) and store it in
+#' \code{obj@advancedAna$MSIP$compound_table}. The file must include all columns
+#' listed in \strong{Required columns} (exact column names).
 #'
 #' @param obj MSdev object
-#' @param table.path file path to the compound table (.xlsx or .csv)
+#' @param table.path Path to the compound table: \code{.xlsx} (via
+#'   \code{openxlsx::read.xlsx}) or \code{.csv} (via \code{read.csv}).
 #'
-#' @return MSdev object with compound table stored in advancedAna
+#' @details
+#' \strong{Required columns} (column names must match exactly; missing names
+#' cause an error):
+#' \describe{
+#'   \item{\code{compound_id}}{Stable identifier for the compound (e.g. HMDB
+#'     or internal ID); used as keys in MSIP workflows.}
+#'   \item{\code{name}}{Display name for reporting and labels.}
+#'   \item{\code{formula}}{Molecular formula string (e.g. \code{C5H9NO4}) for
+#'     m/z and isotope calculations.}
+#'   \item{\code{smiles}}{SMILES for structure-based MSIP (e.g. atom maps, CFM).}
+#'   \item{\code{rt}}{Reference retention time (same units as your xcms / MS
+#'     data), used for spectrum and feature matching.}
+#' }
+#'
+#' @return MSdev object with \code{compound_table} stored in
+#'   \code{advancedAna$MSIP$compound_table}.
 #' @export
 #'
 MSIP_import_compound_table <- function(obj, table.path) {
