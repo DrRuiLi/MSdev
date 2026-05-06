@@ -1200,8 +1200,11 @@ get_MS_sampleinfo <- function(raw.data.dir,
                                             grepl(pattern = "blank|blk",x = sample.labels,ignore.case = T)~ "Blank",
                                             T~"Sample"),
                     .before = sample.labels)%>%
-      dplyr::mutate(msData.files = case_when(is.na(raw.files)~raw.files,
-                                             T~paste0(dirname(raw.files),"/msData/",ms.name)))%>%
+      dplyr::mutate(msData.files = case_when(
+        is.na(raw.files) ~ raw.files,
+        tolower(rawDataFormat) %in% c(".mzml", ".mzxml") ~ raw.files,
+        TRUE ~ paste0(dirname(raw.files), "/msData/", ms.name)
+      ))%>%
       dplyr::arrange(analysis.time)%>%
       dplyr::mutate(no = 1:nrow(.),
                     group = case_when(sample.type=="Sample"~gsub(
@@ -1328,15 +1331,24 @@ MSdev_checkSampleInfo <- function(object){
 
 MSdev_msConvert<- function(object,format.to = "mzML"){
 
+  ## Open-format inputs: use raw path as msData path; no MSconvert step.
+  .need_msconvert <- function(raw.paths) {
+    !grepl("\\.(mzml|mzxml)$", raw.paths, ignore.case = TRUE)
+  }
 
   ### filter files
   {
     sample.info <- object@sampleInfo%>%
       dplyr::mutate(
-        msData.files = paste0(dirname(raw.files),"/msData/",ms.name,".",format.to),
+        need_convert = .need_msconvert(raw.files),
+        msData.files = dplyr::if_else(
+          need_convert,
+          paste0(dirname(raw.files), "/msData/", ms.name, ".", format.to),
+          raw.files
+        ),
         raw.exist = file.exists(raw.files),
         ms.exist = file.exists(msData.files))%>%
-      dplyr::filter(raw.exist,!ms.exist)
+      dplyr::filter(raw.exist, need_convert, !ms.exist)
   }
 
   ### convert
@@ -1355,10 +1367,16 @@ MSdev_msConvert<- function(object,format.to = "mzML"){
   {
     sample.info <- object@sampleInfo%>%
       dplyr::mutate(
-        msData.files = paste0(dirname(raw.files),"/msData/",ms.name,".",format.to),
+        need_convert = .need_msconvert(raw.files),
+        msData.files = dplyr::if_else(
+          need_convert,
+          paste0(dirname(raw.files), "/msData/", ms.name, ".", format.to),
+          raw.files
+        ),
         raw.exist = file.exists(raw.files),
         ms.exist = file.exists(msData.files))
-    object@sampleInfo <- sample.info[sample.info$ms.exist,]
+    object@sampleInfo <- sample.info %>%
+      dplyr::filter(raw.exist, !need_convert | ms.exist)
 
   }
 
@@ -1371,7 +1389,11 @@ MSdev_msConvert<- function(object,format.to = "mzML"){
       done = T,
       time = Sys.time(),
       rawFormat =object@projectInfo$rawDataFormat,
-      msDataFormat =".mzML"
+      msDataFormat = dplyr::if_else(
+        tolower(object@projectInfo$rawDataFormat) %in% c(".mzml", ".mzxml"),
+        object@projectInfo$rawDataFormat,
+        ".mzML"
+      )
 
     )
     MSdev_save(object )
