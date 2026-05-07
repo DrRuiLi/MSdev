@@ -433,14 +433,20 @@ plotVolcano <- function(diff.table,p.adjusted = T,point.label =F){
 
   if(point.label){
     label.df <-diff.table%>%
-      dplyr::filter(diff != "no")
+      dplyr::filter(diff != "no")%>%
+      dplyr::slice_max(abs(log2FoldChange) * log10p, n = 100)
     vp <- vp+
       ggrepel::geom_text_repel(data = label.df,
                                 aes(x = log2foldchange  , y = log10p,
                                     label = Compound_name),
                                size = 1,
-                               segment.size = 0.1,
-                               max.overlaps = 30)
+                               force_pull  = 0.5,
+                               min.segment.length =0.01,
+                               label.padding = 1E-6,
+                               box.padding = 1E-3,
+                               point.padding = 1e-06,
+                               segment.size = 0.01,
+                               max.overlaps = 20 )
 
 
 

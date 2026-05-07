@@ -204,7 +204,7 @@ str_normalize_name <- function(x) {
   x  %>%
     stringr::str_to_lower()  %>%
     #stringr::str_replace_all(pattern = "\\(.*?\\)",replacement =  " " )  %>% ## remove all char in ()
-    stringr::str_replace_all(pattern = "\\b(reduced|oxidized|oxidised|l|d)\\b", replacement = " ")  %>%
+    #stringr::str_replace_all(pattern = "\\b(reduced|oxidized|oxidised|l|d)\\b", replacement = " ")  %>%
     stringr::str_replace_all(pattern = "[^a-z0-9 ]", replacement = " ")  %>%
     stringr::str_replace_all(pattern = "\\s+", replacement = " ")  %>%
     trimws()

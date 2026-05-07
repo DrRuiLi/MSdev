@@ -1904,6 +1904,9 @@ get_MSdev_isotopologues_data <- function(object){
 
  data.list <- list()
 
+ na.unique <- function(x){
+   unique(na.omit(x))
+ }
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]

@@ -202,7 +202,7 @@ write a function 'MSIP_xcms_processing.targeted':
       - construct a roiList according to the mz and rt
   - the return should be similar to 'MSdev_xcmsProcessing', stored feature's defination  
 ```
-### *To Do*
+#### Tue Apr 28 16:33:52 2026 ------------------------------
 
 ``` text
 1. the part of roilist construction should be warpped in another function 'get_xcms_roi_list':
@@ -212,6 +212,48 @@ write a function 'MSIP_xcms_processing.targeted':
   - the scan number in different sample are different, pick the union range for each 
 2. in 'MSIP_xcms_processing.targeted', just call the 'get_xcms_roi_list'
 ```
+#### Wed Apr 29 12:39:36 2026 ------------------------------
+
+```
+I update the MSIP data structure, please read the part of '# At-a-glance relationship map' in 'vignettes/MSIP_Workflow.Rmd' to known the new data structure, these class and function need to update:
+  - update class 'MSIPIsotopologueData'
+  - write a new function 'get_MSIPIsotopologueData'
+  - .Deprecated the old function 'MSIP_get_isotopologues_data'
+before you go, you should read the old version of 'MSIPIsotopologueData', the new version should containing the same information but with updated data structure. you can refer to the new class and function about 'MSIPCoreData', some of information now move to MSIPCoreData or compound_table, these data should not included:
+  - MSIP_get_isotopologues_data
+  - get_MSIP_Isotopomer_SE
+  - MSIP_get_isotopologues_data
+```
+#### Wed Apr 29 13:34:03 2026 ------------------------------
+
+```
+1. the msdev@advancedAna$MSIP$isotopologues_table should be removed, use rowData(MSIPIsotopologueData) instead
+2. fix bug: Error in get_MSIPIsotopologueData(msdev.aa) : 
+  isotopologues_table missing required columns: iso_count 
+```
+
+#### Wed Apr 29 13:45:16 2026 ------------------------------
+
+``` text
+1. the 'get_MSIPIsotopologueData' should return a list of MSIPIsotopologueData, 'MSIP_get_isotopologues_data' return a MSdev object
+2. update the doc "vignettes/MSIP_Workflow.Rmd" according to the updated data structure and functions
+
+```
+#### Thu Apr 30 20:04:14 2026 ------------------------------
+
+``` text
+
+update 'MSIP_xcms_processing.targeted' to adpat 'MSIP_get_isotopologues_data':
+1. add the 'MSIP_get_isotopologues_data' required var in xcms fdf after xcms processing according to the pre-constructed roilist
+2. sometimes the M+0 feature is missing, manually add this feature, with rt using the corresponding isotopologues' rt and mz using the the theoritical mz +- 5 ppm, their featurevalue fill with 0
+
+```
+
+
+### *To Do*
+
+
+
 
 
 
@@ -233,7 +275,6 @@ Write a function `MSIP_get_isotopologues_data.untargeted` in new file
 
 
 ## get_MSIP_Isotopomer_SE
-
 ### *Prompt*
 Fri Apr 24 13:19:06 2026 ------------------------------
 
@@ -289,7 +330,34 @@ in the result se's rowdata:
   - the 'iso_name' should also be included in the rowdata, rename it to 'isotopome_form' and export to return
 ```
 
-### *To Do*
+#### Thu Apr 30 19:49:28 2026 ------------------------------
+    
+``` text
+1. there are no 'object@advancedAna$MSIP$isotopologues_matrix$ratio_to_seed', do not rely on this data anymore
+2. there should be 6 assay:
+  - intensity.positive and intensity.negative, extract from featureValue (use 'get_xcms_quantify_MSIP')
+  - ratio.positive and ratio.negative, from 'get_xcms_iso_fraction', read this function and make sure it called properly
+  - purity.positive and purity.negative, from 'get_xcms_feature_purity_matrix'
 
+```
+
+``` text
+
+1. when '.get_iso_map_from_fdf', if there are no var need for isotopologue match, please message
+2. the purity matrix is still all NA
+
+```
+
+#### Wed May  6 19:55:49 2026 ------------------------------
+
+``` text
+'MSIP_xcms_processing.targeted' should update:
+1. when fill the feautre of M+0, it's feature_id should be combination of 'FT' and number, such as 'FTF0001'
+2. the iso_seed should be recorded for each isotopologue feature, indicate, what's the M+0 feature
+3. the column in the compound_table should be append to the xcms.fdf, such as kegg.id, smiles (if exist).
+
+```
+
+### *To Do*
 
 

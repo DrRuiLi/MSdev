@@ -23,7 +23,8 @@ update 'MSdev' initialize, 'MSdev_get_MSinfo' and .updateProjectInfoFromSampleIn
 2. update 'MSdev_get_xcms', when xcms exsit, do not read in files again, just return
 
 ```
-# to do 
+#### Tue Apr 28 15:19:27 2026 ------------------------------
+
 ``` text
 1. sometimes, xcms's chrompeak containing peaks with mz NA/NAN, lead to error in grouppeaks, add a fcuntion 'xcms_filter_peaks_NA' to remove chrompeaks with mz of NA/NAN
   - check the count of peaks with NA/NAN
@@ -32,3 +33,11 @@ update 'MSdev' initialize, 'MSdev_get_MSinfo' and .updateProjectInfoFromSampleIn
   - return xcms object
 
 ```
+#### Wed May  6 12:28:39 2026 ------------------------------
+
+``` text
+1. When MSdev initialization, if the input files' format (msdev.obj@sampleInfo$raw.files) is ".mzML" or ".mzXML", set the 'raw.files' as 'msdev.obj@sampleInfo$msData.files'. and do not need convert in 'MSdev_msConvert'
+
+```
+# to do 
+
