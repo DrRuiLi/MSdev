@@ -2404,7 +2404,20 @@ MSIP_clear_previous_data <- function(object){
 #' theoretical isotopologue grid.
 #'
 #' If a compound's M+0 (unlabeled) feature is missing from the detected features,
-#' a synthetic feature is injected with zero intensity. This ensures downstream
+#' a synthetic feature is injected with zero intensity. Its \code{feature_id}
+#' uses the form \code{FTF0001}, \code{FTF0002}, ... (\code{FTF} plus a
+#' zero-padded number; numbering continues from any existing \code{FTF####}
+#' ids already present).
+#'
+#' For every annotated isotopologue row, \code{iso_seed} is set to the
+#' \code{feature_id} of that compound's M+0 feature (detected or synthetic).
+#'
+#' Columns present in \code{compound_table} (except \code{compound_id} and core
+#' xcms geometry columns) are copied onto matching features by \code{compound_id},
+#' for example \code{smiles}, \code{formula}, \code{rt}, and \code{kegg.id} when
+#' those columns exist.
+#'
+#' This ensures downstream
 #' functions like \code{\link{get_MSIPIsotopologueData}} can construct a complete
 #' isotopologue series for every compound.
 #'
@@ -2423,13 +2436,15 @@ MSIP_clear_previous_data <- function(object){
 #' \code{object@xcmsData$NegativeMS1}. The \code{featureDefinitions} of each
 #' polarity object are annotated with isotopologue columns
 #' (\code{compound_id}, \code{name}, \code{iso_count}, \code{iso_form},
-#' \code{iso_seed}). Missing M+0 features are injected as zero-intensity
-#' synthetic peaks.
+#' \code{iso_seed}), plus any extra columns from \code{compound_table} joined
+#' by \code{compound_id}. Missing M+0 features are injected as zero-intensity
+#' synthetic peaks with \code{feature_id} \code{FTF####}; rownames match
+#' \code{feature_id}.
 #' @export
 MSIP_xcms_processing.targeted <- function(object,
                                          iso_ele = "[13]C",
-                                         mz_ppm = 10,
-                                         rt_tol = 30,
+                                         mz_ppm = 5,
+                                         rt_tol = 200,
                                          max_iso = NULL,
                                          adjustRT = F,
                                          BPPARAM = BiocParallel::SnowParam(
@@ -2542,7 +2557,7 @@ MSIP_xcms_processing.targeted <- function(object,
   }
 
   # Annotate featureDefinitions with isotopologue info and inject missing M+0
-  .annotate_fdf_with_iso <- function(xcms.xcms, iso_grid, ion_mode,
+  .annotate_fdf_with_iso <- function(xcms.xcms, iso_grid, compound_table, ion_mode,
                                      mz_ppm = 10, rt_tol = 30) {
     pol <- ifelse(ion_mode == 0, "Negative", "Positive")
     fdf <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
@@ -2551,6 +2566,57 @@ MSIP_xcms_processing.targeted <- function(object,
       message("[MSIP_xcms_processing.targeted] ", pol,
               ": no featureDefinitions to annotate.")
       return(xcms.xcms)
+    }
+
+    # stable feature id per row (rownames or feature_id column from xcms_get_feature_stat)
+    .fdf_feature_id_vec <- function(df) {
+      rid <- rownames(df)
+      if ("feature_id" %in% colnames(df)) {
+        fid <- as.character(df$feature_id)
+        miss <- is.na(fid) | !nzchar(fid)
+        fid[miss] <- rid[miss]
+        fid
+      } else {
+        rid
+      }
+    }
+
+    # next synthetic M+0 ids: FTF0001, FTF0002, ... (FT + F + zero-padded number)
+    .next_ftf_feature_ids <- function(existing_ids, n_new) {
+      ftf <- grep("^FTF[0-9]+$", existing_ids, value = TRUE)
+      last <- 0L
+      if (length(ftf)) {
+        last <- max(suppressWarnings(as.integer(sub("^FTF", "", ftf))), na.rm = TRUE)
+      }
+      start <- last + 1L
+      nd <- max(4L, nchar(as.character(start + n_new - 1L)))
+      vapply(seq_len(n_new), function(k) {
+        paste0("FTF", num2str(start + k - 1L, n.digit = nd))
+      }, character(1))
+    }
+
+    # copy compound_table metadata (kegg.id, smiles, formula, rt, ...) onto annotated rows
+    .merge_compound_table_cols <- function(df, ctab) {
+      if (!is.data.frame(ctab) || !nrow(ctab) || !("compound_id" %in% colnames(ctab))) {
+        return(df)
+      }
+      xcms_geom <- c(
+        "mzmed", "mzmin", "mzmax", "rtmed", "rtmin", "rtmax",
+        "peakidx", "npeaks",
+        "peakRtMin", "peakRtMax", "peakWidth", "peakMzMin", "peakMzMax",
+        "peakSN", "peakMaxo", "polarity"
+      )
+      extra <- setdiff(colnames(ctab), c("compound_id", xcms_geom))
+      if (!length(extra)) return(df)
+      cidx <- match(as.character(df$compound_id), as.character(ctab$compound_id))
+      for (cn in extra) {
+        if (!cn %in% colnames(df)) df[[cn]] <- NA
+        hit <- which(!is.na(cidx))
+        if (length(hit)) {
+          df[hit, cn] <- ctab[[cn]][cidx[hit]]
+        }
+      }
+      df
     }
 
     # Add annotation columns (initialised to NA)
@@ -2577,33 +2643,41 @@ MSIP_xcms_processing.targeted <- function(object,
       fdf$iso_form[best]      <- ig$iso_form
     }
 
-    # ---- set iso_seed: for each compound, the feature with iso_count == 0 ----
     compounds <- unique(na.omit(fdf$compound_id))
+
+    # ---- which compounds need a synthetic M+0? ----
+    inject_cids <- character(0)
     for (cid in compounds) {
       sel <- which(fdf$compound_id == cid & !is.na(fdf$iso_count))
-      if (!length(sel)) next
-      seed_rows <- sel[fdf$iso_count[sel] == 0L]
-      seed_fid <- if (length(seed_rows)) rownames(fdf)[seed_rows[[1]]] else NA_character_
-      fdf$iso_seed[sel] <- seed_fid
+      has_m0 <- length(sel) && any(fdf$iso_count[sel] == 0L)
+      if (has_m0) next
+      m0_rows <- iso_grid[iso_grid$compound_id == cid & iso_grid$iso_count == 0, ]
+      if (!nrow(m0_rows)) next
+      inject_cids <- c(inject_cids, as.character(cid))
     }
 
-    # ---- inject missing M+0 features ----
+    # ---- inject missing M+0 features (feature_id = FTF0001, ...) ----
     nsamples <- length(MSnbase::fileNames(xcms.xcms))
     pks <- xcms::chromPeaks(xcms.xcms)  # numeric matrix; "sample" col = file index
     n_injected <- 0L
 
+    existing_fids <- unique(c(.fdf_feature_id_vec(fdf), rownames(fdf)))
+    ftf_ids <- if (length(inject_cids)) {
+      .next_ftf_feature_ids(existing_fids, length(inject_cids))
+    } else {
+      character(0)
+    }
+
     new_pk_list <- list()
     new_fdf_list <- list()
 
-    for (cid in compounds) {
-      # check: does this compound have iso_count == 0?
-      sel <- which(fdf$compound_id == cid & !is.na(fdf$iso_count))
-      has_m0 <- any(fdf$iso_count[sel] == 0L)
-      if (has_m0) next
+    for (k in seq_along(inject_cids)) {
+      cid <- inject_cids[[k]]
+      fid_new <- ftf_ids[[k]]
+      n_injected <- n_injected + 1L
 
-      # get theoretical M+0 from iso_grid
       m0_rows <- iso_grid[iso_grid$compound_id == cid & iso_grid$iso_count == 0, ]
-      if (!nrow(m0_rows)) next
+
       m0_mz <- m0_rows$mz[[1]]
       m0_rt <- m0_rows$rt[[1]]
       m0_name <- m0_rows$name[[1]]
@@ -2611,11 +2685,10 @@ MSIP_xcms_processing.targeted <- function(object,
 
       mz_ppm_half <- m0_mz * mz_ppm / 1e6
 
-      # create one synthetic chromPeak per file (intensity = 0)
       n_existing_pks <- nrow(pks) + length(new_pk_list)
       peak_row_ids <- integer(nsamples)
       for (fi in seq_len(nsamples)) {
-        pid <- sprintf("CPM0_%s_%d", cid, fi)
+        pid <- paste0(fid_new, "_", fi)
         peak_row_ids[fi] <- n_existing_pks + fi
         new_pk_list[[pid]] <- c(
           mz = m0_mz, mzmin = m0_mz - mz_ppm_half, mzmax = m0_mz + mz_ppm_half,
@@ -2624,30 +2697,45 @@ MSIP_xcms_processing.targeted <- function(object,
         )
       }
 
-      fid_new <- sprintf("CPM0_%s", cid)
-      n_injected <- n_injected + 1L
+      cp_row <- compound_table[as.character(compound_table$compound_id) == as.character(cid),
+                               , drop = FALSE]
+      cp_row <- if (nrow(cp_row)) cp_row[1, , drop = FALSE] else NULL
 
-      new_fdf_list[[fid_new]] <- data.frame(
+      new_row <- data.frame(
         feature_id = fid_new,
         mzmed = m0_mz, mzmin = m0_mz - mz_ppm_half, mzmax = m0_mz + mz_ppm_half,
         rtmed = m0_rt, rtmin = m0_rt - rt_tol, rtmax = m0_rt + rt_tol,
         npeaks = nsamples,
         peakidx = I(list(peak_row_ids)),
         compound_id = cid, name = m0_name,
-        iso_count = 0L, iso_form = m0_form, iso_seed = fid_new,
+        iso_count = 0L, iso_form = m0_form,
+        iso_seed = fid_new,
         stringsAsFactors = FALSE, check.names = FALSE
       )
+      if (!is.null(cp_row) && ncol(cp_row)) {
+        xcms_geom <- c(
+          "mzmed", "mzmin", "mzmax", "rtmed", "rtmin", "rtmax",
+          "peakidx", "npeaks", "compound_id", "name",
+          "iso_count", "iso_form", "iso_seed", "feature_id",
+          "peakRtMin", "peakRtMax", "peakWidth", "peakMzMin", "peakMzMax",
+          "peakSN", "peakMaxo", "polarity"
+        )
+        for (cn in setdiff(colnames(cp_row), xcms_geom)) {
+          new_row[[cn]] <- cp_row[[cn]][[1]]
+        }
+      }
+      new_fdf_list[[fid_new]] <- new_row
     }
 
     if (n_injected > 0L) {
       message("[MSIP_xcms_processing.targeted] ", pol,
-              ": injected ", n_injected, " missing M+0 feature(s) with zero intensity.")
+              ": injected ", n_injected, " missing M+0 feature(s) with zero intensity (",
+              "feature_id FTF####).")
     }
 
     # ---- append synthetic chromPeaks ----
     if (length(new_pk_list)) {
       pk_new_mat <- do.call(rbind, new_pk_list)
-      # align columns to match existing chromPeaks matrix exactly
       pk_template <- matrix(NA_real_, nrow = nrow(pk_new_mat), ncol = ncol(pks),
                             dimnames = list(rownames(pk_new_mat), colnames(pks)))
       shared <- intersect(colnames(pk_new_mat), colnames(pks))
@@ -2655,7 +2743,6 @@ MSIP_xcms_processing.targeted <- function(object,
       pk_combined <- rbind(pks, pk_template)
       xcms::chromPeaks(xcms.xcms) <- pk_combined
 
-      # update chromPeakData to match new row count
       cpd <- xcms::chromPeakData(xcms.xcms)
       n_new <- nrow(pk_combined) - nrow(cpd)
       if (n_new > 0) {
@@ -2664,7 +2751,6 @@ MSIP_xcms_processing.targeted <- function(object,
           is_filled = rep(TRUE, n_new),
           stringsAsFactors = FALSE
         )
-        # align columns with existing chromPeakData
         for (nm in setdiff(colnames(cpd), colnames(cpd_extra))) {
           cpd_extra[[nm]] <- NA
         }
@@ -2678,16 +2764,41 @@ MSIP_xcms_processing.targeted <- function(object,
     # ---- append new featureDefinitions rows ----
     if (length(new_fdf_list)) {
       fdf_new <- do.call(rbind, new_fdf_list)
-      # ensure peakidx exists in original fdf
       if (!"peakidx" %in% colnames(fdf)) {
         fdf$peakidx <- I(rep(list(integer(0)), nrow(fdf)))
       }
-      # align columns
-      common <- intersect(colnames(fdf), colnames(fdf_new))
-      fdf_combined <- rbind(fdf[, common, drop = FALSE], fdf_new[, common, drop = FALSE])
+      all_cols <- union(colnames(fdf), colnames(fdf_new))
+      for (cn in setdiff(all_cols, colnames(fdf))) {
+        fdf[[cn]] <- rep(NA, nrow(fdf))
+      }
+      for (cn in setdiff(all_cols, colnames(fdf_new))) {
+        fdf_new[[cn]] <- rep(NA, nrow(fdf_new))
+      }
+      fdf_combined <- rbind(fdf[, all_cols, drop = FALSE], fdf_new[, all_cols, drop = FALSE])
     } else {
       fdf_combined <- fdf
     }
+
+    # compound_table columns (kegg.id, smiles, formula, rt, ...) for all annotated rows
+    fdf_combined <- .merge_compound_table_cols(fdf_combined, compound_table)
+
+    # iso_seed = M+0 feature_id for every isotopologue of that compound
+    fid_vec <- .fdf_feature_id_vec(fdf_combined)
+    if (!"feature_id" %in% colnames(fdf_combined)) {
+      fdf_combined$feature_id <- fid_vec
+    } else {
+      fdf_combined$feature_id <- fid_vec
+    }
+    for (cid in unique(na.omit(as.character(fdf_combined$compound_id)))) {
+      sel <- which(as.character(fdf_combined$compound_id) == cid & !is.na(fdf_combined$iso_count))
+      if (!length(sel)) next
+      m0 <- sel[fdf_combined$iso_count[sel] == 0L]
+      if (!length(m0)) next
+      seed_fid <- fid_vec[[m0[[1]]]]
+      fdf_combined$iso_seed[sel] <- seed_fid
+    }
+
+    rownames(fdf_combined) <- fid_vec
 
     xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(fdf_combined)
     xcms.xcms
@@ -2745,7 +2856,8 @@ MSIP_xcms_processing.targeted <- function(object,
 
     xcms.xcms <- xcms_get_feature_stat(xcms.xcms)
     message_with_time("Annotate featureDefinitions with isotopologue info (", polarity.tag, ") ...")
-    xcms.xcms <- .annotate_fdf_with_iso(xcms.xcms, iso_grid, ion_mode = i,
+    xcms.xcms <- .annotate_fdf_with_iso(xcms.xcms, iso_grid, compound_table,
+                                         ion_mode = i,
                                          mz_ppm = mz_ppm, rt_tol = rt_tol)
     object@xcmsData[[polarity.tag]] <- xcms.xcms
   }

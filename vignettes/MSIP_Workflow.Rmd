@@ -194,7 +194,9 @@ This function:
 - Constructs a `roiList` from the compound table by simulating all possible isotopologues
 - Runs xcms peak detection (`CentWaveParam` with roiList), grouping, and filling
 - **Annotates** `featureDefinitions` with isotopologue metadata (`compound_id`, `name`, `iso_count`, `iso_form`, `iso_seed`) by matching detected features to the theoretical isotopologue grid
-- **Injects missing M+0 features**: if a compound's unlabeled (M+0) peak was not detected, a synthetic zero-intensity feature is added so that downstream isotopologue quantification has a complete series
+- Sets **`iso_seed`** on every isotopologue feature to the **`feature_id` of that compound's M+0** (the unlabeled isotopologue), so each row points to its seed feature
+- **Copies compound table columns** (e.g. `smiles`, `formula`, `rt`, `kegg.id`, and any other non-core columns) onto rows with the same `compound_id`
+- **Injects missing M+0 features**: if a compound's unlabeled (M+0) peak was not detected, a synthetic zero-intensity feature is added with `feature_id` of the form **`FTF0001`**, **`FTF0002`**, ... (`FTF` plus a zero-padded number), so downstream isotopologue quantification has a complete series
 
 ### Step 3: Export Acquisition List (Optional)
 
