@@ -2441,7 +2441,7 @@ MSIP_clear_previous_data <- function(object){
 #' \code{object@xcmsData$NegativeMS1}. The \code{featureDefinitions} of each
 #' polarity object are annotated with isotopologue columns
 #' (\code{compound_id}, \code{name}, \code{iso_count}, \code{iso_form},
-#' \code{iso_seed}), plus any extra columns from \code{compound_table} joined
+#' \code{iso_seed}, \code{adduct}), plus any extra columns from \code{compound_table} joined
 #' by \code{compound_id}. Missing M+0 features are injected as zero-intensity
 #' synthetic peaks with \code{feature_id} \code{FTF####}; rownames match
 #' \code{feature_id}.
@@ -2539,6 +2539,7 @@ MSIP_xcms_processing.targeted <- function(object,
         iso_count = seq(0L, length.out = n_iso),
         mz = seed_mz + iso_grid$mass_diff,
         rt = rep(rt_ref, n_iso),
+        adduct = rep(adduct, n_iso),
         stringsAsFactors = FALSE
       )
     }
@@ -2547,6 +2548,7 @@ MSIP_xcms_processing.targeted <- function(object,
       return(data.frame(compound_id = character(0), name = character(0),
                         iso_form = character(0), iso_count = integer(0),
                         mz = numeric(0), rt = numeric(0),
+                        adduct = character(0),
                         stringsAsFactors = FALSE))
     }
     do.call(rbind, out)
@@ -2609,7 +2611,8 @@ MSIP_xcms_processing.targeted <- function(object,
         "mzmed", "mzmin", "mzmax", "rtmed", "rtmin", "rtmax",
         "peakidx", "npeaks",
         "peakRtMin", "peakRtMax", "peakWidth", "peakMzMin", "peakMzMax",
-        "peakSN", "peakMaxo", "polarity"
+        "peakSN", "peakMaxo", "polarity",
+        "adduct"
       )
       extra <- setdiff(colnames(ctab), c("compound_id", xcms_geom))
       if (!length(extra)) return(df)
@@ -2630,6 +2633,7 @@ MSIP_xcms_processing.targeted <- function(object,
     if (!("iso_count"     %in% colnames(fdf))) fdf$iso_count     <- NA_integer_
     if (!("iso_form"      %in% colnames(fdf))) fdf$iso_form      <- NA_character_
     if (!("iso_seed"      %in% colnames(fdf))) fdf$iso_seed      <- NA_character_
+    if (!("adduct"        %in% colnames(fdf))) fdf$adduct        <- NA_character_
 
     # Rows eligible as NEW matches: no compound_id and no iso_count (M+0 anchor pool
     # and extension pool — excludes features already annotated as isotopologues).
@@ -2683,6 +2687,7 @@ MSIP_xcms_processing.targeted <- function(object,
       fdf$name[best0] <- as.character(ig0$name)
       fdf$iso_count[best0] <- 0L
       fdf$iso_form[best0] <- as.character(ig0$iso_form)
+      fdf$adduct[best0] <- as.character(ig0$adduct)
 
       rt_anchor <- suppressWarnings(as.numeric(fdf$rtmed[best0]))
       if (!is.finite(rt_anchor)) rt_anchor <- suppressWarnings(as.numeric(ig0$rt))
@@ -2715,6 +2720,7 @@ MSIP_xcms_processing.targeted <- function(object,
         fdf$name[best] <- as.character(ig$name)
         fdf$iso_count[best] <- as.integer(ig$iso_count)
         fdf$iso_form[best] <- as.character(ig$iso_form)
+        fdf$adduct[best] <- as.character(ig$adduct)
       }
     }
 
@@ -2785,13 +2791,14 @@ MSIP_xcms_processing.targeted <- function(object,
         compound_id = cid, name = m0_name,
         iso_count = 0L, iso_form = m0_form,
         iso_seed = fid_new,
+        adduct = as.character(m0_rows$adduct[[1]]),
         stringsAsFactors = FALSE, check.names = FALSE
       )
       if (!is.null(cp_row) && ncol(cp_row)) {
         xcms_geom <- c(
           "mzmed", "mzmin", "mzmax", "rtmed", "rtmin", "rtmax",
           "peakidx", "npeaks", "compound_id", "name",
-          "iso_count", "iso_form", "iso_seed", "feature_id",
+          "iso_count", "iso_form", "iso_seed", "feature_id", "adduct",
           "peakRtMin", "peakRtMax", "peakWidth", "peakMzMin", "peakMzMax",
           "peakSN", "peakMaxo", "polarity"
         )
