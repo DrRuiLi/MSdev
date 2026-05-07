@@ -2400,8 +2400,13 @@ MSIP_clear_previous_data <- function(object){
 #'
 #' After xcms processing, the function annotates \code{featureDefinitions} with
 #' isotopologue metadata (\code{compound_id}, \code{name}, \code{iso_count},
-#' \code{iso_form}, \code{iso_seed}) by matching detected features to the
-#' theoretical isotopologue grid.
+#' \code{iso_form}, \code{iso_seed}). Matching is \strong{two-phase}: (1) for each
+#' compound, only the theoretical M+0 is matched to \strong{unassigned} features
+#' (no \code{compound_id} and no \code{iso_count}); among m/z and RT hits, the
+#' anchor is the feature with the \strong{smallest relative RT error} (ties by
+#' m/z). (2) M+1, M+2, ... are matched in order using the same m/z tolerance and
+#' an RT window around the \strong{anchor feature's} \code{rtmed}, picking the
+#' smallest relative m/z error (ties by RT distance to the anchor).
 #'
 #' If a compound's M+0 (unlabeled) feature is missing from the detected features,
 #' a synthetic feature is injected with zero intensity. Its \code{feature_id}
@@ -2626,21 +2631,91 @@ MSIP_xcms_processing.targeted <- function(object,
     if (!("iso_form"      %in% colnames(fdf))) fdf$iso_form      <- NA_character_
     if (!("iso_seed"      %in% colnames(fdf))) fdf$iso_seed      <- NA_character_
 
-    # ---- match each row in iso_grid to the closest feature ----
-    for (j in seq_len(nrow(iso_grid))) {
-      ig <- iso_grid[j, ]
-      mz_err <- abs(fdf$mzmed - ig$mz) / ig$mz
-      rt_err <- abs(fdf$rtmed - ig$rt)
+    # Rows eligible as NEW matches: no compound_id and no iso_count (M+0 anchor pool
+    # and extension pool — excludes features already annotated as isotopologues).
+    .eligible_unassigned <- function(df) {
+      cid <- as.character(df$compound_id)
+      ic <- df$iso_count
+      which((is.na(cid) | !nzchar(cid)) & is.na(ic))
+    }
 
-      hit <- which(mz_err < mz_ppm * 1e-6 & rt_err < rt_tol)
-      if (!length(hit)) next
+    # Relative RT error vs reference rt (seconds)
+    .rt_err_rel <- function(rt_med, rt_ref) {
+      rr <- suppressWarnings(as.numeric(rt_ref))
+      if (!is.finite(rr)) rr <- 0
+      abs(rt_med - rr) / max(abs(rr), 1e-6)
+    }
 
-      # pick the closest by m/z error
-      best <- hit[which.min(mz_err[hit])]
-      fdf$compound_id[best] <- ig$compound_id
-      fdf$name[best]          <- ig$name
-      fdf$iso_count[best]     <- as.integer(ig$iso_count)
-      fdf$iso_form[best]      <- ig$iso_form
+    # ---- Phase 1: M+0 anchor only (candidates = unassigned; pick min relative RT) ----
+    # ---- Phase 2: extend M+1, M+2, ... (RT window around anchor rtmed; pick min m/z err) ----
+    m0_theory <- iso_grid[iso_grid$iso_count == 0L, , drop = FALSE]
+    if (nrow(m0_theory)) {
+      m0_theory <- m0_theory[!duplicated(as.character(m0_theory$compound_id)), ,
+                            drop = FALSE]
+    }
+    compound_ids_theory <- unique(as.character(iso_grid$compound_id))
+
+    for (cid in compound_ids_theory) {
+      m0_row <- m0_theory[as.character(m0_theory$compound_id) == cid, , drop = FALSE]
+      if (!nrow(m0_row)) next
+      ig0 <- m0_row[1, , drop = FALSE]
+
+      el <- .eligible_unassigned(fdf)
+      if (!length(el)) next
+
+      mz_err_all <- abs(fdf$mzmed - ig0$mz) / ig0$mz
+      rt_err_abs <- abs(fdf$rtmed - ig0$rt)
+      hit0 <- which(mz_err_all < mz_ppm * 1e-6 & rt_err_abs < rt_tol)
+      hit0 <- intersect(hit0, el)
+      if (!length(hit0)) next
+
+      rt_rel0 <- .rt_err_rel(fdf$rtmed[hit0], ig0$rt)
+      min_rt <- min(rt_rel0, na.rm = TRUE)
+      tie0 <- hit0[!is.na(rt_rel0) & rt_rel0 == min_rt]
+      if (length(tie0) > 1L) {
+        mz_tie <- mz_err_all[tie0]
+        best0 <- tie0[which.min(mz_tie)]
+      } else {
+        best0 <- hit0[which.min(rt_rel0)]
+      }
+
+      fdf$compound_id[best0] <- as.character(ig0$compound_id)
+      fdf$name[best0] <- as.character(ig0$name)
+      fdf$iso_count[best0] <- 0L
+      fdf$iso_form[best0] <- as.character(ig0$iso_form)
+
+      rt_anchor <- suppressWarnings(as.numeric(fdf$rtmed[best0]))
+      if (!is.finite(rt_anchor)) rt_anchor <- suppressWarnings(as.numeric(ig0$rt))
+
+      iso_rest <- iso_grid[as.character(iso_grid$compound_id) == cid &
+                             iso_grid$iso_count > 0L, , drop = FALSE]
+      if (!nrow(iso_rest)) next
+      iso_rest <- iso_rest[order(iso_rest$iso_count), , drop = FALSE]
+
+      for (jr in seq_len(nrow(iso_rest))) {
+        ig <- iso_rest[jr, , drop = FALSE]
+        el2 <- .eligible_unassigned(fdf)
+        if (!length(el2)) next
+
+        mz_err_all <- abs(fdf$mzmed - ig$mz) / ig$mz
+        rt_d <- abs(fdf$rtmed - rt_anchor)
+        hit <- which(mz_err_all < mz_ppm * 1e-6 & rt_d < rt_tol)
+        hit <- intersect(hit, el2)
+        if (!length(hit)) next
+
+        mz_hit <- mz_err_all[hit]
+        best <- hit[which.min(mz_hit)]
+        if (length(hit) > 1L && sum(mz_hit == min(mz_hit, na.rm = TRUE), na.rm = TRUE) > 1L) {
+          tie <- hit[mz_hit == min(mz_hit, na.rm = TRUE)]
+          rt_tie <- .rt_err_rel(fdf$rtmed[tie], rt_anchor)
+          best <- tie[which.min(rt_tie)]
+        }
+
+        fdf$compound_id[best] <- as.character(ig$compound_id)
+        fdf$name[best] <- as.character(ig$name)
+        fdf$iso_count[best] <- as.integer(ig$iso_count)
+        fdf$iso_form[best] <- as.character(ig$iso_form)
+      }
     }
 
     compounds <- unique(na.omit(fdf$compound_id))
