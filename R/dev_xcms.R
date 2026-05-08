@@ -1111,7 +1111,7 @@ get_xcms_iso_fraction <- function(xcms.xcms){
   ### feature data
   {
     xcms.se <- get_xcms_quantify_MSIP(xcms.xcms)
-    xcms.se <- xcms.se[,xcms.se$sample.type=="Sample"]
+    #xcms.se <- xcms.se[,xcms.se$sample.type=="Sample"]
      xcms.rda <- rowData(xcms.se)%>%
       as.data.frame()
     xcms.val <- assay(xcms.se)

@@ -434,7 +434,7 @@ plotVolcano <- function(diff.table,p.adjusted = T,point.label =F){
   if(point.label){
     label.df <-diff.table%>%
       dplyr::filter(diff != "no")%>%
-      dplyr::slice_max(abs(log2FoldChange) * log10p, n = 100)
+      dplyr::slice_max(abs(log2foldchange) * log10p, n = 100)
     vp <- vp+
       ggrepel::geom_text_repel(data = label.df,
                                 aes(x = log2foldchange  , y = log10p,

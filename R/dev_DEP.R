@@ -88,7 +88,7 @@ DEP_list_contrast <- function(data.se){
 
 
 #' @title Dep Add Rejections
-#' @description Add significance rejections to a SummarizedExperiment based on p-values and fold changes. 
+#' @description Add significance rejections to a SummarizedExperiment based on p-values and fold changes.
 #' Reference to \code{\link[DEP]{add_rejections}}, which does not support significance without p-adjustment.
 #' This function is a supplementary implementation.
 #' @param data.se A SummarizedExperiment object with differential analysis results.
@@ -235,7 +235,7 @@ DEP_filter_significant <- function(data.se,
     dplyr::slice_max(`p_value_-log10`,n = top,with_ties = F)%>%
     dplyr::filter(significant)
 
-  data.se[rd$feature_id,]
+  data.se[rd$ID,]
 
 
 

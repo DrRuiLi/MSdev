@@ -359,5 +359,19 @@ in the result se's rowdata:
 ```
 
 ### *To Do*
+## get_MSIP_Isotopologue_SE
+### *Review*
+# Thu May  7 16:05:25 2026 ------------------------------
+
+```
+write a function 'get_MSIP_Isotopologue_SE' to extract isotopologue data and construct a SummarizedExperiment object
+1. read 'MSIP_xcms_processing.targeted' to understand the isotopologue annotation in xcms.fdf
+2. read 'get_MSIP_Isotopomer_SE' to understand the data structure, the isotopologue se is similar to isotopomer se
+```
+###*To Do*
+
+```
 
 
+
+```

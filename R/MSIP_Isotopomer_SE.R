@@ -238,3 +238,190 @@ get_MSIP_Isotopomer_SE <- function(object) {
   )
 }
 
+
+#' @title Get MSIP isotopologue data as SummarizedExperiment
+#' @description Build a single isotopologue-level
+#' \code{\link[SummarizedExperiment]{SummarizedExperiment}} from
+#' \code{object@advancedAna$MSIP$isotopologue_data}. If isotopologue data is not
+#' present yet, this function constructs it from current xcms annotations via
+#' \code{\link{get_MSIPIsotopologueData}}.
+#'
+#' The returned object keeps \code{sample.source} as columns and
+#' isotopologue IDs (compound + isotopologue form) as rows, similar to
+#' \code{\link{get_MSIP_Isotopomer_SE}}.
+#'
+#' @param object A \code{MSdev} object.
+#' @param ... Additional arguments passed to \code{\link{get_MSIPIsotopologueData}}
+#'   when isotopologue data needs to be built.
+#'
+#' @return A \code{SummarizedExperiment} with assays:
+#' \itemize{
+#'   \item \code{intensity.positive}
+#'   \item \code{intensity.negative}
+#'   \item \code{ratio.positive}
+#'   \item \code{ratio.negative}
+#'   \item \code{purity.positive}
+#'   \item \code{purity.negative}
+#' }
+#' Row metadata is taken from per-compound isotopologue objects and includes
+#' \code{isotopologue_id}, \code{compound_id}, \code{compound_name},
+#' \code{isotopologue_form}, and \code{label.isotopologue} when available.
+#' Column metadata contains \code{sample.source} and \code{group}.
+#' @export
+get_MSIP_Isotopologue_SE <- function(object, ...) {
+  `%||%` <- function(a, b) if (!is.null(a)) a else b
+
+  iso.list <- tryCatch(
+    object@advancedAna$MSIP$isotopologue_data,
+    error = function(e) NULL
+  )
+  if (is.null(iso.list) || !is.list(iso.list) || !length(iso.list)) {
+    iso.list <- get_MSIPIsotopologueData(object, ...)
+  }
+  if (!is.list(iso.list) || !length(iso.list)) {
+    stop("No isotopologue data found. ",
+         "Run MSIP_xcms_processing.targeted() first, then build isotopologue data.")
+  }
+
+  # Keep only valid SummarizedExperiment-like isotopologue entries.
+  iso.list <- Filter(function(x) methods::is(x, "SummarizedExperiment"), iso.list)
+  if (!length(iso.list)) {
+    stop("object@advancedAna$MSIP$isotopologue_data has no valid SummarizedExperiment entries.")
+  }
+
+  # Union sample.source across compounds.
+  sample.sources <- unique(unlist(lapply(iso.list, function(sei) {
+    cda <- tryCatch(as.data.frame(SummarizedExperiment::colData(sei)), error = function(e) NULL)
+    if (is.null(cda) || !nrow(cda)) return(character())
+    if ("sample.source" %in% colnames(cda)) {
+      as.character(cda$sample.source)
+    } else {
+      rownames(cda) %||% character()
+    }
+  })))
+  sample.sources <- as.character(sample.sources)
+  sample.sources <- sample.sources[!is.na(sample.sources) & nzchar(sample.sources)]
+  if (!length(sample.sources)) {
+    stop("No sample.source columns found in isotopologue data.")
+  }
+
+  sample.info <- tryCatch(as.data.frame(object@sampleInfo), error = function(e) NULL)
+  group.val <- rep(NA_character_, length(sample.sources))
+  if (!is.null(sample.info) &&
+      nrow(sample.info) > 0 &&
+      all(c("sample.source", "group") %in% colnames(sample.info))) {
+    group.val <- vapply(sample.sources, function(ss) {
+      g <- unique(as.character(sample.info$group[sample.info$sample.source %in% ss]))
+      g <- g[!is.na(g) & nzchar(g)]
+      if (!length(g)) return(NA_character_)
+      paste(g, collapse = ";")
+    }, character(1))
+  }
+  cda <- S4Vectors::DataFrame(
+    sample.source = sample.sources,
+    group = group.val,
+    row.names = sample.sources
+  )
+
+  # Build master rowData table by stacking each compound's rowData.
+  row.list <- list()
+  for (nm in names(iso.list)) {
+    sei <- iso.list[[nm]]
+    rda <- tryCatch(as.data.frame(SummarizedExperiment::rowData(sei)), error = function(e) NULL)
+    if (is.null(rda) || !nrow(rda)) next
+    if (!("isotopologue_id" %in% colnames(rda))) {
+      rid <- rownames(rda)
+      if (is.null(rid) || any(!nzchar(rid))) {
+        rid <- paste0(nm, "_", seq_len(nrow(rda)))
+      }
+      rda$isotopologue_id <- rid
+    }
+    if (is.null(rownames(rda)) || any(!nzchar(rownames(rda)))) {
+      rownames(rda) <- rda$isotopologue_id
+    }
+    row.list[[length(row.list) + 1L]] <- rda
+  }
+  if (!length(row.list)) {
+    stop("No isotopologue rows found in isotopologue data.")
+  }
+
+  row.df <- do.call(rbind, row.list)
+  row.df$isotopologue_id <- as.character(row.df$isotopologue_id)
+  if (anyDuplicated(row.df$isotopologue_id)) {
+    warning("Duplicated isotopologue_id detected; using make.unique() for row names.")
+    row.df$isotopologue_id <- make.unique(row.df$isotopologue_id)
+  }
+  rownames(row.df) <- row.df$isotopologue_id
+
+  assay.names <- c(
+    "intensity.positive", "intensity.negative",
+    "ratio.positive", "ratio.negative",
+    "purity.positive", "purity.negative"
+  )
+  assays.out <- setNames(
+    lapply(assay.names, function(nm) {
+      matrix(NA_real_, nrow = nrow(row.df), ncol = length(sample.sources),
+             dimnames = list(row.df$isotopologue_id, sample.sources))
+    }),
+    assay.names
+  )
+
+  # Fill assay matrices from each per-compound isotopologue object.
+  for (sei in iso.list) {
+    this.rda <- tryCatch(as.data.frame(SummarizedExperiment::rowData(sei)), error = function(e) NULL)
+    if (is.null(this.rda) || !nrow(this.rda)) next
+
+    this.row_id <- this.rda$isotopologue_id %||% rownames(this.rda)
+    this.row_id <- as.character(this.row_id)
+    keep.row <- this.row_id %in% rownames(row.df)
+    if (!any(keep.row)) next
+
+    col.map <- tryCatch(as.data.frame(SummarizedExperiment::colData(sei)), error = function(e) NULL)
+    if (is.null(col.map) || !nrow(col.map)) {
+      this.sources <- colnames(SummarizedExperiment::assay(sei, 1))
+    } else if ("sample.source" %in% colnames(col.map)) {
+      this.sources <- as.character(col.map$sample.source)
+    } else {
+      this.sources <- rownames(col.map)
+    }
+    this.sources <- as.character(this.sources)
+
+    available.assays <- names(SummarizedExperiment::assays(sei))
+    for (an in intersect(assay.names, available.assays)) {
+      m <- SummarizedExperiment::assay(sei, an)
+      if (is.null(m) || !nrow(m) || !ncol(m)) next
+
+      # Align rows by isotopologue_id and columns by sample.source.
+      row.hit <- match(this.row_id[keep.row], rownames(m))
+      row.ok <- !is.na(row.hit)
+      if (!any(row.ok)) next
+
+      col.hit <- match(sample.sources, this.sources)
+      col.ok <- !is.na(col.hit)
+      if (!any(col.ok)) next
+
+      src.values <- m[row.hit[row.ok], col.hit[col.ok], drop = FALSE]
+      assays.out[[an]][this.row_id[keep.row][row.ok], sample.sources[col.ok]] <- src.values
+    }
+  }
+
+  keep.cols <- c(
+    "isotopologue_id", "compound_id", "compound_name",
+    "isotopologue_form", "label.isotopologue"
+  )
+  keep.cols <- intersect(keep.cols, colnames(row.df))
+  rda.out <- S4Vectors::DataFrame(
+    row.df[, keep.cols, drop = FALSE],
+    row.names = row.df$isotopologue_id
+  )
+  if (!("isotopologue_id" %in% colnames(rda.out))) {
+    rda.out$isotopologue_id <- row.df$isotopologue_id
+  }
+
+  SummarizedExperiment::SummarizedExperiment(
+    assays = assays.out,
+    rowData = rda.out,
+    colData = cda
+  )
+}
+
