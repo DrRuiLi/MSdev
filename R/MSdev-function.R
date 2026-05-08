@@ -1855,6 +1855,167 @@ get_MSdev_ms2_Spectra <- function(object){
 }
 
 
+#' @title Build MS2 spectra target list (mz/rt windows)
+#' @description
+#' Extract MS2 spectra from \code{object@spectra$MS2_Spectra} and summarise them into a
+#' target table with \code{mz}, \code{rt}, \code{rtmin}, \code{rtmax}. If spectra are
+#' assigned to features (\code{feature_id}) and feature definitions contain MSIP
+#' annotations (\code{compound_id}, \code{iso_form}), targets can be grouped at compound
+#' or isotopologue level.
+#' @param object MSdev object.
+#' @param prefer character, either \code{"assigned_feature"} (default; only MS2 with
+#'   non-missing \code{feature_id}) or \code{"all_ms2"}.
+#' @param group_by character, grouping strategy. One of \code{"compound_iso"},
+#'   \code{"compound"}, \code{"feature"}, \code{"none"}. When requested metadata are
+#'   missing, it falls back to the next available level.
+#' @param rt_expand numeric, seconds added to both sides of the final RT window.
+#' @param mz_col candidate mz columns in spectraData; first match is used.
+#' @param rt_col candidate RT columns in spectraData; first match is used.
+#' @return data.frame with columns \code{mz, rt, rtmin, rtmax} plus grouping columns
+#'   when available.
+#' @export
+#'
+get_MSdev_spectra_target_list <- function(object,
+                                         prefer = c("assigned_feature", "all_ms2"),
+                                         group_by = c("compound_iso", "compound", "feature", "none"),
+                                         rt_expand = 0,
+                                         mz_col = c("isolationWindowTargetMz", "precursorMz"),
+                                         rt_col = c("rtime", "retentionTime")) {
+  prefer <- match.arg(prefer)
+  group_by <- match.arg(group_by)
+
+  sp <- get_MSdev_ms2_Spectra(object)
+  if (length(sp) == 0) {
+    return(data.frame(mz = numeric(0), rt = numeric(0),
+                      rtmin = numeric(0), rtmax = numeric(0),
+                      stringsAsFactors = FALSE))
+  }
+
+  sdat <- as.data.frame(Spectra::spectraData(sp), stringsAsFactors = FALSE)
+
+  mz_use <- mz_col[mz_col %in% colnames(sdat)][1]
+  rt_use <- rt_col[rt_col %in% colnames(sdat)][1]
+  if (is.na(mz_use) || is.na(rt_use)) {
+    stop("MS2 spectraData missing mz/rt columns. Available columns: ",
+         paste(colnames(sdat), collapse = ", "))
+  }
+
+  sdat$mz <- suppressWarnings(as.numeric(sdat[[mz_use]]))
+  sdat$rt <- suppressWarnings(as.numeric(sdat[[rt_use]]))
+  sdat <- sdat[is.finite(sdat$mz) & is.finite(sdat$rt), , drop = FALSE]
+  if (!nrow(sdat)) {
+    return(data.frame(mz = numeric(0), rt = numeric(0),
+                      rtmin = numeric(0), rtmax = numeric(0),
+                      stringsAsFactors = FALSE))
+  }
+
+  if (prefer == "assigned_feature") {
+    if ("feature_id" %in% colnames(sdat)) {
+      sdat <- sdat[!is.na(sdat$feature_id) & nzchar(as.character(sdat$feature_id)), , drop = FALSE]
+    } else {
+      sdat <- sdat[0, , drop = FALSE]
+    }
+  }
+  if (!nrow(sdat)) {
+    return(data.frame(mz = numeric(0), rt = numeric(0),
+                      rtmin = numeric(0), rtmax = numeric(0),
+                      stringsAsFactors = FALSE))
+  }
+
+  # ---- attach featureDefinitions columns when possible ----
+  .get_fdf_all <- function(object) {
+    out <- list()
+    for (i in 0:1) {
+      pol <- ifelse(i == 0, "Negative", "Positive")
+      x <- object@xcmsData[[paste0(pol, "MS1")]]
+      if (is.null(x) || !isTRUE(xcms::hasFeatures(x))) next
+      fdf <- as.data.frame(xcms::featureDefinitions(x), stringsAsFactors = FALSE)
+      if (!("feature_id" %in% colnames(fdf))) fdf$feature_id <- rownames(fdf)
+      fdf$polarity_label <- pol
+      out[[pol]] <- fdf
+    }
+    if (!length(out)) return(data.frame())
+    do.call(rbind, out)
+  }
+
+  fdf_all <- .get_fdf_all(object)
+  if (nrow(fdf_all) && ("feature_id" %in% colnames(sdat))) {
+    want <- c("feature_id", "compound_id", "name", "iso_form", "iso_count", "iso_seed",
+              "rtmin", "rtmax", "rtmed", "mzmed", "polarity", "adduct", "polarity_label")
+    keep <- intersect(want, colnames(fdf_all))
+    fdf2 <- fdf_all[, keep, drop = FALSE]
+
+    idx <- match(as.character(sdat$feature_id), as.character(fdf2$feature_id))
+    hit <- which(!is.na(idx))
+    for (cn in setdiff(colnames(fdf2), "feature_id")) {
+      if (!cn %in% colnames(sdat)) sdat[[cn]] <- NA
+      if (length(hit)) sdat[hit, cn] <- fdf2[[cn]][idx[hit]]
+    }
+  }
+
+  # ---- choose grouping key with fallback ----
+  has_feature <- "feature_id" %in% colnames(sdat) &&
+    any(!is.na(sdat$feature_id) & nzchar(as.character(sdat$feature_id)))
+  has_compound <- "compound_id" %in% colnames(sdat) &&
+    any(!is.na(sdat$compound_id) & nzchar(as.character(sdat$compound_id)))
+  has_isoform <- "iso_form" %in% colnames(sdat) &&
+    any(!is.na(sdat$iso_form) & nzchar(as.character(sdat$iso_form)))
+
+  grp_key <- NULL
+  if (group_by == "compound_iso" && has_compound && has_isoform) {
+    grp_key <- paste0(sdat$compound_id, "||", sdat$iso_form)
+  } else if (group_by %in% c("compound_iso", "compound") && has_compound) {
+    grp_key <- as.character(sdat$compound_id)
+  } else if (group_by %in% c("compound_iso", "compound", "feature") && has_feature) {
+    grp_key <- as.character(sdat$feature_id)
+  } else {
+    grp_key <- rep("all", nrow(sdat))
+  }
+
+  # ---- summarise into targets ----
+  sp_list <- split(sdat, grp_key)
+  out_list <- lapply(sp_list, function(df) {
+    mz <- stats::median(df$mz, na.rm = TRUE)
+    rt <- stats::median(df$rt, na.rm = TRUE)
+
+    # Prefer fdf windows if present; else derive from MS2 RT spread
+    use_fdf_rt <- all(c("rtmin", "rtmax") %in% colnames(df)) &&
+      any(is.finite(df$rtmin)) && any(is.finite(df$rtmax))
+    if (isTRUE(use_fdf_rt)) {
+      rtmin <- min(df$rtmin, na.rm = TRUE)
+      rtmax <- max(df$rtmax, na.rm = TRUE)
+    } else {
+      rtmin <- min(df$rt, na.rm = TRUE)
+      rtmax <- max(df$rt, na.rm = TRUE)
+    }
+    rtmin <- rtmin - rt_expand
+    rtmax <- rtmax + rt_expand
+
+    data.frame(mz = mz, rt = rt, rtmin = rtmin, rtmax = rtmax,
+               stringsAsFactors = FALSE)
+  })
+  out <- do.call(rbind, out_list)
+  rownames(out) <- NULL
+
+  # expose grouping columns when available (best-effort; one value per group)
+  .pull1 <- function(x) {
+    x <- x[!is.na(x) & nzchar(as.character(x))]
+    if (!length(x)) NA
+    else as.character(x[[1]])
+  }
+  if (length(sp_list)) {
+    if ("feature_id" %in% colnames(sdat)) out$feature_id <- vapply(sp_list, function(df) .pull1(df$feature_id), character(1))
+    if ("compound_id" %in% colnames(sdat)) out$compound_id <- vapply(sp_list, function(df) .pull1(df$compound_id), character(1))
+    if ("name" %in% colnames(sdat)) out$name <- vapply(sp_list, function(df) .pull1(df$name), character(1))
+    if ("iso_form" %in% colnames(sdat)) out$iso_form <- vapply(sp_list, function(df) .pull1(df$iso_form), character(1))
+    if ("adduct" %in% colnames(sdat)) out$adduct <- vapply(sp_list, function(df) .pull1(df$adduct), character(1))
+    if ("polarity_label" %in% colnames(sdat)) out$polarity <- vapply(sp_list, function(df) .pull1(df$polarity_label), character(1))
+  }
+
+  out
+}
+
+
 #' @title Extract chromatograms for features
 #' @description Extract chromatograms for specified features from xcms data, storing them as on-disk data.
 #' @param object MSdev object
