@@ -1025,68 +1025,163 @@ get_xcms_feature_iso_connection <- function(xcms.xcms,
 
 
 
-#' @describeIn xcms_extenstion calculate isotope labeling ratios
-#' @title Xcms Get Feature Isotope Label
-#' @description Calculates the ratio of isotopologue intensities to seed intensities across samples, and determines which features are labeled based on comparison between tracer and non-tracer sample sources. Results are added to featureDefinitions.
+#' @describeIn xcms_extenstion calculate traced-isotopologue labeling ratios
+#' @title Xcms Get Feature Traced Isotopologue
+#' @description Calculates isotopologue-to-seed ratios and determines traced
+#' isotopologues (label-enriched isotopologues) using one of two methods:
+#' \itemize{
+#'   \item \code{untraced_compare} (legacy): compare traced and untraced sample sources.
+#'   \item \code{natural_based}: compare observed ratio to theoretical natural isotope
+#'   ratio derived from \code{MSCC::chemform_isotopes_pattern_enviPat()}.
+#' }
+#' Results are written to featureDefinitions as \code{is_labeled} and
+#' \code{Ratio_to_seed_*} columns (same output contract as the legacy function).
 #' @param xcms.xcms XCMSnExp object with isotopologue assignments.
 #' @param iso_ele Isotope element string (e.g., `"[13]C"`) used for labeling.
+#' @param method Labeling method: \code{"untraced_compare"} or
+#'   \code{"natural_based"}. (Legacy aliases \code{"method1"} /
+#'   \code{"method2"} are also accepted.)
 #' @param ... Additional arguments passed to internal functions.
 #'
 #' @return XCMSnExp object with featureDefinitions updated with is_labeled column and Ratio_to_seed_* columns.
 #' @export
 #'
-xcms_get_feature_isotope_label <- function(xcms.xcms,
-                                           iso_ele = "[13]C",
-                                           ...){
+xcms_get_feature_traced_isotopologue <- function(xcms.xcms,
+                                                 iso_ele = "[13]C",
+                                                 method = c("untraced_compare", "natural_based")[1],
+                                                 ...){
 
+  method <- as.character(method)[1]
+  if (identical(method, "method1")) method <- "untraced_compare"
+  if (identical(method, "method2")) method <- "natural_based"
+  method <- match.arg(method, c("untraced_compare", "natural_based"))
 
   ### feature data
   {
-
     xcms.se <- get_xcms_quantify_MSIP(xcms.xcms)
     xcms.se <- xcms.se[,xcms.se$sample.type=="Sample"]
   }
 
-  ###calc iso ratio to seed
+  ### calc iso ratio to seed and aggregate by sample.source
   {
-
-    xcms.ratio.to.seed <- get_xcms_iso_fraction(xcms.xcms  )
-    xcms.ratio.to.seed <- apply(xcms.ratio.to.seed ,1,
-               function(x){  mean_f(x , f = xcms.se$sample.source,,
-                                    simplify = F,na.rm=T)})%>%
-      do.call(bind_rows,.)%>%
+    xcms.ratio.to.seed <- get_xcms_iso_fraction(xcms.xcms)
+    xcms.ratio.to.seed <- apply(xcms.ratio.to.seed, 1,
+                                function(x){
+                                  mean_f(x, f = xcms.se$sample.source, simplify = F, na.rm = T)
+                                }) %>%
+      do.call(bind_rows, .) %>%
       as.matrix()
-
   }
 
-  ### compare labeled and unlabeled between group
+  ### determine traced-isotopologue labels
   {
-    is.iso <- xcms.se$isotope_tracer%in% iso_ele
-    sample.source.uniso <- unique(xcms.se$sample.source[!is.iso])
+    is.iso <- xcms.se$isotope_tracer %in% iso_ele
     sample.source.iso <- unique(xcms.se$sample.source[is.iso])
-    is_labeled <- apply(xcms.ratio.to.seed,1,function(x){
-      any(x[sample.source.iso] > mean( x[sample.source.uniso],na.rm = T),na.rm =T)
-    })
-    if(length(sample.source.uniso)==0) {
-      message("There are no un-traced samples, cant determine labeled features")
-      is_labeled <- NA
+    sample.source.uniso <- unique(xcms.se$sample.source[!is.iso])
+
+    if (method == "untraced_compare") {
+      if (length(sample.source.uniso) == 0) {
+        cli::cli_alert_warning("No untraced sample.source found; cannot determine traced isotopologues with {.code untraced_compare}.")
+        is_labeled <- rep(NA, nrow(xcms.ratio.to.seed))
+      } else {
+      is_labeled <- apply(xcms.ratio.to.seed, 1, function(x){
+        any(x[sample.source.iso] > mean(x[sample.source.uniso], na.rm = TRUE), na.rm = TRUE)
+      })
+      }
+    } else {
+      # method2: compare observed ratio to theoretical natural ratio.
+      xcms.fdf <- featureDefinitions(xcms.xcms) %>% as.data.frame()
+
+      # Expected natural ratio for one feature row.
+      .expected_ratio <- function(formula, iso_count, iso_ele, thresh = 1e-6) {
+        if (is.na(formula) || !nzchar(formula) || is.na(iso_count)) return(NA_real_)
+        pat <- tryCatch(
+          MSCC::chemform_isotopes_pattern_enviPat(formula, thresh = thresh),
+          error = function(e) NULL
+        )
+        if (is.null(pat) || !nrow(pat) || !all(c("isotope_element", "abundance") %in% colnames(pat))) {
+          return(NA_real_)
+        }
+        ie <- as.character(pat$isotope_element)
+        ie[is.na(ie)] <- ""
+        keep <- ie == "" | grepl(iso_ele, ie, fixed = TRUE)
+        pat <- pat[keep, , drop = FALSE]
+        if (!nrow(pat)) return(NA_real_)
+        iso_chr <- as.character(pat$isotope_element)
+        iso_chr[is.na(iso_chr)] <- ""
+        iso_num <- ifelse(
+          iso_chr == "",
+          0L,
+          suppressWarnings(as.integer(gsub("[^0-9]", "", gsub(iso_ele, "", iso_chr, fixed = TRUE))))
+        )
+        iso_num[is.na(iso_num)] <- 0L
+        a0 <- sum(pat$abundance[iso_num == 0], na.rm = TRUE)
+        ak <- sum(pat$abundance[iso_num == as.integer(iso_count)], na.rm = TRUE)
+        if (!is.finite(a0) || a0 <= 0) return(NA_real_)
+        ak / a0
+      }
+
+      fids <- if ("feature_id" %in% colnames(xcms.fdf)) as.character(xcms.fdf$feature_id) else rownames(xcms.fdf)
+      formula_vec <- if ("formula" %in% colnames(xcms.fdf)) as.character(xcms.fdf$formula) else rep(NA_character_, nrow(xcms.fdf))
+      iso_count_vec <- if ("iso_count" %in% colnames(xcms.fdf)) suppressWarnings(as.integer(xcms.fdf$iso_count)) else rep(NA_integer_, nrow(xcms.fdf))
+      expected <- vapply(seq_len(nrow(xcms.fdf)), function(i) {
+        .expected_ratio(formula_vec[i], iso_count_vec[i], iso_ele)
+      }, numeric(1))
+      names(expected) <- fids
+
+      # If no traced sample.source is available, fallback to all sample.source.
+      use.sources <- sample.source.iso
+      if (!length(use.sources)) {
+        use.sources <- colnames(xcms.ratio.to.seed)
+      }
+      use.sources <- intersect(use.sources, colnames(xcms.ratio.to.seed))
+
+      is_labeled <- rep(NA, nrow(xcms.ratio.to.seed))
+      if (length(use.sources)) {
+        is_labeled <- vapply(seq_len(nrow(xcms.ratio.to.seed)), function(i) {
+          obs <- xcms.ratio.to.seed[i, use.sources, drop = TRUE]
+          fid <- rownames(xcms.ratio.to.seed)[i]
+          exp_i <- expected[fid]
+          exp_i <- if (length(exp_i)) exp_i[[1]] else NA_real_
+          if (!is.finite(exp_i)) return(NA)
+          any(obs > exp_i, na.rm = TRUE)
+        }, logical(1))
+      }
     }
   }
-
 
   ### import to xcms
   {
     xcms.fda <- featureDefinitions(xcms.xcms)
     xcms.fda$is_labeled <- is_labeled
-    colnames(xcms.ratio.to.seed) <- paste0("Ratio_to_seed_",colnames(xcms.ratio.to.seed))
-    xcms.fda[,colnames(xcms.ratio.to.seed)] <- xcms.ratio.to.seed
+    colnames(xcms.ratio.to.seed) <- paste0("Ratio_to_seed_", colnames(xcms.ratio.to.seed))
+    xcms.fda[, colnames(xcms.ratio.to.seed)] <- xcms.ratio.to.seed
     xcms.fda -> featureDefinitions(xcms.xcms)
     message("Get ",
-            sum(xcms.fda$is_labeled ),
+            sum(xcms.fda$is_labeled, na.rm = TRUE),
             " isotope label")
   }
 
   return(xcms.xcms)
+}
+
+#' @title Xcms Get Feature Isotope Label (Deprecated)
+#' @description Deprecated wrapper of \code{xcms_get_feature_traced_isotopologue()}.
+#' @param xcms.xcms XCMSnExp object with isotopologue assignments.
+#' @param iso_ele Isotope element string (e.g., `"[13]C"`).
+#' @param ... Additional arguments.
+#' @return XCMSnExp object.
+#' @export
+xcms_get_feature_isotope_label <- function(xcms.xcms,
+                                           iso_ele = "[13]C",
+                                           ...){
+  .Deprecated("xcms_get_feature_traced_isotopologue",
+              package = "MSdev",
+              msg = "xcms_get_feature_isotope_label is deprecated. Use xcms_get_feature_traced_isotopologue().")
+  xcms_get_feature_traced_isotopologue(xcms.xcms = xcms.xcms,
+                                       iso_ele = iso_ele,
+                                       method = "untraced_compare",
+                                       ...)
 }
 
 

@@ -160,39 +160,80 @@ Use MSIP_xcms_processing.targeted() which handles isotopologue annotation automa
 }
 
 
-#' @title Find isotope labels in MSdev object
-#' @description Find isotope labels in MSdev object by processing isotopologues
-#' and isotope labels for both positive and negative ion modes.
+#' @title Find traced isotopologues in MSdev object
+#' @description Identify isotopologues and determine traced isotopologues
+#' (label-enriched isotopologues from tracer experiments) for both polarities.
+#'
+#' Two methods are supported in \code{xcms_get_feature_traced_isotopologue}:
+#' \itemize{
+#'   \item \code{untraced_compare}: compare traced vs untraced sample sources (legacy behavior).
+#'   \item \code{natural_based}: compare observed isotopologue/seed ratio against the
+#'   theoretical natural isotope ratio from
+#'   \code{MSCC::chemform_isotopes_pattern_enviPat()}.
+#' }
 #'
 #' @param object MSdev object
 #' @param iso_ele isotope element, default `"[13]C"`
 #' @param ppm ppm tolerance, default 10
-#' @param ... additional arguments passed to xcms_get_feature_isotopologues
+#' @param method traced-isotopologue identification method, one of
+#'   \code{"untraced_compare"} (legacy traced-vs-untraced comparison) or
+#'   \code{"natural_based"} (observed-vs-theoretical natural isotope ratio).
+#'   Default \code{"untraced_compare"}.
+#' @param ... additional arguments passed to xcms helpers
 #'
-#' @return MSdev object with isotope labels added
+#' @return MSdev object with featureDefinitions updated with isotopologue
+#' and traced-isotopologue labels.
 #' @export
 #'
-MSdev_find_isotope_label <- function(object,
-                                     iso_ele = "[13]C",
-                                     ppm = 10,
-                                     ...){
+MSIP_find_traced_isotopologue <- function(object,
+                                          iso_ele = "[13]C",
+                                          ppm = 10,
+                                          method = c("untraced_compare", "natural_based")[1],
+                                          ...){
 
   for (i in 0:1) {
 
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) {
+      cli::cli_alert_warning("MSIP_find_traced_isotopologue: {.field {pol}MS1} is missing; skipped.")
+      next
+    }
     xcms.xcms <- xcms_get_feature_isotopologues(xcms.xcms,
                                                 iso_ele = iso_ele,
                                                 ppm = ppm,
                                                 ...)
-    xcms.xcms <- xcms_get_feature_isotope_label(xcms.xcms,
-                                                iso_ele = iso_ele,
-                                                ...)
+    xcms.xcms <- xcms_get_feature_traced_isotopologue(xcms.xcms,
+                                                       iso_ele = iso_ele,
+                                                       method = method,
+                                                       ...)
     xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
   }
 
   return(object)
 
+}
+
+#' @title Find isotope labels in MSdev object (Deprecated)
+#' @description Deprecated wrapper of \code{MSIP_find_traced_isotopologue()}.
+#' @param object MSdev object
+#' @param iso_ele isotope element, default `"[13]C"`
+#' @param ppm ppm tolerance, default 10
+#' @param ... additional arguments passed through
+#' @return MSdev object
+#' @export
+MSdev_find_isotope_label <- function(object,
+                                     iso_ele = "[13]C",
+                                     ppm = 10,
+                                     ...){
+  .Deprecated("MSIP_find_traced_isotopologue",
+              package = "MSdev",
+              msg = "MSdev_find_isotope_label is deprecated. Use MSIP_find_traced_isotopologue().")
+  MSIP_find_traced_isotopologue(object = object,
+                                iso_ele = iso_ele,
+                                ppm = ppm,
+                                method = "untraced_compare",
+                                ...)
 }
 
 
