@@ -155,7 +155,7 @@ get_MSIP_Isotopomer_SE <- function(object) {
       } else {
         paste0(compound_name, "_", meta$iso_names)
       }
-      label_isotopologue <- if (is.na(compound_name) | is.na(isotopologue_mplus)) {
+      label_isotopologue <- if (is.na(compound_name) || is.na(isotopologue_mplus)) {
         rep(NA_character_, length(meta$iso_names))
       } else {
         rep(paste0(compound_name, "_", isotopologue_mplus), length(meta$iso_names))
@@ -256,16 +256,24 @@ get_MSIP_Isotopomer_SE <- function(object) {
 #'
 #' @return A \code{SummarizedExperiment} with assays:
 #' \itemize{
-#'   \item \code{intensity.positive}
-#'   \item \code{intensity.negative}
+#'   \item \code{ratio} (default assay; merged from positive/negative)
 #'   \item \code{ratio.positive}
 #'   \item \code{ratio.negative}
+#'   \item \code{intensity.positive}
+#'   \item \code{intensity.negative}
 #'   \item \code{purity.positive}
 #'   \item \code{purity.negative}
 #' }
 #' Row metadata is taken from per-compound isotopologue objects and includes
 #' \code{isotopologue_id}, \code{compound_id}, \code{compound_name},
 #' \code{isotopologue_form}, and \code{label.isotopologue} when available.
+#' Additional derived columns:
+#' \itemize{
+#'   \item \code{polarity}: \code{"0"}, \code{"1"}, or \code{"0;1"} depending on which
+#'   of \code{ratio.negative}/\code{ratio.positive} is present for that isotopologue row.
+#'   \item \code{similarity}: cosine similarity between the compound-level positive and
+#'   negative ratio matrices (all isotopologues and all sample.sources).
+#' }
 #' Column metadata contains \code{sample.source} and \code{group}.
 #' @export
 get_MSIP_Isotopologue_SE <- function(object, ...) {
@@ -353,9 +361,12 @@ get_MSIP_Isotopologue_SE <- function(object, ...) {
   }
   rownames(row.df) <- row.df$isotopologue_id
 
+  # NOTE: keep a single merged ratio assay as the default (first assay),
+  # but also retain polarity-specific ratio assays.
   assay.names <- c(
-    "intensity.positive", "intensity.negative",
+    "ratio",
     "ratio.positive", "ratio.negative",
+    "intensity.positive", "intensity.negative",
     "purity.positive", "purity.negative"
   )
   assays.out <- setNames(
@@ -387,7 +398,27 @@ get_MSIP_Isotopologue_SE <- function(object, ...) {
     this.sources <- as.character(this.sources)
 
     available.assays <- names(SummarizedExperiment::assays(sei))
-    for (an in intersect(assay.names, available.assays)) {
+
+    # ---- ratio.positive / ratio.negative (kept) ----
+    for (an in intersect(c("ratio.positive", "ratio.negative"), available.assays)) {
+      m <- SummarizedExperiment::assay(sei, an)
+      if (is.null(m) || !nrow(m) || !ncol(m)) next
+
+      row.hit <- match(this.row_id[keep.row], rownames(m))
+      row.ok <- !is.na(row.hit)
+      if (!any(row.ok)) next
+
+      col.hit <- match(sample.sources, this.sources)
+      col.ok <- !is.na(col.hit)
+      if (!any(col.ok)) next
+
+      src.values <- m[row.hit[row.ok], col.hit[col.ok], drop = FALSE]
+      assays.out[[an]][this.row_id[keep.row][row.ok], sample.sources[col.ok]] <- src.values
+    }
+
+    # ---- other assays (intensity/purity, polarity-specific) ----
+    other_assays <- c("intensity.positive", "intensity.negative", "purity.positive", "purity.negative")
+    for (an in intersect(other_assays, available.assays)) {
       m <- SummarizedExperiment::assay(sei, an)
       if (is.null(m) || !nrow(m) || !ncol(m)) next
 
@@ -405,6 +436,22 @@ get_MSIP_Isotopologue_SE <- function(object, ...) {
     }
   }
 
+  # ---- build merged ratio from ratio.positive/ratio.negative ----
+  rp <- assays.out[["ratio.positive"]]
+  rn <- assays.out[["ratio.negative"]]
+  rm <- rp
+  both <- !is.na(rp) & !is.na(rn)
+  rm[is.na(rm)] <- rn[is.na(rm)]
+  rm[both] <- (rp[both] + rn[both]) / 2
+  assays.out[["ratio"]] <- rm
+
+  # ---- fill all NA with 0 (per review) ----
+  for (nm in names(assays.out)) {
+    x <- assays.out[[nm]]
+    x[is.na(x)] <- 0
+    assays.out[[nm]] <- x
+  }
+
   keep.cols <- c(
     "isotopologue_id", "compound_id", "compound_name",
     "isotopologue_form", "label.isotopologue"
@@ -417,6 +464,36 @@ get_MSIP_Isotopologue_SE <- function(object, ...) {
   if (!("isotopologue_id" %in% colnames(rda.out))) {
     rda.out$isotopologue_id <- row.df$isotopologue_id
   }
+
+  # ---- derived rowData: polarity + similarity ----
+  # polarity is determined by whether the isotopologue has any non-zero ratio values
+  # in ratio.negative (0) and/or ratio.positive (1).
+  pol.neg <- rowSums(assays.out[["ratio.negative"]] != 0, na.rm = TRUE) > 0
+  pol.pos <- rowSums(assays.out[["ratio.positive"]] != 0, na.rm = TRUE) > 0
+  polarity <- ifelse(pol.neg & pol.pos, "0;1", ifelse(pol.neg, "0", ifelse(pol.pos, "1", NA_character_)))
+  rda.out$polarity <- polarity
+
+  # Cosine similarity of positive vs negative ratio vector per compound, using all
+  # isotopologues and all sample.sources (after NA->0 fill).
+  cos_sim <- function(a, b) {
+    a <- as.numeric(a)
+    b <- as.numeric(b)
+    den <- sqrt(sum(a * a)) * sqrt(sum(b * b))
+    if (!is.finite(den) || den == 0) return(NA_real_)
+    sum(a * b) / den
+  }
+  sim <- rep(NA_real_, nrow(rda.out))
+  if ("compound_id" %in% colnames(rda.out)) {
+    for (cid in unique(na.omit(as.character(rda.out$compound_id)))) {
+      idx <- which(as.character(rda.out$compound_id) == cid)
+      if (!length(idx)) next
+      a <- assays.out[["ratio.positive"]][idx, , drop = FALSE]
+      b <- assays.out[["ratio.negative"]][idx, , drop = FALSE]
+      sim_val <- cos_sim(a, b)
+      sim[idx] <- sim_val
+    }
+  }
+  rda.out$similarity <- sim
 
   SummarizedExperiment::SummarizedExperiment(
     assays = assays.out,
