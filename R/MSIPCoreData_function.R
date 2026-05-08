@@ -555,8 +555,8 @@ MSIPFragmentMap_merge_complementary <- function(MSIPFragmentMap){
 #' @title Plot MSIP fragment map as heatmap
 #' @description Create a heatmap visualization of the MSIP fragment map showing
 #' atom mapping probabilities and fragment ratios.
-#' @describeIn MSIPCore heatmap fragment map
-#' @param MSIPFragmentMap MSIPFragmentMap object
+#' @name heatmap_MSIPFragmentMap
+#' @param x MSIPFragmentMap or MSIPCoreData object
 #' @param show_ratio if TRUE, show ratio matrix alongside atom matrix
 #'
 #' @return ComplexHeatmap object
@@ -659,6 +659,13 @@ setMethod("heatmap_MSIPFragmentMap", "MSIPCoreData",
           })
 
 
+#' @title Plot MSIP isotopomer map as heatmap
+#' @description Create a heatmap visualization of the MSIP isotopomer map.
+#' @name heatmap_MSIPIsotopomerMap
+#' @param x MSIPIsotopomerMap or MSIPCoreData object
+#'
+#' @return ComplexHeatmap object
+#' @export
 setGeneric("heatmap_MSIPIsotopomerMap",
            function(x) standardGeneric("heatmap_MSIPIsotopomerMap"))
 

@@ -1,8 +1,9 @@
-#' Title
+#' @title Wrapper for t.test
+#' @description A convenience wrapper that returns the p-value from t.test, or 1 on error.
+#' @param ... arguments passed to `stats::t.test`
 #'
-#' @param t.test
-#'
-#' @return t.test
+#' @return numeric p-value (or 1 if the test fails)
+#' @export
 t.test_dev <- function(...){
 
   try.catch <-try(p.value <- t.test(...)$p.value,silent = T)

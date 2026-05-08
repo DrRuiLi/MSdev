@@ -135,7 +135,7 @@ colored_text <- function(x , color = "#E64B35"){
 #' @param p ggplot
 #' @param file_path file path
 #' @param append logic
-#' @param ...
+#' @param ... additional arguments passed to export functions
 #'
 #' @return null
 #' @export

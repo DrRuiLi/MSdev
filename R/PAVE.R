@@ -1,7 +1,7 @@
 #' @description PAVE from MSdev.
 #' @describeIn PVAE initialize from MSdev
 #' @title PAVE analysis
-#' @param MSdev
+#' @param object MSdev object
 #'
 #' @returns PAVE
 #' @export

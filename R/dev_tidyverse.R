@@ -22,7 +22,7 @@ add_multi_column <- function(x, column_name){
 #' sub-list will be replaced with "large list" and missing value will be fill by NA.
 #' See `data.table::rbindlist`
 #'
-#' @param x
+#' @param x a list to convert to data.frame
 #'
 #' @return data.frame
 #' @export
