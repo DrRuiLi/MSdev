@@ -120,7 +120,7 @@ plot_MSIPIsotopologueData_ratio <- function(object,
   make_one <- function(ss) {
     d <- df_long[df_long$sample.source %in% ss, , drop = FALSE]
     # x axis is isotopologue (angle), y axis is ratio (radius)
-    ggplot2::ggplot(d, ggplot2::aes(x = 1, y = ratio, fill = isotopologue)) +
+    ggplot2::ggplot(d, ggplot2::aes(x = 1, y = .data$ratio, fill = .data$isotopologue)) +
       ggplot2::geom_col(width = 1, color = "black", linewidth = 0.25) +
       ggplot2::coord_polar(start = 0,theta = "y") +
       ggsci::scale_fill_npg()+
@@ -137,5 +137,69 @@ plot_MSIPIsotopologueData_ratio <- function(object,
   patchwork::wrap_plots(plots) +
     patchwork::plot_layout(guides = "collect")  +
     patchwork::plot_annotation(title = compound_name)
+}
+
+
+#' @title Report isotopologue ratio as a PDF
+#' @description
+#' Create a PDF report that contains isotopologue ratio circular plots for each
+#' compound in \code{object@advancedAna$MSIP$isotopologue_data}.
+#'
+#' @param object A \code{MSdev} object.
+#' @param file Output pdf path. Default:
+#'   \code{file.path(object@projectInfo$projectDir, "report", "MSIP_report_isotopologue_ratio.pdf")}.
+#' @param assay Assay name passed to \code{\link{plot_MSIPIsotopologueData_ratio}}.
+#' @param ... Additional arguments passed to \code{\link{get_MSIPIsotopologueData}} when
+#'   isotopologue data needs to be built.
+#'
+#' @return Invisibly returns \code{file}.
+#' @export
+MSIP_report_isotopologue_ratio <- function(object,
+                                          file = NULL,
+                                          assay = "ratio",
+                                          ...) {
+  if (is.null(object) || !methods::is(object, "MSdev")) {
+    stop("object must be a MSdev object.")
+  }
+
+  if (is.null(file)) {
+    proj_dir <- tryCatch(object@projectInfo$projectDir, error = function(e) NULL)
+    if (is.null(proj_dir) || is.na(proj_dir) || !nzchar(proj_dir)) {
+      stop("object@projectInfo$projectDir is missing; please provide `file` explicitly.")
+    }
+    file <- file.path(proj_dir, "report", "MSIP_report_isotopologue_ratio.pdf")
+  }
+  dir.create(dirname(file), recursive = TRUE, showWarnings = FALSE)
+
+  iso.list <- tryCatch(object@advancedAna$MSIP$isotopologue_data, error = function(e) NULL)
+  if (is.null(iso.list) || !is.list(iso.list) || !length(iso.list)) {
+    iso.list <- get_MSIPIsotopologueData(object, ...)
+  }
+  if (!is.list(iso.list) || !length(iso.list)) {
+    stop("No isotopologue_data found/built for this MSdev object.")
+  }
+
+  message_with_time("MSIP_report_isotopologue_ratio: start, total compounds = ", length(iso.list))
+  message_with_time("Output file: ", normalizePath(file, winslash = "/", mustWork = FALSE))
+
+  grDevices::pdf(file = file, width = 10, height = 6, onefile = TRUE)
+  on.exit(grDevices::dev.off(), add = TRUE)
+
+  i <- 0L
+  n <- length(iso.list)
+  for (nm in names(iso.list)) {
+    i <- i + 1L
+    sei <- iso.list[[nm]]
+    if (is.null(sei) || !methods::is(sei, "SummarizedExperiment")) {
+      message_with_time("[", i, "/", n, "] skip ", nm, " (not SummarizedExperiment)")
+      next
+    }
+    message_with_time("[", i, "/", n, "] plotting ", nm)
+    p <- plot_MSIPIsotopologueData_ratio(sei, assay = assay)
+    print(p)
+  }
+
+  message_with_time("MSIP_report_isotopologue_ratio: done")
+  invisible(file)
 }
 
