@@ -382,8 +382,19 @@ get_MSIP_Isotopologue_SE <- function(object, ...) {
     this.rda <- tryCatch(as.data.frame(SummarizedExperiment::rowData(sei)), error = function(e) NULL)
     if (is.null(this.rda) || !nrow(this.rda)) next
 
-    this.row_id <- this.rda$isotopologue_id %||% rownames(this.rda)
-    this.row_id <- as.character(this.row_id)
+    # Robustly derive isotopologue_id for this element (some objects may miss assay
+    # rownames, or even the isotopologue_id column).
+    this.row_id <- NULL
+    if ("isotopologue_id" %in% colnames(this.rda)) {
+      this.row_id <- as.character(this.rda$isotopologue_id)
+    }
+    if (is.null(this.row_id) || all(is.na(this.row_id)) || all(!nzchar(this.row_id %||% ""))) {
+      this.row_id <- rownames(this.rda) %||% rep(NA_character_, nrow(this.rda))
+      this.row_id <- as.character(this.row_id)
+    }
+    if (all(is.na(this.row_id)) || all(!nzchar(this.row_id %||% ""))) {
+      this.row_id <- paste0("row_", seq_len(nrow(this.rda)))
+    }
     keep.row <- this.row_id %in% rownames(row.df)
     if (!any(keep.row)) next
 
@@ -404,6 +415,19 @@ get_MSIP_Isotopologue_SE <- function(object, ...) {
       m <- SummarizedExperiment::assay(sei, an)
       if (is.null(m) || !nrow(m) || !ncol(m)) next
 
+      # Fix missing/empty rownames in assay matrices by using rowData order.
+      # Without this, match(..., rownames(m)) returns all NA and later NA->0 fill
+      # makes the assay look like "all zeros".
+      if (is.null(rownames(m)) || any(!nzchar(rownames(m)))) {
+        if (nrow(m) == length(this.row_id)) {
+          rownames(m) <- this.row_id
+        } else if (nrow(m) == nrow(this.rda)) {
+          rownames(m) <- this.row_id
+        } else {
+          rownames(m) <- paste0("row_", seq_len(nrow(m)))
+        }
+      }
+
       row.hit <- match(this.row_id[keep.row], rownames(m))
       row.ok <- !is.na(row.hit)
       if (!any(row.ok)) next
@@ -423,6 +447,15 @@ get_MSIP_Isotopologue_SE <- function(object, ...) {
       if (is.null(m) || !nrow(m) || !ncol(m)) next
 
       # Align rows by isotopologue_id and columns by sample.source.
+      if (is.null(rownames(m)) || any(!nzchar(rownames(m)))) {
+        if (nrow(m) == length(this.row_id)) {
+          rownames(m) <- this.row_id
+        } else if (nrow(m) == nrow(this.rda)) {
+          rownames(m) <- this.row_id
+        } else {
+          rownames(m) <- paste0("row_", seq_len(nrow(m)))
+        }
+      }
       row.hit <- match(this.row_id[keep.row], rownames(m))
       row.ok <- !is.na(row.hit)
       if (!any(row.ok)) next
@@ -439,10 +472,35 @@ get_MSIP_Isotopologue_SE <- function(object, ...) {
   # ---- build merged ratio from ratio.positive/ratio.negative ----
   rp <- assays.out[["ratio.positive"]]
   rn <- assays.out[["ratio.negative"]]
+  # NOTE:
+  # In some workflows (e.g. single-polarity datasets), the missing polarity may
+  # already be filled with 0 (not NA) upstream. Treat "all-zero row" as missing
+  # polarity when the other polarity has any signal, so merged ratio is not
+  # accidentally forced to 0.
   rm <- rp
-  both <- !is.na(rp) & !is.na(rn)
-  rm[is.na(rm)] <- rn[is.na(rm)]
-  rm[both] <- (rp[both] + rn[both]) / 2
+  pos_present_row <- rowSums(rp != 0, na.rm = TRUE) > 0
+  neg_present_row <- rowSums(rn != 0, na.rm = TRUE) > 0
+
+  # Row-level fallback when one polarity is entirely absent (all zeros).
+  rm[!pos_present_row & neg_present_row, ] <- rn[!pos_present_row & neg_present_row, , drop = FALSE]
+
+  # Cell-level merge for rows where both polarities have some signal:
+  # - if both non-zero: average
+  # - else: take whichever is non-zero
+  both_rows <- pos_present_row & neg_present_row
+  if (any(both_rows)) {
+    rpp <- rp[both_rows, , drop = FALSE]
+    rnn <- rn[both_rows, , drop = FALSE]
+    both_cell <- (rpp != 0) & (rnn != 0)
+    only_pos <- (rpp != 0) & (rnn == 0)
+    only_neg <- (rpp == 0) & (rnn != 0)
+
+    out <- rpp
+    out[only_neg] <- rnn[only_neg]
+    out[both_cell] <- (rpp[both_cell] + rnn[both_cell]) / 2
+    rm[both_rows, ] <- out
+  }
+
   assays.out[["ratio"]] <- rm
 
   # ---- fill all NA with 0 (per review) ----

@@ -702,11 +702,11 @@ get_MSIPIsotopologueData <- function(object,
     if (!is.null(ratio.matrix)) {
       pdata <- Biobase::pData(xcms.xcms)
       ratio.col <- colnames(ratio.matrix)
-      src_ratio <- pdata$sample.source[match(ratio.col, pdata$sample.name)]
+      src_ratio <- pdata$sample.source[match(ratio.col, pdata$sampleNames)]
       if (all(is.na(src_ratio)) && "sampleNames" %in% colnames(pdata)) {
         src_ratio <- pdata$sample.source[match(ratio.col, pdata$sampleNames)]
       }
-      nm_ratio <- pdata$sample.name[match(ratio.col, pdata$sample.name)]
+      nm_ratio <- pdata$sample.name[match(ratio.col, pdata$sampleNames)]
       nm_ratio[is.na(nm_ratio)] <- ratio.col[is.na(nm_ratio)]
       colnames(ratio.matrix) <- nm_ratio
       ratio.src <- .agg_to_source(ratio.matrix, src_ratio, fun = assay_fun)
@@ -1103,13 +1103,19 @@ get_MSIPIsotopologueData <- function(object,
       row.names = iso_id
     )
 
+    .na_to_zero <- function(m) {
+      if (is.null(m)) return(m)
+      m[is.na(m)] <- 0
+      m
+    }
+
     assays <- list(
-      intensity.positive = intensity.pos,
-      intensity.negative = intensity.neg,
-      ratio.positive = ratio.pos,
-      ratio.negative = ratio.neg,
-      purity.positive = purity.pos,
-      purity.negative = purity.neg
+      intensity.positive = .na_to_zero(intensity.pos),
+      intensity.negative = .na_to_zero(intensity.neg),
+      ratio.positive = .na_to_zero(ratio.pos),
+      ratio.negative = .na_to_zero(ratio.neg),
+      purity.positive = .na_to_zero(purity.pos),
+      purity.negative = .na_to_zero(purity.neg)
     )
     out[[cid]] <- MSIPIsotopologueData(
       assays = assays,
@@ -1136,6 +1142,49 @@ get_MSIPIsotopologueData <- function(object,
 #' @export
 MSIP_get_isotopologues_data <- function(object, ...) {
   iso.list <- get_MSIPIsotopologueData(object, ...)
+
+  .fix_isotopologue_se_rownames <- function(sei) {
+    if (is.null(sei) || !methods::is(sei, "SummarizedExperiment")) return(sei)
+
+    rda <- tryCatch(as.data.frame(SummarizedExperiment::rowData(sei)), error = function(e) NULL)
+    if (is.null(rda) || !nrow(rda)) return(sei)
+
+    # Derive isotopologue_id in rowData if missing.
+    if (!("isotopologue_id" %in% colnames(rda))) {
+      rid <- rownames(rda)
+      if (is.null(rid) || any(!nzchar(rid))) {
+        rid <- paste0("row_", seq_len(nrow(rda)))
+      }
+      rda$isotopologue_id <- as.character(rid)
+    }
+    rda$isotopologue_id <- as.character(rda$isotopologue_id)
+    if (is.null(rownames(rda)) || any(!nzchar(rownames(rda)))) {
+      rownames(rda) <- rda$isotopologue_id
+    }
+    SummarizedExperiment::rowData(sei) <- S4Vectors::DataFrame(rda)
+
+    ids <- rda$isotopologue_id
+
+    # Ensure all assays have correct rownames (match rowData order).
+    a <- SummarizedExperiment::assays(sei)
+    if (!is.null(a) && length(a)) {
+      for (nm in names(a)) {
+        m <- a[[nm]]
+        if (is.null(m)) next
+        if (is.null(dim(m)) || nrow(m) != length(ids)) next
+        if (is.null(rownames(m)) || any(!nzchar(rownames(m)))) {
+          rownames(m) <- ids
+        }
+        a[[nm]] <- m
+      }
+      SummarizedExperiment::assays(sei) <- a
+    }
+    sei
+  }
+
+  if (is.list(iso.list) && length(iso.list)) {
+    iso.list <- lapply(iso.list, .fix_isotopologue_se_rownames)
+  }
   object@advancedAna[["MSIP"]][["isotopologue_data"]] <- iso.list
   object@advancedAna[["MSIP"]][["isotopologues_table"]] <- NULL
   object
