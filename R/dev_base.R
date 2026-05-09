@@ -82,7 +82,7 @@ colorMix <- function(...){
 #' @export
 message_with_time <- function(...){
 
-  message(format(Sys.time(),digits = 0)," ",...)
+  cli::cli_alert_info(paste0(format(Sys.time(),digits = 0),": ",...))
 }
 
 

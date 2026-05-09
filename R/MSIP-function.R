@@ -188,9 +188,10 @@ Use MSIP_xcms_processing.targeted() which handles isotopologue annotation automa
 MSIP_find_traced_isotopologue <- function(object,
                                           iso_ele = "[13]C",
                                           ppm = 10,
-                                          method = c("untraced_compare", "natural_based")[1],
+                                          method = c( "natural_based","untraced_compare"),
                                           ...){
 
+  method <- match.arg(method)
   for (i in 0:1) {
 
     pol <- ifelse(i==0,"Negative","Positive")

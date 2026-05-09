@@ -361,17 +361,53 @@ in the result se's rowdata:
 ### *To Do*
 ## get_MSIP_Isotopologue_SE
 ### *Review*
-# Thu May  7 16:05:25 2026 ------------------------------
+#### Thu May  7 16:05:25 2026 ------------------------------
 
 ```
 write a function 'get_MSIP_Isotopologue_SE' to extract isotopologue data and construct a SummarizedExperiment object
 1. read 'MSIP_xcms_processing.targeted' to understand the isotopologue annotation in xcms.fdf
 2. read 'get_MSIP_Isotopomer_SE' to understand the data structure, the isotopologue se is similar to isotopomer se
 ```
-###*To Do*
+``` {text date="Fri May  8 14:23:24 2026"}
+  the 'get_MSIP_Isotopologue_SE' return se with features as row, not compound's isotopologue, please merge the positve and negative ratio assay into one, name as 'ratio' and set as the default assay
+```
+
+``` {text # Fri May  8 13:50:26 2026 ------------------------------}
+1. keep the raito.positive and ratio.negative assay
+2. fill the NA with 0
+3. the rowData should include:
+  - polarity: 0, 1, or 0;1 (both positive and negative)
+  - similarity: the similarity of positive and negative ratio vector, using cosine similarity. all the isotopologue of the compound should be counted.
+```
+
+``` {text date="Fri May  8 14:23:24 2026"}
+1. the 'get_MSIP_Isotopologue_SE' should return a list of MSIPIsotopologueData, 'MSIP_get_isotopologues_data' return a MSdev object
+2. update the doc "vignettes/MSIP_Workflow.Rmd" according to the updated data structure and functions
+
+```
+### *To Do*
+
+
+## MSdev_find_isotope_label
+
+### *Review*
+``` {text date="Fri May  8 14:23:24 2026"}
+
+  rename 'MSdev_find_isotope_label' to 'MSIP_find_traced_isotopologue' and update:
+  1. read the 'MSIP_get_isotopologues_data.targeted' to understand the labeled(traced) isotopologue identification
+  2. be clear the isotopologue and traced isotopologue are different, the isotopologue is the original isotopologue (from naturally occurring isotopes), the traced isotopologue is the labeled(traced) isotopologue (from labeled isotopes tracer)
+  3. there are two method to find the traced isotopologue:
+    - method 1: compare the labeled and un-labeled sample ( the old version of 'MSdev_find_isotope_label')
+    - method 2: compare the ratio of isotopologue to the theoretical ratio ( calculated by the MSCC::chemform_isotopes_pattern_enviPat)
+  4. the actuall update should be in 'xcms_get_feature_isotope_label', rename it to "xcms_get_feature_traced_isotopologue", add a param 'method' to choose the method, default is 'method 1', implement the method 2
+  5. make sure the output keep the same as the old version of 'MSdev_find_isotope_label'
 
 ```
 
-
-
+``` {text date="Fri May  8 14:23:24 2026"}
+1. use "untraced_compare" and "natural_based" to name the two methods
+2. when call 'untraced_compare', check the untraced sample and message use cli 
+3. if any polarity is missing, just message use cli, not stop
 ```
+### *To Do*
+
