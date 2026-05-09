@@ -158,10 +158,12 @@ MSIP_report_isotopologue_ratio <- function(object,
                                           file = NULL,
                                           assay = "ratio",
                                           ...) {
+  message_with_time("MSIP_report_isotopologue_ratio: checking input object")
   if (is.null(object) || !methods::is(object, "MSdev")) {
     stop("object must be a MSdev object.")
   }
 
+  message_with_time("MSIP_report_isotopologue_ratio: resolving output file")
   if (is.null(file)) {
     proj_dir <- tryCatch(object@projectInfo$projectDir, error = function(e) NULL)
     if (is.null(proj_dir) || is.na(proj_dir) || !nzchar(proj_dir)) {
@@ -169,10 +171,13 @@ MSIP_report_isotopologue_ratio <- function(object,
     }
     file <- file.path(proj_dir, "report", "MSIP_report_isotopologue_ratio.pdf")
   }
+  message_with_time("MSIP_report_isotopologue_ratio: creating output directory")
   dir.create(dirname(file), recursive = TRUE, showWarnings = FALSE)
 
+  message_with_time("MSIP_report_isotopologue_ratio: retrieving isotopologue_data")
   iso.list <- tryCatch(object@advancedAna$MSIP$isotopologue_data, error = function(e) NULL)
   if (is.null(iso.list) || !is.list(iso.list) || !length(iso.list)) {
+    message_with_time("MSIP_report_isotopologue_ratio: isotopologue_data missing, building with get_MSIPIsotopologueData()")
     iso.list <- get_MSIPIsotopologueData(object, ...)
   }
   if (!is.list(iso.list) || !length(iso.list)) {
@@ -182,6 +187,7 @@ MSIP_report_isotopologue_ratio <- function(object,
   message_with_time("MSIP_report_isotopologue_ratio: start, total compounds = ", length(iso.list))
   message_with_time("Output file: ", normalizePath(file, winslash = "/", mustWork = FALSE))
 
+  message_with_time("MSIP_report_isotopologue_ratio: opening PDF device")
   grDevices::pdf(file = file, width = 10, height = 6, onefile = TRUE)
   on.exit(grDevices::dev.off(), add = TRUE)
 
@@ -194,11 +200,13 @@ MSIP_report_isotopologue_ratio <- function(object,
       message_with_time("[", i, "/", n, "] skip ", nm, " (not SummarizedExperiment)")
       next
     }
-    message_with_time("[", i, "/", n, "] plotting ", nm)
+    message_with_time("[", i, "/", n, "] plotting ", nm, " (build plot)")
     p <- plot_MSIPIsotopologueData_ratio(sei, assay = assay)
+    message_with_time("[", i, "/", n, "] plotting ", nm, " (write page)")
     print(p)
   }
 
+  message_with_time("MSIP_report_isotopologue_ratio: closing PDF device")
   message_with_time("MSIP_report_isotopologue_ratio: done")
   invisible(file)
 }

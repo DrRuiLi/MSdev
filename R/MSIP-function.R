@@ -824,6 +824,13 @@ get_MSIPIsotopologueData <- function(object,
     if (!("compound_id" %in% colnames(fdf))) fdf$compound_id <- NA_character_
     if (!("name" %in% colnames(fdf))) fdf$name <- NA_character_
     if (!("iso_seed" %in% colnames(fdf))) fdf$iso_seed <- NA_character_
+    if (!("rtmed" %in% colnames(fdf))) {
+      if ("rt" %in% colnames(fdf)) {
+        fdf$rtmed <- suppressWarnings(as.numeric(fdf$rt))
+      } else {
+        fdf$rtmed <- NA_real_
+      }
+    }
 
     fdf$iso_count <- .derive_iso_count(fdf, iso_ele = iso_ele)
 
@@ -850,10 +857,11 @@ get_MSIPIsotopologueData <- function(object,
         name = as.character(name),
         feature_id = as.character(feature_id),
         iso_count = suppressWarnings(as.integer(iso_count)),
+        rtmed = suppressWarnings(as.numeric(rtmed)),
         polarity = pol
       ) %>%
       dplyr::filter(!is.na(compound_id), !is.na(feature_id), !is.na(iso_count)) %>%
-      dplyr::select(feature_id, compound_id, name, iso_count, polarity) %>%
+      dplyr::select(feature_id, compound_id, name, iso_count, rtmed, polarity) %>%
       dplyr::distinct()
     if (!nrow(fdf)) return(NULL)
     fdf
@@ -1051,6 +1059,12 @@ get_MSIPIsotopologueData <- function(object,
     ratio.neg <- intensity.pos
     purity.pos <- intensity.pos
     purity.neg <- intensity.pos
+    rt_iso <- rep(NA_real_, length(iso_counts))
+    rt_iso.pos <- rep(NA_real_, length(iso_counts))
+    rt_iso.neg <- rep(NA_real_, length(iso_counts))
+    intensity_avg_iso <- rep(NA_real_, length(iso_counts))
+    intensity_avg_iso.pos <- rep(NA_real_, length(iso_counts))
+    intensity_avg_iso.neg <- rep(NA_real_, length(iso_counts))
 
     for (k in seq_along(iso_counts)) {
       ic <- iso_counts[[k]]
@@ -1058,11 +1072,15 @@ get_MSIPIsotopologueData <- function(object,
       # Negative
       fids.neg <- this.df$feature_id[this.df$iso_count %in% ic & this.df$polarity %in% "Negative"]
       fids.neg <- unique(na.omit(as.character(fids.neg)))
+      rt.neg <- suppressWarnings(as.numeric(this.df$rtmed[this.df$iso_count %in% ic & this.df$polarity %in% "Negative"]))
+      rt.neg <- rt.neg[is.finite(rt.neg)]
+      if (length(rt.neg)) rt_iso.neg[k] <- mean(rt.neg, na.rm = TRUE)
       if (length(fids.neg) && !is.null(pol_mats$Negative)) {
         pm <- pol_mats$Negative
         fi <- intersect(fids.neg, rownames(pm$intensity))
         if (length(fi)) {
           intensity.neg[k, ] <- apply(pm$intensity[fi, , drop = FALSE], 2, mean, na.rm = TRUE)
+          intensity_avg_iso.neg[k] <- mean(apply(pm$intensity[fi, , drop = FALSE], 1, mean, na.rm = TRUE), na.rm = TRUE)
         }
         if (!is.null(pm$ratio)) {
           fi <- intersect(fids.neg, rownames(pm$ratio))
@@ -1077,11 +1095,15 @@ get_MSIPIsotopologueData <- function(object,
       # Positive
       fids.pos <- this.df$feature_id[this.df$iso_count %in% ic & this.df$polarity %in% "Positive"]
       fids.pos <- unique(na.omit(as.character(fids.pos)))
+      rt.pos <- suppressWarnings(as.numeric(this.df$rtmed[this.df$iso_count %in% ic & this.df$polarity %in% "Positive"]))
+      rt.pos <- rt.pos[is.finite(rt.pos)]
+      if (length(rt.pos)) rt_iso.pos[k] <- mean(rt.pos, na.rm = TRUE)
       if (length(fids.pos) && !is.null(pol_mats$Positive)) {
         pm <- pol_mats$Positive
         fi <- intersect(fids.pos, rownames(pm$intensity))
         if (length(fi)) {
           intensity.pos[k, ] <- apply(pm$intensity[fi, , drop = FALSE], 2, mean, na.rm = TRUE)
+          intensity_avg_iso.pos[k] <- mean(apply(pm$intensity[fi, , drop = FALSE], 1, mean, na.rm = TRUE), na.rm = TRUE)
         }
         if (!is.null(pm$ratio)) {
           fi <- intersect(fids.pos, rownames(pm$ratio))
@@ -1092,6 +1114,14 @@ get_MSIPIsotopologueData <- function(object,
           if (length(fi)) purity.pos[k, ] <- apply(pm$purity[fi, , drop = FALSE], 2, mean, na.rm = TRUE)
         }
       }
+
+      rt.v <- c(rt_iso.neg[k], rt_iso.pos[k])
+      rt.v <- rt.v[is.finite(rt.v)]
+      if (length(rt.v)) rt_iso[k] <- mean(rt.v, na.rm = TRUE)
+
+      int.v <- c(intensity_avg_iso.neg[k], intensity_avg_iso.pos[k])
+      int.v <- int.v[is.finite(int.v)]
+      if (length(int.v)) intensity_avg_iso[k] <- mean(int.v, na.rm = TRUE)
     }
 
     rda <- S4Vectors::DataFrame(
@@ -1099,6 +1129,12 @@ get_MSIPIsotopologueData <- function(object,
       isotopologue_id = iso_id,
       compound_id = rep(cid, length(iso_counts)),
       compound_name = rep(cp.name, length(iso_counts)),
+      feature_rt = rt_iso,
+      feature_rt.positive = rt_iso.pos,
+      feature_rt.negative = rt_iso.neg,
+      feature_avg_intensity = intensity_avg_iso,
+      feature_avg_intensity.positive = intensity_avg_iso.pos,
+      feature_avg_intensity.negative = intensity_avg_iso.neg,
       label.isotopologue = label_iso,
       row.names = iso_id
     )
@@ -1141,7 +1177,10 @@ get_MSIPIsotopologueData <- function(object,
 #' @return MSdev object with \code{advancedAna$MSIP$isotopologue_data} updated.
 #' @export
 MSIP_get_isotopologues_data <- function(object, ...) {
+  message_with_time("MSIP_get_isotopologues_data: start")
+  message_with_time("MSIP_get_isotopologues_data: build isotopologue list")
   iso.list <- get_MSIPIsotopologueData(object, ...)
+  message_with_time("MSIP_get_isotopologues_data: build complete")
 
   .fix_isotopologue_se_rownames <- function(sei) {
     if (is.null(sei) || !methods::is(sei, "SummarizedExperiment")) return(sei)
@@ -1183,10 +1222,21 @@ MSIP_get_isotopologues_data <- function(object, ...) {
   }
 
   if (is.list(iso.list) && length(iso.list)) {
-    iso.list <- lapply(iso.list, .fix_isotopologue_se_rownames)
+    message_with_time("MSIP_get_isotopologues_data: normalize rownames for ", length(iso.list), " entries")
+    iso.names <- names(iso.list)
+    if (is.null(iso.names)) iso.names <- rep("", length(iso.list))
+    for (i in seq_along(iso.list)) {
+      nm <- iso.names[[i]]
+      if (is.na(nm) || !nzchar(nm)) nm <- paste0("entry_", i)
+      message_with_time("MSIP_get_isotopologues_data: [", i, "/", length(iso.list), "] ", nm)
+      iso.list[[i]] <- .fix_isotopologue_se_rownames(iso.list[[i]])
+    }
   }
+  message_with_time("MSIP_get_isotopologues_data: save isotopologue_data to object")
   object@advancedAna[["MSIP"]][["isotopologue_data"]] <- iso.list
+  message_with_time("MSIP_get_isotopologues_data: clear legacy isotopologues_table")
   object@advancedAna[["MSIP"]][["isotopologues_table"]] <- NULL
+  message_with_time("MSIP_get_isotopologues_data: done")
   object
 }
 
@@ -1195,6 +1245,10 @@ MSIP_get_isotopologues_data <- function(object, ...) {
 MSIP_get_isotopologues_data_fid <- function(object,fid_seed,polarity,
                                             iso_ele = get_MSdev_iso_ele(object)){
 
+  lifecycle::deprecate_stop(
+    when = "2.1.0",
+    what = "MSIP_get_isotopologues_data_fid()"
+  )
 
 
 
