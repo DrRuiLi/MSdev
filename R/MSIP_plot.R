@@ -77,6 +77,21 @@ plot_MSIPIsotopologueData_ratio <- function(object,
   }
   fill_val <- if (!is.null(fill_col)) as.character(rda[rownames(mat), fill_col]) else rownames(mat)
   fill_val[is.na(fill_val) | !nzchar(fill_val)] <- rownames(mat)[is.na(fill_val) | !nzchar(fill_val)]
+  .as_mplus <- function(x) {
+    x <- as.character(x)
+    out <- x
+    has_mplus <- grepl("M\\+[0-9]+", x)
+    out[has_mplus] <- sub(".*(M\\+[0-9]+).*", "\\1", x[has_mplus])
+    miss <- !has_mplus
+    if (any(miss)) {
+      num <- suppressWarnings(as.integer(gsub(".*?([0-9]+)$", "\\1", x[miss])))
+      ok <- !is.na(num)
+      idx <- which(miss)[ok]
+      out[idx] <- paste0("M+", num[ok])
+    }
+    out
+  }
+  fill_val <- .as_mplus(fill_val)
 
   df <- as.data.frame(mat, stringsAsFactors = FALSE)
   df$row_id <- rownames(mat)
@@ -141,9 +156,8 @@ plot_MSIPIsotopologueData_ratio <- function(object,
   if (!is.null(rda) && nrow(rda) && "intensity" %in% colnames(rda)) {
     intensity_txt <- .pick_first(as.numeric(rda$intensity))
   }
-  title_txt <- paste0(
-    compound_name,
-    " | rt: ", .fmt_num(rt_txt),
+  subtitle_txt <- paste0(
+    "rt: ", .fmt_num(rt_txt),
     " | intensity: ", .fmt_sci(intensity_txt),
     " | formula: ", ifelse(is.na(formula_txt) || !nzchar(formula_txt), "NA", formula_txt)
   )
@@ -169,7 +183,7 @@ plot_MSIPIsotopologueData_ratio <- function(object,
 
   patchwork::wrap_plots(plots) +
     patchwork::plot_layout(guides = "collect")  +
-    patchwork::plot_annotation(title = title_txt)
+    patchwork::plot_annotation(title = compound_name, subtitle = subtitle_txt)
 }
 
 
