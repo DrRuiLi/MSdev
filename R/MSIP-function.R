@@ -621,13 +621,16 @@ MSIP_assign_MS2 <- function(object,rt.tol = 10){
 #' @param iso_ele isotope element, default from \code{get_MSdev_iso_ele(object)}.
 #' @param assay_fun function used to aggregate replicates within the same \code{sample.source};
 #'   default \code{mean}.
+#' @param purity logical. If \code{TRUE} (default), calculate purity matrices.
+#'   If \code{FALSE}, purity assays are returned as all \code{NA}.
 #'
 #' @return named list of \code{MSIPIsotopologueData}, one element per \code{compound_id}.
 #' @export
 get_MSIPIsotopologueData <- function(object,
                                      compound_id = NULL,
                                      iso_ele = get_MSdev_iso_ele(object),
-                                     assay_fun = mean) {
+                                     assay_fun = mean,
+                                     purity = TRUE) {
   msip <- object@advancedAna[["MSIP"]]
   if (is.null(msip)) {
     stop("object@advancedAna[['MSIP']] is missing.")
@@ -676,102 +679,6 @@ get_MSIPIsotopologueData <- function(object,
     rownames(out) <- rownames(mat)
     colnames(out) <- u
     out
-  }
-
-  # helper: pull matrices for one polarity (0/1)
-  .get_pol_mats <- function(ion_mode) {
-    pol <- ifelse(ion_mode == 0, "Negative", "Positive")
-    xcms.xcms <- object@xcmsData[[paste0(pol, "MS1")]]
-    if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) return(NULL)
-
-    se <- tryCatch(
-      get_xcms_quantify_MSIP(xcms.xcms),
-      error = function(e) NULL
-    )
-    if (is.null(se)) return(NULL)
-    int <- SummarizedExperiment::assay(se)
-    colnames(int) <- Biobase::pData(xcms.xcms)$sample.name
-    sources <- Biobase::pData(xcms.xcms)$sample.source
-    groups <- Biobase::pData(xcms.xcms)$group
-
-    int.src <- .agg_to_source(int, sources, fun = assay_fun)
-
-    # ratio: compute isotopologue fraction (ratio to seed) per feature
-    ratio.src <- NULL
-    ratio.matrix <- tryCatch(get_xcms_iso_fraction(xcms.xcms), error = function(e) NULL)
-    if (!is.null(ratio.matrix)) {
-      pdata <- Biobase::pData(xcms.xcms)
-      ratio.col <- colnames(ratio.matrix)
-      src_ratio <- pdata$sample.source[match(ratio.col, pdata$sampleNames)]
-      if (all(is.na(src_ratio)) && "sampleNames" %in% colnames(pdata)) {
-        src_ratio <- pdata$sample.source[match(ratio.col, pdata$sampleNames)]
-      }
-      nm_ratio <- pdata$sample.name[match(ratio.col, pdata$sampleNames)]
-      nm_ratio[is.na(nm_ratio)] <- ratio.col[is.na(nm_ratio)]
-      colnames(ratio.matrix) <- nm_ratio
-      ratio.src <- .agg_to_source(ratio.matrix, src_ratio, fun = assay_fun)
-    }
-
-    # purity: compute MS1 purity matrix (feature-by-sample) from MS1 Spectra, then aggregate
-    purity.src <- NULL
-
-    # If MS1 purity is not already available, try to compute from MS1 spectra.
-    if (is.null(purity.src)) {
-      ms1.sp <- NULL
-      if (is.null(object@spectra$MS1_Spectra)) {
-        message("[get_MSIPIsotopologueData] ", pol,
-                ": object@spectra$MS1_Spectra is NULL; purity will be NA.")
-      } else {
-        ms1.sp <- tryCatch(onDiskData_retrieve(object@spectra$MS1_Spectra), error = function(e) {
-          message("[get_MSIPIsotopologueData] ", pol,
-                  ": failed to retrieve MS1 Spectra: ", conditionMessage(e))
-          NULL
-        })
-      }
-      if (!is.null(ms1.sp) && inherits(ms1.sp, "Spectra")) {
-        ms1.sp <- tryCatch(ProtGenerics::filterPolarity(ms1.sp, ion_mode), error = function(e) ms1.sp)
-        if (!length(ms1.sp)) {
-          message("[get_MSIPIsotopologueData] ", pol,
-                  ": MS1 Spectra has 0 spectra after polarity filter; purity will be NA.")
-          ms1.sp <- NULL
-        }
-      }
-      purity.matrix <- tryCatch(
-        get_xcms_feature_purity_matrix(
-          xcms.xcms,
-          xcms.ms1.sp = ms1.sp,
-          ppm = 10,
-          isolation_half_window = 0.2
-        ),
-        error = function(e) {
-          message("[get_MSIPIsotopologueData] ", pol,
-                  ": get_xcms_feature_purity_matrix() failed: ", conditionMessage(e))
-          NULL
-        }
-      )
-      if (!is.null(purity.matrix)) {
-        purity.matrix <- purity.matrix[rownames(int), , drop = FALSE]
-        pdata <- Biobase::pData(xcms.xcms)
-        pur.col <- colnames(purity.matrix)
-        src_pur <- pdata$sample.source[match_path(pur.col, pdata$sampleNames)]
-        nm_pur <- pdata$sample.name[match_path(pur.col, pdata$sampleNames)]
-        nm_pur[is.na(nm_pur)] <- pur.col[is.na(nm_pur)]
-        colnames(purity.matrix) <- nm_pur
-        purity.src <- .agg_to_source(purity.matrix, src_pur, fun = assay_fun)
-      }
-    }
-
-    # colData by sample.source
-    cda <- data.frame(sample.source = colnames(int.src), stringsAsFactors = FALSE)
-    cda$group <- vapply(cda$sample.source, function(ss) {
-      g <- unique(as.character(groups[sources %in% ss]))
-      g <- g[!is.na(g) & nzchar(g)]
-      if (!length(g)) return(NA_character_)
-      paste(g, collapse = ";")
-    }, character(1))
-    rownames(cda) <- cda$sample.source
-
-    list(intensity = int.src, ratio = ratio.src, purity = purity.src, colData = cda)
   }
 
   # helper: derive iso_count robustly from featureDefinitions
@@ -997,7 +904,99 @@ get_MSIPIsotopologueData <- function(object,
   for (ion_mode in 0:1) {
     pol <- ifelse(ion_mode == 0, "Negative", "Positive")
     iso_all[[pol]] <- .get_iso_map_from_fdf(ion_mode)
-    pol_mats[[pol]] <- .get_pol_mats(ion_mode)
+    xcms.xcms <- object@xcmsData[[paste0(pol, "MS1")]]
+    if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) {
+      pol_mats[[pol]] <- NULL
+      next
+    }
+
+    pdata <- Biobase::pData(xcms.xcms)
+    sources <- pdata$sample.source
+    groups <- pdata$group
+
+    message_with_time("get_MSIPIsotopologueData [", pol, "]: calculate intensity matrix")
+    se <- tryCatch(get_xcms_quantify_MSIP(xcms.xcms), error = function(e) NULL)
+    if (is.null(se)) {
+      pol_mats[[pol]] <- NULL
+      next
+    }
+    int <- SummarizedExperiment::assay(se)
+    colnames(int) <- pdata$sample.name
+    int.src <- .agg_to_source(int, sources, fun = assay_fun)
+
+    message_with_time("get_MSIPIsotopologueData [", pol, "]: calculate ratio matrix")
+    ratio.src <- NULL
+    ratio.matrix <- tryCatch(get_xcms_iso_fraction(xcms.xcms), error = function(e) NULL)
+    if (!is.null(ratio.matrix)) {
+      ratio.col <- colnames(ratio.matrix)
+      src_ratio <- pdata$sample.source[match(ratio.col, pdata$sampleNames)]
+      if (all(is.na(src_ratio)) && "sampleNames" %in% colnames(pdata)) {
+        src_ratio <- pdata$sample.source[match(ratio.col, pdata$sampleNames)]
+      }
+      nm_ratio <- pdata$sample.name[match(ratio.col, pdata$sampleNames)]
+      nm_ratio[is.na(nm_ratio)] <- ratio.col[is.na(nm_ratio)]
+      colnames(ratio.matrix) <- nm_ratio
+      ratio.src <- .agg_to_source(ratio.matrix, src_ratio, fun = assay_fun)
+    }
+
+    purity.src <- NULL
+    if (isTRUE(purity)) {
+      message_with_time("get_MSIPIsotopologueData [", pol, "]: calculate purity matrix")
+      ms1.sp <- NULL
+      if (is.null(object@spectra$MS1_Spectra)) {
+        message("[get_MSIPIsotopologueData] ", pol,
+                ": object@spectra$MS1_Spectra is NULL; purity will be NA.")
+      } else {
+        ms1.sp <- tryCatch(onDiskData_retrieve(object@spectra$MS1_Spectra), error = function(e) {
+          message("[get_MSIPIsotopologueData] ", pol,
+                  ": failed to retrieve MS1 Spectra: ", conditionMessage(e))
+          NULL
+        })
+      }
+      if (!is.null(ms1.sp) && inherits(ms1.sp, "Spectra")) {
+        ms1.sp <- tryCatch(ProtGenerics::filterPolarity(ms1.sp, ion_mode), error = function(e) ms1.sp)
+        if (!length(ms1.sp)) {
+          message("[get_MSIPIsotopologueData] ", pol,
+                  ": MS1 Spectra has 0 spectra after polarity filter; purity will be NA.")
+          ms1.sp <- NULL
+        }
+      }
+      purity.matrix <- tryCatch(
+        get_xcms_feature_purity_matrix(
+          xcms.xcms,
+          xcms.ms1.sp = ms1.sp,
+          ppm = 10,
+          isolation_half_window = 0.2
+        ),
+        error = function(e) {
+          message("[get_MSIPIsotopologueData] ", pol,
+                  ": get_xcms_feature_purity_matrix() failed: ", conditionMessage(e))
+          NULL
+        }
+      )
+      if (!is.null(purity.matrix)) {
+        purity.matrix <- purity.matrix[rownames(int), , drop = FALSE]
+        pur.col <- colnames(purity.matrix)
+        src_pur <- pdata$sample.source[match_path(pur.col, pdata$sampleNames)]
+        nm_pur <- pdata$sample.name[match_path(pur.col, pdata$sampleNames)]
+        nm_pur[is.na(nm_pur)] <- pur.col[is.na(nm_pur)]
+        colnames(purity.matrix) <- nm_pur
+        purity.src <- .agg_to_source(purity.matrix, src_pur, fun = assay_fun)
+      }
+    } else {
+      message_with_time("get_MSIPIsotopologueData [", pol, "]: skip purity matrix (purity = FALSE)")
+    }
+
+    cda <- data.frame(sample.source = colnames(int.src), stringsAsFactors = FALSE)
+    cda$group <- vapply(cda$sample.source, function(ss) {
+      g <- unique(as.character(groups[sources %in% ss]))
+      g <- g[!is.na(g) & nzchar(g)]
+      if (!length(g)) return(NA_character_)
+      paste(g, collapse = ";")
+    }, character(1))
+    rownames(cda) <- cda$sample.source
+
+    pol_mats[[pol]] <- list(intensity = int.src, ratio = ratio.src, purity = purity.src, colData = cda)
   }
   iso_all_df <- do.call(rbind, iso_all)
   if (is.null(iso_all_df) || !nrow(iso_all_df)) {
@@ -1027,6 +1026,8 @@ get_MSIPIsotopologueData <- function(object,
 
     cp.name <- unique(na.omit(this.df$name))
     cp.name <- if (length(cp.name)) cp.name[[1]] else NA_character_
+    cp.formula <- compound_table$formula[match(cid, as.character(compound_table$compound_id))]
+    cp.formula <- if (length(cp.formula)) as.character(cp.formula[[1]]) else NA_character_
 
     max_iso <- max(this.df$iso_count, na.rm = TRUE)
     if (!is.finite(max_iso) || is.na(max_iso)) next
@@ -1129,12 +1130,13 @@ get_MSIPIsotopologueData <- function(object,
       isotopologue_id = iso_id,
       compound_id = rep(cid, length(iso_counts)),
       compound_name = rep(cp.name, length(iso_counts)),
-      feature_rt = rt_iso,
-      feature_rt.positive = rt_iso.pos,
-      feature_rt.negative = rt_iso.neg,
-      feature_avg_intensity = intensity_avg_iso,
-      feature_avg_intensity.positive = intensity_avg_iso.pos,
-      feature_avg_intensity.negative = intensity_avg_iso.neg,
+      formula = rep(cp.formula, length(iso_counts)),
+      rt = rt_iso,
+      rt.positive = rt_iso.pos,
+      rt.negative = rt_iso.neg,
+      intensity = intensity_avg_iso,
+      intensity.positive = intensity_avg_iso.pos,
+      intensity.negative = intensity_avg_iso.neg,
       label.isotopologue = label_iso,
       row.names = iso_id
     )
@@ -1150,8 +1152,8 @@ get_MSIPIsotopologueData <- function(object,
       intensity.negative = .na_to_zero(intensity.neg),
       ratio.positive = .na_to_zero(ratio.pos),
       ratio.negative = .na_to_zero(ratio.neg),
-      purity.positive = .na_to_zero(purity.pos),
-      purity.negative = .na_to_zero(purity.neg)
+      purity.positive = if (isTRUE(purity)) .na_to_zero(purity.pos) else purity.pos,
+      purity.negative = if (isTRUE(purity)) .na_to_zero(purity.neg) else purity.neg
     )
     out[[cid]] <- MSIPIsotopologueData(
       assays = assays,
@@ -1181,57 +1183,6 @@ MSIP_get_isotopologues_data <- function(object, ...) {
   message_with_time("MSIP_get_isotopologues_data: build isotopologue list")
   iso.list <- get_MSIPIsotopologueData(object, ...)
   message_with_time("MSIP_get_isotopologues_data: build complete")
-
-  .fix_isotopologue_se_rownames <- function(sei) {
-    if (is.null(sei) || !methods::is(sei, "SummarizedExperiment")) return(sei)
-
-    rda <- tryCatch(as.data.frame(SummarizedExperiment::rowData(sei)), error = function(e) NULL)
-    if (is.null(rda) || !nrow(rda)) return(sei)
-
-    # Derive isotopologue_id in rowData if missing.
-    if (!("isotopologue_id" %in% colnames(rda))) {
-      rid <- rownames(rda)
-      if (is.null(rid) || any(!nzchar(rid))) {
-        rid <- paste0("row_", seq_len(nrow(rda)))
-      }
-      rda$isotopologue_id <- as.character(rid)
-    }
-    rda$isotopologue_id <- as.character(rda$isotopologue_id)
-    if (is.null(rownames(rda)) || any(!nzchar(rownames(rda)))) {
-      rownames(rda) <- rda$isotopologue_id
-    }
-    SummarizedExperiment::rowData(sei) <- S4Vectors::DataFrame(rda)
-
-    ids <- rda$isotopologue_id
-
-    # Ensure all assays have correct rownames (match rowData order).
-    a <- SummarizedExperiment::assays(sei)
-    if (!is.null(a) && length(a)) {
-      for (nm in names(a)) {
-        m <- a[[nm]]
-        if (is.null(m)) next
-        if (is.null(dim(m)) || nrow(m) != length(ids)) next
-        if (is.null(rownames(m)) || any(!nzchar(rownames(m)))) {
-          rownames(m) <- ids
-        }
-        a[[nm]] <- m
-      }
-      SummarizedExperiment::assays(sei) <- a
-    }
-    sei
-  }
-
-  if (is.list(iso.list) && length(iso.list)) {
-    message_with_time("MSIP_get_isotopologues_data: normalize rownames for ", length(iso.list), " entries")
-    iso.names <- names(iso.list)
-    if (is.null(iso.names)) iso.names <- rep("", length(iso.list))
-    for (i in seq_along(iso.list)) {
-      nm <- iso.names[[i]]
-      if (is.na(nm) || !nzchar(nm)) nm <- paste0("entry_", i)
-      message_with_time("MSIP_get_isotopologues_data: [", i, "/", length(iso.list), "] ", nm)
-      iso.list[[i]] <- .fix_isotopologue_se_rownames(iso.list[[i]])
-    }
-  }
   message_with_time("MSIP_get_isotopologues_data: save isotopologue_data to object")
   object@advancedAna[["MSIP"]][["isotopologue_data"]] <- iso.list
   message_with_time("MSIP_get_isotopologues_data: clear legacy isotopologues_table")

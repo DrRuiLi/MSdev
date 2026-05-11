@@ -115,6 +115,39 @@ plot_MSIPIsotopologueData_ratio <- function(object,
   }
   if (is.null(compound_name)) compound_name <- ""
 
+  .pick_first <- function(x) {
+    x <- x[!is.na(x)]
+    if (!length(x)) return(NA)
+    x[[1]]
+  }
+  .fmt_num <- function(x, digits = 3) {
+    if (is.na(x) || !is.finite(x)) return("NA")
+    format(signif(x, digits = digits), scientific = FALSE, trim = TRUE)
+  }
+  .fmt_sci <- function(x, digits = 2) {
+    if (is.na(x) || !is.finite(x)) return("NA")
+    formatC(x, format = "e", digits = digits)
+  }
+
+  formula_txt <- NA_character_
+  if (!is.null(rda) && nrow(rda) && "formula" %in% colnames(rda)) {
+    formula_txt <- .pick_first(as.character(rda$formula))
+  }
+  rt_txt <- NA_real_
+  if (!is.null(rda) && nrow(rda) && "rt" %in% colnames(rda)) {
+    rt_txt <- .pick_first(as.numeric(rda$rt))
+  }
+  intensity_txt <- NA_real_
+  if (!is.null(rda) && nrow(rda) && "intensity" %in% colnames(rda)) {
+    intensity_txt <- .pick_first(as.numeric(rda$intensity))
+  }
+  title_txt <- paste0(
+    compound_name,
+    " | rt: ", .fmt_num(rt_txt),
+    " | intensity: ", .fmt_sci(intensity_txt),
+    " | formula: ", ifelse(is.na(formula_txt) || !nzchar(formula_txt), "NA", formula_txt)
+  )
+
   # Build one circular bar plot per sample.source, then patchwork them together.
   samples <- levels(df_long$sample.source)
   make_one <- function(ss) {
@@ -136,7 +169,7 @@ plot_MSIPIsotopologueData_ratio <- function(object,
 
   patchwork::wrap_plots(plots) +
     patchwork::plot_layout(guides = "collect")  +
-    patchwork::plot_annotation(title = compound_name)
+    patchwork::plot_annotation(title = title_txt)
 }
 
 
