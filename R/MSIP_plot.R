@@ -220,12 +220,12 @@ MSIP_report_isotopologue_ratio <- function(object,
   message_with_time("MSIP_report_isotopologue_ratio: start, total compounds = ", length(iso.list))
   message_with_time("Output file: ", normalizePath(file, winslash = "/", mustWork = FALSE))
 
-  message_with_time("MSIP_report_isotopologue_ratio: opening PDF device")
-  grDevices::pdf(file = file, width = 10, height = 6, onefile = TRUE)
-  on.exit(grDevices::dev.off(), add = TRUE)
+  message_with_time("MSIP_report_isotopologue_ratio: use export_graph2pdf() for report writing")
 
   i <- 0L
   n <- length(iso.list)
+  append_pdf <- FALSE
+  n_written <- 0L
   for (nm in names(iso.list)) {
     i <- i + 1L
     sei <- iso.list[[nm]]
@@ -235,11 +235,15 @@ MSIP_report_isotopologue_ratio <- function(object,
     }
     message_with_time("[", i, "/", n, "] plotting ", nm, " (build plot)")
     p <- plot_MSIPIsotopologueData_ratio(sei, assay = assay)
-    message_with_time("[", i, "/", n, "] plotting ", nm, " (write page)")
-    print(p)
+    message_with_time("[", i, "/", n, "] plotting ", nm, " (append to pdf)")
+    export_graph2pdf(p, file_path = file, append = append_pdf)
+    append_pdf <- TRUE
+    n_written <- n_written + 1L
   }
 
-  message_with_time("MSIP_report_isotopologue_ratio: closing PDF device")
+  if (n_written == 0L) {
+    message_with_time("MSIP_report_isotopologue_ratio: no valid plot written")
+  }
   message_with_time("MSIP_report_isotopologue_ratio: done")
   invisible(file)
 }
