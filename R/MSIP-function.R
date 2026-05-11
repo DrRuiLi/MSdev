@@ -2485,6 +2485,173 @@ MSIP_clear_previous_data <- function(object){
   return(object)
 }
 
+#' @title Build isotopologue grid from MSIP compound table
+#' @description
+#' Simulate isotopologue m/z targets from a MSIP \code{compound_table} for a given
+#' polarity. This helper is used by targeted ROI-list construction.
+#'
+#' @param compound_table data.frame with at least columns
+#'   \code{compound_id}, \code{name}, \code{formula}, \code{rt}.
+#' @param ion_mode integer polarity (\code{1} positive, \code{0} negative).
+#' @param iso_ele isotope element, default \code{"[13]C"}.
+#' @param max_iso optional integer cap for isotopologue count.
+#'
+#' @return data.frame with columns
+#'   \code{compound_id}, \code{name}, \code{iso_form}, \code{iso_count},
+#'   \code{mz}, \code{rt}, \code{adduct}.
+#' @export
+get_xcms_roi_list_from_compound_table <- function(compound_table,
+                                                  ion_mode,
+                                                  iso_ele = "[13]C",
+                                                  max_iso = NULL) {
+  .normalize_compound_table <- function(x, max_iter = 12L) {
+    cur <- x
+    need <- c("compound_id", "name", "formula", "rt")
+    for (i in seq_len(max_iter)) {
+      if (is.data.frame(cur) && all(need %in% colnames(cur))) return(cur)
+      if (!is.list(cur)) break
+      if ("compound_table" %in% names(cur)) {
+        cur <- cur[["compound_table"]]
+        next
+      }
+      if ("MSIP" %in% names(cur)) {
+        cur <- cur[["MSIP"]]
+        next
+      }
+      break
+    }
+    NULL
+  }
+
+  compound_table <- .normalize_compound_table(compound_table)
+  if (is.null(compound_table) || !nrow(compound_table)) {
+    return(data.frame(compound_id = character(0), name = character(0),
+                      iso_form = character(0), iso_count = integer(0),
+                      mz = numeric(0), rt = numeric(0),
+                      adduct = character(0),
+                      stringsAsFactors = FALSE))
+  }
+
+  target_ele <- get_ele_uniso(iso_ele)
+  adduct <- ifelse(ion_mode == 1, "[M+H]+", "[M-H]-")
+
+  out <- list()
+  k <- 0L
+  for (j in seq_len(nrow(compound_table))) {
+    formula <- compound_table$formula[[j]]
+    rt_ref <- suppressWarnings(as.numeric(compound_table$rt[[j]]))
+    if (is.na(rt_ref) || !is.finite(rt_ref)) next
+    if (is.na(formula) || !nzchar(formula)) next
+
+    cp_adduct <- MSCC::chemform_adduct(formula, adduct, value = "all")
+    if (is.null(cp_adduct) || nrow(cp_adduct) == 0) next
+    seed_mz <- cp_adduct$chemform.adduct.mz[1]
+    if (!is.finite(seed_mz)) next
+
+    max_ele <- get_formula_ele_count(formula, target_ele)
+    if (is.na(max_ele) || max_ele <= 0) next
+    if (!is.null(max_iso)) max_ele <- min(max_ele, as.integer(max_iso))
+    if (max_ele <= 0) next
+
+    ele_counts <- setNames(list(max_ele), target_ele)
+    iso_grid <- do.call(MSCC::get_isotope_mass_diff, ele_counts)
+    if (is.null(iso_grid) || nrow(iso_grid) == 0) next
+
+    n_iso <- nrow(iso_grid)
+    k <- k + 1L
+    out[[k]] <- data.frame(
+      compound_id = rep(compound_table$compound_id[[j]], n_iso),
+      name = rep(compound_table$name[[j]], n_iso),
+      iso_form = iso_grid$chemform_diff,
+      iso_count = seq(0L, length.out = n_iso),
+      mz = seed_mz + iso_grid$mass_diff,
+      rt = rep(rt_ref, n_iso),
+      adduct = rep(adduct, n_iso),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  if (!length(out)) {
+    return(data.frame(compound_id = character(0), name = character(0),
+                      iso_form = character(0), iso_count = integer(0),
+                      mz = numeric(0), rt = numeric(0),
+                      adduct = character(0),
+                      stringsAsFactors = FALSE))
+  }
+  do.call(rbind, out)
+}
+
+
+#' @title Build MSIP targeted roiList from compound table
+#' @description
+#' Construct targeted \code{roiList} for \code{xcms::CentWaveParam(roiList = ...)}
+#' from \code{object@advancedAna$MSIP$compound_table}.
+#'
+#' @param object MSdev object.
+#' @param ion_mode integer polarity (\code{1} positive, \code{0} negative),
+#'   default \code{0}.
+#' @param iso_ele isotope element, default \code{"[13]C"}.
+#' @param max_iso optional integer cap for isotopologue count.
+#' @param ppm ppm tolerance for roi m/z window.
+#' @param rt_tol RT tolerance (seconds) for roi RT window.
+#'
+#' @return list with two elements:
+#' \itemize{
+#'   \item \code{iso_grid}: isotopologue target table from compound table.
+#'   \item \code{roiList}: list passed to \code{CentWaveParam(roiList = ...)}.
+#' }
+#' @export
+get_MSIP_xcms_roi_list <- function(object,
+                                   ion_mode = 0,
+                                   iso_ele = "[13]C",
+                                   max_iso = NULL,
+                                   ppm = 5,
+                                   rt_tol = 200) {
+  if (is.null(object@advancedAna$MSIP$compound_table)) {
+    stop("compound_table not found in object@advancedAna$MSIP$compound_table.")
+  }
+  compound_table <- object@advancedAna$MSIP$compound_table
+  polarity.tag <- ifelse(as.integer(ion_mode) == 1L, "PositiveMS1", "NegativeMS1")
+  xcms.xcms <- object@xcmsData[[polarity.tag]]
+  if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) {
+    return(list(
+      iso_grid = data.frame(compound_id = character(0), name = character(0),
+                            iso_form = character(0), iso_count = integer(0),
+                            mz = numeric(0), rt = numeric(0),
+                            adduct = character(0),
+                            stringsAsFactors = FALSE),
+      roiList = list()
+    ))
+  }
+
+  iso_grid <- get_xcms_roi_list_from_compound_table(
+    compound_table = compound_table,
+    ion_mode = ion_mode,
+    iso_ele = iso_ele,
+    max_iso = max_iso
+  )
+
+  if (!nrow(iso_grid)) {
+    return(list(
+      iso_grid = iso_grid,
+      roiList = list()
+    ))
+  }
+  mzrt <- unique(iso_grid[, c("mz", "rt"), drop = FALSE])
+  roiList <- get_xcms_roi_list(
+    mzrt = as.matrix(mzrt),
+    xcms.xcms = xcms.xcms,
+    ppm = ppm,
+    rt_tol = rt_tol,
+    ion_mode = ion_mode
+  )
+
+  list(
+    iso_grid = iso_grid,
+    roiList = roiList
+  )
+}
+
 
 #' @title Targeted xcms processing for MSIP
 #' @description
@@ -2594,69 +2761,6 @@ MSIP_xcms_processing.targeted <- function(object,
     }
     cwp@roiList <- roiList
     cwp
-  }
-
-  .compound_table_to_iso_grid <- function(compound_table,
-                                         ion_mode,
-                                         iso_ele = "[13]C",
-                                         max_iso = NULL) {
-    target_ele <- get_ele_uniso(iso_ele)
-    adduct <- ifelse(ion_mode == 1, "[M+H]+", "[M-H]-")
-
-    out <- list()
-    k <- 0L
-
-    for (j in seq_len(nrow(compound_table))) {
-      formula <- compound_table$formula[[j]]
-      rt_ref <- suppressWarnings(as.numeric(compound_table$rt[[j]]))
-      if (is.na(rt_ref) || !is.finite(rt_ref)) next
-      if (is.na(formula) || !nzchar(formula)) next
-
-      cp_adduct <- MSCC::chemform_adduct(formula, adduct, value = "all")
-      if (is.null(cp_adduct) || nrow(cp_adduct) == 0) next
-      seed_mz <- cp_adduct$chemform.adduct.mz[1]
-      if (!is.finite(seed_mz)) next
-
-      max_ele <- get_formula_ele_count(formula, target_ele)
-      if (is.na(max_ele) || max_ele <= 0) next
-      if (!is.null(max_iso)) max_ele <- min(max_ele, as.integer(max_iso))
-      if (max_ele <= 0) next
-
-      ele_counts <- setNames(list(max_ele), target_ele)
-      iso_grid <- do.call(MSCC::get_isotope_mass_diff, ele_counts)
-      if (is.null(iso_grid) || nrow(iso_grid) == 0) next
-
-      n_iso <- nrow(iso_grid)
-      k <- k + 1L
-      out[[k]] <- data.frame(
-        compound_id = rep(compound_table$compound_id[[j]], n_iso),
-        name = rep(compound_table$name[[j]], n_iso),
-        iso_form = iso_grid$chemform_diff,
-        iso_count = seq(0L, length.out = n_iso),
-        mz = seed_mz + iso_grid$mass_diff,
-        rt = rep(rt_ref, n_iso),
-        adduct = rep(adduct, n_iso),
-        stringsAsFactors = FALSE
-      )
-    }
-
-    if (!length(out)) {
-      return(data.frame(compound_id = character(0), name = character(0),
-                        iso_form = character(0), iso_count = integer(0),
-                        mz = numeric(0), rt = numeric(0),
-                        adduct = character(0),
-                        stringsAsFactors = FALSE))
-    }
-    do.call(rbind, out)
-  }
-
-  # Extract mzrt matrix (mz, rt) from iso_grid for roiList construction
-  .iso_grid_to_mzrt <- function(iso_grid) {
-    if (!nrow(iso_grid)) {
-      return(matrix(numeric(), ncol = 2, dimnames = list(NULL, c("mz", "rt"))))
-    }
-    mzrt <- unique(iso_grid[, c("mz", "rt"), drop = FALSE])
-    as.matrix(mzrt)
   }
 
   # Annotate featureDefinitions with isotopologue info and inject missing M+0
@@ -3001,20 +3105,16 @@ MSIP_xcms_processing.targeted <- function(object,
     )
 
     message_with_time("Build roiList from compound_table (", polarity.tag, ") ...")
-    iso_grid <- .compound_table_to_iso_grid(
-      compound_table = compound_table,
+    roi.out <- get_MSIP_xcms_roi_list(
+      object = object,
       ion_mode = i,
       iso_ele = iso_ele,
-      max_iso = max_iso
-    )
-    mzrt <- .iso_grid_to_mzrt(iso_grid)
-    roiList <- get_xcms_roi_list(
-      mzrt = mzrt,
-      xcms.xcms = xcms.xcms,
+      max_iso = max_iso,
       ppm = mz_ppm,
-      rt_tol = rt_tol,
-      ion_mode = i
+      rt_tol = rt_tol
     )
+    iso_grid <- roi.out$iso_grid
+    roiList <- roi.out$roiList
     message_with_time("roiList size: ", length(roiList))
 
     cwp <- .as_centwave_with_roi(xcms.param$findChromPeaks, roiList = roiList)
