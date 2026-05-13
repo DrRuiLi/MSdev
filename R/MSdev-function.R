@@ -347,10 +347,10 @@ get_MSdev_param <- function(object){
   if (object@experimentInfo@General$Name == "Metabolomics_YLF") {
 
     fpp <- xcms::MassifquantParam(ppm = 5,
-                            peakwidth = c(10,100),
+                            peakwidth = c(5,60),
                             mzCenterFun  = "wMeanApex3",
-                            snthresh = 10,
-                            prefilter = c(5,1000),
+                            snthresh = 3,
+                            prefilter = c(3,100),
                             verboseColumns=T,
                             withWave = T)
     gpp <- xcms::PeakDensityParam("A",bw = 5,

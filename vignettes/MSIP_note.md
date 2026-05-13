@@ -1,4 +1,5 @@
 ---
+
 title: "MSIP_note"
 output: 
   html_document:
@@ -8,10 +9,8 @@ output:
 vignette: >
   %\VignetteIndexEntry{MSIP_note}
   %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
----
 
-
+##   %\VignetteEncoding{UTF-8}
 
 # FUNCTION
 
@@ -19,75 +18,81 @@ vignette: >
 
 ### *Prompt*
 
-
-``` text
+```text
 Write a function 'MSIP_get_isotopomer_data'
 Input: 
-	1. MSdev object
-	2. mode, could be "untargeted" (default) or "targeted"
+    1. MSdev object
+    2. mode, could be "untargeted" (default) or "targeted"
 Output: 
-	1. MSdev object with obj@advancedAna$MSIP$isotopomer_data
+    1. MSdev object with obj@advancedAna$MSIP$isotopomer_data
 Untargeted Workflow: 
-	1. Check if there are obj@advancedAna$MSIP$compound_table, if not, message and stop
-	2. Check the format of the compound_table
-	3. For cycle for each compound in compound_table:
-		a. Calculate the mz of all possible isotopologue, and their adduct (M+H and M-H)
-		b. Check if Spectra (in obj@spectra) exist for the isotopologue by matching mz and rt
-		c. Separate the spectra by isotopologue and sample.source
-		d. Construct cfmdata using get_CFM_data_from_smiles
-		e. Construct msipcoredata using get_MSIPCoreData
-		f. Solve by MSIPCore_solve
-		g. Construct the list of MSIPcoredata as a matrix, row as isotopologue, such as ([13]C1, [13]C2…) and column as sample.source
-	4. Package the result as a list of MSIPcoredata matrix
-	5. Store the list in obj@advancedAna$MSIP$isotopomer_data
-
+    1. Check if there are obj@advancedAna$MSIP$compound_table, if not, message and stop
+    2. Check the format of the compound_table
+    3. For cycle for each compound in compound_table:
+        a. Calculate the mz of all possible isotopologue, and their adduct (M+H and M-H)
+        b. Check if Spectra (in obj@spectra) exist for the isotopologue by matching mz and rt
+        c. Separate the spectra by isotopologue and sample.source
+        d. Construct cfmdata using get_CFM_data_from_smiles
+        e. Construct msipcoredata using get_MSIPCoreData
+        f. Solve by MSIPCore_solve
+        g. Construct the list of MSIPcoredata as a matrix, row as isotopologue, such as ([13]C1, [13]C2…) and column as sample.source
+    4. Package the result as a list of MSIPcoredata matrix
+    5. Store the list in obj@advancedAna$MSIP$isotopomer_data
 ```
+
 ### *Review*
-``` text
+
+```text
 Update1: 
-	1. If creat tempdir for cfmd cache, save it into msdev obj
-	2. iso_count_max default set to 30
-	3. sp.ms2$sample.source  should be determined in  MSdev_extract_Spectra(), not match in this function
-	4. Use sp.pol$isolationWindowTargetMz instead of precursorMZ, rtime instead of retentionTime
+    1. If creat tempdir for cfmd cache, save it into msdev obj
+    2. iso_count_max default set to 30
+    3. sp.ms2$sample.source  should be determined in  MSdev_extract_Spectra(), not match in this function
+    4. Use sp.pol$isolationWindowTargetMz instead of precursorMZ, rtime instead of retentionTime
 ```
-``` text
+
+```text
 Update2:
-	1. In step 2, the iso_form are not integrated in all_matched
-	2. In step 3 and the following step, do not use iso_counts, just iso_forms
+    1. In step 2, the iso_form are not integrated in all_matched
+    2. In step 3 and the following step, do not use iso_counts, just iso_forms
 ```
-``` text
+
+```text
 Update3:
-	1. There no all_matched$iso_mz
+    1. There no all_matched$iso_mz
 ```
-``` text
+
+```text
 Update4:
-	1. Do not use iso_labels (M0, M1, M2…), just use iso_form as label([13]C0, [13]C1, [13]C2… )
+    1. Do not use iso_labels (M0, M1, M2…), just use iso_form as label([13]C0, [13]C1, [13]C2… )
 ```
-``` text
+
+```text
 Update5:
-	1. You miss the polarity of the spectra, thus all spectra are input into pos or neg adduct 
-	2. When message solved… also include adduct, and if there are no spectra, skip if there are no sp, and not message
+    1. You miss the polarity of the spectra, thus all spectra are input into pos or neg adduct 
+    2. When message solved… also include adduct, and if there are no spectra, skip if there are no sp, and not message
 ```
-``` text
+
+```text
 Update6: 
-	1. The cycle for "Process each isotopologue and sample combination" should be:
-		a. Iso_form
-		b. Sample_source
-		c. Polarity, After solve pos and neg, MSIPCore_merge() them
+    1. The cycle for "Process each isotopologue and sample combination" should be:
+        a. Iso_form
+        b. Sample_source
+        c. Polarity, After solve pos and neg, MSIPCore_merge() them
 ```
-``` text
+
+```text
 Update7: 
-	1. The sp.ms2 <- onDiskData_retrieve(object@spectra$MS2_Spectra) should be placed outside the loop, not repeatly I/O
+    1. The sp.ms2 <- onDiskData_retrieve(object@spectra$MS2_Spectra) should be placed outside the loop, not repeatly I/O
 ```
-``` text
+
+```text
 Update8: 
-	1. The default cache dir should be get_dir_expand_from_onedrive("/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb_cfmd") when CompoundDB_path miss
-	2.  the above procedure should be placed under a ifelse(mode == "targeted")
-
+    1. The default cache dir should be get_dir_expand_from_onedrive("/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb_cfmd") when CompoundDB_path miss
+    2.  the above procedure should be placed under a ifelse(mode == "targeted")
 
 ```
 
-``` text
+```text
 # Thu Apr 23 15:10:36 2026 ------------------------------
 update MSIP data structure msdev.aa@advancedAna$MSIP$isotopomer_data:
 1. remove 'metadata', these param: ppm, rt_tol, thresh, et al. should be stored in the MSIPCore's 'solve' slot
@@ -102,30 +107,33 @@ update MSIP data structure msdev.aa@advancedAna$MSIP$isotopomer_data:
           - MSIPCoreData_matrix: named as compound_id
           ......
           - MSIPCoreData_matrix: named as compound_id
-
 ```
-``` text
+
+```text
 # Thu Apr 23 15:22:57 2026 ------------------------------
 when process isotopomer_data, the 'iso_count_max' of 'MSIPCoreData' should be determined by the 'iso_form' and 'iso_ele', such as iso_form == "[13]C1', the iso_count_max should be 1
-```  
-``` text
+```
+
+```text
 # Thu Apr 23 16:00:21 2026 ------------------------------
 1. in 'get_MSIP_isotopomer_data.targeted', when '# Split spectra by isotopologue form and polarity and sample.source', the step '# Get spectra indices for this isotopologue' only select 'iso_mz_val' of the first one (usually be positive) and thus miss the negative spectra, fix it
 2. in 'heatmap_MSIPFragmentMap', the column name of M0, M1... should be update to M+0, M+1 ....
 ```
-``` text
+
+```text
 # Thu Apr 23 16:04:35 2026 ------------------------------
 
 1. the function 'MSIPCore_merge' are not updated for the current class and functions, update it to adapt current data structure, the suffix is no need with '_0' and '_1' already added in MSIPATOMMAP
 ```
-``` text
+
+```text
 # Thu Apr 23 16:14:46 2026 ------------------------------
 
 1. in 'get_MSIP_isotopomer_data.targeted',  when extract spectra, first match mz before match rt, if there are spectras with mz matched, but rt miss, message: "n sp targeted to xxx with rt range: xx - xx, selected m sp with rt range: xx - xx"
 2. the step of 'MSIPCore_solve' should move after 'MSIPCore_merge'
 ```
 
-``` text
+```text
 # Thu Apr 23 17:30:58 2026 ------------------------------
 
 1. 'heatmap_MSIPFragmentMap':
@@ -136,7 +144,7 @@ when process isotopomer_data, the 'iso_count_max' of 'MSIPCoreData' should be de
 2. 'plot_Spectra_CE', 'combineSpectra_groupby_ce' before process data and plot
 ```
 
-``` text
+```text
 # Thu Apr 23 18:18:14 2026 ------------------------------
 
 1. 'plot_MSIPCore_spectra_consistency_hm': 
@@ -144,7 +152,8 @@ when process isotopomer_data, the 'iso_count_max' of 'MSIPCoreData' should be de
   - the row should be splited by both CE and polarity
 2. there are codes to show the fragment coverage in "Script/Agent.R", but it was writen for the previous data structure, update it to adapt new data structure. write a function 'plot_MSIPCore_fragment_coverage', it input a MSIPCoreData and MSIPAtomMap, output the coverage figure
 ```
-``` text
+
+```text
 # Thu Apr 23 18:47:17 2026 ------------------------------
 
 1. 'plot_MSIPCore_spectra_consistency_hm': 
@@ -152,7 +161,8 @@ when process isotopomer_data, the 'iso_count_max' of 'MSIPCoreData' should be de
 ```
 
 #### Thu Apr 23 19:11:18 2026 ------------------------------
-``` text
+
+```text
 
 1. add a param 'sp_top' in 'MSIP_get_isotopomer_data', to filter spectra including in MSIPCore
   - this need a helper function 'Spectra_filter_TIC':
@@ -165,7 +175,8 @@ when process isotopomer_data, the 'iso_count_max' of 'MSIPCoreData' should be de
 ```
 
 #### Thu Apr 23 19:48:51 2026 ------------------------------
-``` text
+
+```text
 
 the 'plot_MSIPCore_fragment_coverage' run error because there are gap between input msipcore and msipatommap: the msipcore is merged from both pos and neg, but msipatommap not, so we should make them align.
 1. write function 'MSIPAtomMap_merge', this function merge MSIPAtomMap like 'MSIPCore_merge'
@@ -175,18 +186,18 @@ the 'plot_MSIPCore_fragment_coverage' run error because there are gap between in
   - MSIPAtomMap_merge
   - retrn merged MSIPAtomMap
 3. update plot_MSIPCore_fragment_coverage to adapt both merged and un-merged MSIPAtomMap and MSIPCoreData, if anyone input is unmerged, message
-
 ```
+
 #### Fri Apr 24 11:26:15 2026 ------------------------------
 
-``` text
+```text
 in 'plot_MSIPCore_fragment_coverage', the color scale should be fixed:
 ggplot2::scale_fill_manual(values = c("grey", "#FE9D71", "#CE4736", "#B80C27")) should be replaced with a named vec, from "1e0" to "1e6", if the value more than 1e6, colored with '1e6'
-
 ```
+
 #### Tue Apr 28 14:19:35 2026 ------------------------------
 
-``` text
+```text
 write a function 'MSIP_xcms_processing.targeted':
   - this function performance xcms analysis like 'MSdev_xcmsProcessing':
     - filter samples according to sample.info
@@ -202,9 +213,10 @@ write a function 'MSIP_xcms_processing.targeted':
       - construct a roiList according to the mz and rt
   - the return should be similar to 'MSdev_xcmsProcessing', stored feature's defination  
 ```
+
 #### Tue Apr 28 16:33:52 2026 ------------------------------
 
-``` text
+```text
 1. the part of roilist construction should be warpped in another function 'get_xcms_roi_list':
   - input a matrix with column: mz and rt, return a centwave aceeptable roilist
   - in given ppm and rt tolerance, calc mzmin, mzmax, rtmin, rtmax
@@ -212,6 +224,7 @@ write a function 'MSIP_xcms_processing.targeted':
   - the scan number in different sample are different, pick the union range for each 
 2. in 'MSIP_xcms_processing.targeted', just call the 'get_xcms_roi_list'
 ```
+
 #### Wed Apr 29 12:39:36 2026 ------------------------------
 
 ```
@@ -224,6 +237,7 @@ before you go, you should read the old version of 'MSIPIsotopologueData', the ne
   - get_MSIP_Isotopomer_SE
   - MSIP_get_isotopologues_data
 ```
+
 #### Wed Apr 29 13:34:03 2026 ------------------------------
 
 ```
@@ -234,51 +248,40 @@ before you go, you should read the old version of 'MSIPIsotopologueData', the ne
 
 #### Wed Apr 29 13:45:16 2026 ------------------------------
 
-``` text
+```text
 1. the 'get_MSIPIsotopologueData' should return a list of MSIPIsotopologueData, 'MSIP_get_isotopologues_data' return a MSdev object
 2. update the doc "vignettes/MSIP_Workflow.Rmd" according to the updated data structure and functions
-
 ```
+
 #### Thu Apr 30 20:04:14 2026 ------------------------------
 
-``` text
+```text
 
 update 'MSIP_xcms_processing.targeted' to adpat 'MSIP_get_isotopologues_data':
 1. add the 'MSIP_get_isotopologues_data' required var in xcms fdf after xcms processing according to the pre-constructed roilist
 2. sometimes the M+0 feature is missing, manually add this feature, with rt using the corresponding isotopologues' rt and mz using the the theoritical mz +- 5 ppm, their featurevalue fill with 0
-
 ```
-
 
 ### *To Do*
 
-
-
-
-
-
-
 ## MSIP_get_isotopologues_data.untargeted
 
-
-
-
 ### *Prompt*
-*Wed Apr 15 12:43:07 2026*
-Write a function `MSIP_get_isotopologues_data.untargeted` in new file
+
+*Wed Apr 15 12:43:07 2026* Write a function `MSIP_get_isotopologues_data.untargeted` in new file
 
 - input: MSdev object
 - output: MSdev object with isotopomer data
 - to do:
-    1. check wheather there are isotopologue table
-
-
+  1. check wheather there are isotopologue table
 
 ## get_MSIP_Isotopomer_SE
+
 ### *Prompt*
+
 Fri Apr 24 13:19:06 2026 ------------------------------
 
-``` text
+```text
 write a function 'get_MSIP_Isotopomer_SE' to extract quantification data from 'msdev@advancedAna$MSIP$isotopomer_data':
   - the return should be a SummarizedExperiment, column as sample, row as isotopomer
     - colData include: 
@@ -291,14 +294,13 @@ write a function 'get_MSIP_Isotopomer_SE' to extract quantification data from 'm
       - isotopomer_total: count of isotopomer in the isotopomer_set
       - isotopologue_form: such as '[13]C1', '[13]C2'
   - for each samples' isotopomer data, extract from 'msip.core@Solve$MSIPIsotopomerMap@isotopomer.probability'
-
 ```
 
-
 ### *Review*
+
 #### Fri Apr 24 13:37:09 2026 ------------------------------
 
-``` text
+```text
 update 'get_MSIP_Isotopomer_SE':
 1. in the result se's rowdata:
   - the 'isotopomer_id' should be like 'HMDB0000123_101', not 'HMDB0000123[13]C101'
@@ -307,72 +309,77 @@ update 'get_MSIP_Isotopomer_SE':
   - add 'isotopomer_average_mix', calculated by:
     - for each sample, each isotopomer have a value 'mix', represent by the count of isotopomers in its isotopomer.set
     - for each isotopomer, calc the average of 'mix' across samples
-
 ```
+
 #### Fri Apr 24 13:49:27 2026 ------------------------------
-``` text
+
+```text
 in the result se's rowdata:
   - add 'compound_name'
   - add 'label.isotopomer', use compound name + isotopomer form, such as 'Glutamate_10000'
   - add 'label.isotopologue', use compound name + isotopologue form, such as 'Glutamate_M+1', 'Glutamate_M+2'
 ```
+
 #### Fri Apr 24 14:06:30 2026 ------------------------------
-``` text
+
+```text
 in the result se's rowdata:
   - the 'label.isotopomer' is fixed '001', i want it as the isotopomer's form like 'isotopomer_id'
   - the 'label.isotopologue' just extract number, "[13]C1" become 'M+131', but it should be "M+1" 
 ```
+
 #### Fri Apr 24 20:20:50 2026 ------------------------------
 
-``` text
+```text
 in the result se's rowdata:
   - I fix the problem where 'label.isotopomer' is fixed '001', the ifelse input length 1 vec and than output the first ele of meta$iso_names
   - the 'iso_name' should also be included in the rowdata, rename it to 'isotopome_form' and export to return
 ```
 
 #### Thu Apr 30 19:49:28 2026 ------------------------------
-    
-``` text
+
+```text
 1. there are no 'object@advancedAna$MSIP$isotopologues_matrix$ratio_to_seed', do not rely on this data anymore
 2. there should be 6 assay:
   - intensity.positive and intensity.negative, extract from featureValue (use 'get_xcms_quantify_MSIP')
   - ratio.positive and ratio.negative, from 'get_xcms_iso_fraction', read this function and make sure it called properly
   - purity.positive and purity.negative, from 'get_xcms_feature_purity_matrix'
-
 ```
 
-``` text
+```text
 
 1. when '.get_iso_map_from_fdf', if there are no var need for isotopologue match, please message
 2. the purity matrix is still all NA
-
 ```
 
-#### Wed May  6 19:55:49 2026 ------------------------------
+#### Wed May 6 19:55:49 2026 ------------------------------
 
-``` text
+```text
 'MSIP_xcms_processing.targeted' should update:
 1. when fill the feautre of M+0, it's feature_id should be combination of 'FT' and number, such as 'FTF0001'
 2. the iso_seed should be recorded for each isotopologue feature, indicate, what's the M+0 feature
 3. the column in the compound_table should be append to the xcms.fdf, such as kegg.id, smiles (if exist).
-
 ```
 
 ### *To Do*
+
 ## get_MSIP_Isotopologue_SE
+
 ### *Review*
-#### Thu May  7 16:05:25 2026 ------------------------------
+
+#### Thu May 7 16:05:25 2026 ------------------------------
 
 ```
 write a function 'get_MSIP_Isotopologue_SE' to extract isotopologue data and construct a SummarizedExperiment object
 1. read 'MSIP_xcms_processing.targeted' to understand the isotopologue annotation in xcms.fdf
 2. read 'get_MSIP_Isotopomer_SE' to understand the data structure, the isotopologue se is similar to isotopomer se
 ```
-``` {text date="Fri May  8 14:23:24 2026"}
+
+```{text date="Fri May  8 14:23:24 2026"}
   the 'get_MSIP_Isotopologue_SE' return se with features as row, not compound's isotopologue, please merge the positve and negative ratio assay into one, name as 'ratio' and set as the default assay
 ```
 
-``` {text # Fri May  8 13:50:26 2026 ------------------------------}
+```{text # Fri May  8 13:50:26 2026 ------------------------------}
 1. keep the raito.positive and ratio.negative assay
 2. fill the NA with 0
 3. the rowData should include:
@@ -380,18 +387,19 @@ write a function 'get_MSIP_Isotopologue_SE' to extract isotopologue data and con
   - similarity: the similarity of positive and negative ratio vector, using cosine similarity. all the isotopologue of the compound should be counted.
 ```
 
-``` {text date="Fri May  8 14:23:24 2026"}
+```{text date="Fri May  8 14:23:24 2026"}
 1. the 'get_MSIP_Isotopologue_SE' should return a list of MSIPIsotopologueData, 'MSIP_get_isotopologues_data' return a MSdev object
 2. update the doc "vignettes/MSIP_Workflow.Rmd" according to the updated data structure and functions
 
 ```
-### *To Do*
 
+### *To Do*
 
 ## MSdev_find_isotope_label
 
 ### *Review*
-``` {text date="Fri May  8 14:23:24 2026"}
+
+```{text date="Fri May  8 14:23:24 2026"}
 
   rename 'MSdev_find_isotope_label' to 'MSIP_find_traced_isotopologue' and update:
   1. read the 'MSIP_get_isotopologues_data.targeted' to understand the labeled(traced) isotopologue identification
@@ -404,10 +412,79 @@ write a function 'get_MSIP_Isotopologue_SE' to extract isotopologue data and con
 
 ```
 
-``` {text date="Fri May  8 14:23:24 2026"}
+```{text date="Fri May  8 14:23:24 2026"}
 1. use "untraced_compare" and "natural_based" to name the two methods
 2. when call 'untraced_compare', check the untraced sample and message use cli 
 3. if any polarity is missing, just message use cli, not stop
 ```
+
 ### *To Do*
 
+# Feature
+
+## MSIPIsotopologueData
+
+### plot_MSIPIsotopologueData_ratio
+
+
+write a function 'plot_MSIPIsotopologueData_ratio' to plot the ratio of MSIPIsotopologueData
+1. the input should be a MSIPIsotopologueData
+2. the output should be a ggplot object
+3. the ratio should be plot as a circlized bar plot
+4. the bar should be colored by the isotopologue
+
+Review:
+1. plot should be split by sample.source, plot for each sample.source and then patchwork them together
+2. the radius should be the ratio
+3. the color should be the isotopologue
+4. the legend should be the isotopologue
+5. the title should be the compound name
+
+Update:
+1. add rt, intensity (recorded in se rowdata )  and formula (recorded in compound_table) after compound name in the title of the plot
+  - the intensity should be shown as scientific notation, such as 1.23e+05
+2. the legend remove the compound name, only show the isotopologue. such as 'M+1', 'M+2', 'M+3', not 'Glutamate_M+1', 'Glutamate_M+2', 'Glutamate_M+3'
+3. place the compound name in title, others in subtitle
+
+
+### MSIP_report_isotopologue_ratio
+
+
+write a function 'MSIP_report_isotopologue_ratio' to report the isotopologue ratio of MSIPIsotopologueData
+1. the input should be a MSIP-msdev object
+2. the output should be a report file, default as msdev@projectInfo$projectDir/report/MSIP_report_isotopologue_ratio.pdf
+3. the report should include the isotopologue ratio for each sample.source
+4. use a for loop to plot the isotopologue ratio for each isotopologue and then save the plot as a pdf file
+
+Review:
+1. add message_with_time to show the progress 
+2. use export_graph2pdf to save the plot, not pdf()
+
+
+### MSIP_get_isotopologues_data
+
+1. remvoe '.fix_isotopologue_se_rownames' in 'MSIP_get_isotopologues_data', this step should be done in 'get_MSIPIsotopologueData'
+2. refactor the code to make it more readable and maintainable:
+  - do not use '.get_pol_mats' to wrap the three matrix calculation, directly call the function
+  - show message for the three matrix calculation
+3. the feature info should be named as: 
+  - rt, average of positive and negative rt
+  - rt.positive
+  - rt.negative
+  - intensity, average of positive and negative intensity
+  - intensity.positive
+  - intensity.negative
+4. add a param 'purity' to control the purity calculation, default is TRUE, if FALSE, the purity matrix will be all NA
+5. add rowdata for isotopologuedata:
+  - rtmin, rtmax, rtsd: collect all isotopologue's rt, mz, and calculate the min, max, and sd
+
+
+### MSIP_xcms_processing.targeted
+1. Refactor the part of roiList construction, warpped in function and called in 'MSIP_xcms_processing.targeted': 
+  - get_MSIP_xcms_roi_list
+    - get_xcms_roi_list_from_compound_table
+2. fill the default value for ion_mode, default is 0 (negative), 'get_MSIP_xcms_roi_list' do not need xcms.xcms as input, just use the msdev@xcmsData$ion_mode
+3. refactor the part of '.annotate_fdf_with_iso', warpped in function 'MSIP_annotate_with_iso_grid' and called in 'MSIP_xcms_processing.targeted'
+  - input: msdev object, iso_grid, iso_ele, mz_ppm, rt_tol, max_iso ...
+  - output: msdev object with xcms's annotated fdf
+4. remove param 'max_iso', when calculating the isotopologue, use the max element count of each compound
