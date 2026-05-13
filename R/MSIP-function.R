@@ -2494,7 +2494,6 @@ MSIP_clear_previous_data <- function(object){
 #'   \code{compound_id}, \code{name}, \code{formula}, \code{rt}.
 #' @param ion_mode integer polarity (\code{1} positive, \code{0} negative).
 #' @param iso_ele isotope element, default \code{"[13]C"}.
-#' @param max_iso optional integer cap for isotopologue count.
 #'
 #' @return data.frame with columns
 #'   \code{compound_id}, \code{name}, \code{iso_form}, \code{iso_count},
@@ -2502,8 +2501,7 @@ MSIP_clear_previous_data <- function(object){
 #' @export
 get_xcms_roi_list_from_compound_table <- function(compound_table,
                                                   ion_mode,
-                                                  iso_ele = "[13]C",
-                                                  max_iso = NULL) {
+                                                  iso_ele = "[13]C") {
   .normalize_compound_table <- function(x, max_iter = 12L) {
     cur <- x
     need <- c("compound_id", "name", "formula", "rt")
@@ -2550,8 +2548,6 @@ get_xcms_roi_list_from_compound_table <- function(compound_table,
 
     max_ele <- get_formula_ele_count(formula, target_ele)
     if (is.na(max_ele) || max_ele <= 0) next
-    if (!is.null(max_iso)) max_ele <- min(max_ele, as.integer(max_iso))
-    if (max_ele <= 0) next
 
     ele_counts <- setNames(list(max_ele), target_ele)
     iso_grid <- do.call(MSCC::get_isotope_mass_diff, ele_counts)
@@ -2591,7 +2587,6 @@ get_xcms_roi_list_from_compound_table <- function(compound_table,
 #' @param ion_mode integer polarity (\code{1} positive, \code{0} negative),
 #'   default \code{0}.
 #' @param iso_ele isotope element, default \code{"[13]C"}.
-#' @param max_iso optional integer cap for isotopologue count.
 #' @param ppm ppm tolerance for roi m/z window.
 #' @param rt_tol RT tolerance (seconds) for roi RT window.
 #'
@@ -2604,7 +2599,6 @@ get_xcms_roi_list_from_compound_table <- function(compound_table,
 get_MSIP_xcms_roi_list <- function(object,
                                    ion_mode = 0,
                                    iso_ele = "[13]C",
-                                   max_iso = NULL,
                                    ppm = 5,
                                    rt_tol = 200) {
   if (is.null(object@advancedAna$MSIP$compound_table)) {
@@ -2627,8 +2621,7 @@ get_MSIP_xcms_roi_list <- function(object,
   iso_grid <- get_xcms_roi_list_from_compound_table(
     compound_table = compound_table,
     ion_mode = ion_mode,
-    iso_ele = iso_ele,
-    max_iso = max_iso
+    iso_ele = iso_ele
   )
 
   if (!nrow(iso_grid)) {
@@ -2666,7 +2659,6 @@ get_MSIP_xcms_roi_list <- function(object,
 #' @param iso_ele isotope element string. Kept for API consistency.
 #' @param mz_ppm numeric m/z ppm tolerance used in matching/injection.
 #' @param rt_tol numeric RT tolerance (seconds) used in matching/injection.
-#' @param max_iso optional maximum isotopologue count. Kept for API consistency.
 #' @param polarity.tag optional xcmsData slot name; if NULL uses ion_mode.
 #'
 #' @return MSdev object with annotated \code{featureDefinitions} in selected polarity.
@@ -2677,7 +2669,6 @@ MSIP_annotate_with_iso_grid <- function(object,
                                         iso_ele = "[13]C",
                                         mz_ppm = 10,
                                         rt_tol = 30,
-                                        max_iso = NULL,
                                         polarity.tag = NULL) {
   if (is.null(polarity.tag)) {
     polarity.tag <- ifelse(as.integer(ion_mode) == 1L, "PositiveMS1", "NegativeMS1")
@@ -2697,7 +2688,6 @@ MSIP_annotate_with_iso_grid <- function(object,
 
   # keep arguments for API consistency
   invisible(iso_ele)
-  invisible(max_iso)
 
   fdf <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
   if (!nrow(fdf) || !all(c("mzmed", "rtmed") %in% colnames(fdf))) {
@@ -2999,7 +2989,6 @@ MSIP_annotate_with_iso_grid <- function(object,
 #'   to match detected features to theoretical isotopologues.
 #' @param rt_tol numeric, RT tolerance (seconds) used to construct ROI RT ranges
 #'   and to match detected features to theoretical isotopologues.
-#' @param max_iso integer, optional cap for maximum isotopologue count per compound.
 #' @param adjustRT logical, whether to perform retention time adjustment.
 #' @param BPPARAM BiocParallel backend passed to \code{xcms::findChromPeaks()}.
 #' @param ... passed to \code{xcms::findChromPeaks()}.
@@ -3017,7 +3006,6 @@ MSIP_xcms_processing.targeted <- function(object,
                                          iso_ele = "[13]C",
                                          mz_ppm = 5,
                                          rt_tol = 200,
-                                         max_iso = NULL,
                                          adjustRT = F,
                                          BPPARAM = BiocParallel::SnowParam(
                                            workers = 4,
@@ -3090,7 +3078,6 @@ MSIP_xcms_processing.targeted <- function(object,
       object = object,
       ion_mode = i,
       iso_ele = iso_ele,
-      max_iso = max_iso,
       ppm = mz_ppm,
       rt_tol = rt_tol
     )
@@ -3123,7 +3110,6 @@ MSIP_xcms_processing.targeted <- function(object,
       iso_ele = iso_ele,
       mz_ppm = mz_ppm,
       rt_tol = rt_tol,
-      max_iso = max_iso,
       polarity.tag = polarity.tag
     )
   }
