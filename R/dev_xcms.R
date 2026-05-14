@@ -1822,7 +1822,7 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
                 max(xcms.peaks[,"mzmax"]))
   rt.range <- c(min(xcms.peaks[,"rtmin"]),
                 max(xcms.peaks[,"rtmax"]))
-  xcms.chrom <- extract_chrom(xcms.sub ,
+  xcms.chrom <- get_xcms_chromatogram(xcms.sub ,
                               mzr = mz.range,
                               rtr = rt.range)
 
@@ -2272,6 +2272,40 @@ xcms_filter_peaks_NA <- function(xcms.xcms, verbose = TRUE) {
   return(xcms.xcms)
 }
 
+filter_xcms_chromPeaks_mz_width <- function(xcms.xcms, ppm = 20, verbose = TRUE) {
+  pks <- xcms::chromPeaks(xcms.xcms)
+  if (is.null(pks) || length(pks) == 0 || nrow(pks) == 0) {
+    if (isTRUE(verbose)) message("filter_xcms_chromPeaks_mz_width: no chromPeaks to filter")
+    return(xcms.xcms)
+  }
+  need <- c("mz", "mzmin", "mzmax")
+  if (!all(need %in% colnames(pks))) {
+    if (isTRUE(verbose)) {
+      message("filter_xcms_chromPeaks_mz_width: required columns not found (mz/mzmin/mzmax)")
+    }
+    return(xcms.xcms)
+  }
+
+  mz <- suppressWarnings(as.numeric(pks[, "mz"]))
+  mzmin <- suppressWarnings(as.numeric(pks[, "mzmin"]))
+  mzmax <- suppressWarnings(as.numeric(pks[, "mzmax"]))
+  mz_width_ppm <- (mzmax - mzmin) / pmax(mz, 1e-12) * 1e6
+  bad <- !is.finite(mz_width_ppm) | (mz_width_ppm > ppm)
+  n_bad <- sum(bad, na.rm = TRUE)
+  n_total <- nrow(pks)
+
+  if (isTRUE(verbose)) {
+    message(sprintf(
+      "filter_xcms_chromPeaks_mz_width: %d/%d chromPeaks removed (mz width > %.2f ppm)",
+      n_bad, n_total, ppm
+    ))
+  }
+  if (n_bad > 0) {
+    xcms::chromPeaks(xcms.xcms) <- pks[!bad, , drop = FALSE]
+  }
+  xcms.xcms
+}
+
 
 #' @title xcmsProcessingMS1
 #' @description Import `msDataFiles`, filter `ion_mode`, find peaks using `centWaveParam`, correct RT, group peaks using `peaksGroup`, fill peaks by xcms at MS1 Level
@@ -2290,6 +2324,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
                                 groupChromPeaks = xcms::PeakDensityParam(sampleGroups = "A")
                               ),
                               adjustRT = T,
+                              chromPeaks_max_mz_ppm = NULL,
                               BPPARAM  = BiocParallel::SnowParam(workers = 4,progressbar = T),
                               ...){
 
@@ -2312,6 +2347,12 @@ xcmsProcessingMS1 <- function(xcms.xcms,
                             BPPARAM  = BPPARAM,...)
 
   xcms.xcms <- xcms_filter_peaks_NA(xcms.xcms)
+  if (!is.null(chromPeaks_max_mz_ppm)) {
+    xcms.xcms <- filter_xcms_chromPeaks_mz_width(
+      xcms.xcms,
+      ppm = as.numeric(chromPeaks_max_mz_ppm)
+    )
+  }
   #xcms.xcms <- xcms_get_peak_fill(xcms.xcms)
   #mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
   #xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,

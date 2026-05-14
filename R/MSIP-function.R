@@ -623,6 +623,12 @@ MSIP_assign_MS2 <- function(object,rt.tol = 10){
 #'   default \code{mean}.
 #' @param purity logical. If \code{TRUE} (default), calculate purity matrices.
 #'   If \code{FALSE}, purity assays are returned as all \code{NA}.
+#' @param ratio.aggregate character scalar controlling how positive/negative ratio
+#'   are merged into assay \code{ratio}. One of \code{"max_intensity"} (default:
+#'   take ratio from polarity with higher intensity), \code{"mean"} (arithmetic mean),
+#'   or \code{"wmean"} (intensity-weighted mean).
+#' @param rt_tol.isotopologue numeric RT tolerance (seconds) used to group
+#'   matched features into RT blocks for cross-polarity isotopologue scoring.
 #'
 #' @return named list of \code{MSIPIsotopologueData}, one element per \code{compound_id}.
 #' @export
@@ -630,7 +636,11 @@ get_MSIPIsotopologueData <- function(object,
                                      compound_id = NULL,
                                      iso_ele = get_MSdev_iso_ele(object),
                                      assay_fun = mean,
-                                     purity = TRUE) {
+                                     purity = TRUE,
+                                     ratio.aggregate = c("max_intensity", "mean", "wmean"),
+                                     rt_tol.isotopologue = 5) {
+  ratio.aggregate <- match.arg(ratio.aggregate)
+
   msip <- object@advancedAna[["MSIP"]]
   if (is.null(msip)) {
     stop("object@advancedAna[['MSIP']] is missing.")
@@ -679,6 +689,72 @@ get_MSIPIsotopologueData <- function(object,
     rownames(out) <- rownames(mat)
     colnames(out) <- u
     out
+  }
+
+  .merge_ratio_by_polarity <- function(ratio.pos, ratio.neg, intensity.pos, intensity.neg, method) {
+    out <- matrix(
+      NA_real_,
+      nrow = nrow(ratio.pos),
+      ncol = ncol(ratio.pos),
+      dimnames = dimnames(ratio.pos)
+    )
+    has_pos <- is.finite(ratio.pos)
+    has_neg <- is.finite(ratio.neg)
+    only_pos <- has_pos & !has_neg
+    only_neg <- !has_pos & has_neg
+    both <- has_pos & has_neg
+
+    out[only_pos] <- ratio.pos[only_pos]
+    out[only_neg] <- ratio.neg[only_neg]
+
+    if (!any(both)) return(out)
+
+    if (identical(method, "mean")) {
+      out[both] <- (ratio.pos[both] + ratio.neg[both]) / 2
+      return(out)
+    }
+
+    if (identical(method, "wmean")) {
+      w_pos <- intensity.pos
+      w_neg <- intensity.neg
+      w_pos[!is.finite(w_pos)] <- 0
+      w_neg[!is.finite(w_neg)] <- 0
+      den <- w_pos + w_neg
+      weighted <- (ratio.pos * w_pos + ratio.neg * w_neg) / den
+      zero_weight <- den <= 0 | !is.finite(den)
+      weighted[zero_weight] <- (ratio.pos[zero_weight] + ratio.neg[zero_weight]) / 2
+      out[both] <- weighted[both]
+      return(out)
+    }
+
+    # max_intensity: choose ratio from polarity with larger intensity;
+    # fallback to mean if both intensities are missing.
+    i_pos <- intensity.pos
+    i_neg <- intensity.neg
+    i_pos[!is.finite(i_pos)] <- -Inf
+    i_neg[!is.finite(i_neg)] <- -Inf
+    pick_pos <- i_pos >= i_neg
+    out[both & pick_pos] <- ratio.pos[both & pick_pos]
+    out[both & !pick_pos] <- ratio.neg[both & !pick_pos]
+    both_missing_int <- both & !is.finite(intensity.pos) & !is.finite(intensity.neg)
+    out[both_missing_int] <- (ratio.pos[both_missing_int] + ratio.neg[both_missing_int]) / 2
+    out
+  }
+
+  .cluster_rt_group <- function(rt_vec, tol = 5) {
+    if (!length(rt_vec)) return(integer(0))
+    ord <- order(rt_vec)
+    grp <- integer(length(rt_vec))
+    gid <- 1L
+    grp[ord[[1]]] <- gid
+    if (length(ord) > 1L) {
+      for (ii in ord[-1]) {
+        prev <- ord[which(ord == ii) - 1L]
+        if (abs(rt_vec[ii] - rt_vec[prev]) > tol) gid <- gid + 1L
+        grp[ii] <- gid
+      }
+    }
+    grp
   }
 
   # helper: derive iso_count robustly from featureDefinitions
@@ -738,6 +814,13 @@ get_MSIPIsotopologueData <- function(object,
         fdf$rtmed <- NA_real_
       }
     }
+    if (!("mzmed" %in% colnames(fdf))) {
+      if ("mz" %in% colnames(fdf)) {
+        fdf$mzmed <- suppressWarnings(as.numeric(fdf$mz))
+      } else {
+        fdf$mzmed <- NA_real_
+      }
+    }
 
     fdf$iso_count <- .derive_iso_count(fdf, iso_ele = iso_ele)
 
@@ -765,10 +848,11 @@ get_MSIPIsotopologueData <- function(object,
         feature_id = as.character(feature_id),
         iso_count = suppressWarnings(as.integer(iso_count)),
         rtmed = suppressWarnings(as.numeric(rtmed)),
+        mzmed = suppressWarnings(as.numeric(mzmed)),
         polarity = pol
       ) %>%
       dplyr::filter(!is.na(compound_id), !is.na(feature_id), !is.na(iso_count)) %>%
-      dplyr::select(feature_id, compound_id, name, iso_count, rtmed, polarity) %>%
+      dplyr::select(feature_id, compound_id, name, iso_count, rtmed, mzmed, polarity) %>%
       dplyr::distinct()
     if (!nrow(fdf)) return(NULL)
     fdf
@@ -883,6 +967,7 @@ get_MSIPIsotopologueData <- function(object,
       }
       out[[cid]] <- MSIPIsotopologueData(
         assays = list(
+          ratio = ratio.mat,
           intensity.positive = intensity.mat,
           intensity.negative = purity.mat,
           ratio.positive = ratio.mat,
@@ -1024,6 +1109,53 @@ get_MSIPIsotopologueData <- function(object,
     this.df <- iso_all_df[iso_all_df$compound_id %in% cid, , drop = FALSE]
     if (!nrow(this.df)) next
 
+    # Cross-polarity block scoring:
+    # pool matched features from both polarities, group by RT, and keep the
+    # highest-intensity RT block as the final isotopologue feature set.
+    this.df$feature_score <- 0
+    for (pol in c("Negative", "Positive")) {
+      pm <- pol_mats[[pol]]
+      if (is.null(pm) || is.null(pm$intensity) || !nrow(pm$intensity)) next
+      row_score <- apply(pm$intensity, 1, function(v) {
+        v <- suppressWarnings(as.numeric(v))
+        v <- v[is.finite(v)]
+        if (!length(v)) return(0)
+        mean(v, na.rm = TRUE)
+      })
+      hit <- which(this.df$polarity %in% pol)
+      if (!length(hit)) next
+      this.df$feature_score[hit] <- as.numeric(row_score[match(as.character(this.df$feature_id[hit]), names(row_score))])
+    }
+    this.df$feature_score[!is.finite(this.df$feature_score)] <- 0
+
+    rt_ok <- is.finite(suppressWarnings(as.numeric(this.df$rtmed)))
+    if (any(rt_ok)) {
+      rt_pool <- suppressWarnings(as.numeric(this.df$rtmed[rt_ok]))
+      grp_pool <- .cluster_rt_group(rt_pool, tol = rt_tol.isotopologue)
+      this.df$rt_block <- NA_integer_
+      this.df$rt_block[rt_ok] <- grp_pool
+      df_pool <- this.df[!is.na(this.df$rt_block), , drop = FALSE]
+      if (nrow(df_pool)) {
+        df_pool <- df_pool[order(df_pool$rt_block, df_pool$iso_count, df_pool$polarity, -df_pool$feature_score), , drop = FALSE]
+        # Per RT block, use one representative intensity per (iso_count, polarity),
+        # then sum across polarities so M+n in POS+NEG contributes additively.
+        df_pool_iso_pol <- aggregate(
+          feature_score ~ rt_block + iso_count + polarity,
+          data = df_pool,
+          FUN = function(x) {
+            x <- suppressWarnings(as.numeric(x))
+            x <- x[is.finite(x)]
+            if (!length(x)) return(0)
+            max(x, na.rm = TRUE)
+          }
+        )
+        block_score <- tapply(df_pool_iso_pol$feature_score, df_pool_iso_pol$rt_block, sum, na.rm = TRUE)
+        best_block <- as.integer(names(block_score)[which.max(block_score)])
+        this.df <- this.df[this.df$rt_block %in% best_block, , drop = FALSE]
+      }
+    }
+    if (!nrow(this.df)) next
+
     cp.name <- unique(na.omit(this.df$name))
     cp.name <- if (length(cp.name)) cp.name[[1]] else NA_character_
     cp.formula <- compound_table$formula[match(cid, as.character(compound_table$compound_id))]
@@ -1061,11 +1193,31 @@ get_MSIPIsotopologueData <- function(object,
     purity.pos <- intensity.pos
     purity.neg <- intensity.pos
     rt_iso <- rep(NA_real_, length(iso_counts))
+    rtmin_iso <- rep(NA_real_, length(iso_counts))
+    rtmax_iso <- rep(NA_real_, length(iso_counts))
+    rt_center_iso <- rep(NA_real_, length(iso_counts))
+    rt_sd_iso <- rep(NA_real_, length(iso_counts))
     rt_iso.pos <- rep(NA_real_, length(iso_counts))
     rt_iso.neg <- rep(NA_real_, length(iso_counts))
+    polarity_iso <- rep(NA_character_, length(iso_counts))
+    fid_iso.pos <- rep(NA_character_, length(iso_counts))
+    fid_iso.neg <- rep(NA_character_, length(iso_counts))
     intensity_avg_iso <- rep(NA_real_, length(iso_counts))
     intensity_avg_iso.pos <- rep(NA_real_, length(iso_counts))
     intensity_avg_iso.neg <- rep(NA_real_, length(iso_counts))
+
+    # Compound-level RT summary from all selected isotopologue features in the
+    # winning cross-polarity block.
+    rt_all_sel <- suppressWarnings(as.numeric(this.df$rtmed))
+    rt_all_sel <- rt_all_sel[is.finite(rt_all_sel)]
+    rt_min_all <- if (length(rt_all_sel)) min(rt_all_sel, na.rm = TRUE) else NA_real_
+    rt_max_all <- if (length(rt_all_sel)) max(rt_all_sel, na.rm = TRUE) else NA_real_
+    rt_center_all <- if (length(rt_all_sel)) stats::median(rt_all_sel, na.rm = TRUE) else NA_real_
+    rt_sd_all <- if (length(rt_all_sel)) stats::sd(rt_all_sel, na.rm = TRUE) else NA_real_
+    rtmin_iso[] <- rt_min_all
+    rtmax_iso[] <- rt_max_all
+    rt_center_iso[] <- rt_center_all
+    rt_sd_iso[] <- rt_sd_all
 
     for (k in seq_along(iso_counts)) {
       ic <- iso_counts[[k]]
@@ -1073,6 +1225,7 @@ get_MSIPIsotopologueData <- function(object,
       # Negative
       fids.neg <- this.df$feature_id[this.df$iso_count %in% ic & this.df$polarity %in% "Negative"]
       fids.neg <- unique(na.omit(as.character(fids.neg)))
+      if (length(fids.neg)) fid_iso.neg[k] <- paste(fids.neg, collapse = ";")
       rt.neg <- suppressWarnings(as.numeric(this.df$rtmed[this.df$iso_count %in% ic & this.df$polarity %in% "Negative"]))
       rt.neg <- rt.neg[is.finite(rt.neg)]
       if (length(rt.neg)) rt_iso.neg[k] <- mean(rt.neg, na.rm = TRUE)
@@ -1096,6 +1249,7 @@ get_MSIPIsotopologueData <- function(object,
       # Positive
       fids.pos <- this.df$feature_id[this.df$iso_count %in% ic & this.df$polarity %in% "Positive"]
       fids.pos <- unique(na.omit(as.character(fids.pos)))
+      if (length(fids.pos)) fid_iso.pos[k] <- paste(fids.pos, collapse = ";")
       rt.pos <- suppressWarnings(as.numeric(this.df$rtmed[this.df$iso_count %in% ic & this.df$polarity %in% "Positive"]))
       rt.pos <- rt.pos[is.finite(rt.pos)]
       if (length(rt.pos)) rt_iso.pos[k] <- mean(rt.pos, na.rm = TRUE)
@@ -1119,10 +1273,13 @@ get_MSIPIsotopologueData <- function(object,
       rt.v <- c(rt_iso.neg[k], rt_iso.pos[k])
       rt.v <- rt.v[is.finite(rt.v)]
       if (length(rt.v)) rt_iso[k] <- mean(rt.v, na.rm = TRUE)
+      rt.all <- suppressWarnings(as.numeric(this.df$rtmed[this.df$iso_count %in% ic]))
+      rt.all <- rt.all[is.finite(rt.all)]
 
       int.v <- c(intensity_avg_iso.neg[k], intensity_avg_iso.pos[k])
       int.v <- int.v[is.finite(int.v)]
       if (length(int.v)) intensity_avg_iso[k] <- mean(int.v, na.rm = TRUE)
+      polarity_iso[k] <- if (length(fids.neg) && length(fids.pos)) "0;1" else if (length(fids.neg)) "0" else if (length(fids.pos)) "1" else NA_character_
     }
 
     rda <- S4Vectors::DataFrame(
@@ -1132,8 +1289,15 @@ get_MSIPIsotopologueData <- function(object,
       compound_name = rep(cp.name, length(iso_counts)),
       formula = rep(cp.formula, length(iso_counts)),
       rt = rt_iso,
+      rt.center = rt_center_iso,
+      rt.sd = rt_sd_iso,
+      rt.min = rtmin_iso,
+      rt.max = rtmax_iso,
       rt.positive = rt_iso.pos,
       rt.negative = rt_iso.neg,
+      feature_id.positive = fid_iso.pos,
+      feature_id.negative = fid_iso.neg,
+      polarity = polarity_iso,
       intensity = intensity_avg_iso,
       intensity.positive = intensity_avg_iso.pos,
       intensity.negative = intensity_avg_iso.neg,
@@ -1148,6 +1312,13 @@ get_MSIPIsotopologueData <- function(object,
     }
 
     assays <- list(
+      ratio = .na_to_zero(.merge_ratio_by_polarity(
+        ratio.pos = ratio.pos,
+        ratio.neg = ratio.neg,
+        intensity.pos = intensity.pos,
+        intensity.neg = intensity.neg,
+        method = ratio.aggregate
+      )),
       intensity.positive = .na_to_zero(intensity.pos),
       intensity.negative = .na_to_zero(intensity.neg),
       ratio.positive = .na_to_zero(ratio.pos),
@@ -2648,301 +2819,434 @@ get_MSIP_xcms_roi_list <- function(object,
 
 #' @title Annotate xcms featureDefinitions with isotopologue grid
 #' @description
-#' Annotate one polarity xcms feature table using a pre-built isotopologue grid.
-#' Also inject missing M+0 rows as zero-intensity synthetic features (\code{FTF####})
-#' and write the updated xcms object back to \code{object@xcmsData}.
+#' Annotate xcms feature tables (\code{NegativeMS1} and/or \code{PositiveMS1})
+#' using isotopologue grids. The function first tries to read per-polarity
+#' grids from \code{object@advancedAna$MSIP$temp$iso_grid}; if missing, it
+#' builds them from \code{compound_table}.
+#' Also inject missing M+0 rows as zero-intensity synthetic features
+#' (\code{FTF####}) and writes updated xcms objects back to \code{object@xcmsData}.
 #'
 #' @param object MSdev object.
-#' @param iso_grid isotopologue grid data.frame (typically from
-#'   \code{\link{get_xcms_roi_list_from_compound_table}}).
-#' @param ion_mode integer polarity (\code{1} positive, \code{0} negative), default \code{0}.
-#' @param iso_ele isotope element string. Kept for API consistency.
+#' @param iso_ele isotope element string.
 #' @param mz_ppm numeric m/z ppm tolerance used in matching/injection.
 #' @param rt_tol numeric RT tolerance (seconds) used in matching/injection.
-#' @param polarity.tag optional xcmsData slot name; if NULL uses ion_mode.
+#' @param rt_tol.isotopologue numeric RT tolerance (seconds) used to cluster
+#'   candidate isotopologue features into RT groups for each compound.
 #'
-#' @return MSdev object with annotated \code{featureDefinitions} in selected polarity.
+#' @return MSdev object with annotated \code{featureDefinitions} in available
+#'   MS1 polarities.
 #' @export
 MSIP_annotate_with_iso_grid <- function(object,
-                                        iso_grid,
-                                        ion_mode = 0,
                                         iso_ele = "[13]C",
                                         mz_ppm = 10,
                                         rt_tol = 30,
-                                        polarity.tag = NULL) {
-  if (is.null(polarity.tag)) {
-    polarity.tag <- ifelse(as.integer(ion_mode) == 1L, "PositiveMS1", "NegativeMS1")
-  }
-  pol <- ifelse(as.integer(ion_mode) == 0L, "Negative", "Positive")
-  xcms.xcms <- object@xcmsData[[polarity.tag]]
-  if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) return(object)
-
+                                        rt_tol.isotopologue = 5) {
   compound_table <- object@advancedAna$MSIP$compound_table
   if (is.null(compound_table) || !nrow(compound_table)) {
     stop("compound_table not found in object@advancedAna$MSIP$compound_table.")
   }
-  if (is.null(iso_grid) || !nrow(iso_grid)) {
-    message("[MSIP_annotate_with_iso_grid] ", pol, ": iso_grid is empty; skip annotation.")
-    return(object)
+  if (is.null(object@advancedAna$MSIP$temp) || !is.list(object@advancedAna$MSIP$temp)) {
+    object@advancedAna$MSIP$temp <- list()
   }
+  temp_iso_grid <- object@advancedAna$MSIP$temp$iso_grid
+  if (is.null(temp_iso_grid) || !is.list(temp_iso_grid)) temp_iso_grid <- list()
 
-  # keep arguments for API consistency
-  invisible(iso_ele)
-
-  fdf <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
-  if (!nrow(fdf) || !all(c("mzmed", "rtmed") %in% colnames(fdf))) {
-    message("[MSIP_annotate_with_iso_grid] ", pol, ": no featureDefinitions to annotate.")
-    return(object)
-  }
-
-  .fdf_feature_id_vec <- function(df) {
-    rid <- rownames(df)
-    if ("feature_id" %in% colnames(df)) {
-      fid <- as.character(df$feature_id)
-      miss <- is.na(fid) | !nzchar(fid)
-      fid[miss] <- rid[miss]
-      fid
-    } else {
-      rid
-    }
-  }
-
-  .next_ftf_feature_ids <- function(existing_ids, n_new) {
-    ftf <- grep("^FTF[0-9]+$", existing_ids, value = TRUE)
-    last <- 0L
-    if (length(ftf)) last <- max(suppressWarnings(as.integer(sub("^FTF", "", ftf))), na.rm = TRUE)
-    start <- last + 1L
-    nd <- max(4L, nchar(as.character(start + n_new - 1L)))
-    vapply(seq_len(n_new), function(k) paste0("FTF", num2str(start + k - 1L, n.digit = nd)), character(1))
-  }
-
-  .merge_compound_table_cols <- function(df, ctab) {
-    if (!is.data.frame(ctab) || !nrow(ctab) || !("compound_id" %in% colnames(ctab))) return(df)
-    xcms_geom <- c(
-      "mzmed", "mzmin", "mzmax", "rtmed", "rtmin", "rtmax",
-      "peakidx", "npeaks",
-      "peakRtMin", "peakRtMax", "peakWidth", "peakMzMin", "peakMzMax",
-      "peakSN", "peakMaxo", "polarity", "adduct"
-    )
-    extra <- setdiff(colnames(ctab), c("compound_id", xcms_geom))
-    if (!length(extra)) return(df)
-    cidx <- match(as.character(df$compound_id), as.character(ctab$compound_id))
-    for (cn in extra) {
-      if (!cn %in% colnames(df)) df[[cn]] <- NA
-      hit <- which(!is.na(cidx))
-      if (length(hit)) df[hit, cn] <- ctab[[cn]][cidx[hit]]
-    }
-    df
-  }
-
-  if (!("compound_id" %in% colnames(fdf))) fdf$compound_id <- NA_character_
-  if (!("name" %in% colnames(fdf))) fdf$name <- NA_character_
-  if (!("iso_count" %in% colnames(fdf))) fdf$iso_count <- NA_integer_
-  if (!("iso_form" %in% colnames(fdf))) fdf$iso_form <- NA_character_
-  if (!("iso_seed" %in% colnames(fdf))) fdf$iso_seed <- NA_character_
-  if (!("adduct" %in% colnames(fdf))) fdf$adduct <- NA_character_
-
-  .eligible_unassigned <- function(df) {
-    cid <- as.character(df$compound_id)
-    ic <- df$iso_count
-    which((is.na(cid) | !nzchar(cid)) & is.na(ic))
-  }
-  .rt_err_rel <- function(rt_med, rt_ref) {
-    rr <- suppressWarnings(as.numeric(rt_ref))
-    if (!is.finite(rr)) rr <- 0
-    abs(rt_med - rr) / max(abs(rr), 1e-6)
-  }
-
-  m0_theory <- iso_grid[iso_grid$iso_count == 0L, , drop = FALSE]
-  if (nrow(m0_theory)) {
-    m0_theory <- m0_theory[!duplicated(as.character(m0_theory$compound_id)), , drop = FALSE]
-  }
-  compound_ids_theory <- unique(as.character(iso_grid$compound_id))
-
-  for (cid in compound_ids_theory) {
-    m0_row <- m0_theory[as.character(m0_theory$compound_id) == cid, , drop = FALSE]
-    if (!nrow(m0_row)) next
-    ig0 <- m0_row[1, , drop = FALSE]
-
-    el <- .eligible_unassigned(fdf)
-    if (!length(el)) next
-
-    mz_err_all <- abs(fdf$mzmed - ig0$mz) / ig0$mz
-    rt_err_abs <- abs(fdf$rtmed - ig0$rt)
-    hit0 <- which(mz_err_all < mz_ppm * 1e-6 & rt_err_abs < rt_tol)
-    hit0 <- intersect(hit0, el)
-    if (!length(hit0)) next
-
-    rt_rel0 <- .rt_err_rel(fdf$rtmed[hit0], ig0$rt)
-    min_rt <- min(rt_rel0, na.rm = TRUE)
-    tie0 <- hit0[!is.na(rt_rel0) & rt_rel0 == min_rt]
-    if (length(tie0) > 1L) {
-      mz_tie <- mz_err_all[tie0]
-      best0 <- tie0[which.min(mz_tie)]
-    } else {
-      best0 <- hit0[which.min(rt_rel0)]
+  .annotate_one_polarity <- function(object, iso_grid, polarity.tag, pol) {
+    xcms.xcms <- object@xcmsData[[polarity.tag]]
+    if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) return(object)
+    if (is.null(iso_grid) || !is.data.frame(iso_grid) || !nrow(iso_grid)) {
+      message("[MSIP_annotate_with_iso_grid] ", pol, ": iso_grid is empty; skip annotation.")
+      return(object)
     }
 
-    fdf$compound_id[best0] <- as.character(ig0$compound_id)
-    fdf$name[best0] <- as.character(ig0$name)
-    fdf$iso_count[best0] <- 0L
-    fdf$iso_form[best0] <- as.character(ig0$iso_form)
-    fdf$adduct[best0] <- as.character(ig0$adduct)
+    fdf <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
+    if (!nrow(fdf) || !all(c("mzmed", "rtmed") %in% colnames(fdf))) {
+      message("[MSIP_annotate_with_iso_grid] ", pol, ": no featureDefinitions to annotate.")
+      return(object)
+    }
 
-    rt_anchor <- suppressWarnings(as.numeric(fdf$rtmed[best0]))
-    if (!is.finite(rt_anchor)) rt_anchor <- suppressWarnings(as.numeric(ig0$rt))
-
-    iso_rest <- iso_grid[as.character(iso_grid$compound_id) == cid & iso_grid$iso_count > 0L, , drop = FALSE]
-    if (!nrow(iso_rest)) next
-    iso_rest <- iso_rest[order(iso_rest$iso_count), , drop = FALSE]
-
-    for (jr in seq_len(nrow(iso_rest))) {
-      ig <- iso_rest[jr, , drop = FALSE]
-      el2 <- .eligible_unassigned(fdf)
-      if (!length(el2)) next
-
-      mz_err_all <- abs(fdf$mzmed - ig$mz) / ig$mz
-      rt_d <- abs(fdf$rtmed - rt_anchor)
-      hit <- which(mz_err_all < mz_ppm * 1e-6 & rt_d < rt_tol)
-      hit <- intersect(hit, el2)
-      if (!length(hit)) next
-
-      mz_hit <- mz_err_all[hit]
-      best <- hit[which.min(mz_hit)]
-      if (length(hit) > 1L && sum(mz_hit == min(mz_hit, na.rm = TRUE), na.rm = TRUE) > 1L) {
-        tie <- hit[mz_hit == min(mz_hit, na.rm = TRUE)]
-        rt_tie <- .rt_err_rel(fdf$rtmed[tie], rt_anchor)
-        best <- tie[which.min(rt_tie)]
+    .fdf_feature_id_vec <- function(df) {
+      rid <- rownames(df)
+      if ("feature_id" %in% colnames(df)) {
+        fid <- as.character(df$feature_id)
+        miss <- is.na(fid) | !nzchar(fid)
+        fid[miss] <- rid[miss]
+        fid
+      } else {
+        rid
       }
-
-      fdf$compound_id[best] <- as.character(ig$compound_id)
-      fdf$name[best] <- as.character(ig$name)
-      fdf$iso_count[best] <- as.integer(ig$iso_count)
-      fdf$iso_form[best] <- as.character(ig$iso_form)
-      fdf$adduct[best] <- as.character(ig$adduct)
-    }
-  }
-
-  compounds <- unique(na.omit(fdf$compound_id))
-  inject_cids <- character(0)
-  for (cid in compounds) {
-    sel <- which(fdf$compound_id == cid & !is.na(fdf$iso_count))
-    has_m0 <- length(sel) && any(fdf$iso_count[sel] == 0L)
-    if (has_m0) next
-    m0_rows <- iso_grid[iso_grid$compound_id == cid & iso_grid$iso_count == 0, ]
-    if (!nrow(m0_rows)) next
-    inject_cids <- c(inject_cids, as.character(cid))
-  }
-
-  nsamples <- length(MSnbase::fileNames(xcms.xcms))
-  pks <- xcms::chromPeaks(xcms.xcms)
-  n_injected <- 0L
-  existing_fids <- unique(c(.fdf_feature_id_vec(fdf), rownames(fdf)))
-  ftf_ids <- if (length(inject_cids)) .next_ftf_feature_ids(existing_fids, length(inject_cids)) else character(0)
-  new_pk_list <- list()
-  new_fdf_list <- list()
-
-  for (k in seq_along(inject_cids)) {
-    cid <- inject_cids[[k]]
-    fid_new <- ftf_ids[[k]]
-    n_injected <- n_injected + 1L
-
-    m0_rows <- iso_grid[iso_grid$compound_id == cid & iso_grid$iso_count == 0, ]
-    m0_mz <- m0_rows$mz[[1]]
-    m0_rt <- m0_rows$rt[[1]]
-    m0_name <- m0_rows$name[[1]]
-    m0_form <- m0_rows$iso_form[[1]]
-    mz_ppm_half <- m0_mz * mz_ppm / 1e6
-
-    n_existing_pks <- nrow(pks) + length(new_pk_list)
-    peak_row_ids <- integer(nsamples)
-    for (fi in seq_len(nsamples)) {
-      pid <- paste0(fid_new, "_", fi)
-      peak_row_ids[fi] <- n_existing_pks + fi
-      new_pk_list[[pid]] <- c(
-        mz = m0_mz, mzmin = m0_mz - mz_ppm_half, mzmax = m0_mz + mz_ppm_half,
-        rt = m0_rt, rtmin = m0_rt - rt_tol, rtmax = m0_rt + rt_tol,
-        into = 0, maxo = 0, sn = NA_real_, sample = fi
-      )
     }
 
-    cp_row <- compound_table[as.character(compound_table$compound_id) == as.character(cid), , drop = FALSE]
-    cp_row <- if (nrow(cp_row)) cp_row[1, , drop = FALSE] else NULL
+    .next_ftf_feature_ids <- function(existing_ids, n_new) {
+      ftf <- grep("^FTF[0-9]+$", existing_ids, value = TRUE)
+      last <- 0L
+      if (length(ftf)) last <- max(suppressWarnings(as.integer(sub("^FTF", "", ftf))), na.rm = TRUE)
+      start <- last + 1L
+      nd <- max(4L, nchar(as.character(start + n_new - 1L)))
+      vapply(seq_len(n_new), function(k) paste0("FTF", num2str(start + k - 1L, n.digit = nd)), character(1))
+    }
 
-    new_row <- data.frame(
-      feature_id = fid_new,
-      mzmed = m0_mz, mzmin = m0_mz - mz_ppm_half, mzmax = m0_mz + mz_ppm_half,
-      rtmed = m0_rt, rtmin = m0_rt - rt_tol, rtmax = m0_rt + rt_tol,
-      npeaks = nsamples,
-      peakidx = I(list(peak_row_ids)),
-      compound_id = cid, name = m0_name,
-      iso_count = 0L, iso_form = m0_form,
-      iso_seed = fid_new,
-      adduct = as.character(m0_rows$adduct[[1]]),
-      stringsAsFactors = FALSE, check.names = FALSE
-    )
-    if (!is.null(cp_row) && ncol(cp_row)) {
+    .merge_compound_table_cols <- function(df, ctab) {
+      if (!is.data.frame(ctab) || !nrow(ctab) || !("compound_id" %in% colnames(ctab))) return(df)
       xcms_geom <- c(
         "mzmed", "mzmin", "mzmax", "rtmed", "rtmin", "rtmax",
-        "peakidx", "npeaks", "compound_id", "name",
-        "iso_count", "iso_form", "iso_seed", "feature_id", "adduct",
+        "peakidx", "npeaks",
         "peakRtMin", "peakRtMax", "peakWidth", "peakMzMin", "peakMzMax",
-        "peakSN", "peakMaxo", "polarity"
+        "peakSN", "peakMaxo", "polarity", "adduct"
       )
-      for (cn in setdiff(colnames(cp_row), xcms_geom)) new_row[[cn]] <- cp_row[[cn]][[1]]
+      extra <- setdiff(colnames(ctab), c("compound_id", xcms_geom))
+      if (!length(extra)) return(df)
+      cidx <- match(as.character(df$compound_id), as.character(ctab$compound_id))
+      for (cn in extra) {
+        if (!cn %in% colnames(df)) df[[cn]] <- NA
+        hit <- which(!is.na(cidx))
+        if (length(hit)) df[hit, cn] <- ctab[[cn]][cidx[hit]]
+      }
+      df
     }
-    new_fdf_list[[fid_new]] <- new_row
-  }
 
-  if (n_injected > 0L) {
-    message("[MSIP_annotate_with_iso_grid] ", pol,
-            ": injected ", n_injected, " missing M+0 feature(s) with zero intensity (feature_id FTF####).")
-  }
+    if (!("compound_id" %in% colnames(fdf))) fdf$compound_id <- NA_character_
+    if (!("name" %in% colnames(fdf))) fdf$name <- NA_character_
+    if (!("iso_count" %in% colnames(fdf))) fdf$iso_count <- NA_integer_
+    if (!("iso_form" %in% colnames(fdf))) fdf$iso_form <- NA_character_
+    if (!("iso_seed" %in% colnames(fdf))) fdf$iso_seed <- NA_character_
+    if (!("adduct" %in% colnames(fdf))) fdf$adduct <- NA_character_
+    if (!("isotopologue_rt_center" %in% colnames(fdf))) fdf$isotopologue_rt_center <- NA_real_
+    if (!("isotopologue_rt_sd" %in% colnames(fdf))) fdf$isotopologue_rt_sd <- NA_real_
 
-  if (length(new_pk_list)) {
-    pk_new_mat <- do.call(rbind, new_pk_list)
-    pk_template <- matrix(NA_real_, nrow = nrow(pk_new_mat), ncol = ncol(pks),
-                          dimnames = list(rownames(pk_new_mat), colnames(pks)))
-    shared <- intersect(colnames(pk_new_mat), colnames(pks))
-    pk_template[, shared] <- pk_new_mat[, shared, drop = FALSE]
-    pk_combined <- rbind(pks, pk_template)
-    xcms::chromPeaks(xcms.xcms) <- pk_combined
+    # reset isotopologue annotations and re-annotate from current iso_grid
+    fdf$compound_id <- NA_character_
+    fdf$name <- NA_character_
+    fdf$iso_count <- NA_integer_
+    fdf$iso_form <- NA_character_
+    fdf$iso_seed <- NA_character_
+    fdf$adduct <- NA_character_
+    fdf$isotopologue_rt_center <- NA_real_
+    fdf$isotopologue_rt_sd <- NA_real_
 
-    cpd <- xcms::chromPeakData(xcms.xcms)
-    n_new <- nrow(pk_combined) - nrow(cpd)
-    if (n_new > 0) {
-      cpd_extra <- data.frame(msLevel = rep(1L, n_new), is_filled = rep(TRUE, n_new), stringsAsFactors = FALSE)
-      for (nm in setdiff(colnames(cpd), colnames(cpd_extra))) cpd_extra[[nm]] <- NA
-      cpd_extra <- cpd_extra[, colnames(cpd), drop = FALSE]
-      xcms::chromPeakData(xcms.xcms) <- S4Vectors::DataFrame(rbind(as.data.frame(cpd), cpd_extra))
+    .feature_intensity <- function(df) {
+      cand <- c("peakMaxo", "maxo", "into", "npeaks")
+      cn <- cand[cand %in% colnames(df)]
+      if (!length(cn)) return(rep(0, nrow(df)))
+      out <- suppressWarnings(as.numeric(df[[cn[[1]]]]))
+      out[!is.finite(out)] <- 0
+      out
     }
+
+    .cluster_rt_group <- function(rt_vec, tol = 5) {
+      if (!length(rt_vec)) return(integer(0))
+      ord <- order(rt_vec)
+      grp <- integer(length(rt_vec))
+      gid <- 1L
+      grp[ord[[1]]] <- gid
+      if (length(ord) > 1L) {
+        for (ii in ord[-1]) {
+          prev <- ord[which(ord == ii) - 1L]
+          if (abs(rt_vec[ii] - rt_vec[prev]) > tol) gid <- gid + 1L
+          grp[ii] <- gid
+        }
+      }
+      grp
+    }
+
+    f_int <- .feature_intensity(fdf)
+    compound_ids_theory <- unique(as.character(iso_grid$compound_id))
+    compound_assignments <- list()
+    k_assign <- 0L
+
+    for (cid in compound_ids_theory) {
+      cp_grid <- iso_grid[as.character(iso_grid$compound_id) == cid, , drop = FALSE]
+      if (!nrow(cp_grid)) next
+
+      hit_rows <- list()
+      h <- 0L
+      for (jr in seq_len(nrow(cp_grid))) {
+        ig <- cp_grid[jr, , drop = FALSE]
+        mz_theory <- suppressWarnings(as.numeric(ig$mz[[1]]))
+        rt_theory <- suppressWarnings(as.numeric(ig$rt[[1]]))
+        if (!is.finite(mz_theory) || !is.finite(rt_theory)) next
+        mz_err_all <- abs(fdf$mzmed - mz_theory) / mz_theory
+        rt_err_abs <- abs(fdf$rtmed - rt_theory)
+        hit <- which(is.finite(mz_err_all) & is.finite(rt_err_abs) &
+                       mz_err_all < mz_ppm * 1e-6 & rt_err_abs < rt_tol)
+        if (!length(hit)) next
+        h <- h + 1L
+        hit_rows[[h]] <- data.frame(
+          feature_idx = hit,
+          feature_id = as.character(fdf$feature_id[hit]),
+          rtmed = as.numeric(fdf$rtmed[hit]),
+          intensity = as.numeric(f_int[hit]),
+          mz_err = as.numeric(mz_err_all[hit]),
+          rt_err = as.numeric(rt_err_abs[hit]),
+          compound_id = as.character(ig$compound_id[[1]]),
+          name = as.character(ig$name[[1]]),
+          iso_count = as.integer(ig$iso_count[[1]]),
+          iso_form = as.character(ig$iso_form[[1]]),
+          adduct = as.character(ig$adduct[[1]]),
+          stringsAsFactors = FALSE
+        )
+      }
+      if (!length(hit_rows)) next
+      cp_hits <- do.call(rbind, hit_rows)
+      cp_hits <- cp_hits[order(cp_hits$rtmed), , drop = FALSE]
+      cp_hits$rt_group <- .cluster_rt_group(cp_hits$rtmed, tol = rt_tol.isotopologue)
+      cp_hits <- cp_hits[!is.na(cp_hits$rt_group), , drop = FALSE]
+      if (!nrow(cp_hits)) next
+
+      group_unique <- cp_hits[order(cp_hits$rt_group, cp_hits$feature_idx, -cp_hits$intensity), , drop = FALSE]
+      group_unique <- group_unique[!duplicated(paste0(group_unique$rt_group, "::", group_unique$feature_idx)), , drop = FALSE]
+      group_intensity <- tapply(group_unique$intensity, group_unique$rt_group, sum, na.rm = TRUE)
+      best_group <- as.integer(names(group_intensity)[which.max(group_intensity)])
+      cp_sel <- cp_hits[cp_hits$rt_group == best_group, , drop = FALSE]
+      if (!nrow(cp_sel)) next
+
+      rt_center <- mean(cp_sel$rtmed, na.rm = TRUE)
+      rt_sd <- stats::sd(cp_sel$rtmed, na.rm = TRUE)
+      if (!is.finite(rt_center)) rt_center <- NA_real_
+      if (!is.finite(rt_sd)) rt_sd <- 0
+
+      cp_assign <- list()
+      ka <- 0L
+      for (iso_k in sort(unique(cp_sel$iso_count))) {
+        sub <- cp_sel[cp_sel$iso_count == iso_k, , drop = FALSE]
+        if (!nrow(sub)) next
+        sub <- sub[order(-sub$intensity, sub$mz_err, abs(sub$rtmed - rt_center)), , drop = FALSE]
+        best <- sub[1, , drop = FALSE]
+        ka <- ka + 1L
+        cp_assign[[ka]] <- data.frame(
+          feature_idx = as.integer(best$feature_idx[[1]]),
+          feature_id = as.character(best$feature_id[[1]]),
+          compound_id = as.character(best$compound_id[[1]]),
+          name = as.character(best$name[[1]]),
+          iso_count = as.integer(best$iso_count[[1]]),
+          iso_form = as.character(best$iso_form[[1]]),
+          adduct = as.character(best$adduct[[1]]),
+          rt_center = rt_center,
+          rt_sd = rt_sd,
+          rt_diff_center = abs(as.numeric(best$rtmed[[1]]) - rt_center),
+          mz_err = as.numeric(best$mz_err[[1]]),
+          intensity = as.numeric(best$intensity[[1]]),
+          stringsAsFactors = FALSE
+        )
+      }
+      if (length(cp_assign)) {
+        k_assign <- k_assign + 1L
+        compound_assignments[[k_assign]] <- do.call(rbind, cp_assign)
+      }
+    }
+
+    if (length(compound_assignments)) {
+      assn <- do.call(rbind, compound_assignments)
+      assn <- assn[order(assn$feature_idx, assn$rt_diff_center, assn$mz_err, -assn$intensity), , drop = FALSE]
+
+      conflicted_idx <- unique(assn$feature_idx[duplicated(assn$feature_idx)])
+      if (length(conflicted_idx)) {
+        conflict_msgs <- character(0)
+        keep_row <- rep(FALSE, nrow(assn))
+        for (fi in unique(assn$feature_idx)) {
+          irow <- which(assn$feature_idx == fi)
+          if (!length(irow)) next
+          if (length(irow) == 1L) {
+            keep_row[irow] <- TRUE
+            next
+          }
+          sub <- assn[irow, , drop = FALSE]
+          sub$.idx <- irow
+          sub <- sub[order(sub$rt_diff_center, sub$mz_err, -sub$intensity), , drop = FALSE]
+          keep_row[sub$.idx[1]] <- TRUE
+          cid_str <- paste(unique(as.character(sub$compound_id)), collapse = ", ")
+          conflict_msgs <- c(conflict_msgs, cid_str)
+        }
+        assn <- assn[keep_row, , drop = FALSE]
+        message(length(conflicted_idx), " features are assgined to conflicting isotopologues: ",
+                paste(unique(conflict_msgs), collapse = "; "))
+      }
+
+      assn <- assn[order(assn$compound_id, assn$iso_count, assn$rt_diff_center, assn$mz_err, -assn$intensity), , drop = FALSE]
+      assn <- assn[!duplicated(paste0(assn$compound_id, "::", assn$iso_count)), , drop = FALSE]
+      hit_idx <- as.integer(assn$feature_idx)
+      fdf$compound_id[hit_idx] <- as.character(assn$compound_id)
+      fdf$name[hit_idx] <- as.character(assn$name)
+      fdf$iso_count[hit_idx] <- as.integer(assn$iso_count)
+      fdf$iso_form[hit_idx] <- as.character(assn$iso_form)
+      fdf$adduct[hit_idx] <- as.character(assn$adduct)
+      fdf$isotopologue_rt_center[hit_idx] <- as.numeric(assn$rt_center)
+      fdf$isotopologue_rt_sd[hit_idx] <- as.numeric(assn$rt_sd)
+    }
+
+    # guardrail: keep isotopologues within one coherent RT cluster per compound
+    # using rt_tol.isotopologue around the compound center.
+    bad_compounds <- character(0)
+    for (cid in unique(na.omit(as.character(fdf$compound_id)))) {
+      sel <- which(as.character(fdf$compound_id) == cid & !is.na(fdf$iso_count))
+      if (length(sel) <= 1L) next
+      rt_vals <- suppressWarnings(as.numeric(fdf$rtmed[sel]))
+      rt_vals <- rt_vals[is.finite(rt_vals)]
+      if (!length(rt_vals)) next
+      rt_center <- stats::median(rt_vals, na.rm = TRUE)
+      keep <- abs(suppressWarnings(as.numeric(fdf$rtmed[sel])) - rt_center) <= rt_tol.isotopologue
+      keep[is.na(keep)] <- FALSE
+      if (all(keep)) {
+        fdf$isotopologue_rt_center[sel] <- rt_center
+        fdf$isotopologue_rt_sd[sel] <- stats::sd(suppressWarnings(as.numeric(fdf$rtmed[sel])), na.rm = TRUE)
+        next
+      }
+      drop_idx <- sel[!keep]
+      fdf$compound_id[drop_idx] <- NA_character_
+      fdf$name[drop_idx] <- NA_character_
+      fdf$iso_count[drop_idx] <- NA_integer_
+      fdf$iso_form[drop_idx] <- NA_character_
+      fdf$iso_seed[drop_idx] <- NA_character_
+      fdf$adduct[drop_idx] <- NA_character_
+      fdf$isotopologue_rt_center[drop_idx] <- NA_real_
+      fdf$isotopologue_rt_sd[drop_idx] <- NA_real_
+
+      keep_idx <- sel[keep]
+      if (length(keep_idx)) {
+        rt_keep <- suppressWarnings(as.numeric(fdf$rtmed[keep_idx]))
+        center_keep <- stats::median(rt_keep, na.rm = TRUE)
+        fdf$isotopologue_rt_center[keep_idx] <- center_keep
+        fdf$isotopologue_rt_sd[keep_idx] <- stats::sd(rt_keep, na.rm = TRUE)
+      }
+      bad_compounds <- c(bad_compounds, cid)
+    }
+    if (length(bad_compounds)) {
+      message("[MSIP_annotate_with_iso_grid] ", pol,
+              ": removed RT-incoherent isotopologue assignments (rt_tol.isotopologue=",
+              rt_tol.isotopologue, ") for compounds: ",
+              paste(unique(bad_compounds), collapse = ", "))
+    }
+
+    compounds <- unique(na.omit(as.character(fdf$compound_id)))
+    inject_cids <- character(0)
+    for (cid in compounds) {
+      sel <- which(fdf$compound_id == cid & !is.na(fdf$iso_count))
+      has_m0 <- length(sel) && any(fdf$iso_count[sel] == 0L)
+      if (has_m0) next
+      m0_rows <- iso_grid[iso_grid$compound_id == cid & iso_grid$iso_count == 0, ]
+      if (!nrow(m0_rows)) next
+      inject_cids <- c(inject_cids, as.character(cid))
+    }
+
+    n_injected <- 0L
+    existing_fids <- unique(c(.fdf_feature_id_vec(fdf), rownames(fdf)))
+    ftf_ids <- if (length(inject_cids)) .next_ftf_feature_ids(existing_fids, length(inject_cids)) else character(0)
+    new_fdf_list <- list()
+
+    for (k in seq_along(inject_cids)) {
+      cid <- inject_cids[[k]]
+      fid_new <- ftf_ids[[k]]
+      n_injected <- n_injected + 1L
+
+      m0_rows <- iso_grid[iso_grid$compound_id == cid & iso_grid$iso_count == 0, ]
+      m0_mz <- m0_rows$mz[[1]]
+      m0_rt <- m0_rows$rt[[1]]
+      sel_assigned <- which(as.character(fdf$compound_id) == cid & !is.na(fdf$iso_count))
+      if (length(sel_assigned)) {
+        rt_anchor <- suppressWarnings(as.numeric(fdf$isotopologue_rt_center[sel_assigned]))
+        rt_anchor <- rt_anchor[is.finite(rt_anchor)]
+        if (!length(rt_anchor)) {
+          rt_anchor <- suppressWarnings(as.numeric(fdf$rtmed[sel_assigned]))
+          rt_anchor <- rt_anchor[is.finite(rt_anchor)]
+        }
+        if (length(rt_anchor)) m0_rt <- stats::median(rt_anchor, na.rm = TRUE)
+      }
+      m0_name <- m0_rows$name[[1]]
+      m0_form <- m0_rows$iso_form[[1]]
+      mz_ppm_half <- m0_mz * mz_ppm / 1e6
+
+      cp_row <- compound_table[as.character(compound_table$compound_id) == as.character(cid), , drop = FALSE]
+      cp_row <- if (nrow(cp_row)) cp_row[1, , drop = FALSE] else NULL
+
+      new_row <- data.frame(
+        feature_id = fid_new,
+        mzmed = m0_mz, mzmin = m0_mz - mz_ppm_half, mzmax = m0_mz + mz_ppm_half,
+        rtmed = m0_rt, rtmin = m0_rt - rt_tol, rtmax = m0_rt + rt_tol,
+        npeaks = 0L,
+        peakidx = I(list(integer(0))),
+        compound_id = cid, name = m0_name,
+        iso_count = 0L, iso_form = m0_form,
+        iso_seed = fid_new,
+        peakMaxo = 0,
+        adduct = as.character(m0_rows$adduct[[1]]),
+        stringsAsFactors = FALSE, check.names = FALSE
+      )
+      if (!is.null(cp_row) && ncol(cp_row)) {
+        xcms_geom <- c(
+          "mzmed", "mzmin", "mzmax", "rtmed", "rtmin", "rtmax",
+          "peakidx", "npeaks", "compound_id", "name",
+          "iso_count", "iso_form", "iso_seed", "feature_id", "adduct",
+          "peakRtMin", "peakRtMax", "peakWidth", "peakMzMin", "peakMzMax",
+          "peakSN", "peakMaxo", "polarity"
+        )
+        for (cn in setdiff(colnames(cp_row), xcms_geom)) new_row[[cn]] <- cp_row[[cn]][[1]]
+      }
+      new_fdf_list[[fid_new]] <- new_row
+    }
+
+    if (n_injected > 0L) {
+      message("[MSIP_annotate_with_iso_grid] ", pol,
+              ": injected ", n_injected, " missing M+0 feature(s) into featureDefinitions/featureValues (feature_id FTF####).")
+    }
+
+    if (length(new_fdf_list)) {
+      fdf_new <- do.call(rbind, new_fdf_list)
+      if (!"peakidx" %in% colnames(fdf)) fdf$peakidx <- I(rep(list(integer(0)), nrow(fdf)))
+      all_cols <- union(colnames(fdf), colnames(fdf_new))
+      for (cn in setdiff(all_cols, colnames(fdf))) fdf[[cn]] <- rep(NA, nrow(fdf))
+      for (cn in setdiff(all_cols, colnames(fdf_new))) fdf_new[[cn]] <- rep(NA, nrow(fdf_new))
+      fdf_combined <- rbind(fdf[, all_cols, drop = FALSE], fdf_new[, all_cols, drop = FALSE])
+    } else {
+      fdf_combined <- fdf
+    }
+
+    fdf_combined <- .merge_compound_table_cols(fdf_combined, compound_table)
+    fid_vec <- .fdf_feature_id_vec(fdf_combined)
+    fdf_combined$feature_id <- fid_vec
+    for (cid in unique(na.omit(as.character(fdf_combined$compound_id)))) {
+      sel <- which(as.character(fdf_combined$compound_id) == cid & !is.na(fdf_combined$iso_count))
+      if (!length(sel)) next
+      m0 <- sel[fdf_combined$iso_count[sel] == 0L]
+      if (!length(m0)) next
+      seed_fid <- fid_vec[[m0[[1]]]]
+      fdf_combined$iso_seed[sel] <- seed_fid
+    }
+    rownames(fdf_combined) <- fid_vec
+    xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(fdf_combined)
+    object@xcmsData[[polarity.tag]] <- xcms.xcms
+    object
   }
 
-  if (length(new_fdf_list)) {
-    fdf_new <- do.call(rbind, new_fdf_list)
-    if (!"peakidx" %in% colnames(fdf)) fdf$peakidx <- I(rep(list(integer(0)), nrow(fdf)))
-    all_cols <- union(colnames(fdf), colnames(fdf_new))
-    for (cn in setdiff(all_cols, colnames(fdf))) fdf[[cn]] <- rep(NA, nrow(fdf))
-    for (cn in setdiff(all_cols, colnames(fdf_new))) fdf_new[[cn]] <- rep(NA, nrow(fdf_new))
-    fdf_combined <- rbind(fdf[, all_cols, drop = FALSE], fdf_new[, all_cols, drop = FALSE])
-  } else {
-    fdf_combined <- fdf
+  polarity.index <- c("0" = "Negative", "1" = "Positive")
+  for (i in c(0, 1)) {
+    pol <- polarity.index[as.character(i)]
+    polarity.tag <- paste0(pol, "MS1")
+    xcms.xcms <- object@xcmsData[[polarity.tag]]
+    if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) next
+
+    iso_grid <- temp_iso_grid[[polarity.tag]]
+    if (is.null(iso_grid) || !is.data.frame(iso_grid) || !nrow(iso_grid)) {
+      message_with_time("[MSIP_annotate_with_iso_grid] Build iso_grid from compound_table (", polarity.tag, ") ...")
+      roi.out <- get_MSIP_xcms_roi_list(
+        object = object,
+        ion_mode = i,
+        iso_ele = iso_ele,
+        ppm = mz_ppm,
+        rt_tol = rt_tol
+      )
+      iso_grid <- roi.out$iso_grid
+      temp_iso_grid[[polarity.tag]] <- iso_grid
+    }
+
+    object <- .annotate_one_polarity(
+      object = object,
+      iso_grid = iso_grid,
+      polarity.tag = polarity.tag,
+      pol = pol
+    )
   }
 
-  fdf_combined <- .merge_compound_table_cols(fdf_combined, compound_table)
-  fid_vec <- .fdf_feature_id_vec(fdf_combined)
-  fdf_combined$feature_id <- fid_vec
-  for (cid in unique(na.omit(as.character(fdf_combined$compound_id)))) {
-    sel <- which(as.character(fdf_combined$compound_id) == cid & !is.na(fdf_combined$iso_count))
-    if (!length(sel)) next
-    m0 <- sel[fdf_combined$iso_count[sel] == 0L]
-    if (!length(m0)) next
-    seed_fid <- fid_vec[[m0[[1]]]]
-    fdf_combined$iso_seed[sel] <- seed_fid
-  }
-  rownames(fdf_combined) <- fid_vec
-  xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(fdf_combined)
-  object@xcmsData[[polarity.tag]] <- xcms.xcms
+  object@advancedAna$MSIP$temp$iso_grid <- temp_iso_grid
   object
 }
 
@@ -3060,6 +3364,10 @@ MSIP_xcms_processing.targeted <- function(object,
   # ---------------------------------------------------------------------------
   polarity.index <- c("0" = "Negative", "1" = "Positive")
   xcms.param <- get_MSdev_param(object)
+  if (is.null(object@advancedAna$MSIP$temp) || !is.list(object@advancedAna$MSIP$temp)) {
+    object@advancedAna$MSIP$temp <- list()
+  }
+  object@advancedAna$MSIP$temp$iso_grid <- list()
 
   for (i in c(0, 1)) {
     sample.info.polarity <- sampleInfo %>%
@@ -3083,6 +3391,7 @@ MSIP_xcms_processing.targeted <- function(object,
     )
     iso_grid <- roi.out$iso_grid
     roiList <- roi.out$roiList
+    object@advancedAna$MSIP$temp$iso_grid[[polarity.tag]] <- iso_grid
     message_with_time("roiList size: ", length(roiList))
 
     cwp <- .as_centwave_with_roi(xcms.param$findChromPeaks, roiList = roiList)
@@ -3096,23 +3405,38 @@ MSIP_xcms_processing.targeted <- function(object,
       ion_mode = i,
       xcms_param = xcms_param_targeted,
       adjustRT = adjustRT,
+      chromPeaks_max_mz_ppm = 20,
       BPPARAM = BPPARAM,
       ...
     )
 
     xcms.xcms <- xcms_get_feature_stat(xcms.xcms)
-    message_with_time("Annotate featureDefinitions with isotopologue info (", polarity.tag, ") ...")
+    # Use xcms::featureValues(value = "maxo") as isotopologue feature intensity source.
+    fv.maxo <- tryCatch(xcms::featureValues(xcms.xcms, value = "maxo"), error = function(e) NULL)
+    if (!is.null(fv.maxo) && nrow(fv.maxo)) {
+      peak_maxo <- apply(fv.maxo, 1, function(v) {
+        v <- suppressWarnings(as.numeric(v))
+        v <- v[is.finite(v)]
+        if (!length(v)) return(0)
+        max(v, na.rm = TRUE)
+      })
+      fdf.tmp <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
+      rid <- rownames(fdf.tmp)
+      if (!is.null(rid) && length(rid)) {
+        fdf.tmp$peakMaxo <- as.numeric(peak_maxo[match(rid, names(peak_maxo))])
+        fdf.tmp$peakMaxo[!is.finite(fdf.tmp$peakMaxo)] <- 0
+        xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(fdf.tmp)
+      }
+    }
     object@xcmsData[[polarity.tag]] <- xcms.xcms
-    object <- MSIP_annotate_with_iso_grid(
-      object = object,
-      iso_grid = iso_grid,
-      ion_mode = i,
-      iso_ele = iso_ele,
-      mz_ppm = mz_ppm,
-      rt_tol = rt_tol,
-      polarity.tag = polarity.tag
-    )
   }
+  message_with_time("Annotate featureDefinitions with isotopologue info (all available polarities) ...")
+  object <- MSIP_annotate_with_iso_grid(
+    object = object,
+    iso_ele = iso_ele,
+    mz_ppm = mz_ppm,
+    rt_tol = rt_tol
+  )
 
   return(object)
 }
