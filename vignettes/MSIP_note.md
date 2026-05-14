@@ -445,6 +445,7 @@ Update:
   - the intensity should be shown as scientific notation, such as 1.23e+05
 2. the legend remove the compound name, only show the isotopologue. such as 'M+1', 'M+2', 'M+3', not 'Glutamate_M+1', 'Glutamate_M+2', 'Glutamate_M+3'
 3. place the compound name in title, others in subtitle
+4. calculate the average of the ratio for each isotopologue, group the average ratio < min_ratio (add this arg to the function) into one group, and plot as a bar, they are 'other', colored with 'grey' and should be placed in the bottom of legend
 
 
 ### MSIP_report_isotopologue_ratio
@@ -477,6 +478,15 @@ Review:
 4. add a param 'purity' to control the purity calculation, default is TRUE, if FALSE, the purity matrix will be all NA
 5. add rowdata for isotopologuedata:
   - rtmin, rtmax, rtsd: collect all isotopologue's rt, mz, and calculate the min, max, and sd
+  - feature_id.positive and feature_id.negative: the feature_id of positive and negative 
+6. add param 'ratio.aggregate' to control the ratio aggregation:
+  - 'mean', mean of positive and negative ratio
+  - 'wmean', weighted mean, the weight is the intensity of the polarity
+  - 'max_intensity', default,  ratio using the ratio of the polarity with the highest intensity
+7. the default assay of the isotopologue se should be 'ratio'
+
+
+
 
 
 ### MSIP_xcms_processing.targeted
@@ -488,3 +498,47 @@ Review:
   - input: msdev object, iso_grid, iso_ele, mz_ppm, rt_tol, max_iso ...
   - output: msdev object with xcms's annotated fdf
 4. remove param 'max_iso', when calculating the isotopologue, use the max element count of each compound
+5. store the 'iso_grid' in msdev@advancedAna$MSIP$temp$iso_grid
+6. remove the part of 'MSIP_annotate_with_iso_grid' from 'MSIP_xcms_processing.targeted', this step should be done in 'MSIP_annotate_with_iso_grid'
+7. use featureValues(value = "maxo" ), not 'get_xcms_quantify_MSIP' to extract the intensity of the isotopologue features
+8. the xcms chromPeaks sometimes containg too wide peaks (such as mz range of 0 ~ 200), add a function 'filter_xcms_chromPeaks_mz_width' to filter out the wide peaks (use ppm, default 20) before groupPeaks
+9. it seems 'filter_xcms_chromPeaks_mz_width' remove the necessary peaks, doc it, and write another function 'fix_xcms_chromPeaks_mz_width' to replace the filter function in 'MSIP_xcms_processing.targeted':
+  - this function find the peaks with mz width > ppm, and calculate the correct mzmin and mzmax, and then replace the peaks in the chromPeaks matrix
+10. expose the param 'param' of 'findChromPeaks' to 'MSIP_xcms_processing.targeted':
+  - default is NULL, if NULL, use get_MSdev_param to get the param and message the used param
+  - if input a centwave param, message the used param and integrate the roilist to the param
+
+
+### MSIP_annotate_with_iso_grid
+1. remove param 'iso_grid' and 'ion_mode'
+2. read the msdev@advancedAna$MSIP$temp$iso_grid, if not exist, use the msdev@advancedAna$MSIP$compound_table to construct the iso_grid
+3. loop for polarity, construct the fdf for each polarity
+4. when annotate the iso_grid:
+  - loop for each compound:
+    - match compound's mz and rt to the iso_grid
+    - group matched features by rt, with rt_tol.isotopologue (default 5)
+    - for each group, calculate the sum of intensity of the features
+    - select the feature with the highest intensity as the isotopologues of the compound
+    - record the selected feature's rt.center, rt.sd
+  - integrate all compounds' isotopologues features:
+    - filter out conflicting features, which assgined to different compounds' isotopologues
+    - message "XXX features are assgined to conflicting isotopologues: compound_id1, compound_id2, ..."
+    - calcuate the rt diff of conflicted feature to the rt.center of the isotopologue, the feature with the smallest rt diff should be selected as the isotopologue of the compound
+5. when inject the M+0 feature:
+  - do not add peaks (chromPeaks) to the xcms object, just add the feature to the xcms.fdf (featureDefinitions and featureValues)
+6. I checked the result, some of features are assigned to the wrong isotopologue: 
+  - M+0 rt = 840, M+1 rt = 824, M + 3 rt = 857, they are absolutely wrong groupped (rt diff >  rt_tol.isotopologue)
+7. the scoring for select feature as the isotopologue should be performed after all match for each polarity:
+  - collect all matched features, both neg and pos
+  - scoring use a block match:
+    - all features (POS AND NEG) with mz matched should be grouped by rt, with rt_tol.isotopologue (default 5)
+    - for each group, calculate the sum of intensity of the features
+      - if M+n exist both positive and negative, the intensity should be the sum of positive and negative intensity    - the features group with the highest intensity should be selected as the isotopologues of the compound
+    - the rda should update according to the selected features:
+      - rt, rt.center, rt.sd, intensity, feature_id.positive, feature_id.negative, polarity, rtmin, rtmax
+8. these var should be updated in the rda:
+  - rt.min, rt.max (rename from rtmin, rtmax), rt.sd, rt.center: calculate by all of the selected isotopologue features, not by the pos and neg features of one isotopologue
+  - remove rtsd, rt.sd is enough
+9. rename param 'rt_tol' to 'rt_tol.reference', default is 60
+10. add rda:
+  - mz.positive and mz.negative: the mz of the positive and negative features

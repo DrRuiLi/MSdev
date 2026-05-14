@@ -1799,35 +1799,77 @@ xcms_remove_feature_var <- function(xcms.xcms,var){
 plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =NULL ){
 
   ### select samples
-  xcms.sample.info <- Biobase::pData(xcms.xcms)
-  if (is.null(sampleNames)) {
-    sampleNames <- xcms.sample.info$sampleNames
+  all.sample.names <- Biobase::sampleNames(xcms.xcms)
+  xcms.sample.info <- as.data.frame(Biobase::pData(xcms.xcms), stringsAsFactors = FALSE)
+  if (!"sampleNames" %in% colnames(xcms.sample.info)) {
+    xcms.sample.info$sampleNames <- all.sample.names
   }
-  xcms.sample.info <- xcms.sample.info[sampleNames,,drop=F]
-  if (length(sampleNames) > 5) {
-    if (!is.null(xcms.sample.info$group)) {
-      xcms.sample.info.sub <- xcms.sample.info%>%
-        dplyr::group_by(group)%>%
-        dplyr::slice_sample(n=1)
+  rownames(xcms.sample.info) <- all.sample.names
+
+  if (is.null(sampleNames)) {
+    sampleNames <- all.sample.names
+  }
+  sampleNames <- as.character(sampleNames)
+  sampleNames <- intersect(sampleNames, all.sample.names)
+  if (!length(sampleNames)) {
+    stop("No valid sampleNames found in xcms.xcms.")
+  }
+
+  xcms.sample.info <- xcms.sample.info[sampleNames, , drop = FALSE]
+  if (nrow(xcms.sample.info) > 5) {
+    if ("group" %in% colnames(xcms.sample.info) && any(!is.na(xcms.sample.info$group))) {
+      xcms.sample.info.sub <- xcms.sample.info %>%
+        dplyr::group_by(group) %>%
+        dplyr::slice_sample(n = 1) %>%
+        as.data.frame(stringsAsFactors = FALSE)
+    } else {
+      xcms.sample.info.sub <- xcms.sample.info[seq_len(5), , drop = FALSE]
     }
-  }else{
+  } else {
     xcms.sample.info.sub <- xcms.sample.info
   }
-  xcms.sub <- filterFile(xcms.xcms,which(Biobase::sampleNames(xcms.xcms)%in% xcms.sample.info.sub$sampleNames))
-  ### mz
-  xcms.feature <- featureDefinitions(xcms.xcms)[feature.id,]
-  feature.id<-rownames(xcms.feature)
-  xcms.peaks <- chromPeaks(xcms.xcms)[xcms.feature$peakidx[[1]],,drop = F]
-  mz.range <- c(min(xcms.peaks[,"mzmin"]),
-                max(xcms.peaks[,"mzmax"]))
-  rt.range <- c(min(xcms.peaks[,"rtmin"]),
-                max(xcms.peaks[,"rtmax"]))
-  xcms.chrom <- get_xcms_chromatogram(xcms.sub ,
-                              mzr = mz.range,
-                              rtr = rt.range)
+
+  sample.idx <- which(all.sample.names %in% xcms.sample.info.sub$sampleNames)
+  if (!length(sample.idx)) {
+    stop("No samples selected for chromatogram extraction.")
+  }
+  xcms.sub <- filterFile(xcms.xcms, sample.idx)
+
+  ### mz / rt from feature peaks
+  xcms.fdef <- featureDefinitions(xcms.xcms)
+  if (is.numeric(feature.id)) {
+    feature.id <- rownames(xcms.fdef)[feature.id]
+  }
+  feature.id <- as.character(feature.id)[1]
+  if (is.na(feature.id) || !nzchar(feature.id) || !(feature.id %in% rownames(xcms.fdef))) {
+    stop("feature.id does not exist in featureDefinitions(xcms.xcms).")
+  }
+
+  xcms.feature <- xcms.fdef[feature.id, , drop = FALSE]
+  peak.idx <- xcms.feature$peakidx[[1]]
+  if (is.null(peak.idx) || !length(peak.idx)) {
+    stop("Selected feature has no linked peaks (empty peakidx).")
+  }
+  xcms.peaks <- chromPeaks(xcms.xcms)[peak.idx, , drop = FALSE]
+  mz.range <- as.numeric(c(min(xcms.peaks[, "mzmin"], na.rm = TRUE),
+                           max(xcms.peaks[, "mzmax"], na.rm = TRUE)))
+  rt.range <- as.numeric(c(min(xcms.peaks[, "rtmin"], na.rm = TRUE),
+                           max(xcms.peaks[, "rtmax"], na.rm = TRUE)))
+  if (length(mz.range) != 2 || length(rt.range) != 2 ||
+      any(!is.finite(mz.range)) || any(!is.finite(rt.range))) {
+    stop("Failed to derive finite mz/rt ranges from feature peaks.")
+  }
+
+  xcms.chrom <- xcms::chromatogram(xcms.sub,
+                                   mz = mz.range,
+                                   rt = rt.range,
+                                   BPPARAM = BiocParallel::SerialParam())
+  if (!methods::is(xcms.chrom, "XChromatograms")) {
+    stop("Chromatogram extraction failed for selected feature and samples.")
+  }
 
   xcms.chrom.data <- get_chroms_data(xcms.chrom)%>%
-    dplyr::mutate(group = sampleNames[col])
+    dplyr::mutate(group = Biobase::sampleNames(xcms.sub)[col])
 
   ggplot(xcms.chrom.data)+
     geom_line(aes(x = rt,y = intensity , col = group))+
@@ -2296,12 +2338,65 @@ filter_xcms_chromPeaks_mz_width <- function(xcms.xcms, ppm = 20, verbose = TRUE)
 
   if (isTRUE(verbose)) {
     message(sprintf(
-      "filter_xcms_chromPeaks_mz_width: %d/%d chromPeaks removed (mz width > %.2f ppm)",
+      "filter_xcms_chromPeaks_mz_width: %d/%d chromPeaks removed (mz width > %.2f ppm); this is aggressive and may remove real peaks",
       n_bad, n_total, ppm
     ))
   }
   if (n_bad > 0) {
     xcms::chromPeaks(xcms.xcms) <- pks[!bad, , drop = FALSE]
+  }
+  xcms.xcms
+}
+
+#' @title Fix overly wide xcms chromPeaks mz window
+#' @description
+#' For chromPeaks with abnormal m/z width larger than \code{ppm}, this function
+#' does not remove peaks. Instead, it recalculates and replaces \code{mzmin} and
+#' \code{mzmax} around peak center \code{mz} so final width equals the target
+#' ppm window.
+#'
+#' @param xcms.xcms XCMSnExp object.
+#' @param ppm numeric ppm threshold/target width, default \code{20}.
+#' @param verbose logical, print summary message.
+#'
+#' @return XCMSnExp object with fixed \code{chromPeaks} m/z windows.
+#' @export
+fix_xcms_chromPeaks_mz_width <- function(xcms.xcms, ppm = 20, verbose = TRUE) {
+  pks <- xcms::chromPeaks(xcms.xcms)
+  if (is.null(pks) || length(pks) == 0 || nrow(pks) == 0) {
+    if (isTRUE(verbose)) message("fix_xcms_chromPeaks_mz_width: no chromPeaks to fix")
+    return(xcms.xcms)
+  }
+  need <- c("mz", "mzmin", "mzmax")
+  if (!all(need %in% colnames(pks))) {
+    if (isTRUE(verbose)) {
+      message("fix_xcms_chromPeaks_mz_width: required columns not found (mz/mzmin/mzmax)")
+    }
+    return(xcms.xcms)
+  }
+
+  mz <- suppressWarnings(as.numeric(pks[, "mz"]))
+  mzmin <- suppressWarnings(as.numeric(pks[, "mzmin"]))
+  mzmax <- suppressWarnings(as.numeric(pks[, "mzmax"]))
+  bad_mz <- !is.finite(mz) | mz <= 0
+  mz[bad_mz] <- (mzmin[bad_mz] + mzmax[bad_mz]) / 2
+  bad_mz <- !is.finite(mz) | mz <= 0
+  mz_width_ppm <- (mzmax - mzmin) / pmax(mz, 1e-12) * 1e6
+  to_fix <- !bad_mz & is.finite(mz_width_ppm) & (mz_width_ppm > ppm)
+  n_fix <- sum(to_fix, na.rm = TRUE)
+  n_total <- nrow(pks)
+
+  if (n_fix > 0) {
+    half <- mz[to_fix] * as.numeric(ppm) / 2e6
+    pks[to_fix, "mzmin"] <- mz[to_fix] - half
+    pks[to_fix, "mzmax"] <- mz[to_fix] + half
+    xcms::chromPeaks(xcms.xcms) <- pks
+  }
+  if (isTRUE(verbose)) {
+    message(sprintf(
+      "fix_xcms_chromPeaks_mz_width: %d/%d chromPeaks updated (mz width reset to %.2f ppm)",
+      n_fix, n_total, ppm
+    ))
   }
   xcms.xcms
 }
@@ -2324,6 +2419,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
                                 groupChromPeaks = xcms::PeakDensityParam(sampleGroups = "A")
                               ),
                               adjustRT = T,
+                              chromPeaks_fix_mz_ppm = NULL,
                               chromPeaks_max_mz_ppm = NULL,
                               BPPARAM  = BiocParallel::SnowParam(workers = 4,progressbar = T),
                               ...){
@@ -2347,6 +2443,12 @@ xcmsProcessingMS1 <- function(xcms.xcms,
                             BPPARAM  = BPPARAM,...)
 
   xcms.xcms <- xcms_filter_peaks_NA(xcms.xcms)
+  if (!is.null(chromPeaks_fix_mz_ppm)) {
+    xcms.xcms <- fix_xcms_chromPeaks_mz_width(
+      xcms.xcms,
+      ppm = as.numeric(chromPeaks_fix_mz_ppm)
+    )
+  }
   if (!is.null(chromPeaks_max_mz_ppm)) {
     xcms.xcms <- filter_xcms_chromPeaks_mz_width(
       xcms.xcms,
