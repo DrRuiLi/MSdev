@@ -10,6 +10,9 @@
 #'   Default \code{"label.isotopologue"}, then \code{"isotopologue_form"}, then rownames.
 #' @param sample_order Optional character vector of sample.source order.
 #' @param isotopologue_order Optional character vector of isotopologue order (fill levels).
+#' @param min_ratio Numeric threshold for isotopologue average ratio. Isotopologues
+#'   with average ratio (across all samples) below \code{min_ratio} are grouped
+#'   into one bar labeled \code{"other"}.
 #'
 #' @return A \code{ggplot} object.
 #' @export
@@ -17,7 +20,8 @@ plot_MSIPIsotopologueData_ratio <- function(object,
                                            assay = "ratio",
                                            isotopologue_label = c("label.isotopologue", "isotopologue_form"),
                                            sample_order = NULL,
-                                           isotopologue_order = NULL) {
+                                           isotopologue_order = NULL,
+                                           min_ratio = 0.01) {
   `%||%` <- function(a, b) if (!is.null(a)) a else b
   if (is.null(object) || !methods::is(object, "SummarizedExperiment")) {
     stop("object must be a MSIPIsotopologueData (SummarizedExperiment).")
@@ -106,6 +110,18 @@ plot_MSIPIsotopologueData_ratio <- function(object,
   df_long$ratio <- as.numeric(df_long$ratio)
   df_long$ratio[is.na(df_long$ratio)] <- 0
 
+  # Group low-average isotopologues into "other".
+  min_ratio <- suppressWarnings(as.numeric(min_ratio))
+  if (!is.finite(min_ratio) || is.na(min_ratio)) min_ratio <- 0
+  if (min_ratio > 0) {
+    iso_avg <- stats::aggregate(ratio ~ isotopologue, data = df_long, FUN = mean, na.rm = TRUE)
+    low_iso <- as.character(iso_avg$isotopologue[is.finite(iso_avg$ratio) & iso_avg$ratio < min_ratio])
+    if (length(low_iso)) {
+      df_long$isotopologue <- as.character(df_long$isotopologue)
+      df_long$isotopologue[df_long$isotopologue %in% low_iso] <- "other"
+    }
+  }
+
   # Factor orders.
   if (!is.null(sample_order)) {
     df_long$sample.source <- factor(df_long$sample.source, levels = sample_order)
@@ -113,10 +129,26 @@ plot_MSIPIsotopologueData_ratio <- function(object,
     df_long$sample.source <- factor(df_long$sample.source, levels = unique(df_long$sample.source))
   }
   if (!is.null(isotopologue_order)) {
+    if ("other" %in% unique(as.character(df_long$isotopologue)) && !("other" %in% isotopologue_order)) {
+      isotopologue_order <- c(as.character(isotopologue_order), "other")
+    }
     df_long$isotopologue <- factor(df_long$isotopologue, levels = isotopologue_order)
   } else {
     df_long$isotopologue <- factor(df_long$isotopologue, levels = unique(df_long$isotopologue))
   }
+  # Keep "other" at the bottom of legend (last factor level).
+  if ("other" %in% levels(df_long$isotopologue)) {
+    lev <- levels(df_long$isotopologue)
+    lev <- c(setdiff(lev, "other"), "other")
+    df_long$isotopologue <- factor(as.character(df_long$isotopologue), levels = lev)
+  }
+
+  # Colors: keep NPG palette for isotopologues; force "other" to grey.
+  iso_levels <- levels(df_long$isotopologue)
+  iso_non_other <- iso_levels[iso_levels != "other"]
+  base_cols <- if (length(iso_non_other)) ggsci::pal_npg("nrc")(length(iso_non_other)) else character(0)
+  fill_vals <- stats::setNames(base_cols, iso_non_other)
+  if ("other" %in% iso_levels) fill_vals <- c(fill_vals, other = "grey")
 
   # Derive compound name for the global title.
   compound_name <- NULL
@@ -150,7 +182,7 @@ plot_MSIPIsotopologueData_ratio <- function(object,
   }
   rt_txt <- NA_real_
   if (!is.null(rda) && nrow(rda) && "rt" %in% colnames(rda)) {
-    rt_txt <- .pick_first(as.numeric(rda$rt))
+    rt_txt <- .pick_first(as.numeric(rda$rt)/60)
   }
   intensity_txt <- NA_real_
   if (!is.null(rda) && nrow(rda) && "intensity" %in% colnames(rda)) {
@@ -169,8 +201,8 @@ plot_MSIPIsotopologueData_ratio <- function(object,
     # x axis is isotopologue (angle), y axis is ratio (radius)
     ggplot2::ggplot(d, ggplot2::aes(x = 1, y = .data$ratio, fill = .data$isotopologue)) +
       ggplot2::geom_col(width = 1, color = "black", linewidth = 0.25) +
-      ggplot2::coord_polar(start = 0,theta = "y") +
-      ggsci::scale_fill_npg()+
+      ggplot2::coord_polar(start = 0,theta = "y",direction = -1) +
+      ggplot2::scale_fill_manual(values = fill_vals, breaks = iso_levels, drop = FALSE) +
       ggplot2::theme_void() +
       ggplot2::theme(
         plot.title = ggplot2::element_text(hjust = 0.5, size = 10),
