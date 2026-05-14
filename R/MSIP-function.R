@@ -1199,6 +1199,8 @@ get_MSIPIsotopologueData <- function(object,
     rt_sd_iso <- rep(NA_real_, length(iso_counts))
     rt_iso.pos <- rep(NA_real_, length(iso_counts))
     rt_iso.neg <- rep(NA_real_, length(iso_counts))
+    mz_iso.pos <- rep(NA_real_, length(iso_counts))
+    mz_iso.neg <- rep(NA_real_, length(iso_counts))
     polarity_iso <- rep(NA_character_, length(iso_counts))
     fid_iso.pos <- rep(NA_character_, length(iso_counts))
     fid_iso.neg <- rep(NA_character_, length(iso_counts))
@@ -1229,6 +1231,9 @@ get_MSIPIsotopologueData <- function(object,
       rt.neg <- suppressWarnings(as.numeric(this.df$rtmed[this.df$iso_count %in% ic & this.df$polarity %in% "Negative"]))
       rt.neg <- rt.neg[is.finite(rt.neg)]
       if (length(rt.neg)) rt_iso.neg[k] <- mean(rt.neg, na.rm = TRUE)
+      mz.neg <- suppressWarnings(as.numeric(this.df$mzmed[this.df$iso_count %in% ic & this.df$polarity %in% "Negative"]))
+      mz.neg <- mz.neg[is.finite(mz.neg)]
+      if (length(mz.neg)) mz_iso.neg[k] <- mean(mz.neg, na.rm = TRUE)
       if (length(fids.neg) && !is.null(pol_mats$Negative)) {
         pm <- pol_mats$Negative
         fi <- intersect(fids.neg, rownames(pm$intensity))
@@ -1253,6 +1258,9 @@ get_MSIPIsotopologueData <- function(object,
       rt.pos <- suppressWarnings(as.numeric(this.df$rtmed[this.df$iso_count %in% ic & this.df$polarity %in% "Positive"]))
       rt.pos <- rt.pos[is.finite(rt.pos)]
       if (length(rt.pos)) rt_iso.pos[k] <- mean(rt.pos, na.rm = TRUE)
+      mz.pos <- suppressWarnings(as.numeric(this.df$mzmed[this.df$iso_count %in% ic & this.df$polarity %in% "Positive"]))
+      mz.pos <- mz.pos[is.finite(mz.pos)]
+      if (length(mz.pos)) mz_iso.pos[k] <- mean(mz.pos, na.rm = TRUE)
       if (length(fids.pos) && !is.null(pol_mats$Positive)) {
         pm <- pol_mats$Positive
         fi <- intersect(fids.pos, rownames(pm$intensity))
@@ -1295,6 +1303,8 @@ get_MSIPIsotopologueData <- function(object,
       rt.max = rtmax_iso,
       rt.positive = rt_iso.pos,
       rt.negative = rt_iso.neg,
+      mz.positive = mz_iso.pos,
+      mz.negative = mz_iso.neg,
       feature_id.positive = fid_iso.pos,
       feature_id.negative = fid_iso.neg,
       polarity = polarity_iso,
@@ -2829,7 +2839,8 @@ get_MSIP_xcms_roi_list <- function(object,
 #' @param object MSdev object.
 #' @param iso_ele isotope element string.
 #' @param mz_ppm numeric m/z ppm tolerance used in matching/injection.
-#' @param rt_tol numeric RT tolerance (seconds) used in matching/injection.
+#' @param rt_tol.reference numeric RT tolerance (seconds) used to match features
+#'   against reference RT from \code{iso_grid}.
 #' @param rt_tol.isotopologue numeric RT tolerance (seconds) used to cluster
 #'   candidate isotopologue features into RT groups for each compound.
 #'
@@ -2839,7 +2850,7 @@ get_MSIP_xcms_roi_list <- function(object,
 MSIP_annotate_with_iso_grid <- function(object,
                                         iso_ele = "[13]C",
                                         mz_ppm = 10,
-                                        rt_tol = 30,
+                                        rt_tol.reference = 60,
                                         rt_tol.isotopologue = 5) {
   compound_table <- object@advancedAna$MSIP$compound_table
   if (is.null(compound_table) || !nrow(compound_table)) {
@@ -2968,7 +2979,7 @@ MSIP_annotate_with_iso_grid <- function(object,
         mz_err_all <- abs(fdf$mzmed - mz_theory) / mz_theory
         rt_err_abs <- abs(fdf$rtmed - rt_theory)
         hit <- which(is.finite(mz_err_all) & is.finite(rt_err_abs) &
-                       mz_err_all < mz_ppm * 1e-6 & rt_err_abs < rt_tol)
+                       mz_err_all < mz_ppm * 1e-6 & rt_err_abs < rt_tol.reference)
         if (!length(hit)) next
         h <- h + 1L
         hit_rows[[h]] <- data.frame(
@@ -3161,7 +3172,7 @@ MSIP_annotate_with_iso_grid <- function(object,
       new_row <- data.frame(
         feature_id = fid_new,
         mzmed = m0_mz, mzmin = m0_mz - mz_ppm_half, mzmax = m0_mz + mz_ppm_half,
-        rtmed = m0_rt, rtmin = m0_rt - rt_tol, rtmax = m0_rt + rt_tol,
+        rtmed = m0_rt, rtmin = m0_rt - rt_tol.reference, rtmax = m0_rt + rt_tol.reference,
         npeaks = 0L,
         peakidx = I(list(integer(0))),
         compound_id = cid, name = m0_name,
@@ -3232,7 +3243,7 @@ MSIP_annotate_with_iso_grid <- function(object,
         ion_mode = i,
         iso_ele = iso_ele,
         ppm = mz_ppm,
-        rt_tol = rt_tol
+        rt_tol = rt_tol.reference
       )
       iso_grid <- roi.out$iso_grid
       temp_iso_grid[[polarity.tag]] <- iso_grid
@@ -3292,7 +3303,13 @@ MSIP_annotate_with_iso_grid <- function(object,
 #' @param mz_ppm numeric, ppm tolerance used to construct ROI mz ranges and
 #'   to match detected features to theoretical isotopologues.
 #' @param rt_tol numeric, RT tolerance (seconds) used to construct ROI RT ranges
-#'   and to match detected features to theoretical isotopologues.
+#'   during targeted ROI construction.
+#' @param rt_tol.reference numeric RT tolerance (seconds) used in
+#'   \code{MSIP_annotate_with_iso_grid()} to match detected features against
+#'   isotopologue reference RT.
+#' @param param optional \code{xcms::CentWaveParam} used as \code{findChromPeaks}
+#'   parameter template. If \code{NULL}, uses
+#'   \code{get_MSdev_param(object)$findChromPeaks}.
 #' @param adjustRT logical, whether to perform retention time adjustment.
 #' @param BPPARAM BiocParallel backend passed to \code{xcms::findChromPeaks()}.
 #' @param ... passed to \code{xcms::findChromPeaks()}.
@@ -3310,6 +3327,8 @@ MSIP_xcms_processing.targeted <- function(object,
                                          iso_ele = "[13]C",
                                          mz_ppm = 5,
                                          rt_tol = 200,
+                                         rt_tol.reference = 60,
+                                         param = NULL,
                                          adjustRT = F,
                                          BPPARAM = BiocParallel::SnowParam(
                                            workers = 4,
@@ -3364,6 +3383,25 @@ MSIP_xcms_processing.targeted <- function(object,
   # ---------------------------------------------------------------------------
   polarity.index <- c("0" = "Negative", "1" = "Positive")
   xcms.param <- get_MSdev_param(object)
+  find_chrom_param <- NULL
+  if (is.null(param)) {
+    find_chrom_param <- xcms.param$findChromPeaks
+    message_with_time("MSIP_xcms_processing.targeted: using findChromPeaks param from get_MSdev_param(object)")
+  } else {
+    if (!inherits(param, "CentWaveParam")) {
+      stop("param must be NULL or an xcms::CentWaveParam object.")
+    }
+    find_chrom_param <- param
+    message_with_time("MSIP_xcms_processing.targeted: using user-supplied findChromPeaks param (CentWaveParam)")
+  }
+
+  .show_param <- function(p) {
+    txt <- tryCatch(capture.output(show(p)), error = function(e) character(0))
+    if (length(txt)) message(paste(txt, collapse = "\n"))
+    invisible(NULL)
+  }
+  .show_param(find_chrom_param)
+
   if (is.null(object@advancedAna$MSIP$temp) || !is.list(object@advancedAna$MSIP$temp)) {
     object@advancedAna$MSIP$temp <- list()
   }
@@ -3394,7 +3432,7 @@ MSIP_xcms_processing.targeted <- function(object,
     object@advancedAna$MSIP$temp$iso_grid[[polarity.tag]] <- iso_grid
     message_with_time("roiList size: ", length(roiList))
 
-    cwp <- .as_centwave_with_roi(xcms.param$findChromPeaks, roiList = roiList)
+    cwp <- .as_centwave_with_roi(find_chrom_param, roiList = roiList)
     xcms_param_targeted <- list(
       findChromPeaks = cwp,
       groupChromPeaks = xcms.param$groupChromPeaks
@@ -3405,7 +3443,7 @@ MSIP_xcms_processing.targeted <- function(object,
       ion_mode = i,
       xcms_param = xcms_param_targeted,
       adjustRT = adjustRT,
-      chromPeaks_max_mz_ppm = 20,
+      chromPeaks_fix_mz_ppm = 20,
       BPPARAM = BPPARAM,
       ...
     )
@@ -3435,7 +3473,7 @@ MSIP_xcms_processing.targeted <- function(object,
     object = object,
     iso_ele = iso_ele,
     mz_ppm = mz_ppm,
-    rt_tol = rt_tol
+    rt_tol.reference = rt_tol.reference
   )
 
   return(object)
