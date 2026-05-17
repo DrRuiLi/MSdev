@@ -741,6 +741,25 @@ get_MSIPIsotopologueData <- function(object,
     out
   }
 
+  # Normalize ratio matrix so each sample.source column sums to 1 across
+  # isotopologues of one compound.
+  .normalize_ratio_assay <- function(m) {
+    if (is.null(m)) return(m)
+    m <- as.matrix(m)
+    storage.mode(m) <- "numeric"
+    for (j in seq_len(ncol(m))) {
+      v <- m[, j]
+      v[!is.finite(v)] <- NA_real_
+      den <- sum(v, na.rm = TRUE)
+      if (is.finite(den) && den > 0) {
+        m[, j] <- v / den
+      } else {
+        m[, j] <- 0
+      }
+    }
+    m
+  }
+
   .cluster_rt_group <- function(rt_vec, tol = 5) {
     if (!length(rt_vec)) return(integer(0))
     ord <- order(rt_vec)
@@ -965,13 +984,14 @@ get_MSIPIsotopologueData <- function(object,
         denom <- intensity.mat[1, ]
         ratio.mat <- sweep(intensity.mat, 2, denom, `/`)
       }
+      ratio.mat <- .normalize_ratio_assay(ratio.mat)
       out[[cid]] <- MSIPIsotopologueData(
         assays = list(
           ratio = ratio.mat,
           intensity.positive = intensity.mat,
           intensity.negative = purity.mat,
           ratio.positive = ratio.mat,
-          ratio.negative = purity.mat,
+          ratio.negative = .normalize_ratio_assay(purity.mat),
           purity.positive = purity.mat,
           purity.negative = purity.mat
         ),
@@ -1321,18 +1341,22 @@ get_MSIPIsotopologueData <- function(object,
       m
     }
 
+    ratio.pos.norm <- .normalize_ratio_assay(ratio.pos)
+    ratio.neg.norm <- .normalize_ratio_assay(ratio.neg)
+    ratio.merge.norm <- .normalize_ratio_assay(.merge_ratio_by_polarity(
+      ratio.pos = ratio.pos.norm,
+      ratio.neg = ratio.neg.norm,
+      intensity.pos = intensity.pos,
+      intensity.neg = intensity.neg,
+      method = ratio.aggregate
+    ))
+
     assays <- list(
-      ratio = .na_to_zero(.merge_ratio_by_polarity(
-        ratio.pos = ratio.pos,
-        ratio.neg = ratio.neg,
-        intensity.pos = intensity.pos,
-        intensity.neg = intensity.neg,
-        method = ratio.aggregate
-      )),
+      ratio = .na_to_zero(ratio.merge.norm),
       intensity.positive = .na_to_zero(intensity.pos),
       intensity.negative = .na_to_zero(intensity.neg),
-      ratio.positive = .na_to_zero(ratio.pos),
-      ratio.negative = .na_to_zero(ratio.neg),
+      ratio.positive = .na_to_zero(ratio.pos.norm),
+      ratio.negative = .na_to_zero(ratio.neg.norm),
       purity.positive = if (isTRUE(purity)) .na_to_zero(purity.pos) else purity.pos,
       purity.negative = if (isTRUE(purity)) .na_to_zero(purity.neg) else purity.neg
     )
@@ -3307,9 +3331,9 @@ MSIP_annotate_with_iso_grid <- function(object,
 #' @param rt_tol.reference numeric RT tolerance (seconds) used in
 #'   \code{MSIP_annotate_with_iso_grid()} to match detected features against
 #'   isotopologue reference RT.
-#' @param param optional \code{xcms::CentWaveParam} used as \code{findChromPeaks}
-#'   parameter template. If \code{NULL}, uses
-#'   \code{get_MSdev_param(object)$findChromPeaks}.
+#' @param param optional \code{findChromPeaks} parameter template.
+#'   Accepts \code{xcms::CentWaveParam} or \code{xcms::CentWavePredIsoParam}.
+#'   If \code{NULL}, uses \code{get_MSdev_param(object)$findChromPeaks}.
 #' @param adjustRT logical, whether to perform retention time adjustment.
 #' @param BPPARAM BiocParallel backend passed to \code{xcms::findChromPeaks()}.
 #' @param ... passed to \code{xcms::findChromPeaks()}.
@@ -3363,18 +3387,25 @@ MSIP_xcms_processing.targeted <- function(object,
   # ---------------------------------------------------------------------------
   # Internal helpers
   # ---------------------------------------------------------------------------
-  .as_centwave_with_roi <- function(param_obj, roiList) {
-    cwp <- xcms::CentWaveParam()
-    if (inherits(param_obj, "CentWaveParam")) {
-      # copy common slots if present; avoid failing on version differences
-      for (slot_nm in intersect(slotNames(cwp), slotNames(param_obj))) {
-        if (slot_nm %in% c("roiList")) next
-        try({
-          methods::slot(cwp, slot_nm) <- methods::slot(param_obj, slot_nm)
-        }, silent = TRUE)
-      }
+  .as_centwave_with_roi <- function(param_obj, roiList, max_iso = NULL) {
+    if (inherits(param_obj, "CentWavePredIsoParam")) {
+      cwp <- xcms::CentWavePredIsoParam()
+    } else {
+      cwp <- xcms::CentWaveParam()
     }
-    cwp@roiList <- roiList
+    # copy common slots if present; avoid failing on version differences
+    for (slot_nm in intersect(slotNames(cwp), slotNames(param_obj))) {
+      if (slot_nm %in% c("roiList", "maxIso")) next
+      try({
+        methods::slot(cwp, slot_nm) <- methods::slot(param_obj, slot_nm)
+      }, silent = TRUE)
+    }
+    if ("roiList" %in% slotNames(cwp)) cwp@roiList <- roiList
+    if (!is.null(max_iso) && "maxIso" %in% slotNames(cwp)) {
+      try({
+        methods::slot(cwp, "maxIso") <- as.integer(max_iso)
+      }, silent = TRUE)
+    }
     cwp
   }
 
@@ -3386,13 +3417,22 @@ MSIP_xcms_processing.targeted <- function(object,
   find_chrom_param <- NULL
   if (is.null(param)) {
     find_chrom_param <- xcms.param$findChromPeaks
-    message_with_time("MSIP_xcms_processing.targeted: using findChromPeaks param from get_MSdev_param(object)")
+    message_with_time(
+      "MSIP_xcms_processing.targeted: using findChromPeaks param from get_MSdev_param(object): ",
+      class(find_chrom_param)[1]
+    )
   } else {
-    if (!inherits(param, "CentWaveParam")) {
-      stop("param must be NULL or an xcms::CentWaveParam object.")
+    if (!(inherits(param, "CentWaveParam") || inherits(param, "CentWavePredIsoParam"))) {
+      stop("param must be NULL, xcms::CentWaveParam, or xcms::CentWavePredIsoParam.")
     }
     find_chrom_param <- param
-    message_with_time("MSIP_xcms_processing.targeted: using user-supplied findChromPeaks param (CentWaveParam)")
+    message_with_time(
+      "MSIP_xcms_processing.targeted: using user-supplied findChromPeaks param: ",
+      class(find_chrom_param)[1]
+    )
+  }
+  if (!(inherits(find_chrom_param, "CentWaveParam") || inherits(find_chrom_param, "CentWavePredIsoParam"))) {
+    stop("findChromPeaks param from get_MSdev_param(object) is unsupported: ", class(find_chrom_param)[1])
   }
 
   .show_param <- function(p) {
@@ -3432,7 +3472,33 @@ MSIP_xcms_processing.targeted <- function(object,
     object@advancedAna$MSIP$temp$iso_grid[[polarity.tag]] <- iso_grid
     message_with_time("roiList size: ", length(roiList))
 
-    cwp <- .as_centwave_with_roi(find_chrom_param, roiList = roiList)
+    roiList.find <- roiList
+    maxIso.find <- NULL
+    if (inherits(find_chrom_param, "CentWavePredIsoParam")) {
+      iso_grid2 <- iso_grid[iso_grid$iso_count == 0L, , drop = FALSE]
+      if (nrow(iso_grid2)) {
+        iso_grid2 <- iso_grid2[!duplicated(paste0(iso_grid2$compound_id, "::", iso_grid2$adduct)), , drop = FALSE]
+        mzrt2 <- unique(iso_grid2[, c("mz", "rt"), drop = FALSE])
+        roiList.find <- get_xcms_roi_list(
+          mzrt = as.matrix(mzrt2),
+          xcms.xcms = xcms.xcms,
+          ppm = mz_ppm,
+          rt_tol = rt_tol,
+          ion_mode = i
+        )
+      } else {
+        roiList.find <- list()
+      }
+      maxIso.find <- suppressWarnings(max(as.integer(iso_grid$iso_count), na.rm = TRUE))
+      if (!is.finite(maxIso.find) || is.na(maxIso.find)) maxIso.find <- 0L
+      message_with_time(
+        "MSIP_xcms_processing.targeted: CentWavePredIsoParam mode (",
+        polarity.tag, "), roiList(M+0) size: ", length(roiList.find),
+        ", maxIso: ", as.integer(maxIso.find)
+      )
+    }
+
+    cwp <- .as_centwave_with_roi(find_chrom_param, roiList = roiList.find, max_iso = maxIso.find)
     xcms_param_targeted <- list(
       findChromPeaks = cwp,
       groupChromPeaks = xcms.param$groupChromPeaks
