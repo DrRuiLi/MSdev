@@ -3509,7 +3509,7 @@ MSIP_xcms_processing.targeted <- function(object,
       ion_mode = i,
       xcms_param = xcms_param_targeted,
       adjustRT = adjustRT,
-      chromPeaks_fix_mz_ppm = 20,
+      chromPeaks_fix_mz_ppm = 5,
       BPPARAM = BPPARAM,
       ...
     )
