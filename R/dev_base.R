@@ -399,7 +399,7 @@ get_dir_expand_from_onedrive <- function(d = "."){
 }
 
 
-calculate_pulse <- function(x = 1000, mt = F, qr = T, guru = 0.028,rc = 1.02*0.994){
+calculate_pulse <- function(x = 1000, mt = F, qr = T, guru = 0.028,rc = 1*0.994){
 
   r.base <- x * 0.024
   r.qr <- ifelse(qr,x * 0.02,0)

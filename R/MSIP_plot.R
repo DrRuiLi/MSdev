@@ -21,7 +21,7 @@ plot_MSIPIsotopologueData_ratio <- function(object,
                                            isotopologue_label = c("label.isotopologue", "isotopologue_form"),
                                            sample_order = NULL,
                                            isotopologue_order = NULL,
-                                           min_ratio = 0.01) {
+                                           min_ratio = 0.05) {
   `%||%` <- function(a, b) if (!is.null(a)) a else b
   if (is.null(object) || !methods::is(object, "SummarizedExperiment")) {
     stop("object must be a MSIPIsotopologueData (SummarizedExperiment).")

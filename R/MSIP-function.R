@@ -1390,8 +1390,6 @@ MSIP_get_isotopologues_data <- function(object, ...) {
   message_with_time("MSIP_get_isotopologues_data: build complete")
   message_with_time("MSIP_get_isotopologues_data: save isotopologue_data to object")
   object@advancedAna[["MSIP"]][["isotopologue_data"]] <- iso.list
-  message_with_time("MSIP_get_isotopologues_data: clear legacy isotopologues_table")
-  object@advancedAna[["MSIP"]][["isotopologues_table"]] <- NULL
   message_with_time("MSIP_get_isotopologues_data: done")
   object
 }
@@ -3386,7 +3384,6 @@ MSIP_xcms_processing.targeted <- function(object,
 
   # ---------------------------------------------------------------------------
   # Internal helpers
-  # ---------------------------------------------------------------------------
   .as_centwave_with_roi <- function(param_obj, roiList, max_iso = NULL) {
     if (inherits(param_obj, "CentWavePredIsoParam")) {
       cwp <- xcms::CentWavePredIsoParam()
@@ -3411,7 +3408,6 @@ MSIP_xcms_processing.targeted <- function(object,
 
   # ---------------------------------------------------------------------------
   # Run targeted MS1 processing for each polarity
-  # ---------------------------------------------------------------------------
   polarity.index <- c("0" = "Negative", "1" = "Positive")
   xcms.param <- get_MSdev_param(object)
   find_chrom_param <- NULL

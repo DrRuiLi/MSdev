@@ -484,6 +484,7 @@ Review:
   - 'wmean', weighted mean, the weight is the intensity of the polarity
   - 'max_intensity', default,  ratio using the ratio of the polarity with the highest intensity
 7. the default assay of the isotopologue se should be 'ratio'
+8. for every ratio assay, the value should be normalized to 1 across isotopologue, the value should be the ratio of the isotopologue to the sum of all isotopologue of the compound in the same sample.source
 
 
 
@@ -507,6 +508,17 @@ Review:
 10. expose the param 'param' of 'findChromPeaks' to 'MSIP_xcms_processing.targeted':
   - default is NULL, if NULL, use get_MSdev_param to get the param and message the used param
   - if input a centwave param, message the used param and integrate the roilist to the param
+11. refactor 'MSIP_xcms_processing.targeted', it now accept two types of input 'param':
+  - a 'CentWaveParam' object, the current implementation
+  - a 'CentWavePredIsoParam' object, the new implementation:
+    - a iso_grid2 should be constructed by removing the M+n isotopologue, only keep the M+0 isotopologue from iso_grid, then inputted to 'findChromPeaks'
+    - the 'maxIso' of 'CentWavePredIsoParam' should be the max value in the iso_grid
+    - iso_grid2 only used for a temporary purpose, the original iso_grid still stored in the msdev object
+12. move the M+0 inject process to 'MSIP_xcms_processing.targeted', after 'xcmsProcessingMS1', warpped in function 'xcms_inject_iso_seed'：
+  - input: xcms object, iso_grid, iso_ele, mz_ppm
+  - output: xcms object with M+0 feature added to the xcms.fdf
+  - call this function after 'xcmsProcessingMS1'
+13. add another fillChromPeaks step after 'xcms_inject_iso_seed' in  'MSIP_xcms_processing.targeted'
 
 
 ### MSIP_annotate_with_iso_grid
@@ -542,3 +554,11 @@ Review:
 9. rename param 'rt_tol' to 'rt_tol.reference', default is 60
 10. add rda:
   - mz.positive and mz.negative: the mz of the positive and negative features
+
+
+
+### MSIP_export_isotopologue_acquisition_list
+1. read the old function 'MSIP_export_isotopologue_acquisition_list' to understand the data structure of the acquisition list
+2. read the 'MSIP_xcms_processing.targeted' and 'MSIP_get_isotopologues_data' to understand the isotopologue annotation in xcms.fdf
+3. refactor the function to export the acquisition list for each isotopologue, the acquisition list should include the precursor m/z, collision energy, and retention time window
+4. the acquisition list should be exported to the projectDir/acquisition_list/isotopologue_acquisition_list.csv
