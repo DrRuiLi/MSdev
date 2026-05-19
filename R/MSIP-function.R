@@ -698,22 +698,6 @@ get_MSIPIsotopologueData <- function(object,
       ncol = ncol(ratio.pos),
       dimnames = dimnames(ratio.pos)
     )
-    has_pos <- is.finite(ratio.pos)
-    has_neg <- is.finite(ratio.neg)
-    only_pos <- has_pos & !has_neg
-    only_neg <- !has_pos & has_neg
-    both <- has_pos & has_neg
-
-    out[only_pos] <- ratio.pos[only_pos]
-    out[only_neg] <- ratio.neg[only_neg]
-
-    if (!any(both)) return(out)
-
-    if (identical(method, "mean")) {
-      out[both] <- (ratio.pos[both] + ratio.neg[both]) / 2
-      return(out)
-    }
-
     if (identical(method, "wmean")) {
       w_pos <- intensity.pos
       w_neg <- intensity.neg
@@ -723,21 +707,41 @@ get_MSIPIsotopologueData <- function(object,
       weighted <- (ratio.pos * w_pos + ratio.neg * w_neg) / den
       zero_weight <- den <= 0 | !is.finite(den)
       weighted[zero_weight] <- (ratio.pos[zero_weight] + ratio.neg[zero_weight]) / 2
+      has_pos <- is.finite(ratio.pos)
+      has_neg <- is.finite(ratio.neg)
+      only_pos <- has_pos & !has_neg
+      only_neg <- !has_pos & has_neg
+      both <- has_pos & has_neg
+      out[only_pos] <- ratio.pos[only_pos]
+      out[only_neg] <- ratio.neg[only_neg]
       out[both] <- weighted[both]
       return(out)
     }
 
-    # max_intensity: choose ratio from polarity with larger intensity;
-    # fallback to mean if both intensities are missing.
+    if (identical(method, "mean")) {
+      has_pos <- is.finite(ratio.pos)
+      has_neg <- is.finite(ratio.neg)
+      only_pos <- has_pos & !has_neg
+      only_neg <- !has_pos & has_neg
+      both <- has_pos & has_neg
+      out[only_pos] <- ratio.pos[only_pos]
+      out[only_neg] <- ratio.neg[only_neg]
+      out[both] <- (ratio.pos[both] + ratio.neg[both]) / 2
+      return(out)
+    }
+
+    # max_intensity: choose ratio strictly from polarity with larger intensity.
+    # Do not borrow from the other polarity when selected polarity ratio is missing;
+    # missing values remain NA and are converted to 0 downstream.
     i_pos <- intensity.pos
     i_neg <- intensity.neg
     i_pos[!is.finite(i_pos)] <- -Inf
     i_neg[!is.finite(i_neg)] <- -Inf
     pick_pos <- i_pos >= i_neg
-    out[both & pick_pos] <- ratio.pos[both & pick_pos]
-    out[both & !pick_pos] <- ratio.neg[both & !pick_pos]
-    both_missing_int <- both & !is.finite(intensity.pos) & !is.finite(intensity.neg)
-    out[both_missing_int] <- (ratio.pos[both_missing_int] + ratio.neg[both_missing_int]) / 2
+    out[pick_pos] <- ratio.pos[pick_pos]
+    out[!pick_pos] <- ratio.neg[!pick_pos]
+    both_missing_int <- !is.finite(intensity.pos) & !is.finite(intensity.neg)
+    out[both_missing_int] <- NA_real_
     out
   }
 
@@ -1379,14 +1383,39 @@ get_MSIPIsotopologueData <- function(object,
 #' updated \code{MSdev} object.
 #'
 #' @param object MSdev object.
-#' @param ... additional arguments passed to \code{get_MSIPIsotopologueData()}.
+#' @param compound_id optional character vector. If NULL, build for all compounds in \code{compound_table}.
+#' @param iso_ele isotope element, default from \code{get_MSdev_iso_ele(object)}.
+#' @param assay_fun function used to aggregate replicates within the same \code{sample.source};
+#'   default \code{mean}.
+#' @param purity logical. If \code{TRUE} (default), calculate purity matrices.
+#'   If \code{FALSE}, purity assays are returned as all \code{NA}.
+#' @param ratio.aggregate character scalar controlling how positive/negative ratio
+#'   are merged into assay \code{ratio}. One of \code{"max_intensity"} (default:
+#'   take ratio from polarity with higher intensity), \code{"mean"} (arithmetic mean),
+#'   or \code{"wmean"} (intensity-weighted mean).
+#' @param rt_tol.isotopologue numeric RT tolerance (seconds) used to group
+#'   matched features into RT blocks for cross-polarity isotopologue scoring.
 #'
 #' @return MSdev object with \code{advancedAna$MSIP$isotopologue_data} updated.
 #' @export
-MSIP_get_isotopologues_data <- function(object, ...) {
+MSIP_get_isotopologues_data <- function(object,
+                                        compound_id = NULL,
+                                        iso_ele = get_MSdev_iso_ele(object),
+                                        assay_fun = mean,
+                                        purity = TRUE,
+                                        ratio.aggregate = c("max_intensity", "mean", "wmean"),
+                                        rt_tol.isotopologue = 5) {
   message_with_time("MSIP_get_isotopologues_data: start")
   message_with_time("MSIP_get_isotopologues_data: build isotopologue list")
-  iso.list <- get_MSIPIsotopologueData(object, ...)
+  iso.list <- get_MSIPIsotopologueData(
+    object = object,
+    compound_id = compound_id,
+    iso_ele = iso_ele,
+    assay_fun = assay_fun,
+    purity = purity,
+    ratio.aggregate = ratio.aggregate,
+    rt_tol.isotopologue = rt_tol.isotopologue
+  )
   message_with_time("MSIP_get_isotopologues_data: build complete")
   message_with_time("MSIP_get_isotopologues_data: save isotopologue_data to object")
   object@advancedAna[["MSIP"]][["isotopologue_data"]] <- iso.list
