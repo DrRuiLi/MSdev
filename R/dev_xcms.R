@@ -1621,6 +1621,14 @@ find_xcms_feature <- function(xcms.xcms,mz = 100,ppm = 10){
 }
 
 
+find_xcms_peaks <- function(xcms.xcms, mz = 100, ppm = 10) {
+
+  peaks <- chromPeaks(xcms.xcms)
+  mzr <- mz.range.ppm(mz, ppm)
+  peaks[between(peaks[,"mz"], mzr[1], mzr[2]), ]
+}
+
+
 #' @describeIn xcms_extenstion plot peaks distribution
 #' @title plot_xcms_peaks_distribution
 #' @description export peaks data by xcms::chromPeaks and plot by ggplot2

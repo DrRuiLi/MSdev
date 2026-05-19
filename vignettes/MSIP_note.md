@@ -554,7 +554,22 @@ Review:
 9. rename param 'rt_tol' to 'rt_tol.reference', default is 60
 10. add rda:
   - mz.positive and mz.negative: the mz of the positive and negative features
-
+11. refactor the core loop of 'MSIP_annotate_with_iso_grid': (discard)
+  - determine the rt.center for each compound:
+    - loop for each compound:
+      - confirm rt as the previous step 5:
+        - match iso_grid and fdf
+        - Cluster hits by RT
+        - Pick the best RT cluster for this compound
+        - Record rt_center and rt_sd for that compound’s chosen cluster
+  - construct a fdf from iso_grid:
+    - all isotopologue features should be added to the fdf, not only the detected features
+    - mzmed as the theoretical mz, mzmin and mzmax as the theoretical mz +- 5 ppm
+    - rtmed as the rt.center, rtmin/rtmax as the average of all detected features' rtmin/rtmax
+  - replace the xcms.fdf with the constructed fdf
+  - before fillChromPeaks, search chromPeaks by mzr/rtr against iso_grid to set peakidx; drop features with empty peakidx
+  - fillChromPeaks
+  - annotate the filled xcms.xcms object with iso_grid, use rt.center as the reference
 
 
 ### MSIP_export_isotopologue_acquisition_list
@@ -562,3 +577,11 @@ Review:
 2. read the 'MSIP_xcms_processing.targeted' and 'MSIP_get_isotopologues_data' to understand the isotopologue annotation in xcms.fdf
 3. refactor the function to export the acquisition list for each isotopologue, the acquisition list should include the precursor m/z, collision energy, and retention time window
 4. the acquisition list should be exported to the projectDir/acquisition_list/isotopologue_acquisition_list.csv
+
+
+
+
+
+
+
+
