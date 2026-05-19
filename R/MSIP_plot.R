@@ -10,8 +10,8 @@
 #'   Default \code{"label.isotopologue"}, then \code{"isotopologue_form"}, then rownames.
 #' @param sample_order Optional character vector of sample.source order.
 #' @param isotopologue_order Optional character vector of isotopologue order (fill levels).
-#' @param min_ratio Numeric threshold for isotopologue average ratio. Isotopologues
-#'   with average ratio (across all samples) below \code{min_ratio} are grouped
+#' @param min_ratio Numeric threshold for isotopologue row max ratio. Isotopologues
+#'   with row max ratio (across all samples in the selected assay) below \code{min_ratio} are grouped
 #'   into one bar labeled \code{"other"}.
 #'
 #' @return A \code{ggplot} object.
@@ -110,15 +110,16 @@ plot_MSIPIsotopologueData_ratio <- function(object,
   df_long$ratio <- as.numeric(df_long$ratio)
   df_long$ratio[is.na(df_long$ratio)] <- 0
 
-  # Group low-average isotopologues into "other".
+  # Group low-rowmax isotopologues into "other" (computed from ratio assay rows).
   min_ratio <- suppressWarnings(as.numeric(min_ratio))
   if (!is.finite(min_ratio) || is.na(min_ratio)) min_ratio <- 0
   if (min_ratio > 0) {
-    iso_avg <- stats::aggregate(ratio ~ isotopologue, data = df_long, FUN = mean, na.rm = TRUE)
-    low_iso <- as.character(iso_avg$isotopologue[is.finite(iso_avg$ratio) & iso_avg$ratio < min_ratio])
-    if (length(low_iso)) {
+    row_max_ratio <- apply(mat, 1, max, na.rm = TRUE)
+    row_max_ratio[!is.finite(row_max_ratio)] <- NA_real_
+    low_row_id <- rownames(mat)[is.finite(row_max_ratio) & row_max_ratio < min_ratio]
+    if (length(low_row_id)) {
       df_long$isotopologue <- as.character(df_long$isotopologue)
-      df_long$isotopologue[df_long$isotopologue %in% low_iso] <- "other"
+      df_long$isotopologue[df_long$row_id %in% low_row_id] <- "other"
     }
   }
 
