@@ -2995,20 +2995,18 @@ MSIP_annotate_with_iso_grid <- function(object,
       out
     }
 
-    .cluster_rt_group <- function(rt_vec, tol = 5) {
-      if (!length(rt_vec)) return(integer(0))
-      ord <- order(rt_vec)
-      grp <- integer(length(rt_vec))
-      gid <- 1L
-      grp[ord[[1]]] <- gid
-      if (length(ord) > 1L) {
-        for (ii in ord[-1]) {
-          prev <- ord[which(ord == ii) - 1L]
-          if (abs(rt_vec[ii] - rt_vec[prev]) > tol) gid <- gid + 1L
-          grp[ii] <- gid
-        }
+    .weighted_rt_center <- function(rt_vec, w_vec) {
+      rt_vec <- suppressWarnings(as.numeric(rt_vec))
+      w_vec <- suppressWarnings(as.numeric(w_vec))
+      ok <- is.finite(rt_vec)
+      if (!length(rt_vec) || !any(ok)) return(NA_real_)
+      rt_ok <- rt_vec[ok]
+      w_ok <- w_vec[ok]
+      w_ok[!is.finite(w_ok)] <- 0
+      if (sum(w_ok, na.rm = TRUE) > 0) {
+        return(stats::weighted.mean(rt_ok, w_ok, na.rm = TRUE))
       }
-      grp
+      mean(rt_ok, na.rm = TRUE)
     }
 
     f_int <- .feature_intensity(fdf)
@@ -3051,7 +3049,7 @@ MSIP_annotate_with_iso_grid <- function(object,
       if (!length(hit_rows)) next
       cp_hits <- do.call(rbind, hit_rows)
       cp_hits <- cp_hits[order(cp_hits$rtmed), , drop = FALSE]
-      cp_hits$rt_group <- .cluster_rt_group(cp_hits$rtmed, tol = rt_tol.isotopologue)
+      cp_hits$rt_group <- cluster_rt(cp_hits$rtmed, rt.tol = rt_tol.isotopologue)
       cp_hits <- cp_hits[!is.na(cp_hits$rt_group), , drop = FALSE]
       if (!nrow(cp_hits)) next
 
@@ -3062,7 +3060,7 @@ MSIP_annotate_with_iso_grid <- function(object,
       cp_sel <- cp_hits[cp_hits$rt_group == best_group, , drop = FALSE]
       if (!nrow(cp_sel)) next
 
-      rt_center <- mean(cp_sel$rtmed, na.rm = TRUE)
+      rt_center <- .weighted_rt_center(cp_sel$rtmed, cp_sel$intensity)
       rt_sd <- stats::sd(cp_sel$rtmed, na.rm = TRUE)
       if (!is.finite(rt_center)) rt_center <- NA_real_
       if (!is.finite(rt_sd)) rt_sd <- 0
@@ -3145,7 +3143,7 @@ MSIP_annotate_with_iso_grid <- function(object,
       rt_vals <- suppressWarnings(as.numeric(fdf$rtmed[sel]))
       rt_vals <- rt_vals[is.finite(rt_vals)]
       if (!length(rt_vals)) next
-      rt_center <- stats::median(rt_vals, na.rm = TRUE)
+      rt_center <- .weighted_rt_center(fdf$rtmed[sel], .feature_intensity(fdf[sel, , drop = FALSE]))
       keep <- abs(suppressWarnings(as.numeric(fdf$rtmed[sel])) - rt_center) <= rt_tol.isotopologue
       keep[is.na(keep)] <- FALSE
       if (all(keep)) {
@@ -3166,7 +3164,7 @@ MSIP_annotate_with_iso_grid <- function(object,
       keep_idx <- sel[keep]
       if (length(keep_idx)) {
         rt_keep <- suppressWarnings(as.numeric(fdf$rtmed[keep_idx]))
-        center_keep <- stats::median(rt_keep, na.rm = TRUE)
+        center_keep <- .weighted_rt_center(fdf$rtmed[keep_idx], .feature_intensity(fdf[keep_idx, , drop = FALSE]))
         fdf$isotopologue_rt_center[keep_idx] <- center_keep
         fdf$isotopologue_rt_sd[keep_idx] <- stats::sd(rt_keep, na.rm = TRUE)
       }

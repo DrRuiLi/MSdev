@@ -446,6 +446,7 @@ Update:
 2. the legend remove the compound name, only show the isotopologue. such as 'M+1', 'M+2', 'M+3', not 'Glutamate_M+1', 'Glutamate_M+2', 'Glutamate_M+3'
 3. place the compound name in title, others in subtitle
 4. calculate the average of the ratio for each isotopologue, group the average ratio < min_ratio (add this arg to the function) into one group, and plot as a bar, they are 'other', colored with 'grey' and should be placed in the bottom of legend
+6. the min_ratio now control use the rowmax of ratio, not the average ratio
 
 
 ### MSIP_report_isotopologue_ratio
@@ -485,6 +486,8 @@ Review:
   - 'max_intensity', default,  ratio using the ratio of the polarity with the highest intensity
 7. the default assay of the isotopologue se should be 'ratio'
 8. for every ratio assay, the value should be normalized to 1 across isotopologue, the value should be the ratio of the isotopologue to the sum of all isotopologue of the compound in the same sample.source
+9. expose all arg of 'get_MSIPIsotopologueData' to 'MSIP_get_isotopologues_data'
+10. when ratio.aggregate is 'max_intensity', the ratio assay should be the ratio of the polarity with the highest intensity, missing value should be filled with 0, not filled with value from other polarity
 
 
 
@@ -570,6 +573,9 @@ Review:
   - before fillChromPeaks, search chromPeaks by mzr/rtr against iso_grid to set peakidx; drop features with empty peakidx
   - fillChromPeaks
   - annotate the filled xcms.xcms object with iso_grid, use rt.center as the reference
+12. update:
+  - remove '.cluster_rt_group', use 'cluster_rt' from 'dev_math.R'
+  - rt.center use weighted mean of the rt of the detected features, the weight is the intensity of the detected features
 
 
 ### MSIP_export_isotopologue_acquisition_list

@@ -151,7 +151,7 @@ QE_list_2feature_def <- function(table_to_trans,keep = T ){
   # table_to_trans <- dda.acq.list
   var.map <-c(mzmed = "Mass [m/z]",
               peakRtMin = "Start [min]" ,
-              peakRtMax= "End [min]",
+              peakRtMax = "End [min]",
               collisionEnergy = "(N)CE",
               feature_id = "Comment",
               polarity = "Polarity")
@@ -177,9 +177,9 @@ QE_list_2feature_def <- function(table_to_trans,keep = T ){
   }
 
   if ("rtmin" %in% colnames(table_transed))
-    table_transed$rtmin <- table_transed$rtmin *rt_multi
+    table_transed$peakRtMin <- table_transed$peakRtMin *rt_multi
   if ("rtmax" %in% colnames(table_transed))
-    table_transed$rtmax <- table_transed$rtmax *rt_multi
+    table_transed$peakRtMax <- table_transed$peakRtMax *rt_multi
   if ("polarity" %in% colnames(table_transed)){
     if (type =="feature_df") {
       table_transed$polarity <- ifelse(table_transed$polarity == 0,"Negative","Positive")

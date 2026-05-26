@@ -1616,8 +1616,7 @@ find_xcms_feature <- function(xcms.xcms,mz = 100,ppm = 10){
   fdf <- featureDefinitions(xcms.xcms)
   mzr <- mz.range.ppm(mz,ppm)
   fdf[between(fdf$mzmed,mzr[1],mzr[2] ), ]%>%
-    as_tibble()%>%
-    dplyr::mutate(rtmed = rtmed / 60)
+    as_tibble()
 }
 
 
