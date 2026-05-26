@@ -220,6 +220,108 @@ plot_MSIPIsotopologueData_ratio <- function(object,
 }
 
 
+#' @title Heatmap of observed, natural and adjusted isotopologue ratio
+#' @description
+#' Build a heatmap from \code{MSIPIsotopologueData} by column-binding three
+#' matrices: observed \code{ratio}, inferred natural component ratio, and
+#' \code{ratio_adjusted}. The natural component is derived as
+#' \code{ratio - ratio_adjusted}.
+#'
+#' @param object A \code{MSIPIsotopologueData}.
+#'
+#' @return A \code{ComplexHeatmap::Heatmap} object.
+#' @export
+heatmap_MSIPIsotopologueData_ratio_adjusted <- function(object) {
+  if (is.null(object) || !methods::is(object, "MSIPIsotopologueData")) {
+    stop("object must be a MSIPIsotopologueData.")
+  }
+
+  assay_names <- SummarizedExperiment::assayNames(object)
+  if (!"ratio" %in% assay_names) {
+    stop("assay 'ratio' is required in object.")
+  }
+
+  ratio_matrix <- SummarizedExperiment::assay(object, "ratio")
+  if (is.null(ratio_matrix) || !nrow(ratio_matrix) || !ncol(ratio_matrix)) {
+    stop("assay 'ratio' has no data.")
+  }
+  ratio_matrix <- as.matrix(ratio_matrix)
+  ratio_matrix[is.na(ratio_matrix)] <- 0
+
+  ratio_adjusted <- NULL
+  if ("ratio_adjusted" %in% assay_names) {
+    ratio_adjusted <- SummarizedExperiment::assay(object, "ratio_adjusted")
+  } else {
+    object <- MSIPIsotopologueData_adjust_natural_isotope(object)
+    ratio_adjusted <- SummarizedExperiment::assay(object, "ratio_adjusted")
+  }
+  ratio_adjusted <- as.matrix(ratio_adjusted)
+  ratio_adjusted[is.na(ratio_adjusted)] <- 0
+
+  ratio_adjusted <- get_matrix_value_fill_with_NA(
+    ratio_adjusted,
+    rownames_vec = rownames(ratio_matrix),
+    colnames_vec = colnames(ratio_matrix)
+  )
+  ratio_adjusted <- as.matrix(ratio_adjusted)
+  ratio_adjusted[is.na(ratio_adjusted)] <- 0
+
+  natural_ratio <- ratio_matrix - ratio_adjusted
+  natural_ratio[natural_ratio < 0] <- 0
+
+  ratio_cb <- ratio_matrix
+  natural_cb <- natural_ratio
+  adjusted_cb <- ratio_adjusted
+  colnames(ratio_cb) <- paste0(colnames(ratio_cb), " | ratio")
+  colnames(natural_cb) <- paste0(colnames(natural_cb), " | natural")
+  colnames(adjusted_cb) <- paste0(colnames(adjusted_cb), " | adjusted")
+  hm_matrix <- cbind(ratio_cb, natural_cb, adjusted_cb)
+
+  row_df <- tryCatch(as.data.frame(SummarizedExperiment::rowData(object)), error = function(e) NULL)
+  row_label <- rownames(hm_matrix)
+  if (!is.null(row_df) && nrow(row_df)) {
+    if ("label.isotopologue" %in% colnames(row_df)) {
+      x <- as.character(row_df$label.isotopologue)
+      x[is.na(x) | !nzchar(x)] <- row_label[is.na(x) | !nzchar(x)]
+      row_label <- x
+    } else if ("isotopologue_form" %in% colnames(row_df)) {
+      x <- as.character(row_df$isotopologue_form)
+      x[is.na(x) | !nzchar(x)] <- row_label[is.na(x) | !nzchar(x)]
+      row_label <- x
+    }
+  }
+
+  col_type <- c(
+    rep("ratio", ncol(ratio_matrix)),
+    rep("natural", ncol(ratio_matrix)),
+    rep("adjusted", ncol(ratio_matrix))
+  )
+  names(col_type) <- colnames(hm_matrix)
+  top_anno <- ComplexHeatmap::HeatmapAnnotation(
+    matrix_type = col_type,
+    col = list(matrix_type = c(
+      ratio = "#4DBBD5FF",
+      natural = "#7E6148FF",
+      adjusted = "#3C5488FF"
+    )),
+    show_annotation_name = TRUE
+  )
+
+  ComplexHeatmap::Heatmap(
+    hm_matrix,
+    name = "ratio",
+    col = grDevices::colorRampPalette(c("white", "#FDAE61", "#D73027"))(100),
+    cluster_rows = FALSE,
+    cluster_columns = FALSE,
+    show_row_names = TRUE,
+    row_labels = row_label,
+    top_annotation = top_anno,
+    column_title = "Observed / Natural / Adjusted isotopologue ratio",
+    row_title = "Isotopologue"
+  )
+}
+
+
 #' @title Report isotopologue ratio as a PDF
 #' @description
 #' Create a PDF report that contains isotopologue ratio circular plots for each

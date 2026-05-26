@@ -1423,6 +1423,154 @@ MSIP_get_isotopologues_data <- function(object,
   object
 }
 
+#' @title Adjust isotopologue ratio by natural isotopologue
+#' @description
+#' Apply \code{MSIPIsotopologueData_adjust_natural_isotope()} to each
+#' \code{MSIPIsotopologueData} stored in
+#' \code{object@advancedAna$MSIP$isotopologue_data}.
+#'
+#' @param object MSdev object.
+#'
+#' @return MSdev object with updated \code{advancedAna$MSIP$isotopologue_data}.
+#' @export
+MSIP_isotoplogue_adjust_natural <- function(object) {
+  iso.list <- object@advancedAna[["MSIP"]][["isotopologue_data"]]
+  if (is.null(iso.list) || !length(iso.list)) {
+    cli::cli_alert_warning(
+      "MSIP_isotoplogue_adjust_natural: no isotopologue_data found in object@advancedAna$MSIP."
+    )
+    return(object)
+  }
+
+  iso.list <- lapply(iso.list, function(this.iso.data) {
+    if (is.null(this.iso.data)) return(this.iso.data)
+    if (!methods::is(this.iso.data, "MSIPIsotopologueData")) return(this.iso.data)
+    this.iso.data <- MSIPIsotopologueData_adjust_natural_isotope(this.iso.data)
+    assay_names <- SummarizedExperiment::assayNames(this.iso.data)
+    if ("ratio_adjusted" %in% assay_names) {
+      new_order <- c("ratio_adjusted", setdiff(assay_names, "ratio_adjusted"))
+      SummarizedExperiment::assays(this.iso.data) <-
+        SummarizedExperiment::assays(this.iso.data)[new_order]
+      mtd <- S4Vectors::metadata(this.iso.data)
+      mtd$default_assay <- "ratio_adjusted"
+      S4Vectors::metadata(this.iso.data) <- mtd
+    }
+    this.iso.data
+  })
+
+  object@advancedAna[["MSIP"]][["isotopologue_data"]] <- iso.list
+  object
+}
+
+MSIPIsotopologueData_adjust_natural_isotope <- function(object) {
+  if (!methods::is(object, "MSIPIsotopologueData")) {
+    stop("`object` must be a MSIPIsotopologueData object.")
+  }
+  if (!"ratio" %in% SummarizedExperiment::assayNames(object)) {
+    cli::cli_alert_warning(
+      "MSIPIsotopologueData_adjust_natural_isotope: assay 'ratio' not found; skip adjustment."
+    )
+    return(object)
+  }
+
+  ratio_matrix <- SummarizedExperiment::assay(object, "ratio")
+  if (is.null(ratio_matrix) || !nrow(ratio_matrix) || !ncol(ratio_matrix)) {
+    SummarizedExperiment::assay(object, "ratio_adjusted") <- ratio_matrix
+    return(object)
+  }
+
+  row_data <- SummarizedExperiment::rowData(object)
+  formula_vec <- character()
+  if ("formula" %in% colnames(row_data)) {
+    formula_vec <- as.character(row_data$formula)
+    formula_vec <- formula_vec[!is.na(formula_vec) & nzchar(formula_vec)]
+  }
+  formula <- if (length(formula_vec)) formula_vec[[1]] else NA_character_
+  if (!is.finite(nchar(formula)) || !nzchar(formula)) {
+    cli::cli_alert_warning(
+      "MSIPIsotopologueData_adjust_natural_isotope: missing formula in rowData; skip adjustment."
+    )
+    SummarizedExperiment::assay(object, "ratio_adjusted") <- ratio_matrix
+    return(object)
+  }
+
+  iso_ele <- NA_character_
+  if ("isotopologue_form" %in% colnames(row_data)) {
+    iso_form <- as.character(row_data$isotopologue_form)
+    iso_form <- iso_form[!is.na(iso_form) & nzchar(iso_form)]
+    if (length(iso_form)) {
+      iso_ele <- sub("[0-9]+$", "", iso_form[[1]])
+    }
+  }
+  if (!is.finite(nchar(iso_ele)) || !nzchar(iso_ele)) {
+    cli::cli_alert_warning(
+      "MSIPIsotopologueData_adjust_natural_isotope: unable to infer isotope element; skip adjustment."
+    )
+    SummarizedExperiment::assay(object, "ratio_adjusted") <- ratio_matrix
+    return(object)
+  }
+
+  ratio_adjusted <- tryCatch({
+    accucor_natural_correction(
+      raw_ratio = ratio_matrix,
+      formula = formula,
+      iso_ele = iso_ele
+    )
+  }, error = function(e) {
+    cli::cli_alert_warning(
+      paste0(
+        "MSIPIsotopologueData_adjust_natural_isotope: natural isotope adjustment failed: ",
+        conditionMessage(e)
+      )
+    )
+    NULL
+  })
+  if (is.null(ratio_adjusted)) {
+    SummarizedExperiment::assay(object, "ratio_adjusted") <- ratio_matrix
+    return(object)
+  }
+
+  ratio_adjusted <- as.matrix(ratio_adjusted)
+  ratio_adjusted <- get_matrix_value_fill_with_NA(
+    ratio_adjusted,
+    rownames_vec = rownames(ratio_matrix),
+    colnames_vec = colnames(ratio_matrix)
+  )
+  ratio_adjusted[is.na(ratio_adjusted)] <- 0
+  ratio_adjusted[ratio_adjusted < 0] <- 0
+  # Normalize adjusted ratios to sum to 1 across isotopologues per sample.
+  col_sum <- colSums(ratio_adjusted, na.rm = TRUE)
+  col_sum[!is.finite(col_sum) | col_sum <= 0] <- NA_real_
+  ratio_adjusted <- sweep(ratio_adjusted, 2, col_sum, FUN = "/")
+  ratio_adjusted[!is.finite(ratio_adjusted)] <- 0
+  SummarizedExperiment::assay(object, "ratio_adjusted") <- ratio_adjusted
+
+  # average_label_ratio: mean fraction of each labeled isotopologue within the
+  # total labeled pool (M+n, n>0) across sample.source.
+  rda <- SummarizedExperiment::rowData(object)
+  iso_count <- rep(NA_integer_, nrow(ratio_adjusted))
+  if ("isotopologue_form" %in% colnames(rda)) {
+    iso_count <- suppressWarnings(as.integer(gsub(".*?([0-9]+)$", "\\1", as.character(rda$isotopologue_form))))
+  }
+  if (all(is.na(iso_count))) {
+    iso_count <- suppressWarnings(as.integer(gsub(".*?([0-9]+)$", "\\1", rownames(ratio_adjusted))))
+  }
+  labeled_idx <- !is.na(iso_count) & iso_count > 0
+  average_label_ratio <- rep(0, nrow(ratio_adjusted))
+  if (any(labeled_idx)) {
+    labeled_total <- colSums(ratio_adjusted[labeled_idx, , drop = FALSE], na.rm = TRUE)
+    labeled_total[!is.finite(labeled_total) | labeled_total <= 0] <- NA_real_
+    labeled_ratio <- sweep(ratio_adjusted[labeled_idx, , drop = FALSE], 2, labeled_total, FUN = "/")
+    labeled_ratio[!is.finite(labeled_ratio)] <- NA_real_
+    average_label_ratio[labeled_idx] <- rowMeans(labeled_ratio, na.rm = TRUE)
+    average_label_ratio[!is.finite(average_label_ratio)] <- 0
+  }
+  rda$average_label_ratio <- average_label_ratio
+  SummarizedExperiment::rowData(object) <- rda
+
+  object
+}
+
 
 
 MSIP_get_isotopologues_data_fid <- function(object,fid_seed,polarity,
