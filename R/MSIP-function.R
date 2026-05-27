@@ -1445,17 +1445,7 @@ MSIP_isotoplogue_adjust_natural <- function(object) {
   iso.list <- lapply(iso.list, function(this.iso.data) {
     if (is.null(this.iso.data)) return(this.iso.data)
     if (!methods::is(this.iso.data, "MSIPIsotopologueData")) return(this.iso.data)
-    this.iso.data <- MSIPIsotopologueData_adjust_natural_isotope(this.iso.data)
-    assay_names <- SummarizedExperiment::assayNames(this.iso.data)
-    if ("ratio_adjusted" %in% assay_names) {
-      new_order <- c("ratio_adjusted", setdiff(assay_names, "ratio_adjusted"))
-      SummarizedExperiment::assays(this.iso.data) <-
-        SummarizedExperiment::assays(this.iso.data)[new_order]
-      mtd <- S4Vectors::metadata(this.iso.data)
-      mtd$default_assay <- "ratio_adjusted"
-      S4Vectors::metadata(this.iso.data) <- mtd
-    }
-    this.iso.data
+    MSIPIsotopologueData_adjust_natural_isotope(this.iso.data)
   })
 
   object@advancedAna[["MSIP"]][["isotopologue_data"]] <- iso.list
@@ -1567,6 +1557,15 @@ MSIPIsotopologueData_adjust_natural_isotope <- function(object) {
   }
   rda$average_label_ratio <- average_label_ratio
   SummarizedExperiment::rowData(object) <- rda
+
+  assay_names <- SummarizedExperiment::assayNames(object)
+  if ("ratio_adjusted" %in% assay_names) {
+    new_order <- c("ratio_adjusted", setdiff(assay_names, "ratio_adjusted"))
+    SummarizedExperiment::assays(object) <- SummarizedExperiment::assays(object)[new_order]
+    mtd <- S4Vectors::metadata(object)
+    mtd$default_assay <- "ratio_adjusted"
+    S4Vectors::metadata(object) <- mtd
+  }
 
   object
 }
