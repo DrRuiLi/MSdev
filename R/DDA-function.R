@@ -19,7 +19,7 @@ xcms_get_dda_scan_stimulate <- function(xcms.xcms ,
                   temp_var = scan_id)%>%
     remove_rownames()%>%
     column_to_rownames("temp_var")
-  feature_def <- featureDefinitions(xcms.xcms)%>%
+  feature_def <- xcms::featureDefinitions(xcms.xcms)%>%
     as.data.frame()%>%
     dplyr::mutate(temp_var = feature_id)%>%
     remove_rownames()%>%
@@ -89,7 +89,7 @@ xcms_get_dda_scan_stimulate <- function(xcms.xcms ,
   feature_def$ms2_acquire_count <-feature_def.temp$ms2_acquire_count
   feature_def$ms2_acquired <- feature_def.temp$ms2_acquired
 
-  featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(feature_def)
+  xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(feature_def)
   rownames(xcms.scan) <- rownames(fData(xcms.xcms))
   fData(xcms.xcms) <- xcms.scan
   return(xcms.xcms)
@@ -116,7 +116,7 @@ xcms_get_dda_scan_stimulate <- function(xcms.xcms ,
 xcms_get_dda_ms2_assignment <- function(xcms.xcms){
 
   xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
-  featuredef <- featureDefinitions(xcms.xcms)%>%as.data.frame()
+  featuredef <- xcms::featureDefinitions(xcms.xcms) %>% as.data.frame()
   match.df <- match_mz_rt(featuredef$mzmed,featuredef$rtmed,
                           xcms.scan$precursorMZ,
                           xcms.scan$retentionTime)
@@ -149,7 +149,7 @@ xcms_get_dda_ms2_assignment <- function(xcms.xcms){
                                    })
 
   fData(xcms.xcms) <- xcms.scan
-  featureDefinitions(xcms.xcms) <- featuredef%>%
+  xcms::featureDefinitions(xcms.xcms) <- featuredef%>%
     dplyr::mutate(ms2_acquire_count = sapply(ms2_scan_id,length) ,
                   ms2_acquired= ms2_acquire_count>0)%>%
     S4Vectors::DataFrame()
@@ -170,7 +170,7 @@ plot_xcms_dda_acquisition <- function(xcms.xcms) {
   xcms.scan.ms2 <- fData(xcms.xcms)%>%
     dplyr::filter(msLevel == 2)
 
-  feature_def <- featureDefinitions(xcms.xcms)%>%
+  feature_def <- xcms::featureDefinitions(xcms.xcms)%>%
     as.data.frame()
 
   ggplot()+
@@ -244,7 +244,7 @@ plot_xcms_dda_cycle_stimulate <- function( xcms.xcms,
 
 plot_xcms_dda_feature_stat <- function(xcms.xcms){
 
-  feature_def <- featureDefinitions(xcms.xcms)%>%
+  feature_def <- xcms::featureDefinitions(xcms.xcms)%>%
     as.data.frame()
   ggplot(feature_def,
          aes( x = 1 , fill = ms2_acquired))+

@@ -643,7 +643,7 @@ MSIP_shiny_Acq_server <- function(object){
 
       ### get chrom
       {
-        cdf <- featureDefinitions(xchrom.selected.polarity())
+        cdf <- xcms::featureDefinitions(xchrom.selected.polarity())
         pdf <- pData(xchrom.selected.polarity())
         id <- match(feature_id(),cdf$feature_id)
         if (is.na(id)){

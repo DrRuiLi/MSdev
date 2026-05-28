@@ -9,16 +9,16 @@ MSIP_demo <- function(object){
     xcms.xcms <- object@xcmsData$NegativeMS1
     xcms.fdf <- get_xcms_feature_definitions(xcms.xcms)
     idx <- 453
-    xcms.temp <-filterFile(xcms.xcms,which.max(featureValues(xcms.xcms,value = "maxo")[idx,]))
+    xcms.temp <- xcms::filterFile(xcms.xcms, which.max(xcms::featureValues(xcms.xcms, value = "maxo")[idx, ]))
     xcms.sp <- get_xcms_Spectra(xcms.temp)
-    xcms.ms1.sp <- filterMsLevel(xcms.sp,msLevel =1)
+    xcms.ms1.sp <- ProtGenerics::filterMsLevel(xcms.sp, msLevel = 1)
     xcms.sp.demo <- xcms.ms1.sp[which.min(abs(rtime(xcms.ms1.sp)-xcms.fdf$rtmed[idx]))]
-    plotSpec(xcms.sp.demo)+
+    xcms::plotSpec(xcms.sp.demo)+
       labs(title = 'MS1')->p1
     idx.mz <- xcms.fdf$mzmed[idx]
     xcms.sp.demo%>%
-      filterMzRange(c(idx.mz-0.5,idx.mz+0.5))%>%
-      plotSpec()+
+      Spectra::filterMzRange(c(idx.mz-0.5,idx.mz+0.5))%>%
+      xcms::plotSpec()+
       labs(title = "Acquisition window")+
       geom_vline(xintercept = c(idx.mz-0.2,idx.mz+0.2),
                  color = "grey",size = 2, linetype = 1)+

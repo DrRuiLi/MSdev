@@ -586,7 +586,7 @@ shiny_plotly_chrom_int_merged <- function(xchrom ,rtr = range(rtime(xchrom[1,1])
     dplyr::mutate(group = chrom.pda$group[col],
                   group = as.factor(group))%>%
     dplyr::filter(!is.na(intensity))
-  chrom.def <- featureDefinitions(xchrom)
+  chrom.def <- xcms::featureDefinitions(xchrom)
   names(groups.col) <- groups
   plot_ly(chrom.data)%>%
     layout(shapes = list(
@@ -612,7 +612,7 @@ shiny_plotly_chrom_int_merged <- function(xchrom ,rtr = range(rtime(xchrom[1,1])
     p
 
     chrom.val <- data.frame( chrom.pda,
-                        val = as.vector(featureValues(xchrom,method="max",value = "maxo")))%>%
+                        val = as.vector(xcms::featureValues(xchrom,method="max",value = "maxo")))%>%
       dplyr::arrange(desc(group))%>%
       dplyr::mutate(group = as.factor(group),
                     sample.name = factor(sample.name,level = sample.name))
@@ -643,7 +643,7 @@ shiny_plotly_chrom <- function(xchrom ,
     dplyr::mutate(group = chrom.pda$sample.source[col],
                   group = as.factor(group))%>%
     dplyr::filter(!is.na(intensity))
-  chrom.def <- featureDefinitions(xchrom)
+  chrom.def <- xcms::featureDefinitions(xchrom)
   plot_ly(chrom.data)%>%
     layout(shapes = list(
       list( type = "line",
@@ -678,7 +678,7 @@ shiny_plotly_feature_int <- function(xchrom,
                                      col.map){
 
   chrom.val <- data.frame( pData(xchrom),
-                           val = as.vector(featureValues(xchrom,method="max",value = "maxo")))%>%
+                           val = as.vector(xcms::featureValues(xchrom,method="max",value = "maxo")))%>%
     dplyr::arrange(desc(sample.source),desc(sample.name))%>%
     dplyr::mutate(group = as.factor(sample.source),
                   sample.name = factor(sample.name,level = sample.name))

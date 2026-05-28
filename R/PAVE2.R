@@ -135,7 +135,7 @@ PAVE2 <- function(object){
         time.cost <- difftime(time.end,time.start,units = "secs")%>%as.numeric()
         readr::write_lines(
           paste0("pave2",",",
-                 nrow(featureDefinitions(xcms.xcms)),",",
+                 nrow(xcms::featureDefinitions(xcms.xcms)),",",
                  time.cost),
           append = T,
           file = get_dir_expand_from_onedrive("Documents/YLF_Lab/Project/2025.10.10.PAVE/data/pave.CN.count.timer.csv")
@@ -730,7 +730,7 @@ PAVE2 <- function(object){
 
       cpdb_path <- object@projectInfo$CompoundDB_path
       cpdb <- CompoundDb::CompDb(cpdb_path)
-      xcms.fdf <- featureDefinitions(xcms.xcms)
+      xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
 
 
     }

@@ -56,13 +56,13 @@ get_xcms_feature_se <- function(xcms.xcms,...){
   sample.info <- Biobase::pData(xcms.xcms)
   rownames(sample.info) <- sample.info$sample.name
 
-  featuredef <- featureDefinitions(xcms.xcms)%>%
+  featuredef <- xcms::featureDefinitions(xcms.xcms)%>%
     as.data.frame()%>%
     dplyr::mutate(xcms_feature_id = feature_id,
                   feature_id = paste0(feature_id ,"_",pol[as.character(polarity)] ))
   rownames(featuredef) <- featuredef$feature_id
 
-  featureval <- featureValues(xcms.xcms,...)
+  featureval <- xcms::featureValues(xcms.xcms,...)
   colnames(featureval) <- Biobase::pData(xcms.xcms)$sample.name
   rownames(featureval) <- featuredef$feature_id
 
@@ -80,9 +80,9 @@ get_chrom_peaks_shape_score <- function(chrom,
                                         peak.id = chrom@chromPeakData@rownames){
   peak.id = chrom@chromPeakData@rownames
   peak.id <- peak.id[1]
-  peaks.data <- chromPeaks(chrom)[peak.id,,drop = F]
-  rtime <- rtime(chrom)
-  int <- intensity(chrom)
+  peaks.data <- xcms::chromPeaks(chrom)[peak.id,,drop = FALSE]
+  rtime <- xcms::rtime(chrom)
+  int <- xcms::intensity(chrom)
 
   rtime <- rtime[!is.na(int)]
   int <- int[!is.na(int)]
@@ -106,7 +106,7 @@ get_chrom_peaks_shape_score <- function(chrom,
 
 get_xchrom_peak_score <- function(xchrom){
 
-  peak.info <- chromPeaks(xchrom)
+  peak.info <- xcms::chromPeaks(xchrom)
   peaks.no <- nrow(peak.info)
 
 
@@ -135,8 +135,8 @@ sub_xchrom <-  function (x, i, j, drop = TRUE)
     drop <- FALSE
   if (length(i) == 1 && length(j) == 1 && drop)
     return(x@.Data[i, j, drop = TRUE][[1]])
-  cpeaks_orig <- chromPeaks(x)
-  fts_orig <- featureDefinitions(x)
+  cpeaks_orig <- xcms::chromPeaks(x)
+  fts_orig <- xcms::featureDefinitions(x)
   ph <- x@.processHistory
   pd <- x@phenoData
   fd <- x@featureData
@@ -149,7 +149,7 @@ sub_xchrom <-  function (x, i, j, drop = TRUE)
   Biobase::pData(fd) <- droplevels(pData(fd))
   x@featureData <- fd
   if (nrow(fts_orig)) {
-    cpeaks_sub <- chromPeaks(x)
+  cpeaks_sub <- xcms::chromPeaks(x)
     fts <- vector("list", length(i))
     for (el in seq_along(i)) {
       fts_row <- fts_orig[fts_orig$row == i[el], ,
@@ -219,7 +219,7 @@ get_xcms_peaks_chrom <- function(xcms.xcms,
     x.chrom <- extract_chrom(xcms.xcms,
                              mzr = peaks.data[,c("mzmin","mzmax")],
                              rtr = peaks.data[,c("rtmin","rtmax")],
-                             sample = sampleNames(xcms.xcms))
+                             sample = Biobase::sampleNames(xcms.xcms))
   }else{
     peaks.id.split <- split(rownames(peaks.data),
                               f = peaks.data[,"sample"])
@@ -355,13 +355,13 @@ get_xcms_chromatogram <- function(object,
 
 
 get_xcms_feature_chrom <- function(xcms.xcms,
-                                    feature.id = featureDefinitions(xcms.xcms)$feature_id,
+                                    feature.id = xcms::featureDefinitions(xcms.xcms)$feature_id,
                                     sample = "maxo",
                                     rt = "expand",
                                     mz.expand = 0,
                                     BPPARAM = SerialParam()){
 
-  features.data <- featureDefinitions(xcms.xcms)
+  features.data <- xcms::featureDefinitions(xcms.xcms)
   features.val <- featureValues(xcms.xcms,missing = "rowmin_half")
   if(is.numeric(feature.id)) { feature.id <-rownames(features.data)[feature.id]}
   features.data <- features.data[feature.id,,drop=F]
@@ -623,7 +623,7 @@ plot_XChromatograms <- function(xchroms ,
 #'
 xcms_get_feature_def_stat <- function(xcms.xcms){
 
-  feature.def <- featureDefinitions(xcms.xcms)
+  feature.def <- xcms::featureDefinitions(xcms.xcms)
   peaks.data <- chromPeaks(xcms.xcms)
 
   .xcmsPeakDataMed <- function(x,peaks.data,key = "rtmax",fun = "median"){
@@ -648,7 +648,7 @@ xcms_get_feature_def_stat <- function(xcms.xcms){
   feature.def.df <- as.data.frame(feature.def)%>%
     dplyr::mutate(feature_id = rownames(.),
                   .before = mzmed)
-  featureDefinitions(xcms.xcms)<-feature.def.df%>%S4Vectors::DataFrame()
+  xcms::featureDefinitions(xcms.xcms) <- feature.def.df %>% S4Vectors::DataFrame()
   return(xcms.xcms)
 
 }
@@ -677,10 +677,10 @@ xcms_get_feature_val_stat <- function(xcms.xcms) {
 
   }
 
-  fdf <- featureDefinitions(xcms.xcms)
+  fdf <- xcms::featureDefinitions(xcms.xcms)
   fdf$qc_rsd <- qc.rsd
   fdf$sample_rsd <- sample.rsd
-  fdf -> featureDefinitions(xcms.xcms)
+  fdf -> xcms::featureDefinitions(xcms.xcms)
   return(xcms.xcms)
 }
 
@@ -722,7 +722,7 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
   ### assign isotopologues
   {
 
-    xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+    xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
       as.data.frame()
     xcms.fdf[,paste0("iso_seed")] <- NA
     xcms.fdf[,paste0("iso_count")] <- NA
@@ -765,12 +765,12 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
   ### save to featuredef
   {
 
-    xcms.fdf.temp <- featureDefinitions(xcms.xcms)
+    xcms.fdf.temp <- xcms::featureDefinitions(xcms.xcms)
     rownames(xcms.fdf) <- xcms.fdf$feature_id
     xcms.fdf.temp[,"iso_seed"] <- xcms.fdf[xcms.fdf.temp$feature_id,"iso_seed"]
     xcms.fdf.temp[,"iso_count"] <- xcms.fdf[xcms.fdf.temp$feature_id,"iso_count"]
     xcms.fdf.temp[,"iso_connection_group"] <- xcms.fdf[xcms.fdf.temp$feature_id,"iso_connection_group"]
-    xcms.fdf.temp -> featureDefinitions(xcms.xcms)
+    xcms.fdf.temp -> xcms::featureDefinitions(xcms.xcms)
     message("Get ",
             sum(!is.na(xcms.fdf.temp[,"iso_count"])),
             " isotopologues")
@@ -813,7 +813,7 @@ xcms_get_feature_isotopologues_multi_tracer <- function(xcms.xcms,
 
   ### assign isotopologues
   {
-    xcms.fdf <- featureDefinitions(xcms.xcms) %>%
+    xcms.fdf <- xcms::featureDefinitions(xcms.xcms) %>%
       as.data.frame()
     iso_ele_clean <- get_ele_uniso(iso_ele)
     for (el in iso_ele_clean) {
@@ -876,7 +876,7 @@ xcms_get_feature_isotopologues_multi_tracer <- function(xcms.xcms,
 
   ### save to featureDefinitions
   {
-    xcms.fdf.temp <- featureDefinitions(xcms.xcms)
+    xcms.fdf.temp <- xcms::featureDefinitions(xcms.xcms)
     rownames(xcms.fdf) <- xcms.fdf$feature_id
     xcms.fdf.temp[, "iso_seed"] <- xcms.fdf[xcms.fdf.temp$feature_id, "iso_seed"]
     xcms.fdf.temp[, "iso_count"] <- xcms.fdf[xcms.fdf.temp$feature_id, "iso_count"]
@@ -884,7 +884,7 @@ xcms_get_feature_isotopologues_multi_tracer <- function(xcms.xcms,
     for (el in iso_ele_clean) {
       xcms.fdf.temp[, paste0("iso_count_", el)] <- xcms.fdf[xcms.fdf.temp$feature_id, paste0("iso_count_", el)]
     }
-    xcms.fdf.temp -> featureDefinitions(xcms.xcms)
+    xcms.fdf.temp -> xcms::featureDefinitions(xcms.xcms)
     message("Get ",
             sum(!is.na(xcms.fdf.temp[, "iso_count"])),
             " isotopologues")
@@ -951,7 +951,7 @@ get_xcms_feature_iso_connection_multi_tracer <- function(xcms.xcms,
   fdf.connect[match.res$ion1, "closest.iso.mz"] <- iso.grid$mass.shift[match.res$ion2]
   fdf.connect[match.res$ion1, "mz.error"] <- abs(match.res$mz.ppm)
 
-  xcms.fdf <- featureDefinitions(xcms.xcms)
+  xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
   fdf.iso.connect <- fdf.connect[!is.na(closest.iso.count) & closest.iso.count != 0]
   data.table::setorder(fdf.iso.connect, mz.error)
   fdf.iso.connect <- fdf.iso.connect[!duplicated(fdf.iso.connect, by = c("from", "to"))]
@@ -972,7 +972,7 @@ get_xcms_feature_iso_connection <- function(xcms.xcms,
 
   {
 
-    xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+    xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
       as.data.frame()
     net.df <- expand.grid(from = 1:nrow(xcms.fdf),
                           to = 1:nrow(xcms.fdf))
@@ -1090,7 +1090,7 @@ xcms_get_feature_traced_isotopologue <- function(xcms.xcms,
       }
     } else {
       # method2: compare observed ratio to theoretical natural ratio.
-      xcms.fdf <- featureDefinitions(xcms.xcms) %>% as.data.frame()
+      xcms.fdf <- xcms::featureDefinitions(xcms.xcms) %>% as.data.frame()
 
       # Expected natural ratio for one feature row.
       .expected_ratio <- function(formula, iso_count, iso_ele, thresh = 1e-6) {
@@ -1152,11 +1152,11 @@ xcms_get_feature_traced_isotopologue <- function(xcms.xcms,
 
   ### import to xcms
   {
-    xcms.fda <- featureDefinitions(xcms.xcms)
+    xcms.fda <- xcms::featureDefinitions(xcms.xcms)
     xcms.fda$is_labeled <- is_labeled
     colnames(xcms.ratio.to.seed) <- paste0("Ratio_to_seed_", colnames(xcms.ratio.to.seed))
     xcms.fda[, colnames(xcms.ratio.to.seed)] <- xcms.ratio.to.seed
-    xcms.fda -> featureDefinitions(xcms.xcms)
+    xcms.fda -> xcms::featureDefinitions(xcms.xcms)
     message("Get ",
             sum(xcms.fda$is_labeled, na.rm = TRUE),
             " isotope label")
@@ -1275,7 +1275,7 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
                                 mzrange(xcms.xcms))==1)
 
   ### match database
-  xcms.featuredef <- featureDefinitions(xcms.xcms)%>%
+  xcms.featuredef <- xcms::featureDefinitions(xcms.xcms)%>%
     as.data.frame()
 
   matched.df <- match_mz_foverlaps(mz1 = xcms.featuredef$mzmed,
@@ -1299,7 +1299,7 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
     cp.adduct$chemform.adduct.mz[as.numeric(idx)]
   })
 
-  featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.featuredef)
+  xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.featuredef)
 
   return(xcms.xcms)
 
@@ -1316,12 +1316,12 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
   ### no ms2
   {
     if (length(sp.ms2)==0) {
-      xcms.fdf <- featureDefinitions(xcms.xcms)
+      xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
       xcms.fdf$score.ms2 <- lapply(xcms.fdf$candidate.id,function(x){
         rep(0,length(x))
       })
 
-      featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
+      xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
       return(xcms.xcms)
     }
 
@@ -1336,7 +1336,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
                                        unique(polarity(xcms.xcms)))
 
     #spectraNames(Spectra_database) <- Spectra_database$compound_id
-    xcms.fdf <- featureDefinitions(xcms.xcms)
+    xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
   }
 
   ### sp process
@@ -1443,7 +1443,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
   }
 
 
-  featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
+  xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
 
   return(xcms.xcms)
 
@@ -1492,9 +1492,9 @@ xcms_get_feature_isopattern_score <- function(xcms.xcms,
 
   ### return
   {
-    xcms.fdf <- featureDefinitions(xcms.xcms)
+    xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
     xcms.fdf$score.isopattern <-iso.score
-    xcms.fdf -> featureDefinitions(xcms.xcms)
+    xcms.fdf -> xcms::featureDefinitions(xcms.xcms)
     return(xcms.xcms)
   }
 
@@ -1533,7 +1533,7 @@ xcms_get_feature_annotation <- function(xcms.xcms,
                                         ...){
 
 
-  xcms.fdf <- featureDefinitions(xcms.xcms)
+  xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
   xcms.fdf$compound_id <- NA
   xcms.fdf$adduct <- NA
   xcms.fdf$score <- NA
@@ -1591,7 +1591,7 @@ xcms_get_feature_annotation <- function(xcms.xcms,
   }
 
 
-  featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
+  xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
 
   return(xcms.xcms)
 
@@ -1601,7 +1601,7 @@ xcms_get_feature_annotation <- function(xcms.xcms,
 
 
 get_xcms_feature_definitions <- function(xcms.xcms){
-  xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+  xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
     as.data.frame()%>%
     dplyr::select(
       !c(mzmin,mzmax,rtmin,rtmax,npeaks,peakidx)
@@ -1613,7 +1613,7 @@ get_xcms_feature_definitions <- function(xcms.xcms){
 
 find_xcms_feature <- function(xcms.xcms,mz = 100,ppm = 10){
 
-  fdf <- featureDefinitions(xcms.xcms)
+  fdf <- xcms::featureDefinitions(xcms.xcms)
   mzr <- mz.range.ppm(mz,ppm)
   fdf[between(fdf$mzmed,mzr[1],mzr[2] ), ]%>%
     as_tibble()
@@ -1721,7 +1721,7 @@ plot_xcms_peaks_distribution <- function(xcms.xcms,plot.title = "Peaks distribut
 
 plot_xcms_features_distribution <-
   function(xcms.xcms, plot.title = "Features distribution") {
-    xcms.features <- featureDefinitions(xcms.xcms) %>%
+    xcms.features <- xcms::featureDefinitions(xcms.xcms) %>%
       as.data.frame() %>%
       mutate(mz = mzmed, rt = rtmed)
     xcms.features$maxo <-
@@ -1784,10 +1784,10 @@ plot_xcms_features_distribution <-
 
 xcms_remove_feature_var <- function(xcms.xcms,var){
 
-  xcms.fdf<- featureDefinitions(xcms.xcms)
+  xcms.fdf<- xcms::featureDefinitions(xcms.xcms)
   var.selected <- setdiff(colnames(xcms.fdf),var)
   xcms.fdf <- xcms.fdf[,var.selected]
-  xcms.fdf -> featureDefinitions(xcms.xcms)
+  xcms.fdf -> xcms::featureDefinitions(xcms.xcms)
   return(xcms.xcms)
 }
 
@@ -1843,7 +1843,7 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
   xcms.sub <- filterFile(xcms.xcms, sample.idx)
 
   ### mz / rt from feature peaks
-  xcms.fdef <- featureDefinitions(xcms.xcms)
+  xcms.fdef <- xcms::featureDefinitions(xcms.xcms)
   if (is.numeric(feature.id)) {
     feature.id <- rownames(xcms.fdef)[feature.id]
   }
@@ -2141,7 +2141,7 @@ plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt = "expand"){
                                      rt = rt)
   chrom.data <- get_chroms_data(xcms.chrom)%>%
     dplyr::mutate(fill = rt > min(rt.range)&rt <max(rt.range),
-                  sample = sampleNames(xcms.xcms)[row]
+                  sample = Biobase::sampleNames(xcms.xcms)[row]
                  )%>%
     dplyr::filter(!is.na(intensity))
 
@@ -2479,7 +2479,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
 
 
 
-    if (length(sampleNames(xcms.xcms))>1) {
+    if (length(Biobase::sampleNames(xcms.xcms))>1) {
       if (sum(peaksGroup=="QC") <2 ) {
         rt.adjust.param <- xcms::PeakGroupsParam(minFraction = 0.4,
                                                  #subset = which(peaksGroup == "QC"),
@@ -2505,7 +2505,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   xcms.xcms <- xcms::groupChromPeaks(xcms.xcms,param = peak.density.param)
   #xcms.xcms <- xcms_filter_feature_mz_rsd(xcms.xcms,rsd.ppm = 2)
   xcms.xcms <- xcms_get_feature_wmean(xcms.xcms)
-  message_with_time(" ",nrow(featureDefinitions(xcms.xcms))," feature found")
+  message_with_time(" ",nrow(xcms::featureDefinitions(xcms.xcms))," feature found")
   xcms.xcms <- xcms::fillChromPeaks(xcms.xcms,param = xcms::FillChromPeaksParam())
 
 
@@ -2842,7 +2842,7 @@ get_xcms_centwave_tune <- function(xcms.xcms,
 
 get_xcms_Spectra <- function(xcms.xcms){
 
-  xcms.files <- paste0(dirname(xcms.xcms),"/",sampleNames(xcms.xcms))
+  xcms.files <- paste0(dirname(xcms.xcms),"/",Biobase::sampleNames(xcms.xcms))
   xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
   xcms.sp <- Spectra(xcms.files,
                          backend = MsBackendMemory(),
@@ -2859,7 +2859,7 @@ invisible(
     methods::setMethod(f = "filepaths",
                        signature = "XCMSnExp",
                        definition = function(object) {
-                         paste0(dirname(object), "/", sampleNames(object))
+                         paste0(dirname(object), "/", Biobase::sampleNames(object))
                        }),
     silent = TRUE
   )
@@ -2997,7 +2997,7 @@ get_xcms_feature_purity_matrix <- function(xcms.xcms,
                                            ppm = 10,
                                            isolation_half_window = 0.2){
 
-  xcms.fdf <- featureDefinitions(xcms.xcms)
+  xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
 
   if (missing(xcms.ms1.sp) || is.null(xcms.ms1.sp)) {
     stop("xcms.ms1.sp (MS1 Spectra) must be provided.")
@@ -3041,7 +3041,7 @@ xcms_get_feature_purity <- function(xcms.xcms,
                                     isolation_half_window = 0.2
                                     ){
 
-  xcms.fdf <- featureDefinitions(xcms.xcms)
+  xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
 
   ### calc ms1_purity_matrix
   {
@@ -3068,7 +3068,7 @@ xcms_get_feature_purity <- function(xcms.xcms,
   }
 
   xcms.fdf$ms1_purity <- ms1_purity
-  xcms.fdf -> featureDefinitions(xcms.xcms)
+  xcms.fdf -> xcms::featureDefinitions(xcms.xcms)
   return(xcms.xcms)
 }
 
@@ -3184,7 +3184,7 @@ xcms_get_feature_adduct_connection <- function(xcms.xcms,rt.tol = 5,ppm = 10){
   adduct.diff <- get_adduct_mass_diff(pol)
   adduct.diff <- adduct.diff[order(adduct.diff$mass_diff),]
   #xcms.xcms <- xcms_get_feature_group(xcms.xcms,diffRt = 10,intCor = NULL,eicCor = NULL)
-  xcms.fdf <- featureDefinitions(xcms.xcms)
+  xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
 
 
   ### Construct connection
@@ -3257,7 +3257,7 @@ xcms_get_feature_adduct_connection <- function(xcms.xcms,rt.tol = 5,ppm = 10){
 plotly_xcms_feature_group <- function(xcms.xcms){
 
 
-  xcms.fdf <- featureDefinitions(xcms.xcms)%>%
+  xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
     as.data.frame()
   #ggplot(xcms.fdf)+
   #  geom_point(aes(x = rtmed , y = mzmed, col = feature_group))+
@@ -3310,8 +3310,8 @@ xcms_get_feature_wmean <- function(xcms.xcms){
 xcms_filter_feature_mz_rsd <- function(xcms.xcms, rsd.ppm = 2){
 
 
-  fdf <- featureDefinitions(xcms.xcms)
-  ch <- chromPeaks(xcms.xcms)
+  fdf <- xcms::featureDefinitions(xcms.xcms)
+  ch <- xcms::chromPeaks(xcms.xcms)
   mz.sd <- sapply(fdf$peakidx,function(x){
     sd(ch[x,'mz'])/mean(ch[x,'mz']) * 1e6
   })
@@ -3319,15 +3319,15 @@ xcms_filter_feature_mz_rsd <- function(xcms.xcms, rsd.ppm = 2){
   fdf <- fdf[mz.sd < rsd.ppm,]
   fdf$feature_id <- paste0("FT",num2str(1:nrow(fdf)))
   rownames(fdf) <- fdf$feature_id
-  fdf -> featureDefinitions(xcms.xcms)
+  fdf -> xcms::featureDefinitions(xcms.xcms)
   return(xcms.xcms)
 
 }
 xcms_filter_feature_rt_rsd <- function(xcms.xcms, rt.shift = 5 ){
 
 
-  fdf <- featureDefinitions(xcms.xcms)
-  ch <- chromPeaks(xcms.xcms)
+  fdf <- xcms::featureDefinitions(xcms.xcms)
+  ch <- xcms::chromPeaks(xcms.xcms)
   rt.sd <- sapply(fdf$peakidx,function(x){
     sd(ch[x,'rt'])/mean(ch[x,'rt'])
   })
@@ -3335,7 +3335,7 @@ xcms_filter_feature_rt_rsd <- function(xcms.xcms, rt.shift = 5 ){
   fdf <- fdf[rt.sd < rt.shift,]
   fdf$feature_id <- paste0("FT",num2str(1:nrow(fdf)))
   rownames(fdf) <- fdf$feature_id
-  fdf -> featureDefinitions(xcms.xcms)
+  fdf -> xcms::featureDefinitions(xcms.xcms)
   return(xcms.xcms)
 
 }

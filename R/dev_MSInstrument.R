@@ -23,7 +23,7 @@ export_QE_InclusionList_From_xcmsFeature <- function(xcms.xcms){
 export_QE_ExclusionList_From_xcmsPeaks <- function(xcms.xcms,peak.count.thresh = 10){
 
 
-  raw.file <- fileNames(xcms.xcms)
+  raw.file <- MSnbase::fileNames(xcms.xcms)
   if (length(raw.file)>1) {
     raw.file <- paste0(dirname(raw.file[1]),"/multiple_file")
   }
@@ -35,7 +35,7 @@ export_QE_ExclusionList_From_xcmsPeaks <- function(xcms.xcms,peak.count.thresh =
 
     ion_mode <- ifelse(ion_mode==1,"Positive","Negative")
   }
-  ms.peaks <- chromPeaks(xcms.xcms)%>%
+  ms.peaks <- xcms::chromPeaks(xcms.xcms)%>%
     as.data.frame()%>%
     arrange(mz)%>%
     mutate(mzdiff = c(diff(mz),0),
