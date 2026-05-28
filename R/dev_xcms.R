@@ -2854,18 +2854,28 @@ get_xcms_Spectra <- function(xcms.xcms){
 }
 
 
-setMethod(f = "filepaths",
-          signature = "XCMSnExp",
-          definition = function(object){
-  paste0(dirname(object),"/",sampleNames(object))
-})
-setMethod(f = "mzrange",
-          signature = "XCMSnExp",
-          definition = function(object){
-            xcms.fdata <- fData(object)
-            return(c(min(xcms.fdata$scanWindowLowerLimit,na.rm = T),
-                     max(xcms.fdata$scanWindowUpperLimit,na.rm = T)))
-          })
+invisible(
+  try(
+    methods::setMethod(f = "filepaths",
+                       signature = "XCMSnExp",
+                       definition = function(object) {
+                         paste0(dirname(object), "/", sampleNames(object))
+                       }),
+    silent = TRUE
+  )
+)
+invisible(
+  try(
+    methods::setMethod(f = "mzrange",
+                       signature = "XCMSnExp",
+                       definition = function(object) {
+                         xcms.fdata <- fData(object)
+                         return(c(min(xcms.fdata$scanWindowLowerLimit, na.rm = TRUE),
+                                  max(xcms.fdata$scanWindowUpperLimit, na.rm = TRUE)))
+                       }),
+    silent = TRUE
+  )
+)
 
 
 
@@ -3259,10 +3269,22 @@ plotly_xcms_feature_group <- function(xcms.xcms){
 }
 
 
+#' @title Update feature mz/rt using peak-intensity weighted means
+#' @description Recomputes `mzmed` and `rtmed` in `xcms::featureDefinitions(xcms.xcms)`
+#' using peak-level `mz`/`rt` weighted by peak `maxo` (maximum intensity) from
+#' `xcms::chromPeaks(xcms.xcms)`.
+#'
+#' @param xcms.xcms An `xcms::XCMSnExp` object with feature definitions and chromPeaks.
+#'
+#' @return An updated `xcms::XCMSnExp` object where `featureDefinitions(object)$mzmed`
+#' and `featureDefinitions(object)$rtmed` are replaced by the intensity-weighted means
+#' across each feature's constituent peaks.
+#'
+#' @export
 xcms_get_feature_wmean <- function(xcms.xcms){
 
-  xcms.fdf <- featureDefinitions(xcms.xcms)
-  xcms.pks <- chromPeaks(xcms.xcms)
+  xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
+  xcms.pks <- xcms::chromPeaks(xcms.xcms)
 
   wrt <- sapply(xcms.fdf$peakidx,function(x){
 
@@ -3280,7 +3302,7 @@ xcms_get_feature_wmean <- function(xcms.xcms){
 
   xcms.fdf$mzmed <- wmz
   xcms.fdf$rtmed <- wrt
-  xcms.fdf -> featureDefinitions(xcms.xcms)
+  xcms.fdf -> xcms::featureDefinitions(xcms.xcms)
   return(xcms.xcms)
 }
 

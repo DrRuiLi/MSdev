@@ -1339,10 +1339,15 @@ Spectra_filter_noise <- function(sp){
 #          definition = function(object )object$noise)
 
 
-setMethod(sampleNames,"Spectra",
-          definition = function(object){
-            basename(object$dataOrigin)
-          })
+invisible(
+  try(
+    methods::setMethod("sampleNames", "Spectra",
+                        definition = function(object) {
+                          basename(object$dataOrigin)
+                        }),
+    silent = TRUE
+  )
+)
 
 #' Spectra_get_purity
 #'

@@ -284,7 +284,7 @@ xcmsProcessingMSdev.DDA <- function(object,...){
       xcms.xcms <-NA
       next
     }
-    xcms.xcms <- filterFile(object@xcmsData[[polarity.tag]],
+    xcms.xcms <- xcms::filterFile(object@xcmsData[[polarity.tag]],
       which(Biobase::pData(object@xcmsData[[polarity.tag]])$sample.name%in% sample.info.polarity$sample.name)
     )
 
@@ -331,8 +331,8 @@ xcmsProcessingMSdev.MRM <- function(object){
 
 extractFeature <- function(object){
 
-  object@xcmsData$positiveFeature <- as.data.frame(featureDefinitions(object@xcmsData$PositiveMS1))
-  object@xcmsData$negativeFeature <- as.data.frame(featureDefinitions(object@xcmsData$NegativeMS1))
+  object@xcmsData$positiveFeature <- as.data.frame(xcms::featureDefinitions(object@xcmsData$PositiveMS1))
+  object@xcmsData$negativeFeature <- as.data.frame(xcms::featureDefinitions(object@xcmsData$NegativeMS1))
   object
 
 }
@@ -553,8 +553,8 @@ featureSpectra_fullscan_DDA <- function(object){
 
   }
 
-  object@spectra$positiveFeatureMS2 <- apply(featureDefinitions(object@xcmsData$positiveMS1), 1, .matchSP , object@spectra$positiveMS2 )
-  object@spectra$negativeFeatureMS2 <- apply(featureDefinitions(object@xcmsData$negativeMS1), 1, .matchSP , object@spectra$negativeMS2 )
+  object@spectra$positiveFeatureMS2 <- apply(xcms::featureDefinitions(object@xcmsData$positiveMS1), 1, .matchSP , object@spectra$positiveMS2 )
+  object@spectra$negativeFeatureMS2 <- apply(xcms::featureDefinitions(object@xcmsData$negativeMS1), 1, .matchSP , object@spectra$negativeMS2 )
 
 
   object
@@ -617,8 +617,8 @@ featureCandidate<- function(object,mz.ppm = 20,
   {
     .expand_iso <- function( featureCandidate.list,xcms.xcms){
 
-      featuredef <- featureDefinitions(xcms.xcms)%>%as.data.frame()
-      featureval <- featureValues(xcms.xcms,missing = "rowmin_half")
+      featuredef <- xcms::featureDefinitions(xcms.xcms) %>% as.data.frame()
+      featureval <- xcms::featureValues(xcms.xcms, missing = "rowmin_half")
       .match.featurecandidate <- function(x,featuredef,featureval){
         if (is.null(x)) {
           return(NULL)
@@ -952,7 +952,7 @@ plot_MSdev_sample_peaks <- function(object, target = "PositiveMS1", top_n = Inf)
     return(NULL)
   }
 
-  fval <- featureValues(xcms.xcms, value = "maxo")
+  fval <- xcms::featureValues(xcms.xcms, value = "maxo")
   sample.info <- Biobase::pData(xcms.xcms)
 
   presence <- !is.na(fval)
@@ -1050,8 +1050,8 @@ plot_MSdev_feature_spectrum <- function(MSdev.obj,feature.id  ){
 
       )
       Spectra::plotSpectra(sp.exp,labels = function(z) {
-        lbls <- round(mz(z)[[1L]], digits = 4)
-        lbls[intensity(z)[[1L]] <= 15] <- ""
+        lbls <- round(Spectra::mz(z)[[1L]], digits = 4)
+        lbls[Spectra::intensity(z)[[1L]] <= 15] <- ""
         lbls},
         main = text.to.show,
         adj = 0,
@@ -1079,8 +1079,8 @@ plot_MSdev_feature_spectrum <- function(MSdev.obj,feature.id  ){
       Spectra::plotSpectraMirror(sp.exp,sp.ref,
                                  ylab = "relative intensity",
                                  labels = function(z) {
-                                   lbls <- round(mz(z)[[1L]], digits = 4)
-                                   lbls[intensity(z)[[1L]] <= 15] <- ""
+                                   lbls <- round(Spectra::mz(z)[[1L]], digits = 4)
+                                   lbls[Spectra::intensity(z)[[1L]] <= 15] <- ""
                                    lbls},
                                  tolerance = 0.2,
                                  main = text.to.show,
@@ -2040,7 +2040,7 @@ MSdev_get_feature_chrom <- function(object,BPPARAM =  SnowParam(
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     if (is.null(feature.list[[pol]])) {
-      fid = featureDefinitions(xcms.xcms)$feature_id
+      fid = xcms::featureDefinitions(xcms.xcms)$feature_id
     }else{
       fid = feature.list[[pol]]
     }
@@ -2049,7 +2049,7 @@ MSdev_get_feature_chrom <- function(object,BPPARAM =  SnowParam(
     #                                     feature.id = fid,
     #                                    sample = "all",rt = "all",
     #                                    BPPARAM = SnowParam(progressbar = T))
-    xcms.chrom <- featureChromatograms(xcms.xcms,
+    xcms.chrom <- xcms::featureChromatograms(xcms.xcms,
                                        features = fid,
                                        expandRt = Inf,
                                        filled = T,
@@ -2080,7 +2080,7 @@ get_MSdev_isotopologues_data <- function(object){
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
 
-    xcms.fdf.iso <- featureDefinitions(xcms.xcms)%>%
+    xcms.fdf.iso <- xcms::featureDefinitions(xcms.xcms) %>%
       as.data.frame()%>%
       dplyr::mutate(is_seed = feature_id %in% iso_seed)%>%
       dplyr::filter(!is.na(iso_seed))
@@ -2118,7 +2118,7 @@ get_MSdev_isotopologues_data <- function(object){
     iso.fraction <- get_xcms_iso_fraction(xcms.xcms)
     iso.fraction <- iso.fraction[xcms.fdf.iso$feature_id,]
 
-    val <- featureValues(xcms.xcms)[xcms.fdf.iso$feature_id,]
+    val <- xcms::featureValues(xcms.xcms)[xcms.fdf.iso$feature_id,]
     colnames(val) <- paste0("int_",pData(xcms.xcms)$sample.name)
 
     frac <- iso.fraction
@@ -2143,13 +2143,13 @@ get_MSdev_isotopologues_data <- function(object){
 count_MSdev_peaks <- function(object){
 
   xcms <- object@xcmsData$NegativeMS1
-  pks <- table(chromPeaks(xcms)[,"sample"])
+  pks <- table(xcms::chromPeaks(xcms)[, "sample"])
   names(pks) <- pData(xcms)[,1]
   print(pks)
 
 
   xcms <- object@xcmsData$PositiveMS1
-  pks <- table(chromPeaks(xcms)[,"sample"])
+  pks <- table(xcms::chromPeaks(xcms)[, "sample"])
   names(pks) <- pData(xcms)[,1]
   print(pks)
 }

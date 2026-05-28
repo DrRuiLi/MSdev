@@ -15,13 +15,10 @@ setClass("MSdev",
 
 #' @importFrom magrittr `%>%` `%<>%`
 #' @import  tidyverse dplyr ggplot2 patchwork
-#' @importFrom xcms filepaths mzrange plotSpec filterFile chromPeaks intensity mz featureDefinitions `featureDefinitions<-` featureValues featureChromatograms
-#' @importFrom MSnbase readMSData sampleNames fileNames polarity
 #' @importFrom BiocParallel SnowParam SerialParam bpmapply bplapply snowWorkers register
 #' @importFrom tibble tibble as.tibble rownames_to_column remove_rownames
 #' @importFrom S4Vectors isEmpty
 #' @importFrom Biobase pData fData
-#' @importFrom Spectra msLevel Spectra MsBackendMemory `spectraNames<-` peaksData spectraNames filterPolarity rtime dataOrigin
 #' @importFrom ProtGenerics filterMsLevel filterPolarity collisionEnergy
 #' @importFrom CompoundDb compounds
 #' @importFrom ChemmineR atomcountMA MF `cid<-` cid validSDF canonicalize atomblock bonds bondblock rings

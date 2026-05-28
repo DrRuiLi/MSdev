@@ -85,7 +85,7 @@ Use MSIP_xcms_processing.targeted() which handles isotopologue annotation automa
     xcms.xcms <- obj@xcmsData[[paste0(pol, "MS1")]]
     if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) next
 
-    xcms.fdf <- featureDefinitions(xcms.xcms) %>% as.data.frame()
+    xcms.fdf <- xcms::featureDefinitions(xcms.xcms) %>% as.data.frame()
     polarity_val <- i
     target_ele <- get_ele_uniso(iso_ele)
 
@@ -254,7 +254,7 @@ MSIP_get_isotopologues_table <- function(object,
     ### MS1 purity
     {
       #sample.idx <- !is.na(pData(xcms.xcms)$isotope_tracer)
-      sample.idx <- seq_along(filepaths(xcms.xcms))
+      sample.idx <- seq_along(xcms::filepaths(xcms.xcms))
       #sample.idx <-  pData(xcms.xcms)$group=="FSLowCFullGlu"
       if ( !"ms1_purity"%in%   colnames(xcms.xcms@msFeatureData$featureDefinitions)) {
         xcms.purity.matrix <- get_xcms_feature_purity_matrix(xcms.xcms ,
@@ -275,7 +275,7 @@ MSIP_get_isotopologues_table <- function(object,
     {
       xcms.pdata <- pData(xcms.xcms)%>%
         dplyr::filter(!sample.type%in% c("Blank"))
-      xcms.fdf <- featureDefinitions(xcms.xcms)%>%as.data.frame()
+      xcms.fdf <- xcms::featureDefinitions(xcms.xcms) %>% as.data.frame()
       xcms.fv <- get_xcms_quantify_MSIP(xcms.xcms)
       xcms.fv <- assay(xcms.fv)[,xcms.pdata$sampleNames,drop = F]
       f.traced <- ifelse(is.na(xcms.pdata$isotope_tracer),
@@ -369,7 +369,7 @@ MSIP_get_isotopologues_table <- function(object,
           dplyr::filter(is_isotopologues)%>%
           dplyr::pull(feature_id)
         message_with_time("Extract ",length(fid)," Chromatograms in ",pol)
-        xcms.chrom <- featureChromatograms(xcms.xcms,
+        xcms.chrom <- xcms::featureChromatograms(xcms.xcms,
                                            features = fid,
                                            expandRt = Inf,
                                            filled = T,
@@ -450,7 +450,7 @@ MSIP_assign_MS2 <- function(object,rt.tol = 10){
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
     xcms.se <- get_xcms_quantify_MSIP(xcms.xcms)
     samples <- levels(groupStringFactor(xcms.se$sample.source))
-    xcms.fdf <- featureDefinitions(xcms.xcms)
+    xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
     iso.table <- object@advancedAna$MSIP$isotopologues_table[[pol]]
     iso.table$ms2_id <-xcms.fdf$ms2_id[match(iso.table$feature_id,xcms.fdf$feature_id  )]
     iso.table <- iso.table%>%
@@ -1598,7 +1598,7 @@ MSIP_get_isotopologues_data_fid <- function(object,fid_seed,polarity,
       xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
       xcms.se <- get_xcms_quantify_MSIP(xcms.xcms)
       samples <- levels(groupStringFactor(xcms.se$sample.source))
-      xcms.fdf <- featureDefinitions(xcms.xcms)
+      xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
       iso.table <- object@advancedAna$MSIP$isotopologues_table[[pol]]
       iso.table$ms2_id <-xcms.fdf$ms2_id[match(iso.table$feature_id,xcms.fdf$feature_id  )]
       iso.table <- iso.table%>%
@@ -3623,7 +3623,7 @@ MSIP_xcms_processing.targeted <- function(object,
     polarity.tag <- paste0(polarity.index[as.character(i)], "MS1")
     if (!nrow(sample.info.polarity)) next
 
-    xcms.xcms <- filterFile(
+    xcms.xcms <- xcms::filterFile(
       object@xcmsData[[polarity.tag]],
       which(Biobase::pData(object@xcmsData[[polarity.tag]])$sample.name %in%
               sample.info.polarity$sample.name)
@@ -3797,7 +3797,7 @@ Report_MSIP_raw_data <- function(object,
         if(show_chrom){
           this.chroms <- chroms.list[[this.data@CompoundInfo$polarity+1]]
           this.chrom <- this.chroms[match(sub(x= this.fid,pattern = "_Negative|_Positive",""),
-                                          featureDefinitions(this.chroms)$feature_id),]
+                                         xcms::featureDefinitions(this.chroms)$feature_id),]
 
 
 
