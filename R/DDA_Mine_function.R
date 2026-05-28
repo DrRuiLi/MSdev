@@ -139,7 +139,7 @@ MSdev_get_MS2acquisitionStat <- function(object){
       dplyr::group_by(fileIdx)%>%
       dplyr::mutate(total.id = paste0(assigned.id,collapse = ";"))%>%
       dplyr::distinct(fileIdx,total.id)%>%
-      dplyr::mutate(files = sampleNames(xcms.xcms)[fileIdx])
+      dplyr::mutate(files = Biobase::sampleNames(xcms.xcms)[fileIdx])
 
     ms2.list <-lapply(ms2.stat$total.id,function(x){
       strsplit(x,";")%>%unlist()
@@ -153,7 +153,7 @@ MSdev_get_MS2acquisitionStat <- function(object){
                                            T~acquired),
                       acquired.in.list = case_when(
                         DDA.id %in% ids ~ paste0( acquired.in.list,
-                                                  ";",sampleNames(xcms.xcms)[i]),
+                                                  ";",Biobase::sampleNames(xcms.xcms)[i]),
                         T~ acquired.in.list))%>%
         dplyr::ungroup()%>%
         dplyr::mutate(fail.time = case_when(acquired~0,

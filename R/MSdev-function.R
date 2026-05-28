@@ -1457,7 +1457,7 @@ MSdev_extract_Spectra <- function(object,
   {
     if ("isotope_tracer"%in% colnames(sampleInfo)) {
 
-      sp.ms2$isotope_tracer <- sampleInfo$isotope_tracer[match(sampleNames(sp.ms2),
+      sp.ms2$isotope_tracer <- sampleInfo$isotope_tracer[match(Biobase::sampleNames(sp.ms2),
                                      basename(sampleInfo$msData.files))]
       sp.ms2$from_isotope_tracer <- !is.na(sp.ms2$isotope_tracer)
 
@@ -1469,11 +1469,11 @@ MSdev_extract_Spectra <- function(object,
   {
     if ("sample.source"%in% colnames(sampleInfo)) {
       if (1 %in% msLevel(sp)) {
-        sp.ms1$sample.source <- sampleInfo$sample.source[match(sampleNames(sp.ms1),
+        sp.ms1$sample.source <- sampleInfo$sample.source[match(Biobase::sampleNames(sp.ms1),
                                      basename(sampleInfo$msData.files))]
       }
       if (2 %in% msLevel(sp)) {
-        sp.ms2$sample.source <- sampleInfo$sample.source[match(sampleNames(sp.ms2),
+        sp.ms2$sample.source <- sampleInfo$sample.source[match(Biobase::sampleNames(sp.ms2),
                                      basename(sampleInfo$msData.files))]
       }
     }

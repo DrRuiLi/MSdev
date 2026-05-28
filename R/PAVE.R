@@ -577,7 +577,7 @@ PAVE_report <- function(object,file = tempfile(fileext = "pdf"),mzr = c(0,Inf)){
                       "total peaks number",
                       "peaks in procedure blank",
                       "other peaks without labeling",
-                      "labeling but ρ<0.75",
+                      "labeling but rho<0.75",
                       "logical labeling (i.e., biological)",
                       "isotopes",
                       "dimer or double charge",

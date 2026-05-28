@@ -60,7 +60,7 @@ setMethod("initialize" , "MS_Exp",
             Chroma_column <- tibble(
               "Column_name" = "Kinetex C18",
               "Manufacturer" = "Phenomenex",
-              "Paricle_size" = "1.7 μm",
+              "Paricle_size" = "1.7 um",
               "Length" = "50 mm",
               "Diameter" = "2.1 mm",
               "Item_No" = "",
