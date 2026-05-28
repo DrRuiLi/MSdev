@@ -1353,14 +1353,22 @@ MSdev_msConvert<- function(object,format.to = "mzML"){
 
   ### convert
   if (nrow(sample.info)) {
-    MSconvertR::msConvert(
-      raw.files  = sample.info$raw.files,
-      ms.data.names = sample.info$msData.files,
-      format.to = format.to,
-      BPPARAM = SnowParam(workers =parallel::detectCores()-1,
-                                                   progressbar = T))
-
-
+    withCallingHandlers(
+      MSconvertR::msConvert(
+        raw.files  = sample.info$raw.files,
+        ms.data.names = sample.info$msData.files,
+        format.to = format.to,
+        BPPARAM = SnowParam(
+          workers = parallel::detectCores() - 1L,
+          progressbar = TRUE
+        )
+      ),
+      warning = function(w) {
+        if (grepl("may not be available when loading", conditionMessage(w), fixed = TRUE)) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    )
   }
 
   ### filter non converted
