@@ -17,7 +17,7 @@
 #' @return A \code{ggplot} object.
 #' @export
 plot_MSIPIsotopologueData_ratio <- function(object,
-                                           assay = "ratio",
+                                           assay = "ratio_adjusted",
                                            isotopologue_label = c("label.isotopologue", "isotopologue_form"),
                                            sample_order = NULL,
                                            isotopologue_order = NULL,

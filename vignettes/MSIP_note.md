@@ -586,7 +586,41 @@ Review:
 
 
 
+### MSIP_isotoplogue_adjust_natural
+1. write a function 'MSIP_isotoplogue_adjust_natural' to adjust the isotopologue based on the natural isotopologue:
+  - input: MSdev object
+  - output: MSdev object
+  - call 'MSIPIsotopologueData_adjust_natural_isotope' to adjust the isotopologue based on the natural isotopologue for each isotopologue data
+2. the output should set the default assay of the isotopologue se to 'ratio_adjusted'
+3. calculate a average_label_ratio for each isotopologue, the average_label_ratio is the average of the ratio of the labeled isotopologue to the ratio_adjusted and store it in the rowdata of the isotopologue se
 
+
+### MSIPIsotopologueData_adjust_natural_isotope
+1. write a function 'MSIPIsotopologueData_adjust_natural_isotope' to adjust the isotopologue based on the natural isotopologue:
+  - input: MSIPIsotopologueData
+  - output: MSIPIsotopologueData
+  - the function should adjust the isotopologue based on the natural isotopologue, the natural isotopologue is the isotopologue that is not labeled with tracer, the ratio should be adjusted to the natural isotopologue ratio
+  - use these workflow:
+    - calculate the natural isotopologue ratio use MSCC::chemform_isotopes_pattern_enviPat
+    - calculate the adjusted ratio by the natural isotopologue ratio
+    - store the adjusted ratio in an new assay, name as 'ratio_adjusted'
+2. write a function 'heatmap_MSIPIsotopologueData_ratio_adjusted' to plot the ratio_adjusted of MSIPIsotopologueData using ComplexHeatmap
+  - input: MSIPIsotopologueData
+  - output: ComplexHeatmap object
+  - cbind the ratio, natural ratio and adjusted ratio into a matrix
+  - plot the matrix using ComplexHeatmap
+3. do not use 'get_iso_natural_ratio' to calculate the natural isotopologue ratio, use MSCC::chemform_isotopes_pattern_enviPat instead
+4. the 'chemform_isotopes_pattern_enviPat' output containg multiple element, but we only need the ratio of the isotope of the element, please extract the ratio of the isotope of the element. run a test for 'MSCC::chemform_isotopes_pattern_enviPat' and update the code
+5. when ' ratio_adjusted <- ratio_matrix - natural_ratio_by_row', the 'natural_ratio_by_row' should be a matrix with same shape as 'ratio_matrix'
+6. read the package 'accucor', all its exported and unexported functions, extract its core part of natural correction, warpped in a function 'accucor_natural_correction'
+  - input:
+    - a matrix of raw ratio: row as isotopologue, col as sample.source
+    - iso_ele: the element of the isotope, default is '[13]C'
+  - output:
+    - a matrix of adjusted ratio: row as isotopologue, col as sample.source
+7. remove the previous code of natural correction, call 'accucor_natural_correction' in 'MSIPIsotopologueData_adjust_natural_isotope'
+8. the 'ratio_adjusted' should be normalized to 1 across isotopologue, the value should be the ratio of the isotopologue to the sum of all isotopologue of the compound in the same sample.source
+ 
 
 
 
