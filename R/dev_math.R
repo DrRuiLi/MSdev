@@ -538,6 +538,32 @@ rsd <- function(x, na.rm = TRUE) {
    sd(x, na.rm = na.rm) / mean(x, na.rm = na.rm)
 }
 
+#' @title Match m/z values using interval overlaps
+#' @description Match two numeric m/z vectors within a ppm tolerance using
+#' `data.table::foverlaps()` on ppm-expanded intervals.
+#'
+#' The function returns index pairs (`ion1`, `ion2`) and the ppm error (`mz.ppm`).
+#' When `length(mz1) > length(mz2)`, it builds intervals around `mz2` using a
+#' global window derived from `max(ppm.base)`, then filters to the final `ppm`.
+#'
+#' @param mz1 Numeric vector of m/z values (query set 1).
+#' @param mz2 Numeric vector of m/z values (query set 2).
+#' @param ppm.base Numeric vector used as ppm denominator. Defaults to `mz1`.
+#'   For typical use, `ppm.base` should have the same length as the set referenced
+#'   by `ion1` in the returned table (usually `mz1`).
+#' @param ppm Numeric scalar ppm tolerance (default 10).
+#'
+#' @return A `data.table` with columns:
+#' - `ion1`: index in `mz1`
+#' - `ion2`: index in `mz2`
+#' - `mz.ppm`: ppm error (signed when `length(mz1) > length(mz2)`, otherwise absolute)
+#'
+#' @examples
+#' mz1 <- c(100.0000, 200.0000)
+#' mz2 <- c(100.0008, 199.9990)
+#' match_mz_foverlaps(mz1, mz2, ppm = 10)
+#'
+#' @export
 match_mz_foverlaps <- function(mz1, mz2, ppm.base = mz1, ppm = 10 ) {
 
   if (length(mz1 )>length(mz2)) {
