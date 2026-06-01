@@ -1,3 +1,19 @@
+#' @title Load bundled demo data objects
+#' @description Load pre-built demo objects from the MSdev demo project directory.
+#' Dispatches to [MSdev_load()] for `"MSdev"` and `readRDS()` for other demo types.
+#'
+#' @param demo Character. One of `"MSdev"`, `"XCMSnExp"`, `"xcms"`,
+#'   `"SummarizedExperiment"`, `"data.se"`, `"Spectra"`, or `"sp"`.
+#'
+#' @return The loaded demo object (type depends on `demo`).
+#'
+#' @examples
+#' \dontrun{
+#' msdev.demo <- load_demo("MSdev")
+#' xcms.demo <- load_demo("xcms")
+#' }
+#'
+#' @export
 load_demo <- function(demo = c("MSdev",
                                "XCMSnExp","xcms",
                                "SummarizedExperiment","data.se",
