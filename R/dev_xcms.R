@@ -170,7 +170,7 @@ sub_xchrom <-  function (x, i, j, drop = TRUE)
 
 get_xchroms_peaks_count <- function(xchroms){
 
-  peaks.info <- chromPeaks(xchroms)%>%
+  peaks.info <- xcms::chromPeaks(xchroms)%>%
     as.data.frame()%>%
     dplyr::group_by(row,column)%>%
     dplyr::mutate(peaks.no = n(),
@@ -248,7 +248,7 @@ get_xcms_peaks_chrom <- function(xcms.xcms,
 
 xcms_get_peak_fill <- function(xcms.xcms){
 
-  xcms.peaks <- chromPeaks(xcms.xcms)
+  xcms.peaks <- xcms::chromPeaks(xcms.xcms)
   rt.na <- apply(xcms.peaks,1,function(x){is.na(x["rt"])})
   into.na <- apply(xcms.peaks,1,function(x){is.na(x["into"])})
 
@@ -400,7 +400,7 @@ get_xcms_feature_chrom <- function(xcms.xcms,
 
 get_chrom_peaks_gaussian_fit <- function(xchrom){
 
-  peaks.info <- chromPeaks(xchrom)[1,,drop = F]
+  peaks.info <- xcms::chromPeaks(xchrom)[1,,drop = F]
   peaks.data <- get_chroms_data(xchrom)
   nls(formula = intensity ~ gaussian_functioin(rt ,a,b,c),
       data = peaks.data,control = nls.control(warnOnly = T),
@@ -624,7 +624,7 @@ plot_XChromatograms <- function(xchroms ,
 xcms_get_feature_def_stat <- function(xcms.xcms){
 
   feature.def <- xcms::featureDefinitions(xcms.xcms)
-  peaks.data <- chromPeaks(xcms.xcms)
+  peaks.data <- xcms::chromPeaks(xcms.xcms)
 
   .xcmsPeakDataMed <- function(x,peaks.data,key = "rtmax",fun = "median"){
     if (!key%in% colnames(peaks.data)) {
@@ -1622,7 +1622,7 @@ find_xcms_feature <- function(xcms.xcms,mz = 100,ppm = 10){
 
 find_xcms_peaks <- function(xcms.xcms, mz = 100, ppm = 10) {
 
-  peaks <- chromPeaks(xcms.xcms)
+  peaks <- xcms::chromPeaks(xcms.xcms)
   mzr <- mz.range.ppm(mz, ppm)
   peaks[between(peaks[,"mz"], mzr[1], mzr[2]), ]
 }
@@ -1642,7 +1642,7 @@ find_xcms_peaks <- function(xcms.xcms, mz = 100, ppm = 10) {
 
 plot_xcms_peaks_distribution <- function(xcms.xcms,plot.title = "Peaks distribution",type = "o"){
 
-  xcms.peaks <- chromPeaks(xcms.xcms)%>%
+  xcms.peaks <- xcms::chromPeaks(xcms.xcms)%>%
     as.data.frame()%>%
     dplyr::mutate(as.data.frame(chromPeakData(xcms.xcms)),
                   peak_id = rownames(.),
@@ -1857,7 +1857,7 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
   if (is.null(peak.idx) || !length(peak.idx)) {
     stop("Selected feature has no linked peaks (empty peakidx).")
   }
-  xcms.peaks <- chromPeaks(xcms.xcms)[peak.idx, , drop = FALSE]
+  xcms.peaks <- xcms::chromPeaks(xcms.xcms)[peak.idx, , drop = FALSE]
   mz.range <- as.numeric(c(min(xcms.peaks[, "mzmin"], na.rm = TRUE),
                            max(xcms.peaks[, "mzmax"], na.rm = TRUE)))
   rt.range <- as.numeric(c(min(xcms.peaks[, "rtmin"], na.rm = TRUE),
@@ -1898,7 +1898,7 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
 plot_xcms_peaks_mzerror_density <- function(xcms.xcms,
                                             plot.title = "Peak mz error distribution"){
 
-  xcms.peaks <- chromPeaks(xcms.xcms)%>%
+  xcms.peaks <- xcms::chromPeaks(xcms.xcms)%>%
     as.data.frame()%>%
     mutate(ppm = (mzmax-mzmin)/mz*1e6,
            mz_diff = mzmax-mzmin,
@@ -1944,7 +1944,7 @@ plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"
   xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( processType )
   xcms.findpeak.param <- xcms::processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
     xcms::processParam()
-  xcms.peaks <- chromPeaks(xcms.xcms)%>%
+  xcms.peaks <- xcms::chromPeaks(xcms.xcms)%>%
     as.data.frame()
   xcms.scans <- get_xcms_scan_Stat(xcms.xcms)%>%
     dplyr::filter(msLevel== 1)
@@ -1999,7 +1999,7 @@ plot_xcms_peaks_ms2_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS2"
   xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( processType )
   xcms.findpeak.param <- xcms::processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
     xcms::processParam()
-  xcms.peaks <- chromPeaks(xcms.xcms)%>%
+  xcms.peaks <- xcms::chromPeaks(xcms.xcms)%>%
     as.data.frame()
   xcms.scans <- Biobase::fData(xcms.xcms)%>%
     dplyr::filter(msLevel== 2)
@@ -2087,7 +2087,7 @@ plot_xcms_peaks_SN_distribution <- function(xcms.xcms,plot.title = "Peaks SNR(Si
   xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( xcms::processType )
   xcms.findpeak.param <- xcms::processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
     xcms::processParam()
-  xcms.peaks <- chromPeaks(xcms.xcms)%>%
+  xcms.peaks <- xcms::chromPeaks(xcms.xcms)%>%
     as.data.frame()
 
   ggplot(xcms.peaks)+
@@ -2132,7 +2132,7 @@ plot_xcms_peaks_SN_distribution <- function(xcms.xcms,plot.title = "Peaks SNR(Si
 
 plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt = "expand"){
 
-  peaks.data <- chromPeaks(xcms.xcms)[peak_id,,drop = F]
+  peaks.data <- xcms::chromPeaks(xcms.xcms)[peak_id,,drop = F]
   peak_id <- rownames(peaks.data)
   mz.range <- c(peaks.data[,c("mzmin","mzmax")])
   rt.range <- c(peaks.data[,c("rtmin","rtmax")])
@@ -2758,7 +2758,7 @@ get_xcms_MS_report <- function(xcms.xcms ,
 
 get_xcms_peaks_stat <- function(xcms.xcms){
 
-  xcms.peaks <- chromPeaks(xcms.xcms)%>%
+  xcms.peaks <- xcms::chromPeaks(xcms.xcms)%>%
     as.data.frame()%>%
     rownames_to_column("peak_id")%>%
     dplyr::mutate(peakWidth = rtmax-rtmin,
