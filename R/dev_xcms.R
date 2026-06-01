@@ -901,6 +901,36 @@ xcms_get_feature_isotopologues_multi_tracer <- function(xcms.xcms,
 #' @param max_label Named numeric vector of maximum labels per tracer.
 #' @return Data.frame with columns for each tracer's label count, total.count, and mass.shift.
 #'
+#' @title Pair xcms features within retention-time tolerance
+#' @description Builds all directed feature pairs from `featureDefinitions` whose
+#'   retention times differ by less than `rt.tol`. Used as the RT filter before
+#'   isotope mass-shift matching.
+#' @param xcms.xcms \code{XCMSnExp} with feature definitions.
+#' @param rt.tol Retention time tolerance in seconds (default 5).
+#' @return Data frame with integer `from`/`to` row indices, feature ids, m/z, rt,
+#'   `mz.diff`, `rt.diff`, and `mz.mean` (mean m/z of the pair).
+#' @export
+get_xcms_feature_connect <- function(xcms.xcms, rt.tol = 5) {
+
+  xcms.fdf <- xcms::featureDefinitions(xcms.xcms) %>%
+    as.data.frame()
+  net.df <- expand.grid(from = seq_len(nrow(xcms.fdf)),
+                        to = seq_len(nrow(xcms.fdf)))
+  fdf.connect <- net.df %>%
+    dplyr::mutate(from.fid = xcms.fdf$feature_id[from],
+                  from.rt = xcms.fdf$rtmed[from],
+                  from.mz = xcms.fdf$mzmed[from],
+                  to.fid = xcms.fdf$feature_id[to],
+                  to.rt = xcms.fdf$rtmed[to],
+                  to.mz = xcms.fdf$mzmed[to],
+                  mz.diff = to.mz - from.mz,
+                  rt.diff = abs(from.rt - to.rt),
+                  mz.mean = (from.mz + to.mz) / 2) %>%
+    dplyr::filter(rt.diff < rt.tol)
+  fdf.connect
+}
+
+
 get_xcms_feature_isotope_grid_multi_tracer <- function(iso_ele, max_label) {
 
   iso.chemforms <- character()
@@ -972,20 +1002,7 @@ get_xcms_feature_iso_connection <- function(xcms.xcms,
 
   {
 
-    xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
-      as.data.frame()
-    net.df <- expand.grid(from = 1:nrow(xcms.fdf),
-                          to = 1:nrow(xcms.fdf))
-    fdf.connect <- net.df%>%
-      dplyr::mutate(from.fid = xcms.fdf$feature_id[from],
-                    from.rt = xcms.fdf$rtmed[from],
-                    from.mz = xcms.fdf$mzmed[from],
-                    to.fid = xcms.fdf$feature_id[to],
-                    to.rt = xcms.fdf$rtmed[to],
-                    to.mz = xcms.fdf$mzmed[to],
-                    mz.diff = to.mz - from.mz,### not abs, with direction
-                    rt.diff = abs(from.rt-to.rt))%>%
-      dplyr::filter(rt.diff < rt.tol)
+    fdf.connect <- get_xcms_feature_connect(xcms.xcms, rt.tol = rt.tol)
 
     #isotope <- "[13]C"
     iso.chemform <- paste0(iso_ele,1,

@@ -2155,6 +2155,12 @@ count_MSdev_peaks <- function(object){
 }
 
 
+#' @title MS instrument description from an MSdev object
+#' @description Returns manufacturer and model from `projectInfo`, with
+#'   placeholder values replaced by readable defaults when unknown.
+#' @param object An \code{MSdev} object.
+#' @return Character string `"<manufacturer> <model>"`.
+#' @export
 get_MSdev_instrument <- function(object){
 
   manufacturer <- object@projectInfo$msManufacturer

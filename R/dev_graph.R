@@ -16,6 +16,12 @@ get_edges_from_epath <- function(ig,v,directed= F){
 
 }
 
+#' @title Subset an igraph to selected vertices
+#' @description Keeps only vertices in `v` and removes all others.
+#' @param ig An \code{igraph} object.
+#' @param v Vertex indices, names, or a logical vector (passed to \code{igraph::V}).
+#' @return Subsetted \code{igraph} object.
+#' @export
 igraph_filter_vertex <- function(ig,v){
 
   if (is.numeric(v)|is.logical(v)|is.character(v))
@@ -362,6 +368,12 @@ igraph_get_nodes_distance <- function(ig,from,dis){
 }
 
 
+#' @title Connected-component membership for igraph vertices
+#' @description Returns the component id for each vertex (same as
+#'   \code{igraph::components(ig)$membership}).
+#' @param ig An \code{igraph} object.
+#' @return Named integer vector of component memberships (names are vertex names).
+#' @export
 get_igraph_membership <- function(ig){
 
 

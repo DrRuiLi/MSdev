@@ -1,13 +1,20 @@
-
-#if (!isGeneric("vdata"))
-  setGeneric(
+#' Vertex attribute table for graph-like objects
+#'
+#' @param object Graph-like object (e.g. an \code{igraph}).
+#' @return Data frame of vertex attributes.
+#' @export
+setGeneric(
   "vdata",
   def = function(object) {
     igraph::as_data_frame(object, "vertices")
   }
 )
 
-#if (!isGeneric("edata"))
+#' Edge attribute table for graph-like objects
+#'
+#' @param object Graph-like object (e.g. an \code{igraph}).
+#' @return Data frame of edge attributes.
+#' @export
 setGeneric(
   "edata",
   def = function(object) {

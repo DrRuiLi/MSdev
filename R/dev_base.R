@@ -264,6 +264,16 @@ which.na <- function(x){
 }
 
 
+#' @title Subset a matrix with NA fill for missing rows/columns
+#' @description Returns values from `mat` for each row/column name pair in
+#'   `rownames_vec` and `colnames_vec`. Missing row or column names are filled
+#'   with `NA`.
+#' @param mat Matrix with dimnames.
+#' @param rownames_vec Character vector of row names to extract.
+#' @param colnames_vec Character vector of column names to extract.
+#' @param drop If `TRUE` and the result is 1x1, return a scalar (default `TRUE`).
+#' @return Matrix (or vector when `drop` applies) of extracted values.
+#' @export
 get_matrix_value_fill_with_NA <- function(mat,
                                           rownames_vec = rownames(mat),
                                           colnames_vec = colnames(mat),
