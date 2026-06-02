@@ -1,3 +1,6 @@
+
+
+
 #' @title  get_features_from_xcms
 #' @description extract feature data from xcms::XCMSnExp,
 #'  calculate RSD of QC and Sample
@@ -362,7 +365,7 @@ get_xcms_feature_chrom <- function(xcms.xcms,
                                     BPPARAM = SerialParam()){
 
   features.data <- xcms::featureDefinitions(xcms.xcms)
-  features.val <- featureValues(xcms.xcms,missing = "rowmin_half")
+  features.val <- xcms::featureValues(xcms.xcms,missing = "rowmin_half")
   if(is.numeric(feature.id)) { feature.id <-rownames(features.data)[feature.id]}
   features.data <- features.data[feature.id,,drop=F]
   features.val <- features.val[feature.id,,drop =F]
@@ -658,7 +661,7 @@ xcms_get_feature_def_stat <- function(xcms.xcms){
 xcms_get_feature_val_stat <- function(xcms.xcms) {
 
   xcms.pdata <- Biobase::pData(xcms.xcms)
-  featureval <- featureValues(xcms.xcms)
+  featureval <- xcms::featureValues(xcms.xcms)
   if ("sample.type" %in% colnames(xcms.pdata)) {
     qc.rsd <- featureval[,xcms.pdata%>%dplyr::filter(sample.type =="QC")%>%
                  dplyr::pull(sampleNames),drop=F]%>%
@@ -910,25 +913,39 @@ xcms_get_feature_isotopologues_multi_tracer <- function(xcms.xcms,
 #' @return Data frame with integer `from`/`to` row indices, feature ids, m/z, rt,
 #'   `mz.diff`, `rt.diff`, and `mz.mean` (mean m/z of the pair).
 #' @export
-get_xcms_feature_connect <- function(xcms.xcms, rt.tol = 5) {
 
-  xcms.fdf <- xcms::featureDefinitions(xcms.xcms) %>%
-    as.data.frame()
-  net.df <- expand.grid(from = seq_len(nrow(xcms.fdf)),
-                        to = seq_len(nrow(xcms.fdf)))
-  fdf.connect <- net.df %>%
-    dplyr::mutate(from.fid = xcms.fdf$feature_id[from],
-                  from.rt = xcms.fdf$rtmed[from],
-                  from.mz = xcms.fdf$mzmed[from],
-                  to.fid = xcms.fdf$feature_id[to],
-                  to.rt = xcms.fdf$rtmed[to],
-                  to.mz = xcms.fdf$mzmed[to],
-                  mz.diff = to.mz - from.mz,
-                  rt.diff = abs(from.rt - to.rt),
-                  mz.mean = (from.mz + to.mz) / 2) %>%
-    dplyr::filter(rt.diff < rt.tol)
-  fdf.connect
+get_xcms_feature_connect <- function(xcms.xcms,rt.tol = 5){
+
+
+  xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
+
+  {
+    rt <- xcms.fdf$rtmed
+    x <- data.table(rt = rt, start = rt,end = rt)
+    y <- x[,.(id = seq_along(rt),rt,start = rt - rt.tol, end = rt + rt.tol)]
+    data.table::setkey(y,start,end)
+    rtm <- data.table::foverlaps(x, y, type="any", which=TRUE)
+    rtm <- rtm[,.(xid,yid = y$id[yid])]
+  }
+
+
+  {
+    xcms.net <- rtm[,.(from = xid, to = yid)]
+    xcms.net <- xcms.net[from < to ][
+      , rt.diff := (xcms.fdf$rtmed[to]-xcms.fdf$rtmed[from]) ][
+        abs(rt.diff) < rt.tol,][
+          , c("from.mz","to.mz") := .( xcms.fdf$mzmed[from], xcms.fdf$mzmed[to])][
+            ,c("mz.diff","mz.mean") := .(to.mz-from.mz, (from.mz+to.mz)/2)]
+  }
+
+
+  return(xcms.net)
+
+
+
 }
+
+
 
 
 get_xcms_feature_isotope_grid_multi_tracer <- function(iso_ele, max_label) {
@@ -1742,7 +1759,7 @@ plot_xcms_features_distribution <-
       as.data.frame() %>%
       mutate(mz = mzmed, rt = rtmed)
     xcms.features$maxo <-
-      apply(featureValues(xcms.xcms, value = "maxo"), 1, median, na.rm = T)
+      apply(xcms::featureValues(xcms.xcms, value = "maxo"), 1, median, na.rm = T)
 
     xcms.process.type <-
       xcms::processHistory(xcms.xcms) %>% sapply(processType)
@@ -2602,7 +2619,7 @@ plot_xcms_feature_intensity <- function(xcms.xcms , feature_id_to_show ){
       dplyr::mutate(sample.type = factor(sample.type,levels = c("Blank","QC","Sample")),
                     injecton.order = 1:nrow(.))
   }
-  features <- featureValues(xcms.xcms)%>%
+  features <- xcms::featureValues(xcms.xcms)%>%
     as.data.frame()%>%
     rownames_to_column("feature_id")%>%
     dplyr::filter(feature_id %in% feature_id_to_show )%>%
@@ -2870,29 +2887,25 @@ get_xcms_Spectra <- function(xcms.xcms){
 
 }
 
+#' @importFrom ProtGenerics polarity
 
-invisible(
-  try(
-    methods::setMethod(f = "filepaths",
+
+#' @importFrom xcms filepaths
+#' @export
+setMethod(f = "filepaths",
                        signature = "XCMSnExp",
                        definition = function(object) {
                          paste0(dirname(object), "/", Biobase::sampleNames(object))
-                       }),
-    silent = TRUE
-  )
-)
-invisible(
-  try(
-    methods::setMethod(f = "mzrange",
+                       })
+#' @importFrom xcms mzrange
+#' @export
+setMethod(f = mzrange,
                        signature = "XCMSnExp",
                        definition = function(object) {
                          xcms.fdata <- fData(object)
                          return(c(min(xcms.fdata$scanWindowLowerLimit, na.rm = TRUE),
                                   max(xcms.fdata$scanWindowUpperLimit, na.rm = TRUE)))
-                       }),
-    silent = TRUE
-  )
-)
+                       })
 
 
 

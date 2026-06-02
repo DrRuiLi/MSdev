@@ -54,7 +54,7 @@ MSIP_import_compound_table <- function(obj, table.path) {
 #' then matches to xcms features by m/z and rt. Stores result in 'obj@advancedAna$MSIP$isotopologues_table'.
 #'
 #' @details
-#' \lifecycle{deprecated}
+#'
 #' This function is deprecated. Use \code{MSIP_xcms_processing.targeted()} instead,
 #' which handles isotopologue annotation and M+0 injection automatically.
 #'

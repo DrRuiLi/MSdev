@@ -111,8 +111,7 @@ MSdev <- function(rawDataDir =
 
 
 
-setMethod(
-  "show" ,
+setMethod("show" ,
   "MSdev",
   definition = function(object) {
     project_info <- object@projectInfo

@@ -3,8 +3,7 @@
 #' @param object Graph-like object (e.g. an \code{igraph}).
 #' @return Data frame of vertex attributes.
 #' @export
-setGeneric(
-  "vdata",
+setGeneric("vdata",
   def = function(object) {
     igraph::as_data_frame(object, "vertices")
   }
@@ -15,8 +14,7 @@ setGeneric(
 #' @param object Graph-like object (e.g. an \code{igraph}).
 #' @return Data frame of edge attributes.
 #' @export
-setGeneric(
-  "edata",
+setGeneric("edata",
   def = function(object) {
     igraph::as_data_frame(object, "edges")
   }
@@ -25,16 +23,14 @@ setGeneric(
 
 
 #if (!isGeneric("vdata<-"))
-setGeneric(
-  "vdata<-",
+setGeneric("vdata<-",
   def = function(object, value) {
     igraph::vertex.attributes(object) <- as.list(value)
     object
   }
 )
 #if (!isGeneric("edata<-"))
-setGeneric(
-  "edata<-",
+setGeneric("edata<-",
   def = function(object, value) {
     value <- value[, !grepl("^from$|^to$", colnames(value))]
     igraph::edge.attributes(object) <- as.list(value)

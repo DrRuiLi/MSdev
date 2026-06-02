@@ -95,8 +95,7 @@ setMethod("initialize" , "MS_Exp",
 
           })
 
-setMethod(
-  "show" ,
+setMethod("show" ,
   "MS_Exp",
   definition = function(object) {
     general_data <- object@General

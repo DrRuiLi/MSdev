@@ -11,8 +11,7 @@ Molecule_igraph <- function(){
 }
 
 
-setMethod(
-  "show",
+setMethod("show",
   "Molecule_igraph",
   definition = function(object) {
     print(paste0("Molecule_igraph: ", unname(MF2(object@sdf, addH =  T))," ",
@@ -25,8 +24,7 @@ setMethod(
 
 
 
-setMethod(
-  "vdata",
+setMethod("vdata",
   "Molecule_igraph",
   definition = function(object) {
     vdata(object@igraph)
@@ -36,8 +34,7 @@ setMethod(
 
 
 
-setMethod(
-  "vdata<-",
+setMethod("vdata<-",
   "Molecule_igraph",
   definition = function(object, value) {
     vdata(object@igraph) <- value
@@ -47,8 +44,7 @@ setMethod(
 
 
 
-setMethod(
-  "edata",
+setMethod("edata",
   "Molecule_igraph",
   definition = function(object) {
     edata(object@igraph)
@@ -57,8 +53,7 @@ setMethod(
 
 
 
-setMethod(
-  "edata<-",
+setMethod("edata<-",
   "Molecule_igraph",
   definition = function(object, value) {
     edata(object@igraph) <- value
@@ -70,8 +65,7 @@ setMethod(
 
 
 
-setMethod(
-  f = "plot",
+setMethod(f = "plot",
   signature = "Molecule_igraph",
   definition = function(object,x,y) {
     plot(object@sdf)
