@@ -638,24 +638,40 @@ analyzeMSdevDEP <- function(object){
 #' MSdev_export
 #'
 #' @title Msdev Export
-#' @description MSdev export.
+#' @description Export \code{advancedAna} SummarizedExperiment objects to Excel under
+#'   \code{projectDir/Statistic}. Skips metabolite and candidate exports when those
+#'   slots are absent (e.g. after \code{\link{MSdev_get_Se}} only).
 #' @param object MSdev
+#' @param candi logical; export \code{candidate.se} when present
 #'
 #' @export
 #'
-MSdev_export <- function(object,candi = F){
+MSdev_export <- function(object, candi = FALSE) {
 
-  dir.create(paste0(object@projectInfo$projectDir,"/Statistic"),recursive = T,showWarnings = F)
-  DEP_export_data(object@advancedAna$metabolite.se,
-                  file = paste0(object@projectInfo$projectDir,"/Statistic/Metabolites.xlsx")
-                  )
-  DEP_export_data(object@advancedAna$feature.se,
-                  file = paste0(object@projectInfo$projectDir,"/Statistic/Features.xlsx")
+  stat.dir <- paste0(object@projectInfo$projectDir, "/Statistic")
+  dir.create(stat.dir, recursive = TRUE, showWarnings = FALSE)
+
+  .export_se <- function(se, file) {
+    if (!is.null(se) && inherits(se, "SummarizedExperiment") && nrow(se) > 0L) {
+      DEP_export_data(se, file)
+      message_with_time("Exported: ", normalizePath(file, winslash = "/", mustWork = FALSE))
+    }
+  }
+
+  .export_se(
+    object@advancedAna$feature.se,
+    paste0(stat.dir, "/Features.xlsx")
   )
-  if (candi)
-  DEP_export_data(object@advancedAna$candidate.se,
-                  file = paste0(object@projectInfo$projectDir,"/Statistic/Candidates.xlsx")
+  .export_se(
+    object@advancedAna$metabolite.se,
+    paste0(stat.dir, "/Metabolites.xlsx")
   )
+  if (isTRUE(candi)) {
+    .export_se(
+      object@advancedAna$candidate.se,
+      paste0(stat.dir, "/Candidates.xlsx")
+    )
+  }
 }
 
 

@@ -1634,7 +1634,9 @@ MSdev_annotation <- function(object,
 
 #'
 #' @title Extract and format statistical data from processed MS features
-#' @description Extract feature data from xcms, retrieve compound information, filter based on scores, and generate SummarizedExperiment objects.
+#' @description Build \code{advancedAna$feature.se} via \code{\link{MSdev_get_Se}}, then
+#'   retrieve compound information, filter based on scores, and optionally build
+#'   candidate and metabolite SummarizedExperiment objects.
 #' @describeIn MSdev_workflow extract statistical data
 #' @param object MSdev object
 #' @param keys character vector of compound database keys to retrieve (e.g., "name", "formula")
@@ -1656,39 +1658,10 @@ MSdev_get_Stat <- function(object,
                            candi = F,
                            metabolite = T,...){
 
-  ### make se
-  {
-
-    sample.info <- object@sampleInfo%>%
-      dplyr::filter(polarity_paired|(!polarity_paired)
-                    )
-    col.order <- sample.info%>%
-      dplyr::distinct(sample.name)%>%
-      dplyr::pull(sample.name)
-    se <- list()
-    for (i in 0:1) {
-      pol <- ifelse(i==0,"Negative","Positive")
-      xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
-      if (is.null(xcms.xcms)) {
-        se[[pol]] <- SummarizedExperiment::SummarizedExperiment()
-        next
-      }
-      pol.se <- get_xcms_feature_se(xcms.xcms,...)
-      se[[pol]] <- pol.se[,intersect(col.order,colnames(pol.se))]
-      se[[pol]]$sampleNames<- NULL
-      se[[pol]]$no<- NULL
-      se[[pol]]$raw.files<- NULL
-      se[[pol]]$polarity<- NULL
-      se[[pol]]$analysis.time<- NULL
-      se[[pol]]$msData.files<- NULL
-      se[[pol]]$ms.name<- NULL
-      se[[pol]]$files<- NULL
-      se[[pol]]$ExpTime<- NULL
-    }
-    overlap <- do.call("intersect",unname(lapply(se,colnames)))
-    feature.se <- do.call("rbind",sapply(se,`[`,,overlap))
-    #feature.se <- se[[2]]
-  }
+  object <- MSdev_get_Se(object,
+                         polarity_paired = polarity_paired,
+                         ...)
+  feature.se <- object@advancedAna$feature.se
 
   ### formate
   {
@@ -1803,6 +1776,77 @@ MSdev_get_Stat <- function(object,
 
 
 
+
+
+#' @title Extract feature SummarizedExperiment from MSdev
+#' @description Extract feature intensity data from xcms processing results,
+#'   store as \code{advancedAna$feature.se}, without compound database lookup or
+#'   metabolite/candidate filtering.
+#' @describeIn MSdev_workflow extract feature SummarizedExperiment
+#' @param object MSdev object
+#' @param polarity_paired logical; if \code{TRUE}, retain only samples present in
+#'   both polarities (column intersection). If \code{FALSE}, missing polarity
+#'   objects are filled with an empty \code{SummarizedExperiment} and positive
+#'   and negative feature sets are row-bound without requiring shared samples.
+#' @param ... additional arguments passed to \code{\link{get_xcms_feature_se}}
+#' @return MSdev object with \code{advancedAna$feature.se} populated.
+#' @export
+#'
+MSdev_get_Se <- function(object,
+                         polarity_paired = TRUE,
+                         ...) {
+
+  sample.info <- object@sampleInfo %>%
+    dplyr::filter(polarity_paired | (!polarity_paired))
+  col.order <- sample.info %>%
+    dplyr::distinct(sample.name) %>%
+    dplyr::pull(sample.name)
+  pol.names <- c("Negative", "Positive")
+  se <- stats::setNames(vector("list", length(pol.names)), pol.names)
+  for (i in 0:1) {
+    pol <- pol.names[i + 1L]
+    xcms.xcms <- object@xcmsData[[paste0(pol, "MS1")]]
+    if (is.null(xcms.xcms)) {
+      se[[pol]] <- SummarizedExperiment::SummarizedExperiment()
+      next
+    }
+    pol.se <- get_xcms_feature_se(xcms.xcms, ...)
+    pol.cols <- intersect(col.order, colnames(pol.se))
+    se[[pol]] <- if (length(pol.cols)) {
+      pol.se[, pol.cols, drop = FALSE]
+    } else {
+      pol.se[, , drop = FALSE]
+    }
+    se[[pol]]$sampleNames <- NULL
+    se[[pol]]$no <- NULL
+    se[[pol]]$raw.files <- NULL
+    se[[pol]]$polarity <- NULL
+    se[[pol]]$analysis.time <- NULL
+    se[[pol]]$msData.files <- NULL
+    se[[pol]]$ms.name <- NULL
+    se[[pol]]$files <- NULL
+    se[[pol]]$ExpTime <- NULL
+  }
+  for (pol in pol.names) {
+    if (is.null(se[[pol]])) {
+      se[[pol]] <- SummarizedExperiment::SummarizedExperiment()
+    }
+  }
+  feature.se <- if (isTRUE(polarity_paired)) {
+    overlap <- do.call(intersect, unname(lapply(se, colnames)))
+    do.call(rbind, lapply(se, function(s) {
+      if (!length(overlap) || ncol(s) == 0L) {
+        s
+      } else {
+        s[, overlap, drop = FALSE]
+      }
+    }))
+  } else {
+    do.call(rbind, se)
+  }
+  object@advancedAna$feature.se <- feature.se
+  object
+}
 
 
 MSdev_update_xcms_pdata <- function(object,
