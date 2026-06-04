@@ -30,17 +30,116 @@ MSdev_save <- function(object,file = object@projectInfo$MSdevFile){
 
 
 #' @title Load an MSdev object from a file
-#' @description Load an MSdev object from a file using `qs::qread()`.
+#' @description Load an MSdev object from a file (tries \code{qs::qread()},
+#'   \code{readRDS()}, then \code{load()}). Use \code{\link{.update_MSdev_object}}
+#'   on objects saved with older MSdev versions.
 #' @describeIn MSdev_IO load
 #' @param file_to_load file path
 #' @return MSdev
 #' @export
 #'
-MSdev_load <- function(file_to_load){
+MSdev_load <- function(file_to_load) {
 
-  qs::qread(file_to_load)
+  if (!file.exists(file_to_load)) {
+    stop("File not found: ", file_to_load)
+  }
+  obj <- tryCatch(qs::qread(file_to_load), error = function(e) NULL)
+  if (is.null(obj)) {
+    obj <- tryCatch(readRDS(file_to_load), error = function(e) NULL)
+  }
+  if (is.null(obj)) {
+    env <- new.env(parent = emptyenv())
+    load(file_to_load, envir = env)
+    nm <- ls(env)
+    if (length(nm) != 1L) {
+      stop("Expected a single MSdev object in ", file_to_load)
+    }
+    obj <- get(nm[[1L]], envir = env)
+  }
+  if (!inherits(obj, "MSdev")) {
+    stop("Loaded object is not of class MSdev")
+  }
+  obj
+}
 
 
+#' @title Update legacy MSdev object to current slot layout
+#' @description Migrate \code{MSdev} objects saved with older package versions
+#'   (e.g. missing \code{advancedAna} slot, \code{statData} attribute) to the
+#'   current S4 definition.
+#' @param object MSdev object
+#' @return Updated MSdev object with all current slots populated
+#' @keywords internal
+.update_MSdev_object <- function(object) {
+
+  if (!inherits(object, "MSdev")) {
+    stop("object must inherit from class 'MSdev'")
+  }
+
+  .slot_or_null <- function(obj, name) {
+    tryCatch(methods::slot(obj, name), error = function(e) NULL)
+  }
+
+  class_slots <- names(methods::getClass("MSdev")@slots)
+  slots <- stats::setNames(vector("list", length(class_slots)), class_slots)
+  for (nm in class_slots) {
+    slots[[nm]] <- .slot_or_null(object, nm)
+  }
+
+  advanced_ana <- slots[["advancedAna"]]
+  if (is.null(advanced_ana)) {
+    advanced_ana <- list()
+  }
+  stat_data <- attr(object, "statData", exact = TRUE)
+  if (!is.null(stat_data) && length(stat_data)) {
+    for (nm in names(stat_data)) {
+      if (is.null(advanced_ana[[nm]])) {
+        advanced_ana[[nm]] <- stat_data[[nm]]
+      }
+    }
+    message_with_time(
+      "Migrated statData into advancedAna: ",
+      paste(names(stat_data), collapse = ", ")
+    )
+  }
+  slots[["advancedAna"]] <- advanced_ana
+
+  if (is.null(slots[["processingInfo"]])) {
+    slots[["processingInfo"]] <- list()
+  }
+  if (is.null(slots[["processingInfo"]][["readInRawData"]])) {
+    slots[["processingInfo"]][["readInRawData"]] <- list(done = TRUE)
+  }
+
+  if (is.null(slots[["spectra"]])) {
+    slots[["spectra"]] <- list()
+  }
+  if (is.null(slots[["annotation"]])) {
+    slots[["annotation"]] <- list()
+  }
+  if (is.null(slots[["xcmsData"]])) {
+    slots[["xcmsData"]] <- list()
+  }
+  if (is.null(slots[["experimentInfo"]])) {
+    slots[["experimentInfo"]] <- methods::new("MS_Exp")
+  }
+
+  updated <- do.call(methods::new, c("MSdev", slots))
+  if (!is.null(attr(updated, "statData", exact = TRUE))) {
+    attr(updated, "statData") <- NULL
+  }
+
+  if (is.data.frame(updated@sampleInfo) && nrow(updated@sampleInfo) > 0L) {
+    updated <- .updateProjectInfoFromSampleInfo(updated)
+    needs_msinfo <- (!("manufacturer" %in% colnames(updated@sampleInfo))) ||
+      any(is.na(updated@sampleInfo[["manufacturer"]]))
+    if (isTRUE(needs_msinfo)) {
+      updated <- MSdev_get_MSinfo(updated)
+    }
+  }
+
+  message_with_time("MSdev object updated to current slot layout")
+  updated
 }
 
 .updateProjectInfoFromSampleInfo <- function(object){
