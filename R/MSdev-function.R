@@ -22,7 +22,8 @@ MSdev_save <- function(object,file = object@projectInfo$MSdevFile){
     dir.create(save.dir,recursive = T)
   }
   MSdev@projectInfo$MSdevFile <- file
-  qs::qsave(MSdev, file =  file)
+  qs::qsave(MSdev, file = file)
+  message_with_time("Saved: ", normalizePath(file, winslash = "/", mustWork = FALSE))
   invisible(MSdev)
 }
 
