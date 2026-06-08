@@ -1,6 +1,4 @@
 
-
-
 #' @title  get_features_from_xcms
 #' @description extract feature data from xcms::XCMSnExp,
 #'  calculate RSD of QC and Sample
@@ -219,10 +217,9 @@ get_xcms_peaks_chrom <- function(xcms.xcms,
   )
 
   if (all.sample){
-    x.chrom <- extract_chrom(xcms.xcms,
-                             mzr = peaks.data[,c("mzmin","mzmax")],
-                             rtr = peaks.data[,c("rtmin","rtmax")],
-                             sample = Biobase::sampleNames(xcms.xcms))
+    x.chrom <- get_xcms_chromatogram(xcms.xcms,
+                             mz = peaks.data[,c("mzmin","mzmax")],
+                             rt = peaks.data[,c("rtmin","rtmax")])
   }else{
     peaks.id.split <- split(rownames(peaks.data),
                               f = peaks.data[,"sample"])
@@ -230,14 +227,14 @@ get_xcms_peaks_chrom <- function(xcms.xcms,
                               FUN = function(x,xcms.x,peaks.data){
 
       x <- peaks.data[x,,drop =F]
-      extract_chrom(xcms.x,
-                    mzr = x[,c("mzmin","mzmax")],
-                    rtr = x[,c("rtmin","rtmax")],
-                    sample = x[,"sample"])
+      xcms.sub <- MSnbase::filterFile(xcms.x, as.integer(unique(x[,"sample"])))
+      get_xcms_chromatogram(xcms.sub,
+                    mz = x[,c("mzmin","mzmax")],
+                    rt = x[,c("rtmin","rtmax")])
     },xcms.x=xcms.xcms ,peaks.data=peaks.data,
     BPPARAM = SerialParam( progressbar = F))
 
-    x.chrom <- XChromatograms(unlist(x.chrom.split))
+    x.chrom <- do.call(cbind_Chromatograms, x.chrom.split)
 
     x.chrom
   }
@@ -338,8 +335,8 @@ get_xcms_chromatogram <- function(object,
                                   ...){
 
 
-  xcms.split <- sapply(seq_along(fileNames(object)),
-                       function(x) filterFile(object,x))
+  xcms.split <- lapply(seq_along(MSnbase::fileNames(object)),
+                       function(x) MSnbase::filterFile(object,x))
 
   xcms.chrom <- bplapply(xcms.split,
                          function(x,...){
@@ -349,7 +346,7 @@ get_xcms_chromatogram <- function(object,
     try(y <- xcms::chromatogram(x,BPPARAM = BPPARAM,...)
     )
     return(y)
-  },...)
+  },..., BPPARAM = BPPARAM)
 
 
   do.call(cbind_Chromatograms,xcms.chrom)
@@ -1874,7 +1871,7 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
   if (!length(sample.idx)) {
     stop("No samples selected for chromatogram extraction.")
   }
-  xcms.sub <- filterFile(xcms.xcms, sample.idx)
+  xcms.sub <- MSnbase::filterFile(xcms.xcms, sample.idx)
 
   ### mz / rt from feature peaks
   xcms.fdef <- xcms::featureDefinitions(xcms.xcms)
@@ -2172,10 +2169,10 @@ plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt = "expand"){
   rt.range <- c(peaks.data[,c("rtmin","rtmax")])
   xcms.chrom <- get_xcms_peaks_chrom(xcms.xcms,
                                      peaks.id = peak_id,
-                                     rt = rt)
+                                     rt.range = rt)
   chrom.data <- get_chroms_data(xcms.chrom)%>%
     dplyr::mutate(fill = rt > min(rt.range)&rt <max(rt.range),
-                  sample = Biobase::sampleNames(xcms.xcms)[row]
+                  sample = Biobase::sampleNames(xcms.xcms)[col]
                  )%>%
     dplyr::filter(!is.na(intensity))
 
@@ -3107,6 +3104,9 @@ xcms_get_feature_purity <- function(xcms.xcms,
 cbind_Chromatograms <- function(...){
 
   chrom.list <- list(...)
+  if (length(chrom.list) == 1) {
+    return(chrom.list[[1]])
+  }
   chrom.featureDefinitions <- sapply(chrom.list,
                                      function(x)x@featureDefinitions)[[1]]
   chrom.phenoData <- sapply(chrom.list,
