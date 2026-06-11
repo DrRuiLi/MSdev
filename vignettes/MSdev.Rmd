@@ -7,13 +7,28 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
-```
 
-```{r setup}
-library(MSdev)
-```
+
+## Functions
+
+### MSdev_get_Se 
+1. read the 'MSdev_get_Stat', understand how it works
+2. write a function 'MSdev_get_Se' to get the SummarizedExperiment object from the MSdev object, it work similar to 'MSdev_get_Stat', but:
+  - do not retrieve compound information
+  - do not extra candidate and metabolite, just retrieve the feature summarized experiment object
+3 'MSdev_get_Se' output a msdev object with the summarized experiment object in the advancedAna slot 
+4. remove the duplicate code in 'MSdev_get_Stat'm just call 'MSdev_get_Se' in 'MSdev_get_Stat'
+5. if polarity_paired = F, fill the missing polarity se with the empty se and then rbind the two se
+
+### MSdev_export
+1. if there are no metabolite and candidate se, skip the export
+2. message the exported path
+
+
+### MSdev_save
+1. add message to show the saved path
+
+
+### .update_MSdev_object
+1. there are some of data generated with the previous version of MSdev, their slots need to be updated, write a function '.update_MSdev_object' to update the slots
+2. use 'obj.old <- MSdev_load("d:/temp/Ascend_ppm9_sn10.rdata")' as example, update the slots

@@ -19,7 +19,7 @@ setClass("MSdev",
 #' @importFrom tibble tibble as.tibble rownames_to_column remove_rownames
 #' @importFrom S4Vectors isEmpty
 #' @importFrom Biobase pData fData
-#' @importFrom ProtGenerics filterMsLevel filterPolarity collisionEnergy
+#' @importFrom ProtGenerics filterMsLevel filterPolarity collisionEnergy msLevel
 #' @importFrom CompoundDb compounds
 #' @importFrom ChemmineR atomcountMA MF `cid<-` cid validSDF canonicalize atomblock bonds bondblock rings
 #' @importFrom stringr str_extract str_split str_extract_all

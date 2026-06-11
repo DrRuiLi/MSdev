@@ -4770,3 +4770,168 @@
 
 }
 
+
+# Wed Jun 10 16:20:03 2026 WSF lpidomics------------------------------
+
+{
+
+  MSdev.obj <- MSdev("d:/data/2026_04_21-Zhaoqiang/Data/")
+  #MSdev.obj <- MSdev_load("d:/data/2025_11_21-Xinchenhao/MSdev_2025_11_24.Rdata")
+  MSdev.obj <- MSdev_msConvert(MSdev.obj)
+  MSdev.obj <- MSdev_checkSampleInfo(MSdev.obj)
+  MSdev.obj <- MSdev_set_param(MSdev.obj,
+                               findChromPeaks =
+                                 xcms::CentWaveParam(
+                                   ppm = 10,
+                                   prefilter = c(3,100),
+                                   peakwidth = c(10, 60),
+                                   snthresh = 10,
+                                   fitgauss = T
+                                 ),
+                               groupChromPeaks =
+                                 xcms::PeakDensityParam(
+                                   sampleGroups = "A",
+                                   minFraction = 0,
+                                   binSize = 0.005,
+                                   bw = 20,
+                                   ppm = 10))
+  MSdev.obj <- MSdev_xcmsProcessing(MSdev.obj)
+  MSdev.obj <- MSdev_extract_Spectra(MSdev.obj)
+  MSdev.obj <- MSdev_match_Spectra_to_feature(MSdev.obj)
+  MSdev.obj <- MSdev_annotation(MSdev.obj,
+                                expand_adduct= T,
+                                cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast.sqlite",
+                                selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
+  MSdev.obj <- MSdev_get_Stat(MSdev.obj,score_thresh = 0)
+  MSdev_export(MSdev.obj)
+  MSdev_save(MSdev.obj)
+
+
+
+  ### figure SAMPLE1
+  {
+
+    proj.dir <- MSdev.obj@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(MSdev.obj,from = "metabolite",QC_RSD= Inf)
+
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3)
+
+
+    ### Plot TIC
+    {
+      p1 <- plot_xcms_TIC(MSdev.obj@xcmsData$PositiveMS1)+
+        labs(title = "Positive TIC")
+      p2 <- plot_xcms_TIC(MSdev.obj@xcmsData$NegativeMS1)+
+        labs(title = "Negative TIC")
+      p <- p1+p2+plot_layout(ncol = 1)
+      export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 8,append = T)
+    }
+
+
+    ### diff
+    {
+      data.se1 <- data.se#[,data.se$sample.type %in% c("C","X")]
+      data.se.Sample_P <- DEP_preprocess(data.se1)
+      data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 20,height = 25,append = T)
+      data.diff <- DEP_test_diff(data.se.Sample_P)
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 20,height = 25,append = T)
+      table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+      xlsx.write.list(table.diff,
+                      paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+      )
+
+
+      data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+      #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+      data.hm <- DEP_filter_significant(data.diff)
+      hm <- DEP_plot_heatmap(data.hm)
+      export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 10,append = T)
+
+
+      {
+        data.hm <- data.se[rowData(data.se)$lipidclass %in% c("DG","TG","PI"),]
+        col.info <-SummarizedExperiment::colData(data.hm)%>%
+          as.data.frame()%>%
+          dplyr::mutate(col_group = condition,
+                        column_labels = sample.labels,
+                        column_split = group)
+        row.info <-SummarizedExperiment::rowData(data.hm)%>%
+          as.data.frame()%>%
+          dplyr::mutate(row_group = "",
+                        row_labels = label)
+        rownames(data.se) <- row.info$name
+
+        heatmap.matrix <-SummarizedExperiment::assay(data.se[row.info$name,col.info$ID])%>%
+          `^`(2,.)%>%t%>%scale%>%t
+
+        rownames(heatmap.matrix) <- row.info$label
+        ComplexHeatmap::ht_opt(TITLE_PADDING = unit(c(4, 4), "points"))
+        #ht_opt$TITLE_PADDING = unit(c(4, 4), "points")
+        hm <- ComplexHeatmap::Heatmap(
+          heatmap.matrix,
+          row_split = row.info$lipidclass,
+          column_split = col.info$group,
+          cluster_columns = F,
+          row_names_gp = gpar(fontsize = 6),
+          column_title_gp = gpar(fill = get_DEP_se_group_color(data.se),fontsize = 8)
+        )
+        hm
+      }
+
+      {
+        data.hm <- data.se[rowData(data.se)$lipidclass %in% c("PA","LPA","BRSE","CASE","CE"),]
+        col.info <-SummarizedExperiment::colData(data.hm)%>%
+          as.data.frame()%>%
+          dplyr::mutate(col_group = condition,
+                        column_labels = sample.labels,
+                        column_split = group)
+        row.info <-SummarizedExperiment::rowData(data.hm)%>%
+          as.data.frame()%>%
+          dplyr::mutate(row_group = "",
+                        row_labels = label)
+        rownames(data.se) <- row.info$name
+
+        heatmap.matrix <-SummarizedExperiment::assay(data.se[row.info$name,col.info$ID])%>%
+          `^`(2,.)%>%t%>%scale%>%t
+
+        rownames(heatmap.matrix) <- row.info$label
+        ComplexHeatmap::ht_opt(TITLE_PADDING = unit(c(4, 4), "points"))
+        #ht_opt$TITLE_PADDING = unit(c(4, 4), "points")
+        hm <- ComplexHeatmap::Heatmap(
+          heatmap.matrix,
+          row_split = row.info$lipidclass,
+          column_split = col.info$group,
+          cluster_columns = F,
+          row_names_gp = gpar(fontsize = 6),
+          column_title_gp = gpar(fill = get_DEP_se_group_color(data.se),fontsize = 8)
+        )
+        hm
+        export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                         width = 10,height = 6,append = T)
+      }
+
+
+    }
+
+
+  }
+
+
+}
+

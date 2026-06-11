@@ -1,0 +1,16 @@
+---
+title: "dev_xcms"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{dev_xcms}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+### plot_xcms_peaks_Chromatogram
+1. the function 'plot_xcms_peaks_Chromatogram' get error, please test use: 
+  - obj <- load_demo()
+  - plot_xcms_peaks_Chromatogram(obj@xcmsData$NegativeMS1,1)
+  and then locate the cause of error

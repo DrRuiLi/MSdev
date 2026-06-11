@@ -1338,16 +1338,11 @@ Spectra_filter_noise <- function(sp){
 #setMethod(noise,"Spectra",
 #          definition = function(object )object$noise)
 
-
-invisible(
-  try(
-    methods::setMethod("sampleNames", "Spectra",
+#' @importFrom Biobase sampleNames
+setMethod("sampleNames", "Spectra",
                         definition = function(object) {
                           basename(object$dataOrigin)
-                        }),
-    silent = TRUE
-  )
-)
+                        })
 
 #' Spectra_get_purity
 #'
