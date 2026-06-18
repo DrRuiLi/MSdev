@@ -4797,12 +4797,11 @@
                                    ppm = 10))
   MSdev.obj <- MSdev_xcmsProcessing(MSdev.obj)
   MSdev.obj <- MSdev_extract_Spectra(MSdev.obj)
-  MSdev.obj <- MSdev_match_Spectra_to_feature(MSdev.obj)
   MSdev.obj <- MSdev_annotation(MSdev.obj,
                                 expand_adduct= T,
                                 cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast.sqlite",
                                 selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
-  MSdev.obj <- MSdev_get_Stat(MSdev.obj,score_thresh = 0)
+  MSdev.obj <- MSdev_get_Stat(MSdev.obj,score_thresh = 0.3)
   MSdev_export(MSdev.obj)
   MSdev_save(MSdev.obj)
 
@@ -4812,7 +4811,7 @@
   {
 
     proj.dir <- MSdev.obj@projectInfo$projectDir
-    data.se <- get_MSdev_DEP_se(MSdev.obj,from = "metabolite",QC_RSD= Inf)
+    data.se <- get_MSdev_DEP_se(MSdev.obj,from = "metabolite",QC_RSD= 0.3)
 
     p.pca <- DEP_plot_PCA(data.se)
     export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
@@ -4833,7 +4832,7 @@
 
     ### diff
     {
-      data.se1 <- data.se#[,data.se$sample.type %in% c("C","X")]
+      data.se1 <- data.se[,!data.se$group %in% c("Other","Blank","QC")]
       data.se.Sample_P <- DEP_preprocess(data.se1)
       data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
       data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
