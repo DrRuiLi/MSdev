@@ -1361,7 +1361,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
 
   ### load spectra database
   {
-    Spectra_database <- Spectra(cpdb)
+    Spectra_database <- Spectra::Spectra(cpdb)
     Spectra_database <- Spectra_set_MEM_backend(Spectra_database)
     Spectra_database <- filterPolarity(Spectra_database,
                                        unique(polarity(xcms.xcms)))
@@ -2692,9 +2692,15 @@ plot_xcms_TIC <- function(xcms.xcms,col.group = NULL,title = "TIC"){
     dplyr::filter(msLevel==1)
 
   if (is.null(col.group)) {
-    col.group <- c("grey","#38C291",ggsci::pal_aaas()(10))
-    names(col.group) <- c("Blank","QC",
-                          setdiff(unique(xcms.scan$group),c("Blank","QC")))
+    groups <- setdiff(unique(xcms.scan$group), c("Blank", "QC"))
+    n_groups <- length(groups)
+    sample_cols <- if (n_groups <= 10) {
+      ggsci::pal_aaas()(max(n_groups, 1))
+    } else {
+      grDevices::colorRampPalette(ggsci::pal_aaas()(10))(n_groups)
+    }
+    col.group <- c("grey", "#38C291", sample_cols)
+    names(col.group) <- c("Blank", "QC", groups)
   }
 
   ggplot(xcms.scan)+
