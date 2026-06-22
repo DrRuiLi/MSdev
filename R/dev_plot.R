@@ -1,3 +1,24 @@
+#' @title capture_base_plot
+#' @description
+#' Evaluate base graphics in a null device and return a \code{recordedplot}
+#' object for replay or export (e.g. with \code{\link{open_plot_win}}).
+#'
+#' @param expr Base graphics commands, typically passed as a braced expression.
+#' @param envir Environment in which \code{expr} is evaluated.
+#'
+#' @return A \code{recordedplot} object (from \code{\link[grDevices]{recordPlot}}).
+#' @export
+#'
+
+capture_base_plot <- function(expr, envir = parent.frame()) {
+  grDevices::pdf(nullfile())
+  on.exit(grDevices::dev.off(), add = TRUE)
+  grDevices::dev.control(displaylist = "enable")
+  eval(substitute(expr), envir = envir)
+  grDevices::recordPlot()
+}
+
+
 #' @title open_plot_win
 #' @description
 #' create a temp.png file and open in Windows
