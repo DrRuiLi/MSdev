@@ -280,8 +280,8 @@ get_Spectra_data <- function(sp,var = c("precursorMz","collisionEnergy")){
     dplyr::mutate(
       sp.data[match(sp.id,sp.data$id)   ,var,drop = F]
     )
-  if (!is.null(spectraNames(sp)))
-    spec.df$sp.id <- spectraNames(sp)[spec.df$sp.id]
+  if (!is.null(Spectra::spectraNames(sp)))
+    spec.df$sp.id <- Spectra::spectraNames(sp)[spec.df$sp.id]
 
   return(spec.df)
 }
@@ -1478,7 +1478,7 @@ get_spectra_ion_purity <- function(sp,ion_mz,ppm = 10,isolation_half_window = 0.
 
 get_spectra_by_name <- function(sp,sp.name){
 
-  idx <- match(sp.name,spectraNames(sp))
+  idx <- match(sp.name,Spectra::spectraNames(sp))
 
   sp[idx]
 

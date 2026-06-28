@@ -1366,7 +1366,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
     Spectra_database <- filterPolarity(Spectra_database,
                                        unique(polarity(xcms.xcms)))
 
-    #spectraNames(Spectra_database) <- Spectra_database$compound_id
+    #Spectra::spectraNames(Spectra_database) <- Spectra_database$compound_id
     xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
   }
 
@@ -1402,7 +1402,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
 
       x <- xcms.fdf$ms2_id[[i]]
       if (!length(x)) return(NULL)
-      sp.ms2[match(x,spectraNames(sp.ms2))]
+      sp.ms2[match(x,Spectra::spectraNames(sp.ms2))]
       #if (length(x)==0) {
       #  sp <- makeSpectra(xcms.fdf$mzmed[i],
       #                    xcms.fdf$rtmed[i])
@@ -2885,7 +2885,7 @@ get_xcms_Spectra <- function(xcms.xcms){
                          backend = MsBackendMemory(),
                          BPPARAM = SerialParam(progressbar = T))%>%
     filterPolarity(unique(polarity(xcms.xcms)))
-  spectraNames(xcms.sp) <- xcms.sp$scan_id <- xcms.scan$scan_id
+  Spectra::spectraNames(xcms.sp) <- xcms.sp$scan_id <- xcms.scan$scan_id
   return(xcms.sp)
 
 }

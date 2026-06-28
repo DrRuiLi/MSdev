@@ -12,3 +12,34 @@ dev
 report
 trash
 .positai
+# JetBrains IDE (PyCharm, IntelliJ)
+.idea/
+
+# Jupyter notebook auto-saves
+.ipynb_checkpoints/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# yfinance diskcache (src/yf_cache.py) — lives under data/yf_cache/
+# akshare diskcache (src/aks_cache.py) — lives under data/aks_cache/
+
+# Local data cache (keep folder via .gitkeep)
+data/*
+!data/.gitkeep
+
+# R session history (leftover from R workflow)
+.Rhistory
+
+# Environment / secrets
+.env
+.env.*
+
+# Python packaging & test caches
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
