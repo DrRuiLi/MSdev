@@ -24,20 +24,27 @@ wb_to_df <- function(wb,sheet_name = 1){
 #' @title edit_df_in_excel
 #'
 #' @param df data.frame
+#' @param rowname Logical; write row names to the worksheet.
+#' @param read_line Logical; if \code{TRUE} (default), wait for user input and
+#'   return the edited data frame. If \code{FALSE}, open Excel and return
+#'   \code{NULL} without reading the file back.
 #'
-#' @return data.frame
+#' @return Edited \code{data.frame}, or \code{NULL} when \code{read_line = FALSE}.
 #' @export
 #'
 
-edit_df_in_excel <- function(df = data.frame(),rowname = T){
+edit_df_in_excel <- function(df = data.frame(), rowname = T, read_line = T){
   wb <- df_to_wb(df,rowname=rowname)
   temp.xlsx <- paste0(tempdir(), "/temp_",paste0(sample(letters,5),collapse = ""),".xlsx")
   openxlsx::saveWorkbook(wb , file = temp.xlsx)
   openxlsx::openXL(temp.xlsx)
+  if (!read_line) {
+    return(NULL)
+  }
   readline("press any key to continue")
   wb <- openxlsx::loadWorkbook(file = temp.xlsx)
   df <- wb_to_df(wb)
-df
+  df
 }
 
 #' Write data to Excel file
