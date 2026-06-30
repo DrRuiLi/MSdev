@@ -76,6 +76,17 @@ open_plot_pdf <- function(p,width = 5,height = 4){
 }
 
 
+#' @title open_plot_ppt
+#' @description
+#' create a temp.pptx file and open in Windows
+#'
+#' @param p ggplot/Complexheatmap/base plot/recordedplot
+#' @param width num
+#' @param height num
+#'
+#' @return null
+#' @export
+#'
 open_plot_ppt <- function(p,width = 5,height = 4){
 
   temp.file <- tempfile(fileext = ".pptx")
