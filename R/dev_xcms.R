@@ -3375,3 +3375,163 @@ xcms_filter_feature_rt_rsd <- function(xcms.xcms, rt.shift = 5 ){
   return(xcms.xcms)
 
 }
+
+#' Extract summed chromatogram trace for ggplot XIC
+#' @noRd
+.extract_xcms_xic_chromatogram <- function(xcms.filt, mzr, rtr) {
+  if (!requireNamespace("xcms", quietly = TRUE)) {
+    stop("Package 'xcms' is required for XIC plots.", call. = FALSE)
+  }
+  chr <- xcms::chromatogram(xcms.filt, mz = mzr, rt = rtr)
+  chr.sp <- chr[[1L]]
+  rt_vals <- as.numeric(MSnbase::rtime(chr.sp))
+  int_vals <- as.numeric(MSnbase::intensity(chr.sp))
+  int_vals[!is.finite(int_vals)] <- 0
+  data.frame(rt = rt_vals, intensity = int_vals, stringsAsFactors = FALSE)
+}
+
+#' Extract m/z–RT points for ggplot XIC
+#' @noRd
+.extract_xcms_xic_points <- function(xcms.filt) {
+  sps <- spectra(xcms.filt)
+  if (!length(sps)) {
+    return(data.frame(
+      rt = numeric(),
+      mz = numeric(),
+      intensity = numeric(),
+      stringsAsFactors = FALSE
+    ))
+  }
+  out <- lapply(sps, function(sp) {
+    mz_vals <- mz(sp)
+    if (!length(mz_vals)) {
+      return(NULL)
+    }
+    data.frame(
+      rt = rep(rtime(sp), length(mz_vals)),
+      mz = mz_vals,
+      intensity = intensity(sp),
+      stringsAsFactors = FALSE
+    )
+  })
+  pts <- do.call(rbind, out)
+  if (is.null(pts) || !nrow(pts)) {
+    return(data.frame(
+      rt = numeric(),
+      mz = numeric(),
+      intensity = numeric(),
+      stringsAsFactors = FALSE
+    ))
+  }
+  pts[is.finite(pts$rt) & is.finite(pts$mz) & is.finite(pts$intensity), , drop = FALSE]
+}
+
+#' @describeIn xcms_extenstion ggplot2 XIC plot matching xcms \code{plot(type = \"XIC\")}
+#'
+#' Upper panel: extracted ion chromatogram (intensity vs retention time).
+#' Lower panel: m/z vs retention time with points coloured by intensity.
+#'
+#' @param xcms.filt \code{XCMSnExp} after \code{filterRt()} and \code{filterMz()}.
+#' @param mzr Optional m/z range used for extraction (for axis limits).
+#' @param rtr Optional RT range used for extraction (for axis limits).
+#' @param title Optional plot title.
+#' @param subtitle Optional subtitle.
+#' @param base_size Base font size.
+#' @param return.data If \code{TRUE}, return a list with \code{plot}, \code{p_chr},
+#'   \code{p_mz}, \code{chrom}, and \code{points}.
+#'
+#' @returns A patchwork object with two panels, or a list when
+#'   \code{return.data = TRUE}.
+#' @export
+plot_xcms_xic <- function(
+    xcms.filt,
+    mzr = NULL,
+    rtr = NULL,
+    title = NULL,
+    subtitle = NULL,
+    base_size = 6,
+    return.data = FALSE) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for plot_xcms_xic().", call. = FALSE)
+  }
+  if (!requireNamespace("patchwork", quietly = TRUE)) {
+    stop("Package 'patchwork' is required for plot_xcms_xic().", call. = FALSE)
+  }
+  if (is.null(mzr) || is.null(rtr)) {
+    stop("mzr and rtr must be supplied.", call. = FALSE)
+  }
+  mzr <- as.numeric(mzr)
+  rtr <- as.numeric(rtr)
+  if (length(mzr) != 2L || length(rtr) != 2L || any(!is.finite(c(mzr, rtr)))) {
+    stop("mzr and rtr must be finite length-2 numeric vectors.", call. = FALSE)
+  }
+
+  chrom.df <- .extract_xcms_xic_chromatogram(xcms.filt, mzr = mzr, rtr = rtr)
+  pts.df <- .extract_xcms_xic_points(xcms.filt)
+
+  p.chr <- ggplot2::ggplot(chrom.df, ggplot2::aes(x = .data$rt, y = .data$intensity)) +
+    ggplot2::geom_line(linewidth = 0.35, colour = "black") +
+    ggplot2::scale_x_continuous(limits = rtr, expand = ggplot2::expansion(mult = c(0.02, 0.02))) +
+    ggplot2::labs(x = NULL, y = "Intensity") +
+    ggplot2::theme_bw(base_size = base_size) +
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(2, 4, 0, 6, "pt"),
+      axis.title.y = ggplot2::element_text(margin = ggplot2::margin(r = 0, l = 0))
+    )
+
+  if (nrow(pts.df)) {
+    p.mz <- ggplot2::ggplot(
+      pts.df,
+      ggplot2::aes(x = .data$rt, y = .data$mz, colour = .data$intensity)
+    ) +
+      ggplot2::geom_point(size = 0.45, alpha = 0.85) +
+      ggplot2::scale_colour_gradientn(
+        colours = grDevices::topo.colors(64),
+        na.value = NA
+      ) +
+      ggplot2::scale_x_continuous(limits = rtr, expand = ggplot2::expansion(mult = c(0.02, 0.02))) +
+      ggplot2::scale_y_continuous(limits = mzr, expand = ggplot2::expansion(mult = c(0.02, 0.02))) +
+      ggplot2::labs(x = "Retention time", y = expression(italic(m/z)), colour = "Intensity") +
+      ggplot2::theme_bw(base_size = base_size) +
+      ggplot2::theme(
+        plot.margin = ggplot2::margin(0, 4, 2, 6, "pt"),
+        axis.title.y = ggplot2::element_text(margin = ggplot2::margin(r = 0, l = 0)),
+        legend.position = "right",
+        legend.key.height = grid::unit(0.35, "cm"),
+        legend.key.width = grid::unit(0.15, "cm"),
+        legend.title = ggplot2::element_text(size = base_size * 0.85),
+        legend.text = ggplot2::element_text(size = base_size * 0.75)
+      )
+  } else {
+    p.mz <- ggplot2::ggplot() +
+      ggplot2::annotate("text", x = mean(rtr), y = mean(mzr), label = "No MS points", size = base_size / 2) +
+      ggplot2::scale_x_continuous(limits = rtr) +
+      ggplot2::scale_y_continuous(limits = mzr) +
+      ggplot2::labs(x = "Retention time", y = expression(italic(m/z))) +
+      ggplot2::theme_bw(base_size = base_size)
+  }
+
+  p.all <- p.chr / p.mz +
+    patchwork::plot_layout(heights = c(1, 1.1)) +
+    patchwork::plot_annotation(
+      title = title,
+      subtitle = subtitle,
+      theme = ggplot2::theme(
+        plot.title = ggplot2::element_text(face = "bold", size = base_size * 1.15, hjust = 0.5),
+        plot.subtitle = ggplot2::element_text(size = base_size * 0.95, hjust = 0.5, lineheight = 0.95)
+      )
+    )
+
+  if (return.data) {
+    return(list(
+      plot = p.all,
+      p_chr = p.chr,
+      p_mz = p.mz,
+      chrom = chrom.df,
+      points = pts.df,
+      mzr = mzr,
+      rtr = rtr
+    ))
+  }
+  p.all
+}

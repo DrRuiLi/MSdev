@@ -5037,3 +5037,103 @@
 
 }
 
+# Wed Jul  1 13:22:56 2026 wsf lpidomics------------------------------
+{
+
+  MSdev.obj <- MSdev("d:/data/2026_06_23-Wangshufan/Data/")
+  #MSdev.obj <- MSdev_load("d:/data/2025_11_21-Xinchenhao/MSdev_2025_11_24.Rdata")
+  MSdev.obj <- MSdev_msConvert(MSdev.obj)
+  MSdev.obj <- MSdev_checkSampleInfo(MSdev.obj)
+  MSdev.obj <- MSdev_set_param(MSdev.obj,
+                               findChromPeaks =
+                                 xcms::CentWaveParam(
+                                   ppm = 10,
+                                   prefilter = c(3,100),
+                                   peakwidth = c(10, 60),
+                                   snthresh = 10,
+                                   fitgauss = T
+                                 ),
+                               groupChromPeaks =
+                                 xcms::PeakDensityParam(
+                                   sampleGroups = "A",
+                                   minFraction = 0,
+                                   binSize = 0.005,
+                                   bw = 20,
+                                   ppm = 10))
+  MSdev.obj <- MSdev_xcmsProcessing(MSdev.obj)
+  MSdev.obj <- MSdev_extract_Spectra(MSdev.obj)
+  MSdev.obj <- MSdev_annotation(MSdev.obj,
+                                expand_adduct= T,
+                                cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/Lipidblast.sqlite",
+                                selected_adduct = c("[M]+","[M+NH4]+","[M+H]+","[M+Na]+","[M-H]-","[M+HCOO]-","[M+CH3COO]-"))
+  MSdev.obj <- MSdev_get_Stat(MSdev.obj,score_thresh = 0.3)
+  MSdev_export(MSdev.obj)
+  MSdev_save(MSdev.obj)
+
+
+
+  ### figure SAMPLE1
+  {
+
+    proj.dir <- MSdev.obj@projectInfo$projectDir
+    data.se <- get_MSdev_DEP_se(MSdev.obj,from = "metabolite",QC_RSD= 0.5)
+
+    p.pca <- DEP_plot_PCA(data.se)
+    export_graph2pdf(p.pca , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                     width = 3,height = 3)
+
+
+    ### Plot TIC
+    {
+
+      p1 <- plot_xcms_TIC(MSdev.obj@xcmsData$PositiveMS1)+
+        labs(title = "Positive TIC")
+      p2 <- plot_xcms_TIC(MSdev.obj@xcmsData$NegativeMS1)+
+        labs(title = "Negative TIC")
+      p <- p1+p2+plot_layout(ncol = 1)
+      export_graph2pdf(p , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 8,append = T)
+    }
+
+
+    ### diff
+    {
+      data.se1 <- data.se[,!data.se$group %in% c("Other","Blank","QC","CIDAcondition")]
+      data.se.Sample_P <- DEP_preprocess(data.se1)
+      data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 10,append = T)
+      data.diff <- DEP_test_diff(data.se.Sample_P)
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = T)
+
+      p.diff.list <- DEP_plot_volcano(data.diff,"all")
+      p.diff <- ggplot_sum_patchwork(p.diff.list)
+      export_graph2pdf(p.diff , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 10,append = T)
+      table.diff <- DEP_get_diff_table(data.diff,contrast = "all",keep.all = T)
+      xlsx.write.list(table.diff,
+                      paste0(proj.dir,"/Statistic/diff.metabolites.xlsx")
+      )
+
+
+      data.diff <- DEP_test_diff(data.se.Sample_P,type = "all")
+      data.diff <- DEP_add_rejections(data.diff,p.adjust = F)
+      #data.diff <- data.diff[,grepl("LB|V|F",data.diff$group )]
+      data.hm <- DEP_filter_significant(data.diff)
+      hm <- DEP_plot_heatmap(data.hm)
+      export_graph2pdf(hm , paste0(proj.dir,"/Statistic/Figures.pdf"),
+                       width = 10,height = 20,append = T)
+
+
+
+    }
+
+
+  }
+
+
+}
