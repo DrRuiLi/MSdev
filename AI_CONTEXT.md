@@ -1,61 +1,71 @@
 # MSdev — AI wayfinding (`AI_CONTEXT.md`)
 
-Concise index for future sessions. **Do not treat this file as authoritative API detail**; confirm behavior in `man/` (Rd) and roxygen in `R/`.
+Concise index for future sessions. Do not treat this file as authoritative API detail; confirm behavior in `man/` (Rd), roxygen comments, and current `R/` sources.
 
 ---
 
 ## 1. Core project goal
 
-**MSdev** is an R/Bioconductor-oriented toolkit for **untargeted and targeted LC–MS workflows**: raw-to-feature processing (xcms), spectral handling, annotation, statistics, and **stable-isotope / isotopologue analysis** (PAVE / TRACE-style networks, MSIP targeted isotopologues, CFM-linked atom mapping). The package title/description frame it as **MS data manipulation and advanced algorithms** built around a central **`MSdev` S4 project object**.
+`MSdev` is now focused on the LC-MS processing shell around the `MSdev` S4 object: project orchestration, xcms-based feature processing, spectra handling, annotation glue, DDA/MRM utilities, network/flux wrappers, statistics, and export/report helpers.
+
+Chemistry and molecule-graph primitives were refactored into `MSCC` and are consumed from there.
 
 ---
 
-## 2. Core architecture & file index
+## 2. Refactor status and package boundaries
 
-| Area | Primary `R/` files | Read first if… |
-|------|---------------------|----------------|
-| **Project shell & I/O** | `MSdev-class.R` (slots), `MSdev-function.R` (`MSdev()`, `MSdev_save`/`MSdev_load`, export, spectra, annotation orchestration) | Wrong/missing slots, save path, project dirs, `sampleInfo` sync |
-| **Reference workflow (glue)** | `MSdev-workflow.R` | Understanding intended **call order** (demo-style pipelines) |
-| **xcms / MS1 core** | `MSdev-function.R` (`MSdev_xcmsProcessing`, DDA/MRM dispatch), **`dev_xcms.R`** (large: `xcmsProcessingMS1`, filters, helpers) | Peak picking, grouping, RT correction, polarity split |
-| **DDA / MS2 linkage** | `DDA-function.R`, `DDA_Mine_function.R`, `DDA_mine-workflow.R`, `Pseudo-workflow.R` | DDA simulation, MS2–feature assignment, mining workflows |
-| **MRM** | `MRM-function.R`, `MRM-WorkFlow.R` | MRM chromatograms, MRM-specific xcms path |
-| **Experiment metadata** | `MS_Exp-class.R`, `MS_Exp-function.R` | Chromatography / instrument metadata object |
-| **PAVE (dual-label C/N tracing)** | `PAVE.R` (`get_PAVE_from_MSdev`, atom counting), `PAVE2.R`, `PAVE2-fun.R` | Tracer columns, PAVE1 vs PAVE2 logic, `advancedAna$PAVE` |
-| **TRACE** | `TRACE.R` | Alternative/heavy **network-based** isotope tracing on xcms features |
-| **MSIP (targeted isotopologues)** | `MSIP-function.R`, `MSIP_xcms_processing.targeted` (see exports), `MSIP-foundation.R`, `MSIP-scoring.R`, `MSIPCoreData.R`, `MSIPCoreData_function.R`, `MSIPFragmentMap.R`, `MSIPAtomMap.R`, `MSIP_Isotopomer_SE.R`, `MSIP-class.R` | Compound table → isotopologues, CFM, fragment/atom maps, `SummarizedExperiment` outputs |
-| **CFM / structure** | `dev_CFM.R` (and CFM-related MSIP helpers) | CFM prediction, annotation pipelines |
-| **Molecule graphs** | `Molecule_igraph-class.R`, `Molecule_igraph-functions.R`, `Molecule_vis.R` | Graph chemistry, visualization |
-| **Reaction / flux (network)** | `Reaction_atom_transfer.R`, `Metabolic_flux_network.R` | Atom transfer matrices, network-level analyses |
-| **Statistics** | `StatisticFunction.R`, `MSdev-Sta_function.R`, **`dev_DEP.R`** (DEP wrappers), `dev_caret.R` | PCA/ANOVA/diff, DEP proteomics-style stats |
-| **Shiny (MSIP)** | `Shiny_MSIP.R`, `Shiny_MSIP_UI.R`, `Shiny_MSIP_SERVER.R`, `Shiny_MSIP_FUN.R`, `MSIP_server.R` | Interactive UI bugs, session logic |
-| **On-disk / large data** | `onDiskData.R` | Memory-efficient data paths |
-| **Generics / ChemmineR** | `0_class.R` | `atom()`, `vdata`/`edata` generics on graph/SDF-like objects |
-| **Utilities (broad)** | `dev_base.R`, `dev_string.R`, `dev_plot.R`, `dev_tidyverse.R`, `dev_openxlsx.R`, `dev_mzR.R`, `dev_Spectra.R`, `dev_xcms.R`, … | **Generic helpers only** — confirm caller in higher-level module before changing behavior |
+### What moved out
 
-**Vignettes (`vignettes/`)** — narrative entry points: `MSdev.Rmd`, `MSdev_untargeted_workflow.Rmd`, `MSIP_Workflow.Rmd`, `MSIP_note.Rmd`, `MSIPCoreData.Rmd`, `MSIPAtomMap.Rmd`, `MSIP_Structural_Elucidation_Evaluation.Rmd`.
+- Chemistry/structure modules (for example CFM, RXN mapper, molecule graph classes/functions, related wrappers) were migrated out of this package.
+- Local generic definitions for graph accessors (`vdata`, `vdata<-`, `edata`, `edata<-`) were removed from `MSdev`.
 
-**Package metadata:** root `DESCRIPTION`, `NAMESPACE` (exports).
+### What remains in MSdev
+
+- `MSdev` still defines package-specific S4 classes and workflows for feature processing/analysis.
+- `MSdev` provides methods for `Metabolic_flux_network` that rely on imported `MSCC` graph generics.
+
+### Cross-package contract
+
+- `MSCC` defines and exports graph generics/accessors.
+- `MSdev` imports them (including replace functions via raw namespace import) in `R/0_mscc_graph_generics_imports.R`.
+- Method registration for `Metabolic_flux_network` accessors is done in `.onLoad()` in `R/0_mscc_graph_generics_imports.R` to avoid load-order issues.
 
 ---
 
-## 3. Core data flow / state
+## 3. Current architecture map (`R/`)
+
+| Area | Primary files | Read first when… |
+|------|---------------|------------------|
+| Project shell and orchestration | `MSdev-class.R`, `MSdev-function.R`, `MSdev-workflow.R`, `Demo.R` | Understanding core object lifecycle, setup, and top-level API |
+| xcms / feature processing | `dev_xcms.R`, `MSdev-function.R`, `onDiskData.R` | Debugging peak picking/grouping/RT alignment or feature extraction |
+| DDA / pseudo-MS2 workflow | `DDA-function.R`, `DDA_Mine_function.R`, `DDA_mine-workflow.R`, `Pseudo-workflow.R` | Following DDA simulation/mining flow |
+| MRM | `MRM-function.R`, `MRM-WorkFlow.R` | Investigating targeted chromatogram pipeline |
+| Network / atom-transfer wrappers | `Metabolic_flux_network.R`, `Reaction_atom_transfer.R`, `0_mscc_graph_generics_imports.R` | Tracing graph accessors, reaction transfer, and MSCC integration points |
+| Statistics and downstream analysis | `StatisticFunction.R`, `MSdev-Sta_function.R`, `dev_DEP.R`, `dev_caret.R`, `dev_MetaboSignal.R`, `dev_FELLA.R`, `dev_KEGG.R` | Fixing modeling/DE/pathway/stat output behavior |
+| Visualization and plotting | `dev_plot.R` | Plot behavior and formatting |
+| Utility layers | `dev_base.R`, `dev_string.R`, `dev_tidyverse.R`, `dev_math.R`, `dev_others.R`, `dev_openxlsx.R`, `dev_RStudio.R` | Shared helpers and local utilities |
+| Spectra/instrument helpers | `dev_Spectra.R`, `dev_mzR.R`, `dev_MSInstrument.R`, `MS_Exp-function.R`, `MS_exp-class.R` | Spectra parsing, metadata, and instrument-specific behavior |
+
+---
+
+## 4. Core data flow / state
 
 | Stage | Form |
 |-------|------|
-| **Input** | Raw vendor files under `rawDataDir` (see `MSdev()`); **`sampleInfo`** data frame (paths, polarity, sample types); optional **`MS_Exp`** in `experimentInfo` |
-| **Core container** | **`MSdev`**: `projectInfo`, `sampleInfo`, `experimentInfo`, **`xcmsData`** (named list, typically `PositiveMS1` / `NegativeMS1` `XCMSnExp`), **`spectra`**, **`annotation`**, **`advancedAna`** (MSIP, PAVE, TRACE outputs, etc.) |
-| **Typical untargeted chain** | `MSdev_checkSampleInfo` → `MSdev_msConvert` → `MSdev_xcmsProcessing` → spectra extraction/matching → annotation → stats → export/save (see `MSdev-workflow.R`) |
-| **Outputs** | **`qs`**-serialized object (`MSdev_save` / `MSdev_load`), tables/plots/Excel from export and stat functions; MSIP may yield **`MSIPIsotopologueData`** / related S4 (`MSIP-class.R`) |
+| Input | Raw files under `rawDataDir`; `sampleInfo` table; optional `MS_Exp` metadata |
+| Core container | `MSdev` S4 with slots `projectInfo`, `processingInfo`, `sampleInfo`, `experimentInfo`, `xcmsData`, `spectra`, `annotation`, `advancedAna` |
+| Typical chain | `MSdev_checkSampleInfo` -> `MSdev_msConvert` -> `MSdev_xcmsProcessing` -> spectra extraction/matching -> annotation -> stats/export -> save/load |
+| Outputs | Serialized project objects and tabular/plot exports |
 
 ---
 
-## 4. Interaction guidelines (for AI agents)
+## 5. Editing guidance for future sessions
 
-1. **Read `man/*.Rd` first** for exported functions (this repo builds **~100+** help pages from roxygen). If Rd is stale vs `R/`, treat **source roxygen** as ground truth and suggest `devtools::document()`.
-2. **Avoid drive-by edits to `dev_xcms.R` and other large `dev_*` layers** unless the bug is localized; prefer the smallest surface (`MSdev-function.R`, domain file) after reading callers.
-3. **Respect S4 slots** on `MSdev`, `MSIPMetaboliteData`, `MSIPIsotopologueData`, `MS_Exp`, etc.; extend via documented patterns rather than ad hoc slot names.
-4. **Do not modify `AI_CONTEXT.md` autonomously** unless the user explicitly asks; propose updates in chat if architecture drifts.
+1. Read `AI_CONTEXT.md` first, then open the smallest domain file that owns the behavior.
+2. For graph/generic issues, check `R/0_mscc_graph_generics_imports.R` and `NAMESPACE` imports from `MSCC` before touching network files.
+3. Avoid broad edits in large utility files (especially `dev_xcms.R`) unless caller boundaries are clear.
+4. If architecture shifts again (new migrations between `MSdev` and `MSCC`), update this file only after explicit user request.
 
 ---
 
-*Last generated from repository layout (`R/` ≈ 63 files) + `DESCRIPTION` / `NAMESPACE`; not a substitute for reading the modules above.*
+Last refreshed after refactor to `MSCC` ownership for graph/chemistry primitives. This file is a navigation aid, not a substitute for reading source.
