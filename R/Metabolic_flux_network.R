@@ -16,45 +16,6 @@ setMethod("show",signature = "Metabolic_flux_network",
 
 
 
-setMethod(
-  "vdata",
-  signature = "Metabolic_flux_network",
-  definition = function(object) {
-    vdata(object@metabolic_network)
-  }
-)
-
-methods::setGeneric("vdata<-", function(object, value) standardGeneric("vdata<-"))
-setMethod(
-  "vdata<-",
-  "Metabolic_flux_network",
-  definition = function(object, value) {
-    vdata(object@metabolic_network) <- value
-    object
-  }
-)
-
-
-setMethod(
-  "edata",
-  "Metabolic_flux_network",
-  definition = function(object) {
-    edata(object@metabolic_network)
-  }
-)
-
-methods::setGeneric("edata<-", function(object, value) standardGeneric("edata<-"))
-setMethod(
-  "edata<-",
-  "Metabolic_flux_network",
-  definition = function(object, value) {
-    edata(object@metabolic_network) <- value
-    object
-  }
-)
-
-
-
 
 setClass("Molecule_atom_transfer",
          slots = list(
