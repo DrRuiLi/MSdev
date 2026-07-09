@@ -815,7 +815,7 @@ xcms_get_feature_isotopologues_multi_tracer <- function(xcms.xcms,
   {
     xcms.fdf <- xcms::featureDefinitions(xcms.xcms) %>%
       as.data.frame()
-    iso_ele_clean <- get_ele_uniso(iso_ele)
+    iso_ele_clean <- MSCC::get_ele_uniso(iso_ele)
     for (el in iso_ele_clean) {
       xcms.fdf[, paste0("iso_count_", el)] <- NA
     }
@@ -987,7 +987,7 @@ get_xcms_feature_iso_connection_multi_tracer <- function(xcms.xcms,
                                    ppm.base = fdf.connect$mz.mean,
                                    ppm = ppm)
 
-  iso_ele_clean <- get_ele_uniso(iso_ele)
+  iso_ele_clean <- MSCC::get_ele_uniso(iso_ele)
   for (i in seq_along(iso_ele)) {
     fdf.connect[match.res$ion1, paste0("closest.iso.count_", iso_ele_clean[i])] <- iso.grid[match.res$ion2, iso_ele[i]]
   }
@@ -1507,7 +1507,7 @@ xcms_get_feature_isopattern_score <- function(xcms.xcms,
                                  chemform = xcms.fdf$candidate.formula[[i]],
                                  adduct =  xcms.fdf$candidate.adduct[[i]],
                                  value = "chemform")
-               get_isopattern_score(formula = formulas,
+               MSCC::get_isopattern_score(formula = formulas,
                                     mzs = rowData(xcms.se.temp)$mzmed,
                                     int_matrix = assay(xcms.se.temp),
                                     ppm = ppm)
@@ -3217,7 +3217,7 @@ xcms_get_feature_adduct_connection <- function(xcms.xcms,rt.tol = 5,ppm = 10){
 
 
   pol <- unique(polarity(xcms.xcms))
-  adduct.diff <- get_adduct_mass_diff(pol)
+  adduct.diff <- MSCC::get_adduct_mass_diff(pol)
   adduct.diff <- adduct.diff[order(adduct.diff$mass_diff),]
   #xcms.xcms <- xcms_get_feature_group(xcms.xcms,diffRt = 10,intCor = NULL,eicCor = NULL)
   xcms.fdf <- xcms::featureDefinitions(xcms.xcms)

@@ -24,6 +24,7 @@ setMethod(
   }
 )
 
+methods::setGeneric("vdata<-", function(object, value) standardGeneric("vdata<-"))
 setMethod(
   "vdata<-",
   "Metabolic_flux_network",
@@ -42,6 +43,7 @@ setMethod(
   }
 )
 
+methods::setGeneric("edata<-", function(object, value) standardGeneric("edata<-"))
 setMethod(
   "edata<-",
   "Metabolic_flux_network",
@@ -87,7 +89,7 @@ Metabolic_flux_network_get_Molecule_atom_transfer <- function(Metabolic_flux_net
 
   mfn.e <- edata(Metabolic_flux_network)
   mfn.transfer <- plyr::mlply(mfn.e,.fun = function(from,to,...){
-    get_Molecule_atom_transfer_by_atom_map(
+    MSCC::get_Molecule_atom_transfer_by_atom_map(
       V(Metabolic_flux_network@metabolic_network)[[from]]$Molecule_igraph,
       V(Metabolic_flux_network@metabolic_network)[[to]]$Molecule_igraph,
       target_ele = "C"
@@ -232,18 +234,18 @@ Metabolic_flux_network_get_Reaction_atom_transfer <- function(mfn){
       mol.igs <- split(mol.igs,equation.df$side)
 
       mol.ig.from <- mol.igs$from
-      idx <- order(sapply(mol.ig.from,formula)%>%get_formula_ele_count())
+      idx <- order(sapply(mol.ig.from,formula)%>%MSCC::get_formula_ele_count())
       mol.ig.from <- mol.ig.from[idx]
 
       x <- rep(to,times = equation.coef[to])
       mol.ig.to <- V(mfn@metabolic_network)[to]$Molecule_igraph
       names(mol.ig.to) <- paste0(x,"_",sapply(equation.coef[to], function(x) seq(1, x))%>%unlist())
-      idx <- order(sapply(mol.ig.to,formula)%>%get_formula_ele_count())
+      idx <- order(sapply(mol.ig.to,formula)%>%MSCC::get_formula_ele_count())
       mol.ig.to <- mol.ig.to[idx]
 
       }
 
-    rat <-  get_Reaction_atom_transfer_by_RXNmapper(
+    rat <-  MSCC::get_Reaction_atom_transfer_by_RXNmapper(
       mol.ig.from,
       mol.ig.to,
       target_ele = "C"
@@ -295,7 +297,7 @@ vis_Metabolic_flux_network <- function(mfn){
 
     mfn.c <- vdata(mfn)%>%
       dplyr::filter(node.type == "Compound")
-    idx.labeled <- mfn.c$id[sapply(mfn.c$Molecule_igraph,is_labeled)]
+    idx.labeled <- mfn.c$id[sapply(mfn.c$Molecule_igraph,MSCC::is_labeled)]
   }
 
 
@@ -375,7 +377,7 @@ Metabolic_flux_network_get_compound_data_from_cid <- function(mfn){
 
 
   cp.node.data <- vdata(mfn)%>%
-    dplyr::mutate(C.count = get_formula_ele_count(Formula ,"C"))%>%
+    dplyr::mutate(C.count = MSCC::get_formula_ele_count(Formula ,"C"))%>%
     dplyr::filter(node.type=="Compound",
                   C.count > 0   )
   cp.cid <- webchem::get_cid(cp.node.data$PubChem,
@@ -390,7 +392,7 @@ Metabolic_flux_network_get_compound_data_from_cid <- function(mfn){
 
 
   V(mfn@metabolic_network)$Molecule_igraph  <- NA
-  V(mfn@metabolic_network)[cp.node.data$name]$Molecule_igraph <- get_Molecule_igraph_from_smiles(
+  V(mfn@metabolic_network)[cp.node.data$name]$Molecule_igraph <- MSCC::get_Molecule_igraph_from_smiles(
     cp.node.data$CanonicalSMILES ,id = cp.node.data$name )
 
 
@@ -470,7 +472,7 @@ Metabolic_flux_network_get_Molecule_igraph <- function(mfn){
   ### filter compound with C
   {
     cp.node.data <- get_Metabolic_flux_network_compound_df(mfn)%>%
-      dplyr::mutate(C.count = get_formula_ele_count(Formula ,"C"))%>%
+      dplyr::mutate(C.count = MSCC::get_formula_ele_count(Formula ,"C"))%>%
       dplyr::filter(C.count > 0   )
 
   }
@@ -481,7 +483,7 @@ Metabolic_flux_network_get_Molecule_igraph <- function(mfn){
 
     V(mfn@metabolic_network)$Molecule_igraph  <- NA
     cp.node.mig <-
-      get_Molecule_igraph_from_smiles(
+      MSCC::get_Molecule_igraph_from_smiles(
         cp.node.data$smiles ,
         id = cp.node.data$name )
     V(mfn@metabolic_network)[names(cp.node.mig)]$Molecule_igraph <- cp.node.mig
@@ -537,7 +539,7 @@ Metabolic_flux_network_update_from_visGetEdges <- function(mfn,visGetEdges){
     attr.to.add <- list(id = edge.add.data$id ,
                         name = edge.add.data$id ,
                         atom_transfer = list(
-                          get_Molecule_atom_transfer_by_atom_map(
+                          MSCC::get_Molecule_atom_transfer_by_atom_map(
                             mol.ig.from = V(mfn@metabolic_network)[[edge.add.data$from]]$Molecule_igraph,
                             mol.ig.to = V(mfn@metabolic_network)[[edge.add.data$to]]$Molecule_igraph,
                             target_ele = "C"
@@ -598,7 +600,7 @@ Metabolic_flux_tracing <- function(mfn,round= 10){
 
     mfn.c <- vdata(mfn)%>%
       dplyr::filter(node.type == "Compound")
-    idx.labeled <- mfn.c$id[sapply(mfn.c$Molecule_igraph,is_labeled)]
+    idx.labeled <- mfn.c$id[sapply(mfn.c$Molecule_igraph,MSCC::is_labeled)]
     message_with_time("Round ",i)
     message_with_time(length(idx.labeled)," Compound labeled")
 
@@ -668,7 +670,7 @@ Metabolic_flux_tracing <- function(mfn,round= 10){
   mfn.c <- vdata(mfn)%>%
     dplyr::filter(node.type == "Compound")
 
-  idx.labeled <- mfn.c$id[sapply(mfn.c$Molecule_igraph,is_labeled)]
+  idx.labeled <- mfn.c$id[sapply(mfn.c$Molecule_igraph,MSCC::is_labeled)]
   mig.labeld <- mfn.c[idx.labeled,"Molecule_igraph"]
 
   return(mfn)

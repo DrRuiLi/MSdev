@@ -11,6 +11,7 @@ Depends:
 Imports: 
     Biobase,
     magrittr,
+    MSCC,
     tidyr
 Suggests: 
     knitr,
@@ -50,7 +51,6 @@ Suggests:
     lsa,
     MsBackendMgf,
     MsBackendMsp,
-    MSCC,
     MSconvertR,
     MsCoreUtils,
     MSdb,

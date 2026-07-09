@@ -72,7 +72,7 @@ Metabolic_flux_atom_transfer_by_reaction <- function(rat,
   ### add labeled to.cp to mol.igs
   {
     #to.atom.matrix <- to.atom.matrix[!duplicated(to.atom.matrix),,drop = F]
-    combn.labeled <- apply(to.atom.matrix,1,function(x){any(is.isotope(x))})
+    combn.labeled <- apply(to.atom.matrix,1,function(x){any(MSCC::is.isotope(x))})
 
     to.cp.mol <- atom_transfer.data%>%
       dplyr::distinct(to.compound.id,to.molecule.id)%>%
@@ -91,7 +91,7 @@ Metabolic_flux_atom_transfer_by_reaction <- function(rat,
         iso_vec <- atom_transfer.data.this.combn %>%
           dplyr::filter(to.molecule.id== i.m)%>%
           dplyr::pull(atom.type,to.atom.id)
-        if (any(is.isotope(iso_vec))) {
+        if (any(MSCC::is.isotope(iso_vec))) {
           iso.name <- get_isotopomer_name(iso_vec)
           if (any(this.mig@isotopomer$label==iso.name #&this.mig@isotopomer$path ==this.path
                   ,na.rm = T)) {

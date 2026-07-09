@@ -728,8 +728,8 @@ featureCandidate<- function(object,mz.ppm = 20,
           for (i in 1:length(x)) {
             iso.table <- MSCC::chemform_isotopes_pattern_enviPat(
               MSCC::chemform_adduct(x$formula[i],x$adduct[i]) )%>%
-              MSCC:::match_isotopes_to_featuredef(featuredef ,rt.tol = 10)%>%
-              MSCC:::match_isotopes_to_featureval(featureval)%>%
+              MSCC::match_isotopes_to_featuredef(featuredef, rt.tol = 10) %>%
+              MSCC::match_isotopes_to_featureval(featureval) %>%
               dplyr::mutate(MSDB_id = x$MSDB_id[i])
 
             iso.all[[i]] <- iso.table
@@ -2236,8 +2236,8 @@ get_MSdev_isotopologues_data <- function(object){
     xcms.fdf.iso <- xcms.fdf.iso%>%
       dplyr::group_by(iso_seed)%>%
       dplyr::mutate(
-        is_isotopologues = !is.na(iso_seed)&any(!is.na(compound_id)),
-        formula_max_iso_count = get_formula_ele_count(formula))%>%
+        is_isotopologues = !is.na(iso_seed) & any(!is.na(compound_id)),
+        formula_max_iso_count = MSCC::get_formula_ele_count(formula))%>%
       dplyr::mutate(
         formula_max_iso_count = na.unique(formula_max_iso_count),
         iso_seed = case_when(iso_count > formula_max_iso_count~ NA,
