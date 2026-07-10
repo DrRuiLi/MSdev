@@ -13,7 +13,7 @@ analyzeDiff <- function(diff.matrix,diff.group){
                                              function(x)
                                                mean(x[idx.case],na.rm =T)/mean(x[idx.con],na.rm =T)),
                            p.value = apply(diff.matrix,2,function(x){
-                             t.test_dev(x[idx.case],x[idx.con])
+                             get_p_t_test(x[idx.case],x[idx.con])
                            }))%>%
     dplyr::mutate(log2foldchange = log2(foldchange),
                   p.fdr = p.adjust(p.value),

@@ -207,7 +207,7 @@ DEP_t_test_diff <- function(se,...){
     groups <- strsplit(i.contra,"_vs_")[[1]]
     groups.se <- se[,se$condition%in%groups]
     groups.assay <- assay(groups.se)
-    p.val <- apply(groups.assay,1,function(x){t.test_dev(x~groups.se$condition)})
+    p.val <- apply(groups.assay,1,function(x){get_p_t_test(x~groups.se$condition)})
     p.val <-  unname(p.val[rownames(diff)])
     p.adj <- p.adjust(p.val,method = "BH")
     diff@elementMetadata[[paste0(i.contra,"_p.val")]] <-p.val

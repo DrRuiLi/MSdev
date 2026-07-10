@@ -3,10 +3,8 @@
 #' @param ... arguments passed to `stats::t.test`
 #'
 #' @return numeric p-value (or 1 if the test fails)
-#' @name t.test_dev
-#' @usage t.test_dev(...)
-#' @export t.test_dev
-t.test_dev <- function(...){
+#' @export
+get_p_t_test <- function(...){
 
   try.catch <-try(p.value <- t.test(...)$p.value,silent = T)
   if (grepl("Error " , try.catch)) {
