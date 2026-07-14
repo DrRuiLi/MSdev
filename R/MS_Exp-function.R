@@ -103,13 +103,43 @@
   x
 
 }
+# LazyData installs data/ as Rdata.rdb/.rds/.rdx, so system.file("data", "*.rda")
+# returns "" after install. Prefer the lazy-loaded object; persist edits to a
+# user data file (or the source data/*.rda when developing with load_all).
+.MS_Experiment_user_file <- function() {
+  file.path(tools::R_user_dir("MSdev", which = "data"), "MS_Experiment.rda")
+}
+
+.get_MS_Experiment <- function() {
+  user_file <- .MS_Experiment_user_file()
+  if (file.exists(user_file)) {
+    e <- new.env(parent = emptyenv())
+    load(user_file, envir = e)
+    return(e$MS_Experiment)
+  }
+  tryCatch(
+    MSdev::MS_Experiment,
+    error = function(e) {
+      stop("MS_Experiment data not available in package MSdev.", call. = FALSE)
+    }
+  )
+}
+
+.save_MS_Experiment <- function(MS_Experiment) {
+  pkg_file <- system.file("data", "MS_Experiment.rda", package = "MSdev")
+  if (nzchar(pkg_file) && file.exists(pkg_file) && file.access(pkg_file, 2) == 0) {
+    save(MS_Experiment, file = pkg_file)
+    return(invisible(pkg_file))
+  }
+  user_file <- .MS_Experiment_user_file()
+  dir.create(dirname(user_file), recursive = TRUE, showWarnings = FALSE)
+  save(MS_Experiment, file = user_file)
+  invisible(user_file)
+}
+
 create_MS_Exp_record <-function( copy_from = 1,edit = F){
 
-  MS_Experiment.file <- system.file("data",
-                                   "MS_Experiment.rda",
-                                   package = "MSdev"
-  )
-  load(MS_Experiment.file)
+  MS_Experiment <- .get_MS_Experiment()
   x <- MS_Experiment[copy_from]
   if (copy_from==0) {
     x <- MS_Exp()
@@ -134,26 +164,17 @@ create_MS_Exp_record <-function( copy_from = 1,edit = F){
       paste0("MSE",.)
   }
   MS_Experiment <- c(MS_Experiment,x)
-  save(MS_Experiment ,file =  MS_Experiment.file)
+  .save_MS_Experiment(MS_Experiment)
   return(MS_Experiment)
   }
 remove_MS_Exp_record <- function(i){
-  MS_Experiment.file <- system.file("data",
-                                    "MS_Experiment.rda",
-                                    package = "MSdev"
-  )
-  load(MS_Experiment.file)
-  MS_Experiment <- .remove_MS_Exp(MS_Experiment,i)
-  save(MS_Experiment ,file =  MS_Experiment.file)
+  MS_Experiment <- .remove_MS_Exp(.get_MS_Experiment(), i)
+  .save_MS_Experiment(MS_Experiment)
   return(MS_Experiment)
 
 }
 edit_MS_Exp_record <- function(i ){
-  MS_Experiment.file <- system.file("data",
-                                    "MS_Experiment.rda",
-                                    package = "MSdev"
-  )
-  load(MS_Experiment.file)
+  MS_Experiment <- .get_MS_Experiment()
   x <- MS_Experiment[i]
   wb <- .MS_Exp_to_workbook(x)
   temp.xlsx <- paste0(tempdir(), "/temp_",paste0(sample(letters,5),collapse = ""),".xlsx")
@@ -166,15 +187,11 @@ edit_MS_Exp_record <- function(i ){
   MS_Experiment <- MS_Experiment[seq[seq <i]]%>%
     c(x)%>%
     c( MS_Experiment[seq[seq >i]])
-  save(MS_Experiment ,file =  MS_Experiment.file)
+  .save_MS_Experiment(MS_Experiment)
   return(MS_Experiment)
 }
 show_MS_Exp_record <- function( i = "all"){
-  MS_Experiment.file <- system.file("data",
-                                    "MS_Experiment.rda",
-                                    package = "MSdev"
-  )
-  load(MS_Experiment.file)
+  MS_Experiment <- .get_MS_Experiment()
 
   if (i == "all") {
     return(MS_Experiment)
@@ -190,11 +207,7 @@ show_MS_Exp_record <- function( i = "all"){
 }
 update_MS_Exp_record <- function(){
 
-  MS_Experiment.file <- system.file("data",
-                                    "MS_Experiment.rda",
-                                    package = "MSdev"
-  )
-  load(MS_Experiment.file)
+  MS_Experiment <- .get_MS_Experiment()
   x <- MS_Exp()
   colnames(MS_Experiment@General)
   colnames(x@General)
@@ -207,6 +220,6 @@ update_MS_Exp_record <- function(){
     select(colnames(x@General))%>%
     as.tibble()
 
-  save(MS_Experiment ,file =  MS_Experiment.file)
+  .save_MS_Experiment(MS_Experiment)
   MS_Experiment
 }
