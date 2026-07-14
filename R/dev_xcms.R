@@ -2901,9 +2901,6 @@ get_xcms_Spectra <- function(xcms.xcms){
 
 }
 
-#' @importFrom ProtGenerics polarity
-
-
 #' @importFrom xcms filepaths
 #' @export
 setMethod(f = "filepaths",
