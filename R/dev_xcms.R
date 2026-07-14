@@ -2877,12 +2877,23 @@ get_xcms_centwave_tune <- function(xcms.xcms,
 
 
 
+#' @title get_xcms_Spectra
+#' @description
+#' Build a [Spectra::Spectra] object from the raw files behind an
+#' `XCMSnExp`, filtered to the polarity of `xcms.xcms`. Scan IDs from
+#' `get_xcms_scan_Stat()` are assigned as `spectraNames` and the
+#' `scan_id` spectra variable.
+#'
+#' @param xcms.xcms An `XCMSnExp` object.
+#'
+#' @return A `Spectra` object with `scan_id` matching xcms scan metadata.
+#' @export
 get_xcms_Spectra <- function(xcms.xcms){
 
-  xcms.files <- paste0(dirname(xcms.xcms),"/",Biobase::sampleNames(xcms.xcms))
+  xcms.files <- filepaths(xcms.xcms)
   xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
-  xcms.sp <- Spectra(xcms.files,
-                         backend = MsBackendMemory(),
+  xcms.sp <- Spectra::Spectra(xcms.files,
+                         backend = Spectra::MsBackendMemory(),
                          BPPARAM = SerialParam(progressbar = T))%>%
     filterPolarity(unique(polarity(xcms.xcms)))
   Spectra::spectraNames(xcms.sp) <- xcms.sp$scan_id <- xcms.scan$scan_id
@@ -2898,7 +2909,7 @@ get_xcms_Spectra <- function(xcms.xcms){
 setMethod(f = "filepaths",
                        signature = "XCMSnExp",
                        definition = function(object) {
-                         paste0(dirname(object), "/", Biobase::sampleNames(object))
+                         paste0(BiocGenerics::dirname(object), "/", Biobase::sampleNames(object))
                        })
 #' @importFrom xcms mzrange
 #' @export
