@@ -934,8 +934,8 @@ load_Spectra <- function(file) {
               "mona" = MsBackendMsp::MsBackendMsp(),
               "mgf" = MsBackendMgf::MsBackendMgf())
 
-  Spectra(file,source = bk ,
-          BPPARAM = SerialParam())
+  Spectra::Spectra(file, source = bk,
+                   BPPARAM = BiocParallel::SerialParam())
 }
 
 plot_Spectra_Injection <- function(sp){
@@ -985,7 +985,7 @@ get_CFM_data_Spectra <- function(cfmd ){
                                                      "2" = 40))
     this.sp.df$mz <- list(this.sp.data$mz)
     this.sp.df$intensity  <-list( this.sp.data$intensity)
-    this.sp <- Spectra(this.sp.df)
+    this.sp <- Spectra::Spectra(this.sp.df)
     sp.list[[ paste0("energy",i)]] <- this.sp
   }
   sp <- do.call(c,unname(sp.list))
@@ -1388,8 +1388,8 @@ Spectra_get_purity <- function(sp,msLevel = 2,sp.ms1= NULL){
     if (is.null(sp.ms1)) {
       message("Import MS1 Spectra")
       ms.files <- unique(dataOrigin(sp))
-      sp.ms1 <- Spectra(ms.files,msLevel=1)%>%
-        filterMsLevel(1)
+      sp.ms1 <- Spectra::Spectra(ms.files, msLevel = 1) %>%
+        ProtGenerics::filterMsLevel(1)
     }
     sp.ms2.list <- split(sp,sp$dataOrigin)[unique(sp$dataOrigin)]
     sp.ms1.list <- split(sp.ms1,sp.ms1$dataOrigin)[unique(sp$dataOrigin)]
