@@ -3020,10 +3020,14 @@ simulate_prm <- function(xcms.fdf,
 #' Calculate a feature-by-sample MS1 purity matrix by extracting, for each feature
 #' in \code{xcms.xcms}, the closest MS1 scan (by retention time) from \code{xcms.ms1.sp}
 #' in each sample file (matched by \code{Spectra::dataOrigin}). Purity is calculated
-#' by \code{get_spectra_ion_purity()} within an isolation window around the feature m/z.
+#' within an isolation window around the feature m/z.
 #'
 #' If \code{xcms.ms1.sp} is not provided, MS1 spectra are built via
 #' \code{get_xcms_Spectra(xcms.xcms)} and filtered to MS level 1.
+#'
+#' Optimized path: closest-scan lookup via \code{findInterval}, a single
+#' \code{peaksData()} extraction, and purity computed on peak matrices
+#' (no per-feature \code{Spectra} subsetting).
 #'
 #' @param xcms.xcms \code{XCMSnExp} with grouped features (must have \code{featureDefinitions}).
 #' @param xcms.ms1.sp Optional MS1 \code{Spectra} covering the same files as \code{xcms.xcms}.
@@ -3039,6 +3043,10 @@ get_xcms_feature_purity_matrix <- function(xcms.xcms,
                                            isolation_half_window = 0.2){
 
   xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
+  n_features <- nrow(xcms.fdf)
+  rtmed <- xcms.fdf$rtmed
+  mzmed <- xcms.fdf$mzmed
+  ppm_tol <- ppm * 1e-6
 
   if (missing(xcms.ms1.sp) || is.null(xcms.ms1.sp)) {
     message_with_time("xcms.ms1.sp not provided; building via get_xcms_Spectra()...")
@@ -3046,26 +3054,58 @@ get_xcms_feature_purity_matrix <- function(xcms.xcms,
       Spectra::filterMsLevel(1L)
   }
 
-  ### calc ms1_purity by ms1.sp
+  ### closest MS1 scan index per feature x file
   {
-    sp.rt <- rtime(xcms.ms1.sp)
+    sp.rt <- Spectra::rtime(xcms.ms1.sp)
     sp.origin <- xcms.ms1.sp$dataOrigin
-    sp.idx.split <- split(seq_along(xcms.ms1.sp),sp.origin)
-    f.sp.idx <- lapply(seq_len(nrow(xcms.fdf)),function(x){
-      rt.diff <- abs(sp.rt-xcms.fdf$rtmed[x])
-      rt.diff <- split(rt.diff,f = sp.origin)
-      rt.idx <- unname(sapply(rt.diff,which.min))
-      sapply(seq_along(rt.idx),function(i){
-        sp.idx.split[[i]][rt.idx[i] ]
-      })
-    })
-    f.sp <- lapply(f.sp.idx,function(x){xcms.ms1.sp[x]})
+    sp.idx.split <- split(seq_along(xcms.ms1.sp), sp.origin)
+    sp.rt.split <- split(sp.rt, sp.origin)
+    origins <- names(sp.idx.split)
+    n_files <- length(origins)
+
+    f.sp.idx <- matrix(NA_integer_, nrow = n_features, ncol = n_files)
+    for (j in seq_len(n_files)) {
+      idx_j <- sp.idx.split[[j]]
+      rt_j <- sp.rt.split[[j]]
+      ord <- order(rt_j)
+      rt_sorted <- rt_j[ord]
+      n_j <- length(rt_sorted)
+      if (n_j == 1L) {
+        f.sp.idx[, j] <- idx_j[1L]
+      } else {
+        pos <- findInterval(rtmed, rt_sorted)
+        pos <- pmax(1L, pmin(pos, n_j))
+        pos2 <- pmin(pos + 1L, n_j)
+        best <- ifelse(abs(rt_sorted[pos] - rtmed) <= abs(rt_sorted[pos2] - rtmed),
+                       pos, pos2)
+        f.sp.idx[, j] <- idx_j[ord[best]]
+      }
+    }
+  }
+
+  ### purity from peak matrices (single peaksData call)
+  {
+    message_with_time("extracting peaks data...")
+    all_pd <- as.list(Spectra::peaksData(xcms.ms1.sp))
+
     message_with_time("calculating MS1 purity...")
-    ms1_purity <- bplapply(seq_len(nrow(xcms.fdf)),function(x){
-      get_spectra_ion_purity(f.sp[[x]],xcms.fdf$mzmed[x],ppm,isolation_half_window)
-    },BPPARAM = SerialParam(progressbar = T))
-    ms1_purity_matrix <- do.call(rbind,ms1_purity)
-    rownames(ms1_purity_matrix) <-xcms.fdf$feature_id
+    ms1_purity_matrix <- matrix(0, nrow = n_features, ncol = n_files)
+    colnames(ms1_purity_matrix) <- basename(origins)
+    rownames(ms1_purity_matrix) <- xcms.fdf$feature_id
+
+    pb <- get_progress_bar(n_features)
+    for (i in seq_len(n_features)) {
+      ion_mz <- mzmed[i]
+      for (j in seq_len(n_files)) {
+        x <- all_pd[[f.sp.idx[i, j]]]
+        mz.diff <- abs(x[, 1L] - ion_mz)
+        num <- sum(x[mz.diff / ion_mz < ppm_tol, 2L])
+        den <- sum(x[mz.diff < isolation_half_window, 2L])
+        p <- num / den
+        if (is.finite(p)) ms1_purity_matrix[i, j] <- p
+      }
+      pb$tick()
+    }
   }
 
   return(ms1_purity_matrix)
