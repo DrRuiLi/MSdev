@@ -900,31 +900,6 @@ export_Spectra <- function(sp,
 
 }
 
-export_Spectra_peak_list_for_cfm <- function(sp,
-                                   file ){
-  readr::write_lines(NULL,file = file)
-  for (ce in collisionEnergy(sp)) {
-    sp.this <- sp[collisionEnergy(sp)==ce]
-    energy.type <- switch(as.character(ce),
-           "10" = "energy0",
-           "20" = "energy1",
-           "40" = "energy2")
-    readr::write_lines(energy.type,file = file,append = T)
-    data.to.write <- get_Spectra_data(sp.this)%>%
-      dplyr::arrange(mz)%>%
-      dplyr::mutate(to.write = paste0(mz," ",intensity))%>%
-      dplyr::select(to.write)%>%
-      as.matrix()
-    readr::write_lines(data.to.write,file = file,append = T)
-
-  }
-
-
-  return(invisible(file))
-
-
-}
-
 load_Spectra <- function(file) {
 
   format <- get_file_formate(file)
@@ -963,35 +938,26 @@ plot_Spectra_Injection <- function(sp){
 #' get_CFM_data_Spectra
 #'
 #' @title Convert CFM Data to Spectra Object
-#' @description Converts CFM (Competitive Fragmentation Modeling) peak assignment data
-#'   to a `Spectra` object with spectra at three collision energy levels (10, 20, 40 eV).
+#' @description Deprecated wrapper. Use \code{MSCC::get_CFM_data_Spectra()}.
 #' @param cfmd A CFM data object containing peak assignment information.
-#'   Typically obtained from `read_CFM_xxx` functions.
-#'
 #' @return A `Spectra` object containing MS/MS spectra at three collision energy levels.
 #' @export
-#'
-get_CFM_data_Spectra <- function(cfmd ){
+get_CFM_data_Spectra <- function(cfmd) {
+  .Deprecated("MSCC::get_CFM_data_Spectra", package = "MSdev",
+              msg = "get_CFM_data_Spectra() moved to MSCC. Use MSCC::get_CFM_data_Spectra().")
+  MSCC::get_CFM_data_Spectra(cfmd)
+}
 
-  cfm.df <- cfmd@peak_assignment
-  sp.list<- list()
-  for (i in 0:2) {
-    this.sp.data <- cfm.df%>%
-      dplyr::filter(energy == paste0("energy",i))%>%
-      dplyr::distinct(mz,intensity)
-    this.sp.df <- S4Vectors::DataFrame(collisionEnergy = switch(as.character(i),
-                                                     "0" = 10,
-                                                     "1" = 20,
-                                                     "2" = 40))
-    this.sp.df$mz <- list(this.sp.data$mz)
-    this.sp.df$intensity  <-list( this.sp.data$intensity)
-    this.sp <- Spectra::Spectra(this.sp.df)
-    sp.list[[ paste0("energy",i)]] <- this.sp
-  }
-  sp <- do.call(c,unname(sp.list))
-  return(sp)
-
-
+#' @title Export Spectra peak list for CFM (Deprecated)
+#' @description Deprecated wrapper. Use \code{MSCC::export_Spectra_peak_list_for_cfm()}.
+#' @param sp Spectra object
+#' @param file output file
+#' @return invisible file path
+#' @export
+export_Spectra_peak_list_for_cfm <- function(sp, file) {
+  .Deprecated("MSCC::export_Spectra_peak_list_for_cfm", package = "MSdev",
+              msg = "export_Spectra_peak_list_for_cfm() moved to MSCC. Use MSCC::export_Spectra_peak_list_for_cfm().")
+  MSCC::export_Spectra_peak_list_for_cfm(sp, file)
 }
 
 get_Spectra_adduct_expand <- function(sp,

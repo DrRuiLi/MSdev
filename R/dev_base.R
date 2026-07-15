@@ -420,3 +420,28 @@ start_rmd_render <- function(){
 
   xaringan:::inf_mr()
 }
+
+
+#' @title Load MSdev-related development packages
+#' @description
+#' Load source trees for \code{MSdev}, \code{MSCC}, and \code{MSIP} via
+#' \code{devtools::load_all()}. Package paths under OneDrive are resolved with
+#' \code{get_dir_expand_from_onedrive()} so the same call works across machines
+#' that share the same OneDrive layout.
+#'
+#' @return Invisibly returns the character vector of package directories loaded.
+#' @export
+#' @examples
+#' \dontrun{
+#' load_all_msdev()
+#' }
+load_all_msdev <- function(){
+
+  pkgs <- c(
+    get_dir_expand_from_onedrive("Code/R/Package/MSdev"),
+    get_dir_expand_from_onedrive("Code/R/Package/MSCC"),
+    get_dir_expand_from_onedrive("Code/R/Package/MSIP")
+  )
+  lapply(pkgs, devtools::load_all)
+  invisible(pkgs)
+}
