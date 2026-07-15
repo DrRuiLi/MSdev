@@ -11,11 +11,11 @@ Depends:
 Imports: 
     Biobase,
     magrittr,
-    MSCC,
     ProtGenerics,
     tidyr
 Suggests: 
     knitr,
+    MSCC,
     ChemmineR,
     circlize,
     CompoundDb,

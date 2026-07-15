@@ -3022,26 +3022,28 @@ simulate_prm <- function(xcms.fdf,
 #' in each sample file (matched by \code{Spectra::dataOrigin}). Purity is calculated
 #' by \code{get_spectra_ion_purity()} within an isolation window around the feature m/z.
 #'
-#' Note: this function requires MS1 \code{Spectra}. It does **not** import spectra
-#' from \code{xcms.xcms} automatically. Use \code{object@spectra$MS1_Spectra} from
-#' \code{MSdev_extract_Spectra()} (recommended) or build MS1 Spectra yourself.
+#' If \code{xcms.ms1.sp} is not provided, MS1 spectra are built via
+#' \code{get_xcms_Spectra(xcms.xcms)} and filtered to MS level 1.
 #'
 #' @param xcms.xcms \code{XCMSnExp} with grouped features (must have \code{featureDefinitions}).
-#' @param xcms.ms1.sp MS1 \code{Spectra} object covering the same files as \code{xcms.xcms}.
+#' @param xcms.ms1.sp Optional MS1 \code{Spectra} covering the same files as \code{xcms.xcms}.
+#'   If missing or \code{NULL}, built with \code{get_xcms_Spectra()}.
 #' @param ppm numeric, ppm tolerance for m/z window.
 #' @param isolation_half_window numeric, half isolation window (m/z).
 #'
 #' @return numeric matrix with rows = \code{feature_id}, columns = sample files (by \code{dataOrigin}).
 #' @export
 get_xcms_feature_purity_matrix <- function(xcms.xcms,
-                                           xcms.ms1.sp,
-                                           ppm = 10,
+                                           xcms.ms1.sp = NULL,
+                                           ppm = 5,
                                            isolation_half_window = 0.2){
 
   xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
 
   if (missing(xcms.ms1.sp) || is.null(xcms.ms1.sp)) {
-    stop("xcms.ms1.sp (MS1 Spectra) must be provided.")
+    message_with_time("xcms.ms1.sp not provided; building via get_xcms_Spectra()...")
+    xcms.ms1.sp <- get_xcms_Spectra(xcms.xcms) %>%
+      Spectra::filterMsLevel(1L)
   }
 
   ### calc ms1_purity by ms1.sp
