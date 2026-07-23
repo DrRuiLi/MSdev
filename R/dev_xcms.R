@@ -303,7 +303,7 @@ xcms_get_feature_group <- function(xcms.xcms,
                                     param = MsFeatures::AbundanceSimilarityParam(threshold = intCor,
                                                                      transform = log2 ),
                                     filled = TRUE)
-    message(length(unique(featureGroups(xcms.xcms)))," feature group")
+    message(length(unique(xcms::featureGroups(xcms.xcms)))," feature group")
   }
   if (!is.null(eicCor)) {
     register(SerialParam())
@@ -1675,13 +1675,13 @@ plot_xcms_peaks_distribution <- function(xcms.xcms,plot.title = "Peaks distribut
 
   xcms.peaks <- xcms::chromPeaks(xcms.xcms)%>%
     as.data.frame()%>%
-    dplyr::mutate(as.data.frame(chromPeakData(xcms.xcms)),
+    dplyr::mutate(as.data.frame(xcms::chromPeakData(xcms.xcms)),
                   peak_id = rownames(.),
                   merged = grepl(peak_id,pattern = "CPM"))%>%
     dplyr::filter(!is.na(maxo),
                   rtmax-rtmin <60,
                   !merged)
-  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( processType )
+  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( xcms::processType )
   xcms.findpeak.param <- xcms::processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
     xcms::processParam()
   if (type == "o") {
@@ -1935,7 +1935,7 @@ plot_xcms_peaks_mzerror_density <- function(xcms.xcms,
            mz_diff = mzmax-mzmin,
            peak_width = rtmax-rtmin)
 
-  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( processType )
+  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( xcms::processType )
   xcms.findpeak.param <- xcms::processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
     xcms::processParam()
   ggplot(xcms.peaks,aes(x = mz , y = ppm)) +
@@ -1972,7 +1972,7 @@ plot_xcms_peaks_mzerror_density <- function(xcms.xcms,
 
 plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"){
 
-  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( processType )
+  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( xcms::processType )
   xcms.findpeak.param <- xcms::processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
     xcms::processParam()
   xcms.peaks <- xcms::chromPeaks(xcms.xcms)%>%
@@ -2027,7 +2027,7 @@ plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"
 
 plot_xcms_peaks_ms2_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS2"){
 
-  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( processType )
+  xcms.process.type <- xcms::processHistory(xcms.xcms) %>% sapply( xcms::processType )
   xcms.findpeak.param <- xcms::processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]]%>%
     xcms::processParam()
   xcms.peaks <- xcms::chromPeaks(xcms.xcms)%>%
