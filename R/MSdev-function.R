@@ -1381,6 +1381,293 @@ MSdev_xcms_group_features <- function(object,
 }
 
 
+#' Resolve selected_sample to chromatogram column indices
+#' @noRd
+.resolve_selected_sample <- function(selected_sample, chrom_names, pdata_names = NULL) {
+  n <- length(chrom_names)
+  if (is.null(selected_sample)) {
+    return(seq_len(n))
+  }
+  if (is.numeric(selected_sample)) {
+    idx <- as.integer(selected_sample)
+    if (any(is.na(idx)) || any(idx < 1L) || any(idx > n)) {
+      stop("'selected_sample' indices must be between 1 and ", n)
+    }
+    return(idx)
+  }
+  if (is.character(selected_sample)) {
+    idx <- match(selected_sample, chrom_names)
+    if (anyNA(idx) && !is.null(pdata_names)) {
+      miss <- which(is.na(idx))
+      idx2 <- match(selected_sample[miss], pdata_names)
+      if (anyNA(idx2)) {
+        stop(
+          "'selected_sample' not found in chromatogram colnames or sample.name: ",
+          paste(selected_sample[miss][is.na(idx2)], collapse = ", ")
+        )
+      }
+      idx[miss] <- idx2
+    } else if (anyNA(idx)) {
+      stop(
+        "'selected_sample' not found in chromatogram colnames: ",
+        paste(selected_sample[is.na(idx)], collapse = ", ")
+      )
+    }
+    return(idx)
+  }
+  stop("'selected_sample' must be NULL, integer index/indices, or sample name(s)")
+}
+
+
+#' Feature index pairs with |rt_i - rt_j| < rt_tol (ordered sliding window)
+#' @noRd
+.rt_neighbor_pairs <- function(rt, rt_tol) {
+  n <- length(rt)
+  if (n < 2L) {
+    return(matrix(integer(), ncol = 2L))
+  }
+  ord <- order(rt)
+  rt_ord <- rt[ord]
+  out_i <- integer(0)
+  out_j <- integer(0)
+  j <- 2L
+  for (i in seq_len(n - 1L)) {
+    if (j <= i) {
+      j <- i + 1L
+    }
+    while (j <= n && (rt_ord[j] - rt_ord[i]) < rt_tol) {
+      j <- j + 1L
+    }
+    end <- j - 1L
+    if (end >= i + 1L) {
+      js <- seq.int(i + 1L, end)
+      out_i <- c(out_i, rep.int(ord[i], length(js)))
+      out_j <- c(out_j, ord[js])
+    }
+  }
+  cbind(out_i, out_j)
+}
+
+
+#' Pairwise EIC similarity for one sample column (RT-neighbor pairs only)
+#' @noRd
+.eic_similarity_matrix_one_sample <- function(chroms_col,
+                                              pairs,
+                                              nft,
+                                              fids,
+                                              ALIGNFUN = MSnbase::alignRt,
+                                              ALIGNFUNARGS = list(tolerance = 0, method = "closest"),
+                                              FUN = stats::cor,
+                                              FUNARGS = list(use = "pairwise.complete.obs")) {
+  mat <- matrix(NA_real_, nrow = nft, ncol = nft, dimnames = list(fids, fids))
+  diag(mat) <- 1
+  if (nrow(pairs) == 0L) {
+    return(mat)
+  }
+  for (k in seq_len(nrow(pairs))) {
+    i <- pairs[k, 1L]
+    j <- pairs[k, 2L]
+    chi <- chroms_col[i, 1L]
+    chj <- chroms_col[j, 1L]
+    score <- tryCatch(
+      MSnbase::compareChromatograms(
+        chi,
+        chj,
+        ALIGNFUN = ALIGNFUN,
+        ALIGNFUNARGS = ALIGNFUNARGS,
+        FUN = FUN,
+        FUNARGS = FUNARGS
+      ),
+      error = function(e) NA_real_
+    )
+    mat[i, j] <- score
+    mat[j, i] <- score
+  }
+  mat
+}
+
+
+#' @title Group features by EIC similarity within RT tolerance
+#' @description Compare extracted-ion chromatogram shapes for feature pairs with
+#'   \code{|rtmed_i - rtmed_j| < rt_tol} (not limited to existing feature groups).
+#'   Reuses chromatograms from \code{\link{MSdev_get_feature_chrom}}, stores
+#'   per-sample feature-by-feature similarity matrices under
+#'   \code{object@advancedAna$featureGroups$EIC_Similarity}, and updates
+#'   \code{feature_group} labels via 75\%-quantile aggregation across selected
+#'   samples and \code{MsFeatures::groupSimilarityMatrix}.
+#' @param object MSdev object
+#' @param rt_tol numeric(1). Maximum absolute RT difference (seconds) for which
+#'   EIC similarity is computed. Default 5.
+#' @param threshold numeric(1). Similarity cut-off for
+#'   \code{MsFeatures::groupSimilarityMatrix}. Default 0.5.
+#' @param onlyPeak logical(1). If TRUE, intensities outside chromatographic
+#'   peaks are removed before correlation (xcms default for EIC grouping).
+#' @param selected_sample NULL, integer index/indices, or sample name(s)
+#'   (\code{sample.name} / chromatogram colnames). NULL uses all samples.
+#' @param forceExtractChrom logical(1). If TRUE, (re)extract chromatograms via
+#'   \code{MSdev_get_feature_chrom} even if already stored.
+#' @param BPPARAM BiocParallel backend passed to \code{MSdev_get_feature_chrom}
+#'   when extraction is needed.
+#' @return MSdev object with updated MS1 \code{feature_group} labels and
+#'   \code{advancedAna$featureGroups$EIC_Similarity}.
+#' @export
+MSdev_group_feature_EIC <- function(object,
+                                    rt_tol = 5,
+                                    threshold = 0.5,
+                                    onlyPeak = TRUE,
+                                    selected_sample = NULL,
+                                    forceExtractChrom = FALSE,
+                                    BPPARAM = SnowParam(
+                                      workers = parallel::detectCores() - 1,
+                                      progressbar = TRUE)) {
+  stopifnot(inherits(object, "MSdev"))
+  if (!is.numeric(rt_tol) || length(rt_tol) != 1L || rt_tol <= 0) {
+    stop("'rt_tol' must be a positive numeric(1)")
+  }
+  if (!is.numeric(threshold) || length(threshold) != 1L) {
+    stop("'threshold' must be numeric(1)")
+  }
+
+  polarities <- c("Negative", "Positive")
+  need_chrom <- forceExtractChrom
+  if (!need_chrom) {
+    for (pol in polarities) {
+      ms1_key <- paste0(pol, "MS1")
+      chrom_key <- paste0(pol, "_Chromatograms")
+      if (!is.null(object@xcmsData[[ms1_key]]) &&
+          is.null(object@xcmsData[[chrom_key]])) {
+        need_chrom <- TRUE
+        break
+      }
+    }
+  }
+  if (need_chrom) {
+    message_with_time("Extracting feature chromatograms via MSdev_get_feature_chrom")
+    object <- MSdev_get_feature_chrom(object, BPPARAM = BPPARAM)
+  }
+
+  if (is.null(object@advancedAna$featureGroups) ||
+      !is.list(object@advancedAna$featureGroups)) {
+    object@advancedAna$featureGroups <- list()
+  }
+  object@advancedAna$featureGroups$EIC_Similarity <- list()
+
+  ALIGNFUNARGS <- list(tolerance = 0, method = "closest")
+  FUNARGS <- list(use = "pairwise.complete.obs")
+
+  for (pol in polarities) {
+    ms1_key <- paste0(pol, "MS1")
+    chrom_key <- paste0(pol, "_Chromatograms")
+    xcms.xcms <- object@xcmsData[[ms1_key]]
+    if (is.null(xcms.xcms)) {
+      next
+    }
+    if (is.null(object@xcmsData[[chrom_key]])) {
+      warning("No chromatograms for ", pol, "; skip.")
+      next
+    }
+
+    message_with_time("EIC similarity grouping: ", pol)
+    chroms <- onDiskData_retrieve(object@xcmsData[[chrom_key]])
+    if (onlyPeak) {
+      chroms <- xcms::removeIntensity(chroms, which = "outside_chromPeak")
+    }
+
+    fdf <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
+    fids <- rownames(chroms)
+    if (is.null(fids) || anyNA(fids)) {
+      stop("Chromatograms for ", pol, " lack feature rownames")
+    }
+    if ("feature_id" %in% colnames(fdf)) {
+      rt <- fdf$rtmed[match(fids, fdf$feature_id)]
+    } else {
+      rt <- fdf$rtmed[match(fids, rownames(fdf))]
+    }
+    if (anyNA(rt)) {
+      stop("Could not map chromatogram features to rtmed for ", pol)
+    }
+
+    chrom_names <- colnames(chroms)
+    if (is.null(chrom_names)) {
+      chrom_names <- paste0("sample_", seq_len(ncol(chroms)))
+      colnames(chroms) <- chrom_names
+    }
+    pdata_names <- tryCatch(
+      as.character(Biobase::pData(xcms.xcms)$sample.name),
+      error = function(e) NULL
+    )
+    sample_idx <- .resolve_selected_sample(selected_sample, chrom_names, pdata_names)
+    sample_names <- chrom_names[sample_idx]
+
+    pairs <- .rt_neighbor_pairs(rt, rt_tol)
+    message(
+      "  features=", length(fids),
+      " rt_neighbor_pairs=", nrow(pairs),
+      " samples=", length(sample_idx),
+      " (rt_tol=", rt_tol, ")"
+    )
+
+    nft <- length(fids)
+    sim_list <- vector("list", length(sample_idx))
+    names(sim_list) <- sample_names
+    for (si in seq_along(sample_idx)) {
+      col <- sample_idx[si]
+      message("  sample: ", sample_names[si])
+      chroms_col <- chroms[, col, drop = FALSE]
+      sim_list[[si]] <- .eic_similarity_matrix_one_sample(
+        chroms_col = chroms_col,
+        pairs = pairs,
+        nft = nft,
+        fids = fids,
+        ALIGNFUNARGS = ALIGNFUNARGS,
+        FUNARGS = FUNARGS
+      )
+    }
+    object@advancedAna$featureGroups$EIC_Similarity[[pol]] <- sim_list
+
+    ## Aggregate across selected samples for clustering only (not stored)
+    ns <- length(sim_list)
+    if (ns == 1L) {
+      sim2d <- sim_list[[1L]]
+    } else {
+      arr <- array(NA_real_, dim = c(nft, nft, ns),
+                   dimnames = list(fids, fids, sample_names))
+      for (k in seq_len(ns)) {
+        arr[, , k] <- sim_list[[k]]
+      }
+      sim2d <- apply(arr, c(1L, 2L), function(z) {
+        if (all(is.na(z))) {
+          return(NA_real_)
+        }
+        as.numeric(stats::quantile(z, probs = 0.75, na.rm = TRUE))
+      })
+      dimnames(sim2d) <- list(fids, fids)
+    }
+    sim2d[!is.finite(sim2d)] <- NA_real_
+    diag(sim2d) <- 1
+
+    grp <- MsFeatures::groupSimilarityMatrix(sim2d, threshold = threshold)
+    f_new <- paste0("FG.", MsFeatures:::.format_id(grp))
+    names(f_new) <- fids
+
+    ## Write labels in featureDefinitions row order
+    if ("feature_id" %in% colnames(fdf)) {
+      lab <- f_new[as.character(fdf$feature_id)]
+    } else {
+      lab <- f_new[rownames(fdf)]
+    }
+    if (anyNA(lab)) {
+      lab[is.na(lab)] <- paste0("FG.", MsFeatures:::.format_id(seq_len(sum(is.na(lab)))))
+    }
+    xcms::featureGroups(xcms.xcms) <- as.character(lab)
+    object@xcmsData[[ms1_key]] <- xcms.xcms
+    message("  feature groups: ", length(unique(lab)))
+  }
+
+  object
+}
+
+
 
 
 
