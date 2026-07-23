@@ -1759,7 +1759,7 @@ plot_xcms_features_distribution <-
       apply(xcms::featureValues(xcms.xcms, value = "maxo"), 1, median, na.rm = T)
 
     xcms.process.type <-
-      xcms::processHistory(xcms.xcms) %>% sapply(processType)
+      xcms::processHistory(xcms.xcms) %>% sapply(xcms::processType)
     xcms.findpeak.param <-
       xcms:: processHistory(xcms.xcms)[[which(xcms.process.type == "Peak detection")]] %>%
       xcms::processParam()
@@ -2681,6 +2681,20 @@ xcms_get_scan_Stat <- function(xcms.xcms){
 
 
 
+#' @title plot_xcms_TIC
+#' @description Plot MS1 total ion chromatograms (TIC) for an XCMSnExp object,
+#' colored by sample group from `Biobase::pData(xcms.xcms)$group`.
+#' @describeIn xcms_extenstion plot TIC
+#'
+#' @param xcms.xcms XCMSnExp object
+#' @param col.group named character vector of colors for groups. If `NULL`,
+#'   Blank/QC use fixed colors and remaining groups use `ggsci::pal_aaas()`
+#'   (or an interpolated palette when there are more than 10 groups)
+#' @param title plot title
+#'
+#' @return ggplot object
+#' @export
+#'
 plot_xcms_TIC <- function(xcms.xcms,col.group = NULL,title = "TIC"){
 
 
@@ -2703,10 +2717,13 @@ plot_xcms_TIC <- function(xcms.xcms,col.group = NULL,title = "TIC"){
     names(col.group) <- c("Blank", "QC", groups)
   }
 
+  sample_count <- length(unique(xcms.scan$fileIdx))
+  line_alpha <- max(1 / max(sample_count, 1), 0.1)
+
   ggplot(xcms.scan)+
     geom_line(aes(x = retentionTime , y = tic,
                   col = group,
-                  group=fileIdx),alpha = 0.1)+
+                  group=fileIdx),alpha = line_alpha)+
     scale_color_manual(values = col.group)+
     #scale_y_log10()+
     labs(title = title,x = "Retention Time", y = "Intensity", col = "")+
