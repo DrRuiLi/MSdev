@@ -273,11 +273,11 @@ xcms_get_peak_fill <- function(xcms.xcms){
 
 #' @describeIn xcms_extenstion group features
 #' @title Group xcms Features
-#' @description Groups features from an XCMSnExp object using multiple criteria: similarity in retention time, abundance (intensity) correlation, and EIC (extracted ion chromatogram) correlation. The grouping is performed sequentially using the MsFeatures package functions.
+#' @description Groups features from an XCMSnExp object using multiple criteria: similarity in retention time, abundance (intensity) correlation, and EIC (extracted ion chromatogram) correlation. RT/abundance grouping uses MsFeatures; EIC similarity uses xcms::EicSimilarityParam.
 #' @param xcms.xcms XCMSnExp object containing feature definitions.
 #' @param diffRt numeric. Maximum allowed retention time difference for grouping by SimilarRtimeParam. If NULL, retention time grouping is skipped. Default is 5.
 #' @param intCor numeric. Threshold for abundance similarity (correlation) grouping using AbundanceSimilarityParam. If NULL, intensity correlation grouping is skipped. Default is 0.5.
-#' @param eicCor numeric. Threshold for EIC similarity grouping using EicSimilarityParam. If NULL, EIC correlation grouping is skipped. Default is 0.5.
+#' @param eicCor numeric. Threshold for EIC similarity grouping using xcms::EicSimilarityParam. If NULL, EIC correlation grouping is skipped. Default is 0.5.
 #'
 #' @return XCMSnExp object with featureGroups column added or updated.
 #' @export
@@ -309,8 +309,8 @@ xcms_get_feature_group <- function(xcms.xcms,
     register(SerialParam())
     message_with_time(" group by EicSimilarityParam")
     xcms.xcms <- MsFeatures::groupFeatures(xcms.xcms,
-                                    param = MsFeatures::EicSimilarityParam(threshold = eicCor,
-                                                               n=2))
+                                    param = xcms::EicSimilarityParam(threshold = eicCor,
+                                                               n = 2))
     message(length(unique(xcms::featureGroups(xcms.xcms)))," feature group")
   }
 
