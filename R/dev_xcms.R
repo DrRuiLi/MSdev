@@ -186,64 +186,687 @@ get_xchroms_peaks_count <- function(xchroms){
   return(peaks.count.matrix)
 }
 
-#' @describeIn xcms_extenstion extract chromatogram for a peak
-#' @title get_xcms_peaks_chrom
-#' @description
-#' extract chromatograph from XCMSnExp,
-#' if `all.sample` = F, only the samples, in which given peaks.id are detected will be return,
-#' else extract from all samples
-#'
-#' @param xcms.xcms XCMSnExp object
-#' @param peaks.id char or num
-#' @param all.sample should all samples be included
-#' @param rt one of c("all","identity","expand")
-#'
-#' @return XChromatograms object
-#' @export
-#'
+## ---------------------------------------------------------------------------
+## Fast chromatogram triad (engine + peaks + features)
+## ---------------------------------------------------------------------------
 
-get_xcms_peaks_chrom <- function(xcms.xcms,
-                                 peaks.id ,
-                                 all.sample =F,
-                                 rt.range = "expand"){
-
-  peaks.data <- xcms::chromPeaks(xcms.xcms)
-  if(is.numeric(peaks.id)) { peaks.id <-rownames(peaks.data)[peaks.id]}
-  peaks.data <- peaks.data[peaks.id,,drop=F]
-  peaks.data[,c("rtmin","rtmax")] <- switch (rt.range,
-                                             "all" = c(min(rtime(xcms.xcms)),max(rtime(xcms.xcms))),
-                                             "expand" = apply(peaks.data[,c("rtmin","rtmax"),drop =F],1,expand_range,add = 15)%>%t,
-                                             "identity" = peaks.data[,c("rtmin","rtmax"),drop =F]
-  )
-
-  if (all.sample){
-    x.chrom <- get_xcms_chromatogram(xcms.xcms,
-                             mz = peaks.data[,c("mzmin","mzmax")],
-                             rt = peaks.data[,c("rtmin","rtmax")])
-  }else{
-    peaks.id.split <- split(rownames(peaks.data),
-                              f = peaks.data[,"sample"])
-    x.chrom.split <- bplapply(peaks.id.split,
-                              FUN = function(x,xcms.x,peaks.data){
-
-      x <- peaks.data[x,,drop =F]
-      xcms.sub <- MSnbase::filterFile(xcms.x, as.integer(unique(x[,"sample"])))
-      get_xcms_chromatogram(xcms.sub,
-                    mz = x[,c("mzmin","mzmax")],
-                    rt = x[,c("rtmin","rtmax")])
-    },xcms.x=xcms.xcms ,peaks.data=peaks.data,
-    BPPARAM = SerialParam( progressbar = F))
-
-    x.chrom <- do.call(cbind_Chromatograms, x.chrom.split)
-
-    x.chrom
+#' Normalize mz/rt inputs to two-column numeric matrices with nrow == n
+#' @noRd
+.normalize_mz_rt_boxes <- function(mz, rt, n = NULL) {
+  if (is.null(dim(mz))) {
+    mz <- matrix(as.numeric(mz), ncol = 2L, byrow = TRUE)
+  } else {
+    mz <- as.matrix(mz)[, 1:2, drop = FALSE]
   }
-
-
-
-  return(x.chrom)
+  storage.mode(mz) <- "numeric"
+  if (is.null(dim(rt))) {
+    rt <- matrix(as.numeric(rt), ncol = 2L, byrow = TRUE)
+  } else {
+    rt <- as.matrix(rt)[, 1:2, drop = FALSE]
+  }
+  storage.mode(rt) <- "numeric"
+  if (is.null(n)) {
+    n <- max(nrow(mz), nrow(rt))
+  }
+  if (nrow(mz) == 1L && n > 1L) {
+    mz <- mz[rep(1L, n), , drop = FALSE]
+  }
+  if (nrow(rt) == 1L && n > 1L) {
+    rt <- rt[rep(1L, n), , drop = FALSE]
+  }
+  if (nrow(mz) != n || nrow(rt) != n) {
+    stop("'mz' and 'rt' must have the same number of rows (or be a single range)")
+  }
+  colnames(mz) <- c("mzmin", "mzmax")
+  colnames(rt) <- c("rtmin", "rtmax")
+  list(mz = mz, rt = rt)
 }
 
+#' Number of sample files in an xcms / MsExperiment object
+#' @noRd
+.xcms_nfiles <- function(object) {
+  if (inherits(object, "MsExperiment") || inherits(object, "XcmsExperiment")) {
+    length(object)
+  } else {
+    length(MSnbase::fileNames(object))
+  }
+}
+
+#' Subset to one sample/file
+#' @noRd
+.xcms_filter_file <- function(object, i) {
+  if (inherits(object, "MsExperiment") || inherits(object, "XcmsExperiment")) {
+    object[as.integer(i)]
+  } else {
+    MSnbase::filterFile(object, as.integer(i))
+  }
+}
+
+#' Basename sample labels
+#' @noRd
+.xcms_sample_names <- function(object) {
+  if (inherits(object, "MsExperiment") || inherits(object, "XcmsExperiment")) {
+    fn <- tryCatch(xcms::fileNames(object), error = function(e) NULL)
+    if (is.null(fn) || !length(fn)) {
+      fn <- tryCatch(MsExperiment::sampleData(object)$dataOrigin, error = function(e) NULL)
+    }
+    if (is.null(fn) || !length(fn)) {
+      return(paste0("sample", seq_len(.xcms_nfiles(object))))
+    }
+    basename(as.character(fn))
+  } else {
+    basename(MSnbase::fileNames(object))
+  }
+}
+
+#' Load MS1 peaks + rtime once for a single-file object
+#' @noRd
+.get_ms1_peaks_rtime_one_file <- function(object_one_file) {
+  if (inherits(object_one_file, "XcmsExperiment") ||
+      inherits(object_one_file, "MsExperiment")) {
+    sp <- Spectra::spectra(object_one_file)
+    sp <- Spectra::filterMsLevel(sp, 1L)
+    list(
+      rt = as.numeric(Spectra::rtime(sp)),
+      pd = as.list(Spectra::peaksData(
+        sp,
+        columns = c("mz", "intensity"),
+        f = factor(),
+        return.type = "list",
+        BPPARAM = BiocParallel::SerialParam()
+      ))
+    )
+  } else {
+    fn <- MSnbase::fileNames(object_one_file)
+    if (length(fn) != 1L) {
+      stop("Expected a single-file xcms object")
+    }
+    obj_ms1 <- tryCatch(
+      MSnbase::filterMsLevel(object_one_file, 1L),
+      error = function(e) object_one_file
+    )
+    rt_obj <- as.numeric(MSnbase::rtime(obj_ms1))
+    sp <- Spectra::Spectra(fn, backend = Spectra::MsBackendMzR())
+    sp <- Spectra::filterMsLevel(sp, 1L)
+    pd <- as.list(Spectra::peaksData(
+      sp,
+      columns = c("mz", "intensity"),
+      f = factor(),
+      return.type = "list",
+      BPPARAM = BiocParallel::SerialParam()
+    ))
+    rt_sp <- as.numeric(Spectra::rtime(sp))
+    if (length(rt_obj) == length(pd)) {
+      list(rt = rt_obj, pd = pd)
+    } else {
+      list(rt = rt_sp, pd = pd)
+    }
+  }
+}
+
+#' Fill intensity matrix [n_scans x n_boxes] (numeric; S4 deferred)
+#' @noRd
+.eic_intensity_matrix <- function(pd, rt, mzmin, mzmax, rtmin, rtmax,
+                                  aggregationFun = "max") {
+  ns <- length(pd)
+  nb <- length(mzmin)
+  I <- matrix(NA_real_, nrow = ns, ncol = nb)
+  use_max <- identical(aggregationFun, "max")
+  rt_lo <- min(rt, na.rm = TRUE)
+  rt_hi <- max(rt, na.rm = TRUE)
+  full_rt <- all(rtmin <= rt_lo + 1e-6) && all(rtmax >= rt_hi - 1e-6)
+
+  if (full_rt) {
+    for (s in seq_len(ns)) {
+      p <- pd[[s]]
+      if (is.null(p) || !nrow(p)) {
+        next
+      }
+      mzs <- p[, 1L]
+      ints <- p[, 2L]
+      for (j in seq_len(nb)) {
+        sel <- mzs >= mzmin[j] & mzs <= mzmax[j]
+        if (any(sel)) {
+          I[s, j] <- if (use_max) max(ints[sel]) else sum(ints[sel])
+        }
+      }
+    }
+  } else {
+    for (j in seq_len(nb)) {
+      keep <- which(rt >= rtmin[j] & rt <= rtmax[j])
+      if (!length(keep)) {
+        next
+      }
+      for (s in keep) {
+        p <- pd[[s]]
+        if (is.null(p) || !nrow(p)) {
+          next
+        }
+        sel <- p[, 1L] >= mzmin[j] & p[, 1L] <= mzmax[j]
+        if (any(sel)) {
+          I[s, j] <- if (use_max) max(p[sel, 2L]) else sum(p[sel, 2L])
+        }
+      }
+    }
+  }
+  I
+}
+
+#' Build one-file MChromatograms from intensity matrix
+#' @noRd
+.chromatograms_one_file_from_matrix <- function(I, rt, mz, rt_box,
+                                                aggregationFun,
+                                                fromFile,
+                                                sample_name,
+                                                row_names = NULL) {
+  nb <- nrow(mz)
+  chroms <- vector("list", nb)
+  for (j in seq_len(nb)) {
+    keep <- which(rt >= rt_box[j, 1L] & rt <= rt_box[j, 2L])
+    chroms[[j]] <- MSnbase::Chromatogram(
+      rtime = rt[keep],
+      intensity = if (length(keep)) I[keep, j] else numeric(),
+      mz = mz[j, ],
+      filterMz = mz[j, ],
+      fromFile = as.integer(fromFile),
+      aggregationFun = aggregationFun,
+      msLevel = 1L
+    )
+  }
+  mat <- matrix(chroms, nrow = nb, ncol = 1L)
+  if (!is.null(row_names)) {
+    rownames(mat) <- row_names
+  }
+  colnames(mat) <- sample_name
+  fd <- Biobase::AnnotatedDataFrame(data.frame(
+    mzmin = mz[, 1L],
+    mzmax = mz[, 2L],
+    rtmin = rt_box[, 1L],
+    rtmax = rt_box[, 2L],
+    row.names = if (is.null(row_names)) seq_len(nb) else row_names,
+    stringsAsFactors = FALSE
+  ))
+  phd <- Biobase::AnnotatedDataFrame(data.frame(
+    sampleName = sample_name,
+    row.names = sample_name,
+    stringsAsFactors = FALSE
+  ))
+  ## MChromatograms() does matrix(data, ...); pass ncol to avoid flattening
+  MSnbase::MChromatograms(
+    mat,
+    ncol = 1L,
+    phenoData = phd,
+    featureData = fd
+  )
+}
+
+#' Combine per-file chromatogram objects by column
+#' @noRd
+.combine_chromatograms_files <- function(chrom_list) {
+  chrom_list <- chrom_list[!vapply(chrom_list, is.null, logical(1))]
+  if (!length(chrom_list)) {
+    return(NULL)
+  }
+  if (length(chrom_list) == 1L) {
+    return(chrom_list[[1L]])
+  }
+  ## Avoid base::cbind (drops MChromatograms to a plain matrix)
+  mats <- lapply(chrom_list, function(x) x@.Data)
+  nr <- vapply(mats, nrow, integer(1))
+  if (length(unique(nr)) != 1L) {
+    stop("Per-file chromatograms have inconsistent row counts")
+  }
+  mat <- do.call(cbind, mats)
+  fd <- Biobase::featureData(chrom_list[[1L]])
+  pds <- lapply(chrom_list, function(x) {
+    pd <- Biobase::pData(x)
+    ## ensure unique rownames = colnames of each block
+    rn <- colnames(x)
+    if (!is.null(rn) && length(rn) == nrow(pd)) {
+      rownames(pd) <- rn
+    }
+    pd
+  })
+  pd <- do.call(rbind, pds)
+  phd <- Biobase::AnnotatedDataFrame(pd)
+  colnames(mat) <- rownames(pd)
+  ## MChromatograms() re-runs matrix(data, ...); must pass ncol
+  MSnbase::MChromatograms(
+    mat,
+    ncol = ncol(mat),
+    phenoData = phd,
+    featureData = fd
+  )
+}
+
+#' @describeIn xcms_extenstion extract chromatograms
+#' @title Get Xcms Chromatogram
+#' @description Fast per-file EIC extractor. Loads MS1 peaks once per sample,
+#'   fills an intensity matrix for all mz-rt boxes, then wraps
+#'   \code{MSnbase::Chromatogram} objects. Drop-in style replacement for
+#'   \code{xcms::chromatogram()} for rectangular mz/rt region extraction.
+#' @param object XCMSnExp / XcmsExperiment (or single-file subset).
+#' @param mz numeric matrix with columns mzmin, mzmax (one row per EIC).
+#' @param rt numeric matrix with columns rtmin, rtmax (one row per EIC), or a
+#'   single range recycled to all rows of \code{mz}.
+#' @param aggregationFun character(1). Intensity aggregation within the m/z
+#'   window per scan: \code{"max"} (default) or \code{"sum"}.
+#' @param BPPARAM BiocParallel backend; one task per sample file.
+#' @param msLevel integer; kept for API compatibility (MS1 extraction).
+#' @param ... ignored (compatibility with older callers).
+#'
+#' @return \code{MChromatograms} with rows = regions, columns = samples.
+#' @export
+get_xcms_chromatogram <- function(object,
+                                  mz,
+                                  rt,
+                                  aggregationFun = "max",
+                                  BPPARAM = SerialParam(),
+                                  msLevel = 1L,
+                                  ...) {
+  aggregationFun <- match.arg(aggregationFun, c("max", "sum"))
+  boxes <- .normalize_mz_rt_boxes(mz, rt)
+  mz <- boxes$mz
+  rt_box <- boxes$rt
+  nfiles <- .xcms_nfiles(object)
+  if (!nfiles) {
+    stop("'object' has no sample files")
+  }
+  snames <- .xcms_sample_names(object)
+  row_names <- rownames(mz)
+  if (is.null(row_names)) {
+    row_names <- rownames(rt_box)
+  }
+
+  chrom_list <- bplapply(seq_len(nfiles), function(i) {
+    register(SerialParam())
+    one <- .xcms_filter_file(object, i)
+    peaks <- .get_ms1_peaks_rtime_one_file(one)
+    I <- .eic_intensity_matrix(
+      peaks$pd, peaks$rt,
+      mz[, 1L], mz[, 2L],
+      rt_box[, 1L], rt_box[, 2L],
+      aggregationFun = aggregationFun
+    )
+    .chromatograms_one_file_from_matrix(
+      I, peaks$rt, mz, rt_box,
+      aggregationFun = aggregationFun,
+      fromFile = i,
+      sample_name = snames[i],
+      row_names = row_names
+    )
+  }, BPPARAM = BPPARAM)
+
+  .combine_chromatograms_files(chrom_list)
+}
+
+#' @describeIn xcms_extenstion extract chromatogram for a peak
+#' @title get_xcms_peaks_chromatogram
+#' @description Extract EICs for chromatographic peaks (xcms
+#'   \code{chromPeakChromatograms} analogue). Uses
+#'   \code{\link{get_xcms_chromatogram}} as the engine.
+#' @param xcms.xcms XCMSnExp / XcmsExperiment with chromPeaks.
+#' @param peaks.id character or numeric peak IDs / indices.
+#' @param all.sample logical. If FALSE (default), extract each peak only in its
+#'   owning sample (one-column result, chromPeakChromatograms contract). If
+#'   TRUE, extract every peak box in all samples.
+#' @param rt.range one of \code{c("all","identity","expand")}.
+#' @param expandRt numeric seconds added on each side when \code{rt.range="expand"}.
+#' @param aggregationFun passed to \code{get_xcms_chromatogram}.
+#' @param BPPARAM BiocParallel backend.
+#'
+#' @return MChromatograms / column-bound chromatograms.
+#' @export
+get_xcms_peaks_chromatogram <- function(xcms.xcms,
+                                        peaks.id,
+                                        all.sample = FALSE,
+                                        rt.range = c("expand", "identity", "all"),
+                                        expandRt = 15,
+                                        aggregationFun = "max",
+                                        BPPARAM = SerialParam()) {
+  rt.range <- match.arg(rt.range)
+  peaks.data <- xcms::chromPeaks(xcms.xcms)
+  if (is.numeric(peaks.id)) {
+    peaks.id <- rownames(peaks.data)[peaks.id]
+  }
+  peaks.data <- peaks.data[peaks.id, , drop = FALSE]
+  n <- nrow(peaks.data)
+  rt_all <- range(MSnbase::rtime(xcms.xcms), na.rm = TRUE)
+  rtr <- switch(
+    rt.range,
+    "all" = matrix(rt_all, nrow = n, ncol = 2L, byrow = TRUE),
+    "expand" = t(apply(peaks.data[, c("rtmin", "rtmax"), drop = FALSE], 1L,
+                       expand_range, add = expandRt)),
+    "identity" = peaks.data[, c("rtmin", "rtmax"), drop = FALSE]
+  )
+  mzr <- peaks.data[, c("mzmin", "mzmax"), drop = FALSE]
+  rownames(mzr) <- rownames(peaks.data)
+  rownames(rtr) <- rownames(peaks.data)
+
+  if (isTRUE(all.sample)) {
+    return(get_xcms_chromatogram(
+      xcms.xcms,
+      mz = mzr,
+      rt = rtr,
+      aggregationFun = aggregationFun,
+      BPPARAM = BPPARAM
+    ))
+  }
+
+  ## chromPeakChromatograms contract: peaks x 1 (owning sample only)
+  sample_ids <- as.integer(peaks.data[, "sample"])
+  by_sample <- split(seq_len(n), sample_ids)
+  chrom_parts <- vector("list", length(by_sample))
+  names(chrom_parts) <- names(by_sample)
+  for (si in names(by_sample)) {
+    idx <- by_sample[[si]]
+    one <- .xcms_filter_file(xcms.xcms, as.integer(si))
+    ch <- get_xcms_chromatogram(
+      one,
+      mz = mzr[idx, , drop = FALSE],
+      rt = rtr[idx, , drop = FALSE],
+      aggregationFun = aggregationFun,
+      BPPARAM = SerialParam()
+    )
+    ## force single logical column name; keep peak rownames
+    colnames(ch) <- "1"
+    chrom_parts[[si]] <- ch
+  }
+  ## stack rows in original peaks.id order
+  out_list <- vector("list", n)
+  for (si in names(by_sample)) {
+    idx <- by_sample[[si]]
+    ch <- chrom_parts[[si]]
+    for (k in seq_along(idx)) {
+      out_list[[idx[k]]] <- ch[k, 1, drop = TRUE]
+    }
+  }
+  mat <- matrix(out_list, nrow = n, ncol = 1L)
+  rownames(mat) <- rownames(peaks.data)
+  colnames(mat) <- "1"
+  fd <- Biobase::AnnotatedDataFrame(data.frame(
+    mzmin = mzr[, 1L],
+    mzmax = mzr[, 2L],
+    rtmin = rtr[, 1L],
+    rtmax = rtr[, 2L],
+    sample_index = sample_ids,
+    row.names = rownames(peaks.data),
+    stringsAsFactors = FALSE
+  ))
+  phd <- Biobase::AnnotatedDataFrame(data.frame(
+    sampleName = "1",
+    row.names = "1",
+    stringsAsFactors = FALSE
+  ))
+  res <- MSnbase::MChromatograms(
+    mat,
+    ncol = 1L,
+    phenoData = phd,
+    featureData = fd
+  )
+  ## attach chromPeaks when possible
+  if (methods::is(res, "MChromatograms")) {
+    res <- as(res, "XChromatograms")
+    pks <- peaks.data
+    pkd <- tryCatch(
+      as(xcms::chromPeakData(xcms.xcms)[rownames(peaks.data), , drop = FALSE], "DataFrame"),
+      error = function(e) S4Vectors::DataFrame(row.names = rownames(peaks.data))
+    )
+    tmp <- res@.Data
+    for (i in seq_len(n)) {
+      slot(tmp[i, 1L][[1L]], "chromPeaks", check = FALSE) <- pks[i, , drop = FALSE]
+      slot(tmp[i, 1L][[1L]], "chromPeakData", check = FALSE) <- pkd[i, , drop = FALSE]
+    }
+    slot(res, ".Data", check = FALSE) <- tmp
+  }
+  res
+}
+
+#' Build feature mz/rt area matrix
+#' @noRd
+.feature_mz_rt_boxes <- function(xcms.xcms, features.data, rt = c("expand", "identity", "all"),
+                                 expandRt = 15, mz.expand = 0) {
+  rt <- match.arg(rt)
+  n <- nrow(features.data)
+  has_peak_rt <- all(c("peakRtMin", "peakRtMax") %in% colnames(features.data))
+  has_peak_mz <- all(c("peakMzMin", "peakMzMax") %in% colnames(features.data))
+
+  if (!has_peak_mz || !has_peak_rt) {
+    area <- tryCatch(
+      as.matrix(xcms::featureArea(
+        xcms.xcms,
+        features = rownames(features.data)
+      )),
+      error = function(e) NULL
+    )
+    if (is.null(area)) {
+      ## Fallback for older XCMSnExp without featureArea method
+      pks <- xcms::chromPeaks(xcms.xcms)
+      area <- do.call(rbind, lapply(features.data$peakidx, function(z) {
+        p <- pks[z, , drop = FALSE]
+        c(
+          mzmin = min(p[, "mzmin"], na.rm = TRUE),
+          mzmax = max(p[, "mzmax"], na.rm = TRUE),
+          rtmin = min(p[, "rtmin"], na.rm = TRUE),
+          rtmax = max(p[, "rtmax"], na.rm = TRUE)
+        )
+      }))
+      rownames(area) <- rownames(features.data)
+    }
+    mzr <- area[, c("mzmin", "mzmax"), drop = FALSE]
+    rtr_id <- area[, c("rtmin", "rtmax"), drop = FALSE]
+  } else {
+    mzr <- as.matrix(features.data[, c("peakMzMin", "peakMzMax"), drop = FALSE])
+    rtr_id <- as.matrix(features.data[, c("peakRtMin", "peakRtMax"), drop = FALSE])
+  }
+  colnames(mzr) <- c("mzmin", "mzmax")
+  colnames(rtr_id) <- c("rtmin", "rtmax")
+
+  rt_all <- range(MSnbase::rtime(xcms.xcms), na.rm = TRUE)
+  rtr <- switch(
+    rt,
+    "all" = matrix(rt_all, nrow = n, ncol = 2L, byrow = TRUE),
+    "expand" = t(apply(rtr_id, 1L, expand_range, add = expandRt)),
+    "identity" = rtr_id
+  )
+  colnames(rtr) <- c("rtmin", "rtmax")
+
+  if (mz.expand > 0) {
+    mz_range <- mzr[, 2L] - mzr[, 1L]
+    mzr[, 1L] <- mzr[, 1L] - mz_range * mz.expand
+    mzr[, 2L] <- mzr[, 2L] + mz_range * mz.expand
+  }
+  rownames(mzr) <- rownames(features.data)
+  rownames(rtr) <- rownames(features.data)
+  list(mz = mzr, rt = rtr)
+}
+
+#' Attach feature chromPeaks into XChromatograms (bulk)
+#' @noRd
+.attach_feature_chrom_peaks <- function(chrs, xcms.xcms, feature_ids) {
+  chrs <- as(chrs, "XChromatograms")
+  pks <- xcms::chromPeaks(xcms.xcms)
+  pkd <- tryCatch(
+    as(xcms::chromPeakData(xcms.xcms), "DataFrame"),
+    error = function(e) NULL
+  )
+  fdef <- xcms::featureDefinitions(xcms.xcms)
+  if ("feature_id" %in% colnames(fdef)) {
+    f_idx <- match(feature_ids, fdef$feature_id)
+    if (anyNA(f_idx)) {
+      f_idx <- match(feature_ids, rownames(fdef))
+    }
+  } else {
+    f_idx <- match(feature_ids, rownames(fdef))
+  }
+  if (anyNA(f_idx)) {
+    warning("Some features could not be mapped for chromPeak attachment")
+  }
+  nf <- nrow(chrs)
+  ns <- ncol(chrs)
+  pks_empty <- pks[integer(), , drop = FALSE]
+  pkd_empty <- if (is.null(pkd)) {
+    S4Vectors::DataFrame()
+  } else {
+    pkd[integer(), , drop = FALSE]
+  }
+  tmp <- chrs@.Data
+  for (i in seq_len(nf)) {
+    ii <- f_idx[i]
+    if (is.na(ii)) {
+      for (j in seq_len(ns)) {
+        slot(tmp[i, j][[1L]], "chromPeaks", check = FALSE) <- pks_empty
+        if (!is.null(pkd)) {
+          slot(tmp[i, j][[1L]], "chromPeakData", check = FALSE) <- pkd_empty
+        }
+      }
+      next
+    }
+    idx <- fdef$peakidx[[ii]]
+    smpl <- as.integer(pks[idx, "sample"])
+    for (j in seq_len(ns)) {
+      keep <- smpl == j
+      if (any(keep)) {
+        slot(tmp[i, j][[1L]], "chromPeaks", check = FALSE) <-
+          pks[idx[keep], , drop = FALSE]
+        if (!is.null(pkd)) {
+          slot(tmp[i, j][[1L]], "chromPeakData", check = FALSE) <-
+            pkd[idx[keep], , drop = FALSE]
+        }
+      } else {
+        slot(tmp[i, j][[1L]], "chromPeaks", check = FALSE) <- pks_empty
+        if (!is.null(pkd)) {
+          slot(tmp[i, j][[1L]], "chromPeakData", check = FALSE) <- pkd_empty
+        }
+      }
+    }
+  }
+  slot(chrs, ".Data", check = FALSE) <- tmp
+  chrs
+}
+
+#' @describeIn xcms_extenstion extract chromatograms for features
+#' @title get_xcms_feature_chromatogram
+#' @description Extract EICs for features (xcms \code{featureChromatograms}
+#'   analogue) via \code{\link{get_xcms_chromatogram}}. One shared mz-rt box
+#'   per feature is applied to each selected sample.
+#' @param xcms.xcms XCMSnExp / XcmsExperiment with featureDefinitions.
+#' @param feature.id character/numeric feature IDs (default all).
+#' @param sample \code{"maxo"} (sample with highest mean feature value),
+#'   \code{"all"}, or integer sample indices.
+#' @param rt one of \code{c("all","expand","identity")}.
+#' @param expandRt seconds added each side when \code{rt="expand"}.
+#' @param mz.expand fraction of mz width to expand on each side.
+#' @param aggregationFun passed to \code{get_xcms_chromatogram}.
+#' @param attachPeaks logical; attach feature chromPeaks into
+#'   \code{XChromatograms} (needed for \code{removeIntensity(..., "outside_chromPeak")}).
+#' @param BPPARAM BiocParallel backend.
+#'
+#' @return XChromatograms (if \code{attachPeaks}) or MChromatograms.
+#' @export
+get_xcms_feature_chromatogram <- function(xcms.xcms,
+                                          feature.id = NULL,
+                                          sample = "maxo",
+                                          rt = c("expand", "identity", "all"),
+                                          expandRt = 15,
+                                          mz.expand = 0,
+                                          aggregationFun = "max",
+                                          attachPeaks = TRUE,
+                                          BPPARAM = SerialParam()) {
+  rt <- match.arg(rt)
+  fdef_all <- xcms::featureDefinitions(xcms.xcms)
+  if (is.null(feature.id)) {
+    if ("feature_id" %in% colnames(fdef_all)) {
+      feature.id <- as.character(fdef_all$feature_id)
+    } else {
+      feature.id <- rownames(fdef_all)
+    }
+  }
+  if (is.numeric(feature.id)) {
+    feature.id <- rownames(fdef_all)[feature.id]
+  }
+  feature.id <- as.character(feature.id)
+  if ("feature_id" %in% colnames(fdef_all)) {
+    ii <- match(feature.id, as.character(fdef_all$feature_id))
+    if (anyNA(ii)) {
+      ii2 <- match(feature.id, rownames(fdef_all))
+      ii[is.na(ii)] <- ii2[is.na(ii)]
+    }
+    if (anyNA(ii)) {
+      stop("Unknown feature.id: ", paste(feature.id[is.na(ii)], collapse = ", "))
+    }
+    features.data <- fdef_all[ii, , drop = FALSE]
+  } else {
+    features.data <- fdef_all[feature.id, , drop = FALSE]
+  }
+  rownames(features.data) <- feature.id
+
+  if (identical(sample, "maxo")) {
+    features.val <- xcms::featureValues(xcms.xcms, missing = "rowmin_half")
+    features.val <- features.val[rownames(features.data), , drop = FALSE]
+    xcms.sub <- .xcms_filter_file(xcms.xcms, which.max(colMeans(features.val, na.rm = TRUE)))
+  } else if (identical(sample, "all")) {
+    xcms.sub <- xcms.xcms
+  } else {
+    xcms.sub <- .xcms_filter_file(xcms.xcms, sample)
+  }
+
+  boxes <- .feature_mz_rt_boxes(
+    xcms.xcms, features.data,
+    rt = rt, expandRt = expandRt, mz.expand = mz.expand
+  )
+  x.chrom <- get_xcms_chromatogram(
+    xcms.sub,
+    mz = boxes$mz,
+    rt = boxes$rt,
+    aggregationFun = aggregationFun,
+    BPPARAM = BPPARAM
+  )
+  if (isTRUE(attachPeaks)) {
+    ## sample indices in subset must map to original sample numbers for peak attach
+    if (identical(sample, "all")) {
+      x.chrom <- .attach_feature_chrom_peaks(x.chrom, xcms.xcms, feature.id)
+    } else {
+      x.chrom <- as(x.chrom, "XChromatograms")
+      ## remap: subset has 1..k columns; chromPeaks sample ids are original
+      orig_idx <- if (identical(sample, "maxo")) {
+        features.val <- xcms::featureValues(xcms.xcms, missing = "rowmin_half")
+        features.val <- features.val[rownames(features.data), , drop = FALSE]
+        which.max(colMeans(features.val, na.rm = TRUE))
+      } else {
+        as.integer(sample)
+      }
+      pks <- xcms::chromPeaks(xcms.xcms)
+      pkd <- tryCatch(as(xcms::chromPeakData(xcms.xcms), "DataFrame"), error = function(e) NULL)
+      fdef <- xcms::featureDefinitions(xcms.xcms)
+      if ("feature_id" %in% colnames(fdef)) {
+        f_idx <- match(feature.id, as.character(fdef$feature_id))
+      } else {
+        f_idx <- match(feature.id, rownames(fdef))
+      }
+      tmp <- x.chrom@.Data
+      for (i in seq_along(feature.id)) {
+        ii <- f_idx[i]
+        if (is.na(ii)) next
+        idx <- fdef$peakidx[[ii]]
+        for (jc in seq_len(ncol(x.chrom))) {
+          oj <- orig_idx[min(jc, length(orig_idx))]
+          keep <- as.integer(pks[idx, "sample"]) == oj
+          if (any(keep)) {
+            slot(tmp[i, jc][[1L]], "chromPeaks", check = FALSE) <-
+              pks[idx[keep], , drop = FALSE]
+            if (!is.null(pkd)) {
+              slot(tmp[i, jc][[1L]], "chromPeakData", check = FALSE) <-
+                pkd[idx[keep], , drop = FALSE]
+            }
+          }
+        }
+      }
+      slot(x.chrom, ".Data", check = FALSE) <- tmp
+    }
+  }
+  x.chrom
+}
 
 
 xcms_get_peak_fill <- function(xcms.xcms){
@@ -315,86 +938,6 @@ xcms_get_feature_group <- function(xcms.xcms,
   }
 
   return(xcms.xcms)
-}
-
-
-
-
-#' @describeIn xcms_extenstion extract chromatograms
-#' @title Get Xcms Chromatogram
-#' @description Extracts chromatograms from each file in the XCMSnExp object using xcms::chromatogram and combines them into a single XChromatograms object. This function iterates over each file, extracts chromatograms with provided parameters, and returns a combined chromatograms object.
-#' @param object XCMSnExp object from which to extract chromatograms.
-#' @param BPPARAM BiocParallel backend for parallel processing. Default is SerialParam().
-#' @param ... Additional arguments passed to xcms::chromatogram, such as rt (retention time range) and mz (m/z range).
-#'
-#' @return XChromatograms object containing extracted chromatograms for all files.
-#' @export
-#'
-get_xcms_chromatogram <- function(object,
-                                  BPPARAM= SerialParam(),
-                                  ...){
-
-
-  xcms.split <- lapply(seq_along(MSnbase::fileNames(object)),
-                       function(x) MSnbase::filterFile(object,x))
-
-  xcms.chrom <- bplapply(xcms.split,
-                         function(x,...){
-    #message(nrow(rt))
-    register(SerialParam())
-    y <-NA
-    try(y <- xcms::chromatogram(x,BPPARAM = BPPARAM,...)
-    )
-    return(y)
-  },..., BPPARAM = BPPARAM)
-
-
-  do.call(cbind_Chromatograms,xcms.chrom)
-
-}
-
-
-get_xcms_feature_chrom <- function(xcms.xcms,
-                                    feature.id = xcms::featureDefinitions(xcms.xcms)$feature_id,
-                                    sample = "maxo",
-                                    rt = "expand",
-                                    mz.expand = 0,
-                                    BPPARAM = SerialParam()){
-
-  features.data <- xcms::featureDefinitions(xcms.xcms)
-  features.val <- xcms::featureValues(xcms.xcms,missing = "rowmin_half")
-  if(is.numeric(feature.id)) { feature.id <-rownames(features.data)[feature.id]}
-  features.data <- features.data[feature.id,,drop=F]
-  features.val <- features.val[feature.id,,drop =F]
-  if ("maxo"%in% sample  )  {
-    xcms.sub <- MSnbase::filterFile(xcms.xcms,
-                                    which.max(colMeans(features.val)))
-  }else if ("all"%in% sample  )  {
-    xcms.sub <- xcms.xcms
-  }else {
-    xcms.sub <- MSnbase::filterFile(xcms.xcms, sample )
-  }
-
-
-
-  rtr <- switch (rt,
-                 "all" = c(min(rtime(xcms.sub)),max(rtime(xcms.sub))),
-                 "expand" = t(apply(features.data[,c("peakRtMin","peakRtMax"),drop =F],1,expand_range,add = 15)),
-                 "identity" = features.data[,c("peakRtMin","peakRtMax"),drop =F]
-
-  )
-  mzr <- features.data[,c("peakMzMin","peakMzMax")]%>%as.matrix()
-  if (mz.expand > 0) {
-    mz_range <- mzr[,2] - mzr[,1]
-    mzr[,1] <- mzr[,1] - mz_range * mz.expand
-    mzr[,2] <- mzr[,2] + mz_range * mz.expand
-  }
-
-  x.chrom <-  get_xcms_chromatogram(xcms.sub,
-                                  mz = mzr,
-                                  rt = rtr,
-                                  BPPARAM = BPPARAM)
-  return(x.chrom)
 }
 
 
@@ -2167,7 +2710,7 @@ plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt = "expand"){
   peak_id <- rownames(peaks.data)
   mz.range <- c(peaks.data[,c("mzmin","mzmax")])
   rt.range <- c(peaks.data[,c("rtmin","rtmax")])
-  xcms.chrom <- get_xcms_peaks_chrom(xcms.xcms,
+  xcms.chrom <- get_xcms_peaks_chromatogram(xcms.xcms,
                                      peaks.id = peak_id,
                                      rt.range = rt)
   chrom.data <- get_chroms_data(xcms.chrom)%>%
@@ -2203,7 +2746,7 @@ plot_xcms_peaks_Chromatogram <- function(xcms.xcms,peak_id,rt = "expand"){
 chromPeaks_Sta <- function(xcms.xcms){
 
   xcms.peaks.info <- xcms::chromPeaks(xcms.xcms)
-  xcms.peaks.xchroms <- get_xcms_peaks_chrom(xcms.xcms,
+  xcms.peaks.xchroms <- get_xcms_peaks_chromatogram(xcms.xcms,
                                              1:nrow(xcms.peaks.info))
 
 

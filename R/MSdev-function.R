@@ -2456,7 +2456,9 @@ get_MSdev_spectra_target_list <- function(object,
 
 
 #' @title Extract chromatograms for features
-#' @description Extract chromatograms for specified features from xcms data, storing them as on-disk data.
+#' @description Extract chromatograms for specified features from xcms data
+#'   via \code{\link{get_xcms_feature_chromatogram}} (full RT, all samples),
+#'   storing them as on-disk data.
 #' @param object MSdev object
 #' @param BPPARAM BiocParallel backend for parallel processing
 #' @param feature.list optional list of feature IDs with names "Positive" and "Negative"
@@ -2476,16 +2478,15 @@ MSdev_get_feature_chrom <- function(object,BPPARAM =  SnowParam(
       fid = feature.list[[pol]]
     }
     message("Extract ", length(fid) , " features ",pol)
-    #xcms.chrom <- get_xcms_feature_chrom(xcms.xcms,
-    #                                     feature.id = fid,
-    #                                    sample = "all",rt = "all",
-    #                                    BPPARAM = SnowParam(progressbar = T))
-    xcms.chrom <- xcms::featureChromatograms(xcms.xcms,
-                                       features = fid,
-                                       expandRt = Inf,
-                                       filled = T,
-                                       BPPARAM = BPPARAM
-                                       )
+    xcms.chrom <- get_xcms_feature_chromatogram(
+      xcms.xcms,
+      feature.id = fid,
+      sample = "all",
+      rt = "all",
+      aggregationFun = "max",
+      attachPeaks = TRUE,
+      BPPARAM = BPPARAM
+    )
     xcms.chrom <- onDiskData(xcms.chrom,
                              path = paste0(object@projectInfo$projectDir,"/",pol,"_Chromatograms.rds"))
     #featureValues( xcms.chrom ,value = "maxo")
