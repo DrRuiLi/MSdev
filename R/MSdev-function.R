@@ -1534,7 +1534,8 @@ MSdev_group_feature_EIC <- function(object,
     for (pol in polarities) {
       ms1_key <- paste0(pol, "MS1")
       chrom_key <- paste0(pol, "_Chromatograms")
-      if (!is.null(object@xcmsData[[ms1_key]]) &&
+      xcms_pol <- object@xcmsData[[ms1_key]]
+      if (!is.null(xcms_pol) && !identical(xcms_pol, NA) &&
           is.null(object@xcmsData[[chrom_key]])) {
         need_chrom <- TRUE
         break
@@ -1559,7 +1560,7 @@ MSdev_group_feature_EIC <- function(object,
     ms1_key <- paste0(pol, "MS1")
     chrom_key <- paste0(pol, "_Chromatograms")
     xcms.xcms <- object@xcmsData[[ms1_key]]
-    if (is.null(xcms.xcms)) {
+    if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) {
       next
     }
     if (is.null(object@xcmsData[[chrom_key]])) {
@@ -2472,6 +2473,10 @@ MSdev_get_feature_chrom <- function(object,BPPARAM =  SnowParam(
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
     xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) {
+      message("Skip ", pol, " (no MS1 xcms data)")
+      next
+    }
     if (is.null(feature.list[[pol]])) {
       fid = xcms::featureDefinitions(xcms.xcms)$feature_id
     }else{

@@ -304,7 +304,7 @@ get_xchroms_peaks_count <- function(xchroms){
   }
 }
 
-#' Fill intensity matrix [n_scans x n_boxes] (numeric; S4 deferred)
+#' Fill intensity matrix \[n_scans x n_boxes\] (numeric; S4 deferred)
 #' @noRd
 .eic_intensity_matrix <- function(pd, rt, mzmin, mzmax, rtmin, rtmax,
                                   aggregationFun = "max") {
