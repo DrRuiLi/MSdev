@@ -2280,6 +2280,20 @@ MSdev_update_xcms_pdata <- function(object,
 
 
 
+#' @title Retrieve MS1 spectra from MSdev object
+#' @description Retrieve the stored MS1 Spectra object from the MSdev object.
+#' @param object MSdev object
+#' @return Spectra object
+#' @export
+#'
+get_MSdev_ms1_Spectra <- function(object){
+
+  sp <- object@spectra$MS1_Spectra%>%
+    onDiskData_retrieve()
+  return(sp)
+}
+
+
 #' @title Retrieve MS2 spectra from MSdev object
 #' @description Retrieve the stored MS2 Spectra object from the MSdev object.
 #' @param object MSdev object

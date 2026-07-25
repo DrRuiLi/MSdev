@@ -1034,11 +1034,15 @@ Spectra_set_MEM_backend <- function(sp){
 #'   Default is `10`.
 #' @param show.info Logical. If `TRUE`, displays precursor information (m/z, intensity,
 #'   collision energy) in the plot title. Default is `FALSE`.
+#' @param transform Character. Y-axis transform: `"identity"` (default) or `"log10"`.
 #'
 #' @return A `plotly` object displaying an interactive mass spectrum.
 #' @export
 #'
-plotly_Spectra <- function(sp,label.top = 10,show.info = F){
+plotly_Spectra <- function(sp,label.top = 10,show.info = F,
+                           transform = c("identity", "log10")){
+
+  transform <- match.arg(transform)
 
   if (length(sp)>1) {
       warning("more than 1 spectra input, select the first")
@@ -1052,6 +1056,18 @@ plotly_Spectra <- function(sp,label.top = 10,show.info = F){
                   int.rank = rank(-intensity) ,
                   highlight = intensity > quantile(intensity,(n()-label.top)/n()),
                   size = ifelse(highlight,1,0))
+
+  yaxis.list <- list(title =  "intensity",
+                     linewidth = 1,
+                     tickformat = ".2e",
+                     exponentformat = "e")
+  if (transform == "log10") {
+    sp.data <- dplyr::filter(sp.data, intensity > 0)
+    y0 <- min(sp.data$intensity, na.rm = TRUE) / 10
+    if (!is.finite(y0) || y0 <= 0) y0 <- 1
+    sp.data$y <- y0
+    yaxis.list$type <- "log"
+  }
 
   if(show.info){
     label.to.show <- paste0(
@@ -1071,16 +1087,147 @@ plotly_Spectra <- function(sp,label.top = 10,show.info = F){
     add_markers(x = ~xend ,y = ~yend,
                 size = I(5),
                 showlegend = F,
-                hovertemplate = "mz:%{x}\nintensity:%{y}<extra></extra>")%>%
-    layout(xaxis =list(title =  "mz"),
+                hovertemplate = "mz:%{x}\nintensity:%{y:.2e}<extra></extra>")%>%
+    layout(font = list(family = "Arial"),
+           xaxis =list(title =  "mz"),
            title = list(text = label.to.show,
                         x = 0.15,y = 0.9,
                         xanchor = "left"),
-           yaxis =list(title =  "intensity",linewidth = 1))
+           yaxis = yaxis.list)
 
 
 
 
+}
+
+
+#' plotly_Spectra_Ring_Artifact
+#'
+#' @title Interactive spectrum with click-locked reference peak
+#' @description Extends [plotly_Spectra()] with a plotly.js click handler (no Shiny).
+#'   Click a peak to lock it as the reference; hover labels then show
+#'   \eqn{\Delta}m/z and relative intensity versus that peak. Click the same
+#'   peak again to clear the selection. Useful for inspecting ring artifacts
+#'   and related constant-spacing patterns.
+#' @inheritParams plotly_Spectra
+#'
+#' @return A `plotly`/`htmlwidget` object with client-side click/hover behavior.
+#' @export
+#'
+plotly_Spectra_Ring_Artifact <- function(sp,
+                                         label.top = 10,
+                                         show.info = FALSE,
+                                         transform = c("identity", "log10")) {
+  transform <- match.arg(transform)
+  p <- plotly_Spectra(sp,
+                      label.top = label.top,
+                      show.info = show.info,
+                      transform = transform)
+  p <- plotly::layout(
+    p,
+    margin = list(t = 70),
+    annotations = list(list(
+      text = "Click a peak to lock reference; click again to clear",
+      xref = "paper", yref = "paper",
+      x = 0, y = 1.08,
+      xanchor = "left", yanchor = "bottom",
+      showarrow = FALSE,
+      font = list(family = "Arial", size = 12, color = "#444444")
+    ))
+  )
+
+  js <- "
+function(el, x) {
+  var gd = el;
+  var ref = null;
+
+  function findMarkerTrace(gd) {
+    for (var i = 0; i < gd.data.length; i++) {
+      var t = gd.data[i];
+      if (t && t.type === 'scatter' && t.mode && t.mode.indexOf('markers') >= 0) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function fmtSci(v) {
+    if (!isFinite(v)) return 'NA';
+    return Number(v).toExponential(2);
+  }
+
+  function fmtMz(v) {
+    if (!isFinite(v)) return 'NA';
+    return Number(v).toFixed(4);
+  }
+
+  function updateHoverAndStyle() {
+    var ti = findMarkerTrace(gd);
+    if (ti < 0) return;
+    var tr = gd.data[ti];
+    var xs = tr.x;
+    var ys = tr.y;
+    var n = xs.length;
+    var templates = new Array(n);
+    var colors = new Array(n);
+    var sizes = new Array(n);
+    for (var i = 0; i < n; i++) {
+      var mz = xs[i];
+      var inten = ys[i];
+      if (ref === null) {
+        templates[i] = 'mz:' + fmtMz(mz) +
+          '<br>intensity:' + fmtSci(inten) +
+          '<extra></extra>';
+        colors[i] = '#1f77b4';
+        sizes[i] = 5;
+      } else {
+        var dmz = mz - ref.mz;
+        var rel = (ref.int === 0) ? NaN : (100 * inten / ref.int);
+        var sel = (i === ref.i) ? '<br><b>SELECTED</b>' : '';
+        templates[i] = 'mz:' + fmtMz(mz) +
+          '<br>intensity:' + fmtSci(inten) +
+          '<br>Δmz:' + fmtMz(dmz) +
+          '<br>rel.int:' + (isFinite(rel) ? Number(rel).toFixed(4) + '%' : 'NA') +
+          sel + '<extra></extra>';
+        colors[i] = (i === ref.i) ? '#d62728' : '#1f77b4';
+        sizes[i] = (i === ref.i) ? 10 : 5;
+      }
+    }
+    Plotly.restyle(gd, {
+      hovertemplate: [templates],
+      'marker.color': [colors],
+      'marker.size': [sizes]
+    }, [ti]);
+
+    var annText = 'Click a peak to lock reference; click again to clear';
+    if (ref !== null) {
+      annText = 'Locked: mz=' + fmtMz(ref.mz) +
+        ', intensity=' + fmtSci(ref.int) +
+        '  |  hover others for Δmz / rel.int';
+    }
+    Plotly.relayout(gd, {
+      'annotations[0].text': annText
+    });
+  }
+
+  gd.on('plotly_click', function(data) {
+    if (!data || !data.points || !data.points.length) return;
+    var ti = findMarkerTrace(gd);
+    if (ti < 0) return;
+    var pt = data.points[0];
+    if (pt.curveNumber !== ti) return;
+    var i = pt.pointNumber;
+    if (ref !== null && ref.i === i) {
+      ref = null;
+    } else {
+      ref = {i: i, mz: pt.x, int: pt.y};
+    }
+    updateHoverAndStyle();
+  });
+}
+"
+
+  htmlwidgets::onRender(p, js)
 }
 
 
