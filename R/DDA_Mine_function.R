@@ -2,7 +2,7 @@ MSdev_get_Inclusion_Queue <- function(object){
 
   for (i in 0:1) {
     polarity <-ifelse(i==0,"Negative","Positive")
-    polarity.tag <- paste0(polarity,"MS1")
+    polarity.tag <- polarity
     xcms.xcms <- object@xcmsData[[polarity.tag]]
     if (is.null(xcms.xcms) ) next
     feature.rsd <- get_features_from_xcms(xcms.xcms)@elementMetadata%>%as.data.frame()

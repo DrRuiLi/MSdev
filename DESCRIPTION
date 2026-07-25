@@ -55,6 +55,7 @@ Suggests:
     MSconvertR,
     MsCoreUtils,
     MSdb,
+    MsExperiment,
     MSnbase,
     mzR,
     openxlsx,

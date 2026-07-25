@@ -147,7 +147,7 @@ get_MRM_list <- function(feature_def_sta){
 
 QE_list_2feature_def <- function(table_to_trans,keep = T ){
 
-  # featureDefinitions_PeakSta(MSdev@xcmsData$PositiveMS1)->table_to_trans
+  # featureDefinitions_PeakSta(MSdev@xcmsData$Positive)->table_to_trans
   # table_to_trans <- dda.acq.list
   var.map <-c(mzmed = "Mass [m/z]",
               peakRtMin = "Start [min]" ,

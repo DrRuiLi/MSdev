@@ -222,6 +222,18 @@ get_xchroms_peaks_count <- function(xchroms){
   list(mz = mz, rt = rt)
 }
 
+#' Assign featureDefinitions compatibly for XCMSnExp / XcmsExperiment
+#' @noRd
+.xcms_featureDefinitions_replace <- function(object, value) {
+  value <- as.data.frame(value, stringsAsFactors = FALSE)
+  if (inherits(object, "XcmsExperiment") || inherits(object, "MsExperiment")) {
+    xcms::featureDefinitions(object) <- value
+  } else {
+    xcms::featureDefinitions(object) <- S4Vectors::DataFrame(value)
+  }
+  object
+}
+
 #' Number of sample files in an xcms / MsExperiment object
 #' @noRd
 .xcms_nfiles <- function(object) {
@@ -264,7 +276,7 @@ get_xchroms_peaks_count <- function(xchroms){
 .get_ms1_peaks_rtime_one_file <- function(object_one_file) {
   if (inherits(object_one_file, "XcmsExperiment") ||
       inherits(object_one_file, "MsExperiment")) {
-    sp <- Spectra::spectra(object_one_file)
+    sp <- ProtGenerics::spectra(object_one_file)
     sp <- Spectra::filterMsLevel(sp, 1L)
     list(
       rt = as.numeric(Spectra::rtime(sp)),
@@ -1191,7 +1203,7 @@ xcms_get_feature_def_stat <- function(xcms.xcms){
   feature.def.df <- as.data.frame(feature.def)%>%
     dplyr::mutate(feature_id = rownames(.),
                   .before = mzmed)
-  xcms::featureDefinitions(xcms.xcms) <- feature.def.df %>% S4Vectors::DataFrame()
+  xcms.xcms <- .xcms_featureDefinitions_replace(xcms.xcms, feature.def.df)
   return(xcms.xcms)
 
 }
@@ -1201,7 +1213,15 @@ xcms_get_feature_def_stat <- function(xcms.xcms){
 xcms_get_feature_val_stat <- function(xcms.xcms) {
 
   xcms.pdata <- Biobase::pData(xcms.xcms)
+  if (!"sampleNames" %in% colnames(xcms.pdata)) {
+    xcms.pdata$sampleNames <- Biobase::sampleNames(xcms.xcms)
+  }
   featureval <- xcms::featureValues(xcms.xcms)
+  if (!is.null(colnames(featureval)) &&
+      !any(xcms.pdata$sampleNames %in% colnames(featureval)) &&
+      ncol(featureval) == nrow(xcms.pdata)) {
+    colnames(featureval) <- xcms.pdata$sampleNames
+  }
   if ("sample.type" %in% colnames(xcms.pdata)) {
     qc.rsd <- featureval[,xcms.pdata%>%dplyr::filter(sample.type =="QC")%>%
                  dplyr::pull(sampleNames),drop=F]%>%
@@ -1220,10 +1240,10 @@ xcms_get_feature_val_stat <- function(xcms.xcms) {
 
   }
 
-  fdf <- xcms::featureDefinitions(xcms.xcms)
+  fdf <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
   fdf$qc_rsd <- qc.rsd
   fdf$sample_rsd <- sample.rsd
-  fdf -> xcms::featureDefinitions(xcms.xcms)
+  xcms.xcms <- .xcms_featureDefinitions_replace(xcms.xcms, fdf)
   return(xcms.xcms)
 }
 
@@ -1873,7 +1893,7 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
     cp.adduct$chemform.adduct.mz[as.numeric(idx)]
   })
 
-  xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.featuredef)
+  xcms.xcms <- .xcms_featureDefinitions_replace(xcms.xcms, xcms.featuredef)
 
   return(xcms.xcms)
 
@@ -1895,7 +1915,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
         rep(0,length(x))
       })
 
-      xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
+      xcms.xcms <- .xcms_featureDefinitions_replace(xcms.xcms, xcms.fdf)
       return(xcms.xcms)
     }
 
@@ -2017,7 +2037,7 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
   }
 
 
-  xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
+  xcms.xcms <- .xcms_featureDefinitions_replace(xcms.xcms, xcms.fdf)
 
   return(xcms.xcms)
 
@@ -2165,7 +2185,7 @@ xcms_get_feature_annotation <- function(xcms.xcms,
   }
 
 
-  xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(xcms.fdf)
+  xcms.xcms <- .xcms_featureDefinitions_replace(xcms.xcms, xcms.fdf)
 
   return(xcms.xcms)
 
@@ -2414,7 +2434,7 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
   if (!length(sample.idx)) {
     stop("No samples selected for chromatogram extraction.")
   }
-  xcms.sub <- MSnbase::filterFile(xcms.xcms, sample.idx)
+  xcms.sub <- .xcms_filter_file(xcms.xcms, sample.idx)
 
   ### mz / rt from feature peaks
   xcms.fdef <- xcms::featureDefinitions(xcms.xcms)
@@ -2452,9 +2472,14 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
   xcms.chrom.data <- get_chroms_data(xcms.chrom)%>%
     dplyr::mutate(group = Biobase::sampleNames(xcms.sub)[col])
 
+  rt_all <- if (inherits(xcms.sub, "MsExperiment") || inherits(xcms.sub, "XcmsExperiment")) {
+    as.numeric(Spectra::rtime(ProtGenerics::spectra(xcms.sub)))
+  } else {
+    as.numeric(MSnbase::rtime(xcms.sub))
+  }
   ggplot(xcms.chrom.data)+
     geom_line(aes(x = rt,y = intensity , col = group))+
-    xlim(c(min(rtime(xcms.sub)),max(rtime(xcms.sub))))+
+    xlim(c(min(rt_all, na.rm = TRUE), max(rt_all, na.rm = TRUE)))+
     labs(col = "",x = "Retention time", y = "Intensity",
          title = paste0(feature.id),
          subtitle = paste0( "mz: ",round(mz.range[1],4),
@@ -3014,7 +3039,14 @@ xcmsProcessingMS1 <- function(xcms.xcms,
     }
   }
 
-  xcms.xcms <- ProtGenerics::filterPolarity(xcms.xcms , ion_mode)
+  if (inherits(xcms.xcms, "MsExperiment") || inherits(xcms.xcms, "XcmsExperiment")) {
+    sp <- ProtGenerics::spectra(xcms.xcms)
+    if (length(sp)) {
+      ProtGenerics::spectra(xcms.xcms) <- Spectra::filterPolarity(sp, ion_mode)
+    }
+  } else {
+    xcms.xcms <- ProtGenerics::filterPolarity(xcms.xcms, ion_mode)
+  }
 
 
   ### Find peaks
@@ -3080,7 +3112,13 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   #xcms.xcms <- xcms_filter_feature_mz_rsd(xcms.xcms,rsd.ppm = 2)
   xcms.xcms <- xcms_get_feature_wmean(xcms.xcms)
   message_with_time(" ",nrow(xcms::featureDefinitions(xcms.xcms))," feature found")
-  xcms.xcms <- xcms::fillChromPeaks(xcms.xcms,param = xcms::FillChromPeaksParam())
+  fill_param <- if (inherits(xcms.xcms, "XcmsExperiment") ||
+                    inherits(xcms.xcms, "MsExperiment")) {
+    xcms::ChromPeakAreaParam()
+  } else {
+    xcms::FillChromPeaksParam()
+  }
+  xcms.xcms <- xcms::fillChromPeaks(xcms.xcms, param = fill_param)
 
 
 
@@ -3146,7 +3184,10 @@ matchSpectra_Features <- function(xcmsFeatureDef, spec){
 
 plot_xcms_feature_intensity <- function(xcms.xcms , feature_id_to_show ){
 
-  ion_mode <- unique(fData(xcms.xcms)$polarity)
+  ion_mode <- unique(as.integer(polarity(xcms.xcms)))
+  if (length(ion_mode) != 1L || is.na(ion_mode)) {
+    stop("Cannot determine unique polarity for xcms.xcms")
+  }
   if (ion_mode==1) {
     sample.info <- Biobase::pData(xcms.xcms)%>%
       dplyr::arrange(analysis.time.positive)%>%
@@ -3180,6 +3221,56 @@ plot_xcms_feature_intensity <- function(xcms.xcms , feature_id_to_show ){
 
 
 get_xcms_scan_Stat <- function(xcms.xcms){
+
+  if (inherits(xcms.xcms, "MsExperiment") || inherits(xcms.xcms, "XcmsExperiment")) {
+    sp <- ProtGenerics::spectra(xcms.xcms)
+    sd <- as.data.frame(Spectra::spectraData(sp), stringsAsFactors = FALSE)
+    origins <- as.character(sd$dataOrigin)
+    if (!length(origins) || all(is.na(origins))) {
+      origins <- as.character(sd$dataStorage)
+    }
+    file_levels <- unique(origins)
+    sd$fileIdx <- match(origins, file_levels)
+    sd$spIdx <- as.integer(seq_len(nrow(sd)))
+    if (!"retentionTime" %in% names(sd)) {
+      sd$retentionTime <- as.numeric(Spectra::rtime(sp))
+    }
+    if (!"msLevel" %in% names(sd)) {
+      sd$msLevel <- as.integer(Spectra::msLevel(sp))
+    }
+    if (!"tic" %in% names(sd)) {
+      sd$tic <- tryCatch(as.numeric(Spectra::tic(sp)), error = function(e) NA_real_)
+    }
+    xcms.fdata <- sd %>%
+      dplyr::mutate(fileStr = num2str(fileIdx),
+                    spStr = num2str(spIdx)) %>%
+      dplyr::group_by(fileStr) %>%
+      dplyr::mutate(x = 2 - msLevel,
+                    ms1_no = cumsum(x)) %>%
+      dplyr::ungroup() %>%
+      dplyr::mutate(ms1_no_str = num2str(ms1_no)) %>%
+      dplyr::group_by(fileIdx) %>%
+      dplyr::arrange(fileIdx, retentionTime) %>%
+      dplyr::mutate(scan_time = c(diff(retentionTime), 0),
+                    ms1_group = paste0(fileStr, "_", ms1_no_str)) %>%
+      dplyr::group_by(ms1_group) %>%
+      dplyr::mutate(ms2_count = sum(msLevel == 2),
+                    ms1_group_rt = min(retentionTime),
+                    cycle_time = max(retentionTime) - min(retentionTime)) %>%
+      dplyr::ungroup() %>%
+      dplyr::group_by(fileStr) %>%
+      dplyr::mutate(cycle_time = c(diff(ms1_group_rt), 0)) %>%
+      dplyr::group_by(ms1_group) %>%
+      dplyr::mutate(cycle_time = max(cycle_time)) %>%
+      dplyr::mutate(scan_id = paste0("scan_", fileStr, "_", spStr)) %>%
+      dplyr::ungroup() %>%
+      dplyr::select(scan_id, ms1_no, ms1_group, ms1_group_rt,
+                    ms2_count, cycle_time, scan_time, dplyr::everything(),
+                    -c(x, fileStr, spStr, ms1_no_str)) %>%
+      as.data.frame()
+    rownames(xcms.fdata) <- xcms.fdata$scan_id
+    return(xcms.fdata)
+  }
 
   xcms.fdata <-Biobase::fData(xcms.xcms)%>%
     dplyr::mutate(fileStr = num2str(fileIdx),
@@ -3217,6 +3308,11 @@ get_xcms_scan_Stat <- function(xcms.xcms){
 
 xcms_get_scan_Stat <- function(xcms.xcms){
   xcms.fdata <- get_xcms_scan_Stat(xcms.xcms )
+  if (inherits(xcms.xcms, "MsExperiment") || inherits(xcms.xcms, "XcmsExperiment")) {
+    ## No writable Biobase::fData on MsExperiment/XcmsExperiment; return scan table only.
+    attr(xcms.xcms, "scan_stat") <- xcms.fdata
+    return(xcms.xcms)
+  }
   fData(xcms.xcms) <- xcms.fdata
   return(xcms.xcms)
 }
@@ -3243,9 +3339,15 @@ plot_xcms_TIC <- function(xcms.xcms,col.group = NULL,title = "TIC"){
 
   xcms.pdata <- Biobase::pData(xcms.xcms)
   xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
+  if (!"tic" %in% names(xcms.scan) || all(is.na(xcms.scan$tic))) {
+    if (inherits(xcms.xcms, "MsExperiment") || inherits(xcms.xcms, "XcmsExperiment")) {
+      xcms.scan$tic <- as.numeric(Spectra::tic(ProtGenerics::spectra(xcms.xcms)))
+    } else {
+      xcms.scan$tic <- as.numeric(MSnbase::tic(xcms.xcms))
+    }
+  }
   xcms.scan <- xcms.scan%>%
-    dplyr::mutate(tic = MSnbase::tic(xcms.xcms),
-                  group = xcms.pdata$group[fileIdx])%>%
+    dplyr::mutate(group = xcms.pdata$group[fileIdx])%>%
     dplyr::filter(msLevel==1)
 
   if (is.null(col.group)) {
@@ -3461,6 +3563,61 @@ get_xcms_Spectra <- function(xcms.xcms){
 
 }
 
+## Biobase-compatible accessors for MsExperiment / XcmsExperiment
+## (XCMSnExp already provides these via MSnbase inheritance)
+
+#' @importFrom Biobase pData
+#' @importFrom methods setMethod setReplaceMethod
+setMethod("pData", "MsExperiment", function(object) {
+  as.data.frame(MsExperiment::sampleData(object), stringsAsFactors = FALSE)
+})
+
+#' @importFrom Biobase pData<-
+setReplaceMethod("pData", "MsExperiment", function(object, value) {
+  if (is.null(value)) {
+    stop("'value' must be a data.frame or DataFrame")
+  }
+  value <- as.data.frame(value, stringsAsFactors = FALSE)
+  MsExperiment::sampleData(object) <- S4Vectors::DataFrame(value, check.names = FALSE)
+  object
+})
+
+#' @importFrom Biobase sampleNames
+setMethod("sampleNames", "MsExperiment", function(object) {
+  sd <- MsExperiment::sampleData(object)
+  ## Prefer explicit sample id columns (rownames often = basename(files))
+  for (col in c("sampleNames", "sample.name", "sample_name")) {
+    if (col %in% colnames(sd) && !all(is.na(sd[[col]]))) {
+      return(as.character(sd[[col]]))
+    }
+  }
+  rn <- rownames(sd)
+  if (!is.null(rn) && length(rn) && !all(rn == as.character(seq_len(nrow(sd))))) {
+    return(as.character(rn))
+  }
+  fn <- tryCatch(xcms::fileNames(object), error = function(e) NULL)
+  if (!is.null(fn) && length(fn)) {
+    return(basename(as.character(fn)))
+  }
+  as.character(seq_len(length(object)))
+})
+
+#' @importFrom Biobase sampleNames<-
+setReplaceMethod("sampleNames", "MsExperiment", function(object, value) {
+  value <- as.character(value)
+  sd <- MsExperiment::sampleData(object)
+  if (length(value) != nrow(sd)) {
+    stop("'value' length must equal number of samples (", nrow(sd), ")")
+  }
+  ## Keep rownames as file basenames when possible; store ids in columns
+  sd$sampleNames <- value
+  if ("sample.name" %in% colnames(sd)) {
+    sd$sample.name <- value
+  }
+  MsExperiment::sampleData(object) <- sd
+  object
+})
+
 #' @importFrom xcms filepaths
 #' @export
 setMethod(f = "filepaths",
@@ -3468,6 +3625,25 @@ setMethod(f = "filepaths",
                        definition = function(object) {
                          paste0(BiocGenerics::dirname(object), "/", Biobase::sampleNames(object))
                        })
+
+#' @importFrom xcms filepaths
+#' @export
+setMethod(f = "filepaths",
+                       signature = "MsExperiment",
+                       definition = function(object) {
+                         fn <- tryCatch(xcms::fileNames(object), error = function(e) NULL)
+                         if (is.null(fn) || !length(fn)) {
+                           fn <- tryCatch(
+                             as.character(MsExperiment::sampleData(object)$dataOrigin),
+                             error = function(e) NULL
+                           )
+                         }
+                         if (is.null(fn) || !length(fn)) {
+                           stop("Cannot determine file paths for MsExperiment object")
+                         }
+                         as.character(fn)
+                       })
+
 #' @importFrom xcms mzrange
 #' @export
 setMethod(f = mzrange,
@@ -3476,6 +3652,34 @@ setMethod(f = mzrange,
                          xcms.fdata <- fData(object)
                          return(c(min(xcms.fdata$scanWindowLowerLimit, na.rm = TRUE),
                                   max(xcms.fdata$scanWindowUpperLimit, na.rm = TRUE)))
+                       })
+
+#' @importFrom xcms mzrange
+#' @export
+setMethod(f = mzrange,
+                       signature = "MsExperiment",
+                       definition = function(object) {
+                         sp <- ProtGenerics::spectra(object)
+                         sd <- as.data.frame(Spectra::spectraData(sp))
+                         lo <- if ("scanWindowLowerLimit" %in% names(sd)) {
+                           sd$scanWindowLowerLimit
+                         } else {
+                           NA_real_
+                         }
+                         hi <- if ("scanWindowUpperLimit" %in% names(sd)) {
+                           sd$scanWindowUpperLimit
+                         } else {
+                           NA_real_
+                         }
+                         if (all(is.na(lo)) || all(is.na(hi))) {
+                           mz <- tryCatch(Spectra::mz(sp), error = function(e) NULL)
+                           if (!is.null(mz) && length(mz)) {
+                             mz_num <- unlist(mz, use.names = FALSE)
+                             return(c(min(mz_num, na.rm = TRUE), max(mz_num, na.rm = TRUE)))
+                           }
+                           return(c(NA_real_, NA_real_))
+                         }
+                         c(min(lo, na.rm = TRUE), max(hi, na.rm = TRUE))
                        })
 
 

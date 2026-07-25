@@ -325,38 +325,46 @@ MSdev_xcmsProcessing <- function(object,...){
 MSdev_get_xcms <- function(object){
 
   if (is.list(object@xcmsData)) {
-    if (!is.null(object@xcmsData$PositiveMS1) && !identical(object@xcmsData$PositiveMS1, NA)) {
+    if (!is.null(object@xcmsData$Positive) && !identical(object@xcmsData$Positive, NA)) {
       return(object)
     }
-    if (!is.null(object@xcmsData$NegativeMS1) && !identical(object@xcmsData$NegativeMS1, NA)) {
+    if (!is.null(object@xcmsData$Negative) && !identical(object@xcmsData$Negative, NA)) {
       return(object)
     }
   }
 
   polarity.index <- c("0" = "Negative",
-                      "1"="Positive")
-  for (i in c(0,1)) {
-    sample.info.polarity <- object@sampleInfo%>%
-      dplyr::filter(grepl(i,polarity))
+                      "1" = "Positive")
+  for (i in c(0, 1)) {
+    sample.info.polarity <- object@sampleInfo %>%
+      dplyr::filter(grepl(i, polarity))
     if (!nrow(sample.info.polarity)) {
-      xcms.xcms <-NA
       next
-    }else{
-      xcms.xcms <- MSnbase::readMSData(sample.info.polarity$msData.files,
-                              mode = "onDisk")
-      xcms.xcms <- as(xcms.xcms,"XCMSnExp")
-      xcms.xcms <- MSnbase::filterPolarity(xcms.xcms,i)
     }
-    Biobase::pData(xcms.xcms ) <-
-      cbind(Biobase::pData(xcms.xcms),
-            sample.info.polarity)
-    polarity.tag <- paste0(polarity.index[as.character(i)],"MS1")
-    xcms.xcms -> object@xcmsData[[polarity.tag]]
-
+    files <- sample.info.polarity$msData.files
+    sd <- S4Vectors::DataFrame(sample.info.polarity, check.names = FALSE)
+    file_bn <- basename(as.character(files))
+    sn <- if ("sample.name" %in% colnames(sd)) {
+      as.character(sd$sample.name)
+    } else {
+      file_bn
+    }
+    ## readMsExperiment requires rownames == basename(spectraFiles)
+    sd$sampleNames <- sn
+    rownames(sd) <- file_bn
+    xcms.xcms <- MsExperiment::readMsExperiment(
+      spectraFiles = files,
+      sampleData = sd
+    )
+    sp <- ProtGenerics::spectra(xcms.xcms)
+    if (length(sp)) {
+      sp <- Spectra::filterPolarity(sp, i)
+      ProtGenerics::spectra(xcms.xcms) <- sp
+    }
+    polarity.tag <- polarity.index[as.character(i)]
+    object@xcmsData[[polarity.tag]] <- xcms.xcms
   }
   return(object)
-
-
 }
 
 #' @title Process DDA data using xcms
@@ -379,7 +387,7 @@ xcmsProcessingMSdev.DDA <- function(object,...){
     sample.info.polarity <- sampleInfo%>%
       #dplyr::filter(polarity %in% c(i,-1,"0;1"))%>%
       dplyr::filter(grepl(i,polarity))
-    polarity.tag <- paste0(polarity.index[as.character(i)],"MS1")
+    polarity.tag <- polarity.index[as.character(i)]
     if (!nrow(sample.info.polarity)) {
       xcms.xcms <-NA
       next
@@ -417,12 +425,12 @@ xcmsProcessingMSdev.MRM <- function(object){
   sampleInfoPos <-object@sampleInfo%>%
     dplyr::filter(!is.na(msData.file.positive))
 
-  object@xcmsData$positiveMS1  <- xcmsProcessingMRM(msDataFiles = sampleInfoPos$msData.file.positive,
+  object@xcmsData$Positive  <- xcmsProcessingMRM(msDataFiles = sampleInfoPos$msData.file.positive,
                                                     peaksGroup =sampleInfoPos$sample.type,
                                                     centWaveParam = xcms.param$findpeak.param
   )
 
-  Biobase::pData(object@xcmsData$positiveMS1) <- cbind(Biobase::pData(object@xcmsData$positiveMS1),
+  Biobase::pData(object@xcmsData$Positive) <- cbind(Biobase::pData(object@xcmsData$Positive),
                                                        sampleInfoPos)
 
 
@@ -431,8 +439,8 @@ xcmsProcessingMSdev.MRM <- function(object){
 
 extractFeature <- function(object){
 
-  object@xcmsData$positiveFeature <- as.data.frame(xcms::featureDefinitions(object@xcmsData$PositiveMS1))
-  object@xcmsData$negativeFeature <- as.data.frame(xcms::featureDefinitions(object@xcmsData$NegativeMS1))
+  object@xcmsData$positiveFeature <- as.data.frame(xcms::featureDefinitions(object@xcmsData$Positive))
+  object@xcmsData$negativeFeature <- as.data.frame(xcms::featureDefinitions(object@xcmsData$Negative))
   object
 
 }
@@ -653,8 +661,8 @@ featureSpectra_fullscan_DDA <- function(object){
 
   }
 
-  object@spectra$positiveFeatureMS2 <- apply(xcms::featureDefinitions(object@xcmsData$positiveMS1), 1, .matchSP , object@spectra$positiveMS2 )
-  object@spectra$negativeFeatureMS2 <- apply(xcms::featureDefinitions(object@xcmsData$negativeMS1), 1, .matchSP , object@spectra$negativeMS2 )
+  object@spectra$positiveFeatureMS2 <- apply(xcms::featureDefinitions(object@xcmsData$Positive), 1, .matchSP , object@spectra$positiveMS2 )
+  object@spectra$negativeFeatureMS2 <- apply(xcms::featureDefinitions(object@xcmsData$Negative), 1, .matchSP , object@spectra$negativeMS2 )
 
 
   object
@@ -993,12 +1001,12 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
     p.list <- list()
     for (i in 1:nrow(feature.internal.standard)) {
       if (feature.internal.standard$ion_mode[i] == "positive") {
-        plot_xcms_feature_intensity(object@xcmsData$positiveMS1,
+        plot_xcms_feature_intensity(object@xcmsData$Positive,
                                     sub(feature.internal.standard$feature_id[i],pattern = "_pos",replacement = ""))+
           labs(title =feature.internal.standard$feature_id[i] )->p
         p.list[[i]] <- p
       }else{
-        plot_xcms_feature_intensity(object@xcmsData$negativeMS1,
+        plot_xcms_feature_intensity(object@xcmsData$Negative,
                                     sub(feature.internal.standard$feature_id[i],pattern = "_neg",replacement = ""))+
           labs(title =feature.internal.standard$feature_id[i] )->p
         p.list[[i]] <- p
@@ -1033,18 +1041,18 @@ findISMSdev <- function(object ,to.adjust = "featureRaw",corr.thred = 0.6){
 #' @title Plot peaks presence heatmap across samples
 #' @description Plot a heatmap using ComplexHeatmap showing whether each feature's peak is detected (present) or not detected (absent) in each sample.
 #' @param object MSdev object
-#' @param target character. xcmsData element: "PositiveMS1" or "NegativeMS1" (shorthand: "pos"/"neg").
+#' @param target character. xcmsData element: "Positive" or "Negative" (shorthand: "pos"/"neg").
 #' @param top_n integer. Maximum number of features to plot (default Inf). Features are sorted by detection rate.
 #' @return ComplexHeatmap object
 #' @export
 #'
 
-plot_MSdev_sample_peaks <- function(object, target = "PositiveMS1", top_n = Inf) {
+plot_MSdev_sample_peaks <- function(object, target = "Positive", top_n = Inf) {
 
-  target <- switch(target,
-    "pos" =, "Pos" =, "POS" =, "positive" =, "Positive" =, "PositiveMS1" = "PositiveMS1",
-    "neg" =, "Neg" =, "NEG" =, "negative" =, "Negative" =, "NegativeMS1" = "NegativeMS1",
-    stop("target must be 'PositiveMS1' or 'NegativeMS1' (shorthand: 'pos'/'neg')")
+  target <- switch(as.character(target),
+    "pos" =, "Pos" =, "POS" =, "positive" =, "Positive" = "Positive",
+    "neg" =, "Neg" =, "NEG" =, "negative" =, "Negative" = "Negative",
+    stop("target must be 'Positive' or 'Negative' (shorthand: 'pos'/'neg')")
   )
   xcms.xcms <- object@xcmsData[[target]]
   if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) {
@@ -1226,9 +1234,9 @@ export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
   is.pos <-grepl(pattern = "pos",
                  x = feature_id)
   if (is.pos) {
-    xcms.xcms <- MSdev.obj@xcmsData$positiveMS1
+    xcms.xcms <- MSdev.obj@xcmsData$Positive
   }else{
-    xcms.xcms <- MSdev.obj@xcmsData$negativeMS1}
+    xcms.xcms <- MSdev.obj@xcmsData$Negative}
   gp <- plot_xcms_feature_chromatogram(xcms.xcms,
                                        feature.id = gsub(x = feature_id,pattern = "[_|pos|neg]",replacement = ""))+
     theme(legend.position = "none")
@@ -1363,13 +1371,13 @@ MSdev_xcms_group_features <- function(object,
   for (i in 0:1) {
 
     pol <- ifelse(i==0,"Negative","Positive")
-    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.xcms <- object@xcmsData[[pol]]
     xcms.xcms <- xcms_get_feature_group(xcms.xcms,
                                         diffRt = diffRt,
                                         intCor = intCor,
                                         eicCor = eicCor,
                                         ...)
-    xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.xcms -> object@xcmsData[[pol]]
 
 
   }
@@ -1532,7 +1540,7 @@ MSdev_group_feature_EIC <- function(object,
   need_chrom <- forceExtractChrom
   if (!need_chrom) {
     for (pol in polarities) {
-      ms1_key <- paste0(pol, "MS1")
+      ms1_key <- pol
       chrom_key <- paste0(pol, "_Chromatograms")
       xcms_pol <- object@xcmsData[[ms1_key]]
       if (!is.null(xcms_pol) && !identical(xcms_pol, NA) &&
@@ -1557,7 +1565,7 @@ MSdev_group_feature_EIC <- function(object,
   FUNARGS <- list(use = "pairwise.complete.obs")
 
   for (pol in polarities) {
-    ms1_key <- paste0(pol, "MS1")
+    ms1_key <- pol
     chrom_key <- paste0(pol, "_Chromatograms")
     xcms.xcms <- object@xcmsData[[ms1_key]]
     if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) {
@@ -1920,7 +1928,7 @@ MSdev_match_Spectra_to_feature <- function(object,
     sp.ms2 <- MS2_Spectra%>%
       ProtGenerics::filterPolarity(i)
     if (length(sp.ms2)==0) next
-    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.xcms <- object@xcmsData[[pol]]
     if (is.null(xcms.xcms) || !isTRUE(xcms::hasFeatures(xcms.xcms))) {
       message("no features, skip match to feature")
       next
@@ -1950,9 +1958,8 @@ MSdev_match_Spectra_to_feature <- function(object,
                                 return(sp_id)
                               }
     )
-    xcms::featureDefinitions(xcms.xcms) <- xcms.fdf%>%
-      S4Vectors::DataFrame()
-    xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.xcms <- .xcms_featureDefinitions_replace(xcms.xcms, xcms.fdf)
+    xcms.xcms -> object@xcmsData[[pol]]
 
 
   }
@@ -1988,7 +1995,7 @@ MSdev_annotation <- function(object,
   for (i in 0:1) {
 
     pol <- ifelse(i==0,"Negative","Positive")
-    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.xcms <- object@xcmsData[[pol]]
     if (is.null(xcms.xcms)) next
     message_with_time("Find MS1 candidate...")
     xcms.xcms <- xcms_get_feature_ms1_candidate(xcms.xcms,
@@ -2009,7 +2016,7 @@ MSdev_annotation <- function(object,
     xcms.xcms <- xcms_get_feature_annotation(xcms.xcms,
                                              cpdb,
                                              ...)
-    xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.xcms -> object@xcmsData[[pol]]
 
   }
 
@@ -2193,7 +2200,7 @@ MSdev_get_Se <- function(object,
   se <- stats::setNames(vector("list", length(pol.names)), pol.names)
   for (i in 0:1) {
     pol <- pol.names[i + 1L]
-    xcms.xcms <- object@xcmsData[[paste0(pol, "MS1")]]
+    xcms.xcms <- object@xcmsData[[pol]]
     if (is.null(xcms.xcms)) {
       se[[pol]] <- SummarizedExperiment::SummarizedExperiment()
       next
@@ -2238,22 +2245,22 @@ MSdev_get_Se <- function(object,
 
 
 MSdev_update_xcms_pdata <- function(object,
-                                    XCMSnExp = T,
-                                    XChromatograms = F){
+                                    update_xcms = TRUE,
+                                    XChromatograms = FALSE){
 
 
   sample_info <- object@sampleInfo
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
-    ###XCMSnExp
-    if(XCMSnExp){
-      xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
-      if (is.null(xcms.xcms)) next
+    ### polarity xcms (XcmsExperiment / XCMSnExp)
+    if (isTRUE(update_xcms)) {
+      xcms.xcms <- object@xcmsData[[pol]]
+      if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) next
       xcms.pdata <- Biobase::pData(xcms.xcms)%>%
         dplyr::mutate(sample_info[match(msData.files,
                                         sample_info$msData.files),  ])
       xcms.pdata -> Biobase::pData(xcms.xcms)
-      xcms.xcms -> object@xcmsData[[paste0(pol,"MS1")]]
+      xcms.xcms -> object@xcmsData[[pol]]
     }
 
     ###XChromatograms
@@ -2381,7 +2388,7 @@ get_MSdev_spectra_target_list <- function(object,
     out <- list()
     for (i in 0:1) {
       pol <- ifelse(i == 0, "Negative", "Positive")
-      x <- object@xcmsData[[paste0(pol, "MS1")]]
+      x <- object@xcmsData[[pol]]
       if (is.null(x) || !isTRUE(xcms::hasFeatures(x))) next
       fdf <- as.data.frame(xcms::featureDefinitions(x), stringsAsFactors = FALSE)
       if (!("feature_id" %in% colnames(fdf))) fdf$feature_id <- rownames(fdf)
@@ -2486,7 +2493,7 @@ MSdev_get_feature_chrom <- function(object,BPPARAM =  SnowParam(
 
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
-    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.xcms <- object@xcmsData[[pol]]
     if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) {
       message("Skip ", pol, " (no MS1 xcms data)")
       next
@@ -2529,7 +2536,7 @@ get_MSdev_isotopologues_data <- function(object){
  }
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
-    xcms.xcms <- object@xcmsData[[paste0(pol,"MS1")]]
+    xcms.xcms <- object@xcmsData[[pol]]
 
     xcms.fdf.iso <- xcms::featureDefinitions(xcms.xcms) %>%
       as.data.frame()%>%
@@ -2593,13 +2600,13 @@ get_MSdev_isotopologues_data <- function(object){
 
 count_MSdev_peaks <- function(object){
 
-  xcms <- object@xcmsData$NegativeMS1
+  xcms <- object@xcmsData$Negative
   pks <- table(xcms::chromPeaks(xcms)[, "sample"])
   names(pks) <- pData(xcms)[,1]
   print(pks)
 
 
-  xcms <- object@xcmsData$PositiveMS1
+  xcms <- object@xcmsData$Positive
   pks <- table(xcms::chromPeaks(xcms)[, "sample"])
   names(pks) <- pData(xcms)[,1]
   print(pks)
@@ -2630,7 +2637,7 @@ MSdev_get_feature_wmean <- function(object){
 
   for (i.pol in 0:1) {
     pol <- ifelse(i.pol==0,"Negative","Positive")
-    polarity.tag <- paste0(pol,"MS1")
+    polarity.tag <- pol
     xcms.xcms <- object@xcmsData[[polarity.tag]]
     xcms.xcms <- xcms_get_feature_wmean(xcms.xcms)
     xcms.xcms -> object@xcmsData[[polarity.tag]]

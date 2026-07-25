@@ -138,11 +138,11 @@ setMethod("show" ,
 #' @title List process history of xcmsData
 #' @description List all process history entries for a specific xcmsData element in an MSdev object.
 #' @param object MSdev object
-#' @param target character. Name of the xcmsData element (default "PositiveMS1").
+#' @param target character. Name of the xcmsData element (default "Positive").
 #' @return data.frame of process history, or NULL if not available.
 #' @export
 #'
-MSdev_processInfo <- function(object, target = "PositiveMS1") {
+MSdev_processInfo <- function(object, target = "Positive") {
 
   xcms.xcms <- object@xcmsData[[target]]
   if (is.null(xcms.xcms) || identical(xcms.xcms, NA)  ) {
