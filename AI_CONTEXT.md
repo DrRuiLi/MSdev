@@ -38,6 +38,7 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 |------|---------------|------------------|
 | Project shell and orchestration | `MSdev-class.R`, `MSdev-function.R`, `MSdev-workflow.R`, `Demo.R` | Understanding core object lifecycle, setup, and top-level API |
 | xcms / feature processing | `dev_xcms.R`, `MSdev-function.R`, `onDiskData.R` | Debugging peak picking/grouping/RT alignment or feature extraction |
+| Feature–MS2 match / annotation | `MSdev-function.R` (`MSdev_match_Spectra_to_feature`, `MSdev_annotation`), `dev_xcms.R` (`xcms_get_feature_ms2_score`), `dev_Spectra.R` (`get_Spectra_ms2_feature_id`) | Assigning MS2 to features or scoring annotations |
 | DDA / pseudo-MS2 workflow | `DDA-function.R`, `DDA_Mine_function.R`, `DDA_mine-workflow.R`, `Pseudo-workflow.R` | Following DDA simulation/mining flow |
 | MRM | `MRM-function.R`, `MRM-WorkFlow.R` | Investigating targeted chromatogram pipeline |
 | Network / atom-transfer wrappers | `Metabolic_flux_network.R`, `Reaction_atom_transfer.R`, `0_mscc_graph_generics_imports.R` | Tracing graph accessors, reaction transfer, and MSCC integration points |
@@ -54,8 +55,17 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 |-------|------|
 | Input | Raw files under `rawDataDir`; `sampleInfo` table; optional `MS_Exp` metadata |
 | Core container | `MSdev` S4 with slots `projectInfo`, `processingInfo`, `sampleInfo`, `experimentInfo`, `xcmsData`, `spectra`, `annotation`, `advancedAna` |
-| Typical chain | `MSdev_checkSampleInfo` -> `MSdev_msConvert` -> `MSdev_xcmsProcessing` -> spectra extraction/matching -> annotation -> stats/export -> save/load |
+| Spectra source of truth | Per-polarity `XcmsExperiment` in `xcmsData$Positive` / `$Negative`; use `ProtGenerics::spectra(xcms)` |
+| Feature–MS2 link | `featureDefinitions$ms2_id` only: **numeric indices** into that polarity’s `spectra(xcms)` (no `feature_id` on spectra) |
+| Typical chain | `MSdev_checkSampleInfo` -> `MSdev_msConvert` -> `MSdev_xcmsProcessing` -> `MSdev_match_Spectra_to_feature` -> `MSdev_annotation` -> stats/export -> save/load |
 | Outputs | Serialized project objects and tabular/plot exports |
+
+### Spectra matching notes
+
+- `MSdev_extract_Spectra` is **deprecated** (legacy onDisk copies into `object@spectra$MS1_Spectra` / `$MS2_Spectra`). Do not use it in new workflows.
+- Matching is median-based (`mzmed` / `rtmed` + `ppm` / `rt.tol`), not `xcms::featureSpectra` peak-box matching.
+- `MSdev_annotation` / `xcms_get_feature_ms2_score` pull MS2 via numeric `ms2_id` (character `spectraNames` IDs only as legacy fallback).
+- Some helpers still read legacy `object@spectra$MS2_Spectra` (e.g. `get_MSdev_ms2_Spectra`, `get_MSdev_spectra_target_list`).
 
 ---
 
@@ -68,4 +78,4 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 
 ---
 
-Last refreshed after refactor to `MSCC` ownership for graph/chemistry primitives. This file is a navigation aid, not a substitute for reading source.
+Last refreshed after spectra matching moved onto `xcms@spectra` with numeric `ms2_id` (`MSdev_extract_Spectra` deprecated). This file is a navigation aid, not a substitute for reading source.

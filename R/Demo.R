@@ -57,7 +57,6 @@ make_demo <- function(){
   msdev.demo <- MSdev("C:\\Users\\91879\\OneDrive\\Code\\R\\Projecct\\2022.1.8_MS.demo\\Demo/raw.data/")
   msdev.demo <- MSdev_msConvert(msdev.demo)
   msdev.demo <- MSdev_xcmsProcessing(msdev.demo)
-  msdev.demo <- MSdev_extract_Spectra(msdev.demo)
   msdev.demo <- MSdev_match_Spectra_to_feature(msdev.demo)
   msdev.demo <- MSdev_annotation(msdev.demo,
                                  cpdb_path ="c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CFM_predicted_kegg.compdb" )

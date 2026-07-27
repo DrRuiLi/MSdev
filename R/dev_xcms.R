@@ -1190,7 +1190,7 @@ xcms_get_feature_def_stat <- function(xcms.xcms){
   feature.def$peakMzMax <- sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"mzmax",fun = "max")
   feature.def$peakSN <-  sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"sn")
   feature.def$peakMaxo <-  sapply(feature.def$peakidx,.xcmsPeakDataMed,peaks.data,"maxo")
-  feature.def$polarity <- polarity(xcms.xcms)%>%unique()
+  feature.def$polarity <- unique(.xcms_polarity(xcms.xcms))
   feature.def.df <- as.data.frame(feature.def)%>%
     dplyr::mutate(feature_id = rownames(.),
                   .before = mzmed)
@@ -1926,16 +1926,19 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
       normalizeSpectra(norm_to = "max")%>%
       filterSpectraIntensity(ratio = 0.05)%>%
       Spectra::applyProcessing()
-    if(length(sp.ms2)!=0){
-      sp.ms2 <- sp.ms2%>%
+
+    ## ms2_id indexes into full spectra(xcms); process MS2 only and remap
+    sp.full <- sp.ms2
+    ms2_idx_in_full <- which(Spectra::msLevel(sp.full) == 2L)
+    if (length(ms2_idx_in_full)) {
+      sp.ms2 <- sp.full[ms2_idx_in_full]%>%
         filterSpectra_below_PrecursorMz()%>%
         normalizeSpectra(norm_to = "max")%>%
         filterSpectraIntensity(ratio = 0.05)%>%
         Spectra_set_MEM_backend()%>%
         Spectra::applyProcessing()
-      #if ("from_iso" %in% spectraVariables(sp.ms2)) {
-      #  sp.ms2 <- sp.ms2[!sp.ms2$from_iso]
-      #}
+    } else {
+      sp.ms2 <- Spectra::Spectra()
     }
     if (!all(unlist(xcms.fdf$candidate.id)%in%
              Spectra_database$compound_id)) {
@@ -1945,23 +1948,24 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
     }
   }
 
-  ### sp ms2 split
+  ### sp ms2 split (ms2_id = numeric indices into spectra(xcms) / sp.full)
   {
-    sp.exp <- sapply(1:nrow(xcms.fdf),function(i){
-
-      x <- xcms.fdf$ms2_id[[i]]
-      if (!length(x)) return(NULL)
-      sp.ms2[match(x,Spectra::spectraNames(sp.ms2))]
-      #if (length(x)==0) {
-      #  sp <- makeSpectra(xcms.fdf$mzmed[i],
-      #                    xcms.fdf$rtmed[i])
-      #}else
-      #  sp <- list(sp.ms2[x])
-      #return(sp)
+    .subset_exp_ms2 <- function(x) {
+      if (!length(x) || all(is.na(x))) return(NULL)
+      if (is.character(x)) {
+        idx_full <- match(x, Spectra::spectraNames(sp.full))
+      } else {
+        idx_full <- as.integer(x)
+      }
+      idx_proc <- match(idx_full, ms2_idx_in_full)
+      idx_proc <- idx_proc[!is.na(idx_proc)]
+      if (!length(idx_proc)) return(NULL)
+      sp.ms2[idx_proc]
+    }
+    sp.exp <- sapply(1:nrow(xcms.fdf), function(i) {
+      .subset_exp_ms2(xcms.fdf$ms2_id[[i]])
     })
     names(sp.exp) <- xcms.fdf$feature_id
-
-
   }
 
   ### sp ref split
@@ -3078,7 +3082,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
 
 
   if (is.na(ion_mode)) {
-    ion_mode <- polarity(xcms.xcms )%>%unique()
+    ion_mode <- unique(.xcms_polarity(xcms.xcms))
     if (length(ion_mode)!=1) {
       stop("MS1 scans contain both positive and negative, please check")
     }
@@ -3228,7 +3232,7 @@ matchSpectra_Features <- function(xcmsFeatureDef, spec){
 
 plot_xcms_feature_intensity <- function(xcms.xcms , feature_id_to_show ){
 
-  ion_mode <- unique(as.integer(polarity(xcms.xcms)))
+  ion_mode <- unique(as.integer(.xcms_polarity(xcms.xcms)))
   if (length(ion_mode) != 1L || is.na(ion_mode)) {
     stop("Cannot determine unique polarity for xcms.xcms")
   }
@@ -3608,6 +3612,28 @@ get_xcms_Spectra <- function(xcms.xcms){
 
 ## Biobase-compatible accessors for MsExperiment / XcmsExperiment
 ## (XCMSnExp already provides these via MSnbase inheritance)
+
+#' Polarity vector for XCMSnExp / MsExperiment / XcmsExperiment
+#' @noRd
+.xcms_polarity <- function(xcms.xcms) {
+  if (inherits(xcms.xcms, "MsExperiment") || inherits(xcms.xcms, "XcmsExperiment")) {
+    sp <- ProtGenerics::spectra(xcms.xcms)
+    if (!length(sp)) return(integer())
+    return(as.integer(Spectra::polarity(sp)))
+  }
+  as.integer(ProtGenerics::polarity(xcms.xcms))
+}
+
+#' @importFrom Biobase fData
+#' @importFrom methods setMethod
+setMethod("fData", "MsExperiment", function(object) {
+  .get_xcms_scan_table(object)
+})
+
+#' @importFrom ProtGenerics polarity
+setMethod("polarity", "MsExperiment", function(object) {
+  .xcms_polarity(object)
+})
 
 #' @importFrom Biobase pData
 #' @importFrom methods setMethod setReplaceMethod

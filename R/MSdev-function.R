@@ -1824,19 +1824,32 @@ MSdev_msConvert<- function(object,format.to = "mzML"){
 
 
 #' @title Extract and store MS1 and MS2 spectra from raw data files
-#' @description Read raw data files, split spectra by MS level, evaluate noise and purity, and store as on-disk data.
-#' @describeIn MSdev_workflow Extract all spectra, split to MS1 and MS2, store as onDiskData
+#' @description
+#' \strong{Deprecated.} Spectra are taken from \code{xcms@spectra}
+#' (\code{ProtGenerics::spectra(object@xcmsData)}); use
+#' \code{\link{MSdev_match_Spectra_to_feature}} to assign MS2 to features.
+#' Legacy behaviour (read files into \code{object@spectra} as onDiskData) is kept
+#' for compatibility but no longer calls feature matching.
+#' @describeIn MSdev_workflow Extract all spectra, split to MS1 and MS2, store as onDiskData (deprecated)
 #' @param object MSdev object
-#' @param rt.tol retention time tolerance for matching spectra to features (seconds)
+#' @param rt.tol retention time tolerance for matching spectra to features (seconds); ignored
 #' @param eval.noise logical, whether to evaluate noise in MS2 spectra
 #' @param eval.ms1 logical, whether to evaluate purity using MS1 scans
-#' @return MSdev object with spectra stored
+#' @return MSdev object with spectra stored in \code{object@spectra}
 #' @export
 #'
 MSdev_extract_Spectra <- function(object,
                                   rt.tol = 10,
                                   eval.noise = F,
                                   eval.ms1 = F){
+
+  .Deprecated("MSdev_match_Spectra_to_feature",
+              package = "MSdev",
+              msg = paste0(
+                "MSdev_extract_Spectra is deprecated. ",
+                "Use spectra from xcms (ProtGenerics::spectra(xcms)) and ",
+                "MSdev_match_Spectra_to_feature() to assign MS2 indices."
+              ))
 
   sampleInfo <- object@sampleInfo%>%
     dplyr::mutate(msData.files = normalizePath(msData.files))
@@ -1908,21 +1921,17 @@ MSdev_extract_Spectra <- function(object,
 
   }
 
-
-  ### assign to feature
-  {
-
-    object <-  MSdev_match_Spectra_to_feature(object,rt.tol = rt.tol)
-  }
-
-
   return(object)
 
 }
 
 
 #' @title Assign MS2 spectra to features based on precursor m/z and retention time
-#' @description Match MS2 spectra to features using precursor m/z and retention time tolerances, updating the MSdev object.
+#' @description
+#' Match MS2 spectra in \code{ProtGenerics::spectra(xcms)} to features using
+#' precursor m/z and retention time tolerances. Stores numeric spectrum indices in
+#' \code{featureDefinitions$ms2_id} (indices into that polarity's
+#' \code{spectra(xcms)}). Does not write \code{feature_id} onto spectra.
 #' @describeIn MSdev_workflow assign Spectra to feature
 #' @param object MSdev object
 #' @param rt.tol retention time tolerance (seconds)
@@ -1934,60 +1943,61 @@ MSdev_match_Spectra_to_feature <- function(object,
                                            rt.tol = 10,
                                            ppm = 20){
 
-
-
-  MS2_Spectra <- onDiskData_retrieve(object@spectra$MS2_Spectra)
-  MS2_Spectra$feature_id<-NA
   for (i in 0:1) {
-    pol <- ifelse(i==0,"Negative","Positive")
-    sp.ms2 <- MS2_Spectra%>%
-      ProtGenerics::filterPolarity(i)
-    if (length(sp.ms2)==0) next
+    pol <- ifelse(i == 0, "Negative", "Positive")
     xcms.xcms <- object@xcmsData[[pol]]
     if (is.null(xcms.xcms) || !isTRUE(xcms::hasFeatures(xcms.xcms))) {
       message("no features, skip match to feature")
       next
     }
+
+    sp <- ProtGenerics::spectra(xcms.xcms)
+    if (is.null(sp) || !length(sp)) {
+      message("no spectra in xcms, skip match to feature")
+      next
+    }
+
+    ## Fill missing precursor m/z from isolation window when needed
+    if ("isolationWindowTargetMz" %in% Spectra::spectraVariables(sp)) {
+      pmz <- Spectra::precursorMz(sp)
+      iw <- sp$isolationWindowTargetMz
+      miss <- is.na(pmz) & !is.na(iw) & Spectra::msLevel(sp) == 2L
+      if (any(miss)) {
+        pmz[miss] <- iw[miss]
+        sp$precursorMz <- pmz
+        ProtGenerics::spectra(xcms.xcms) <- sp
+      }
+    }
+
     xcms.fdf <- xcms::featureDefinitions(xcms.xcms) %>%
       as.data.frame()
-    sp.ms2.data <- get_Spectra_ms2_feature_id(sp.ms2,
-                                              xcms.fdf,
-                                              ppm = ppm,
-                                              rt.tol = rt.tol)
+    if (!"feature_id" %in% colnames(xcms.fdf)) {
+      xcms.fdf$feature_id <- rownames(xcms.fdf)
+    }
 
+    sp.data <- get_Spectra_ms2_feature_id(sp,
+                                          xcms.fdf,
+                                          ppm = ppm,
+                                          rt.tol = rt.tol)
 
-    ### update MS2_Spectra
-    sp.ms2.total <-MS2_Spectra %>%
-      Spectra::spectraData()%>%
-      as.data.frame()%>%
-      dplyr::mutate(feature_id= case_when(
-        polarity==i ~ sp.ms2.data[sp_id,]$feature_id,
-        T~feature_id
-      ))
-    Spectra::spectraData(MS2_Spectra ) <- S4Vectors::DataFrame(sp.ms2.total)
+    xcms.fdf$ms2_id <- lapply(xcms.fdf$feature_id, function(fid) {
+      as.integer(which(!is.na(sp.data$feature_id) &
+                         sp.data$feature_id == fid &
+                         sp.data$msLevel == 2L))
+    })
 
-    ### update xcms featuredef
-    xcms.fdf$ms2_id <- sapply(xcms.fdf$feature_id,
-                              function(i){
-                                sp_id <- sp.ms2.data$sp_id[which(sp.ms2.data$feature_id==i)]
-                                return(sp_id)
-                              }
-    )
     xcms.xcms <- .xcms_featureDefinitions_replace(xcms.xcms, xcms.fdf)
-    xcms.xcms -> object@xcmsData[[pol]]
-
-
+    object@xcmsData[[pol]] <- xcms.xcms
   }
-  object@spectra$MS2_Spectra <- onDiskData(MS2_Spectra,
-                                           path = object@spectra$MS2_Spectra@path)
 
   return(object)
-
 
 }
 
 #' @title Annotate features using a compound database
 #' @description Perform feature annotation using a CompoundDb database, including MS1 candidate search, MS2 scoring, and isotope pattern scoring.
+#' MS2 spectra are taken from \code{ProtGenerics::spectra(xcms)} and selected via
+#' numeric \code{featureDefinitions$ms2_id}.
 #' @describeIn MSdev_workflow annotation
 #' @param object MSdev object
 #' @param cpdb_path path to CompoundDb SQLite database
@@ -2017,7 +2027,8 @@ MSdev_annotation <- function(object,
                                                 cpdb,
                                                 ...)
     message_with_time("Calculate MS2 score...")
-    sp.ms2 <- onDiskData_retrieve(object@spectra$MS2_Spectra)
+    sp.ms2 <- ProtGenerics::spectra(xcms.xcms)
+    if (is.null(sp.ms2)) sp.ms2 <- Spectra::Spectra()
     xcms.xcms <- xcms_get_feature_ms2_score(xcms.xcms ,
                                             cpdb = cpdb,
                                             sp.ms2 = sp.ms2,
