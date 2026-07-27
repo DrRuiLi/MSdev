@@ -1,5 +1,4 @@
-#' @describeIn xcms_extenstion get xcms parameters via Autotuner
-#' @title Get XCMS Parameters via Autotuner
+#' @describeIn xcms_extension_autotuner get xcms parameters via Autotuner
 #' @description Uses the Autotuner algorithm to automatically estimate XCMS peak detection parameters from an xcms object.
 #'
 #' @param xcms.xcms An xcmsSet object (or similar) containing chromatographic data.

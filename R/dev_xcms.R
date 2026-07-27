@@ -41,8 +41,7 @@ get_features_from_xcms <- function(xcms.xcms,missing = NA){
 
 
 #' @description Xcms feature se.
-#' @describeIn xcms_extenstion extract feature data from xcms, convert to SummarizedExperiment
-#' @title get_xcms_feature_se
+#' @describeIn xcms_extension_feature extract feature data from xcms, convert to SummarizedExperiment
 #' @param xcms.xcms xcms object
 #' @param missing how missing values should be reported. Allowed values are NA (the default), a numeric or missing = "rowmin_half". The latter replaces any NA with half of the row's minimal (non-missing) value.
 #'
@@ -451,8 +450,7 @@ get_xchroms_peaks_count <- function(xchroms){
   )
 }
 
-#' @describeIn xcms_extenstion extract chromatograms
-#' @title Get Xcms Chromatogram
+#' @describeIn xcms_extension_chromatogram extract chromatograms
 #' @description Fast per-file EIC extractor. Loads MS1 peaks once per sample,
 #'   fills an intensity matrix for all mz-rt boxes, then wraps
 #'   \code{MSnbase::Chromatogram} objects. Drop-in style replacement for
@@ -512,8 +510,7 @@ get_xcms_chromatogram <- function(object,
   .combine_chromatograms_files(chrom_list)
 }
 
-#' @describeIn xcms_extenstion extract chromatogram for a peak
-#' @title get_xcms_peaks_chromatogram
+#' @describeIn xcms_extension_chromatogram extract chromatogram for a peak
 #' @description Extract EICs for chromatographic peaks (xcms
 #'   \code{chromPeakChromatograms} analogue). Uses
 #'   \code{\link{get_xcms_chromatogram}} as the engine.
@@ -757,8 +754,7 @@ get_xcms_peaks_chromatogram <- function(xcms.xcms,
   chrs
 }
 
-#' @describeIn xcms_extenstion extract chromatograms for features
-#' @title get_xcms_feature_chromatogram
+#' @describeIn xcms_extension_chromatogram extract chromatograms for features
 #' @description Extract EICs for features (xcms \code{featureChromatograms}
 #'   analogue) via \code{\link{get_xcms_chromatogram}}. One shared mz-rt box
 #'   per feature is applied to each selected sample.
@@ -906,8 +902,7 @@ xcms_get_peak_fill <- function(xcms.xcms){
 }
 
 
-#' @describeIn xcms_extenstion group features
-#' @title Group xcms Features
+#' @describeIn xcms_extension_feature_group group features
 #' @description Groups features from an XCMSnExp object using multiple criteria: similarity in retention time, abundance (intensity) correlation, and EIC (extracted ion chromatogram) correlation. RT/abundance grouping uses MsFeatures; EIC similarity uses xcms::EicSimilarityParam.
 #' @param xcms.xcms XCMSnExp object containing feature definitions.
 #' @param diffRt numeric. Maximum allowed retention time difference for grouping by SimilarRtimeParam. If NULL, retention time grouping is skipped. Default is 5.
@@ -998,8 +993,7 @@ get_chroms_data <- function(xchrom){
 }
 
 
-#' @describeIn xcms_extenstion convert retention time units
-#' @title XChromatograms Rt Unit
+#' @describeIn xcms_extension_chromatogram convert retention time units
 #' @description Changes the retention time units of XChromatograms objects. In some situations (e.g., SRM data from Thermo), retention times are recorded in minutes, which can cause errors during peak detection. This function converts between seconds and minutes.
 #' @param xchroms XChromatograms or MChromatograms object.
 #' @param unit_to Target unit: "s" (seconds) multiplies by 60, "m" (minutes) divides by 60. Default is "s".
@@ -1051,8 +1045,7 @@ XChromatograms_rt_unit <- function(xchroms,unit_to = "s",
 
 
 
-#' @describeIn xcms_extenstion fill chromatograms with fewer than two data points
-#' @title XChromatograms Fill 2point
+#' @describeIn xcms_extension_chromatogram fill chromatograms with fewer than two data points
 #' @description When using xcms::findChromPeaks, chromatograms with fewer than two data points cause errors. This function identifies such chromatograms and adds a duplicate point (time +1, intensity 0) to ensure at least two points exist.
 #' @param xchroms XChromatograms object to be checked and filled.
 #'
@@ -1087,8 +1080,7 @@ XChromatograms_fill_2point <- function(xchroms){
 }
 
 
-#' @describeIn xcms_extenstion plot chromatograms
-#' @title Plot XChromatograms
+#' @describeIn xcms_extension_chromatogram plot chromatograms
 #' @description Plots XChromatograms data as line plots, with options to normalize intensities to 0-1 range, offset chromatograms for clarity, and customize colors. Returns a ggplot object.
 #' @param xchroms XChromatograms object to plot.
 #' @param norm logical. If TRUE, normalize intensities to 0-1 range (default TRUE).
@@ -1168,8 +1160,7 @@ plot_XChromatograms <- function(xchroms ,
 }
 
 
-#' @describeIn xcms_extenstion calculate feature statistics
-#' @title Xcms Get Feature Def Stat
+#' @describeIn xcms_extension_feature calculate feature statistics
 #' @description Extracts and adds median retention time, signal-to-noise ratio, and maximum intensity for each feature. While xcms::featureDefinitions() provides median mz and rt, this function calculates median values across all peaks within a feature: peakRtMin, peakRtMax, peakWidth, peakMzMin, peakMzMax, peakSN, peakMaxo, and polarity.
 #' @param xcms.xcms XCMSnExp object with feature definitions and chromPeaks.
 #'
@@ -1256,8 +1247,7 @@ xcms_get_feature_stat <- function(xcms.xcms){
 }
 
 
-#' @describeIn xcms_extenstion identify isotopologues
-#' @title Xcms Get Feature Isotopologues
+#' @describeIn xcms_extension_isotopologue identify isotopologues
 #' @description Screens isotopologue peaks based on m/z and retention time differences, assigns isotopologue groups and seeds, and records results in featureDefinitions. Uses graph-based clustering to identify isotopologue networks.
 #' @param xcms.xcms XCMSnExp object with feature definitions.
 #' @param iso_ele Isotope element string (e.g., `"[13]C"`) for mass difference calculation.
@@ -1344,8 +1334,7 @@ xcms_get_feature_isotopologues <- function(xcms.xcms,
 
 }
 
-#' @describeIn xcms_extenstion identify isotopologues with multiple isotope tracers
-#' @title Xcms Get Feature Isotopologues Multi Tracer
+#' @describeIn xcms_extension_isotopologue identify isotopologues with multiple isotope tracers
 #' @description TODO: unfinished. Similar to `xcms_get_feature_isotopologues` but supports multiple isotope labels simultaneously (e.g., `[13]C` and `[15]N`).
 #' @param xcms.xcms XCMSnExp object with feature definitions.
 #' @param iso_ele Character vector of isotope element strings (e.g., `c("[13]C","[15]N")`).
@@ -1619,8 +1608,7 @@ get_xcms_feature_iso_connection <- function(xcms.xcms,
 
 
 
-#' @describeIn xcms_extenstion calculate traced-isotopologue labeling ratios
-#' @title Xcms Get Feature Traced Isotopologue
+#' @describeIn xcms_extension_isotopologue calculate traced-isotopologue labeling ratios
 #' @description Calculates isotopologue-to-seed ratios and determines traced
 #' isotopologues (label-enriched isotopologues) using one of two methods:
 #' \itemize{
@@ -1786,8 +1774,7 @@ get_xcms_isotopologues_report <- function(xcms.xcms){
 }
 
 
-#' @describeIn xcms_extenstion calculate isotopologue fractions
-#' @title Get Xcms Iso Fraction
+#' @describeIn xcms_extension_isotopologue calculate isotopologue fractions
 #' @description Calculates the fraction of isotopologue intensities relative to their seed feature intensities for each sample. Returns a matrix of fractions without natural abundance adjustment.
 #' @param xcms.xcms XCMSnExp object with isotopologue assignments (iso_seed column).
 #'
@@ -1829,8 +1816,7 @@ get_xcms_iso_fraction <- function(xcms.xcms){
 }
 
 
-#' @describeIn xcms_extenstion match features to compound database
-#' @title Xcms Get Feature Ms1 Candidate
+#' @describeIn xcms_extension_annotation match features to compound database
 #' @description Matches features in an XCMSnExp object to compounds in a CompoundDb database using m/z and retention time tolerance. Calculates adduct masses for each compound and finds matches within specified ppm error. Results are stored as candidate lists in featureDefinitions.
 #' @param xcms.xcms XCMSnExp object with feature definitions.
 #' @param cpdb CompoundDb object containing compound database.
@@ -2222,8 +2208,7 @@ find_xcms_peaks <- function(xcms.xcms, mz = 100, ppm = 10) {
 }
 
 
-#' @describeIn xcms_extenstion plot peaks distribution
-#' @title plot_xcms_peaks_distribution
+#' @describeIn xcms_extension_plot plot peaks distribution
 #' @description export peaks data by xcms::chromPeaks and plot by ggplot2
 #'
 #' @param xcms.xcms XCMSnExp object
@@ -2303,8 +2288,7 @@ plot_xcms_peaks_distribution <- function(xcms.xcms,plot.title = "Peaks distribut
 
 
 
-#' @describeIn xcms_extenstion plot features distribution
-#' @title Plot Xcms Features Distribution
+#' @describeIn xcms_extension_plot plot features distribution
 #' @description Visualizes the distribution of detected features in a 2D space of retention time (x-axis) vs m/z (y-axis). Point size represents peak width, color represents log10 intensity. Includes peak detection parameters in subtitle.
 #' @param xcms.xcms XCMSnExp object with feature definitions.
 #' @param plot.title Character title for the plot (default "Features distribution").
@@ -2386,9 +2370,8 @@ xcms_remove_feature_var <- function(xcms.xcms,var){
 }
 
 
-#' @title plot_xcms_feature_chromatogram
 #' @description extract Chromatogram from xcms according to feature's mz range and plot
-#' @describeIn xcms_extenstion plot feature chromatogram
+#' @describeIn xcms_extension_plot plot feature chromatogram
 #' @param xcms.xcms XCMSnExp object
 #' @param feature.id feature id
 #' @param sampleNames sample names to include
@@ -2527,10 +2510,9 @@ plot_xcms_peaks_mzerror_density <- function(xcms.xcms,
 
 
 
-#' @title plot_xcms_peaks_ms1_scans
 #' @description plot scans number of MS1 levels in each peak, note that to many peaks will lead to stuck,
 #' apply `filterFile` to decrease peaks count
-#' @describeIn xcms_extenstion plot MS1 scan counts for peaks
+#' @describeIn xcms_extension_plot plot MS1 scan counts for peaks
 #' @param xcms.xcms XCMSnExp object should be a `XCMSnExp` object after `findChromPeaks`
 #' @param plot.title title
 #'
@@ -2581,14 +2563,11 @@ plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"
 
 
 
-#' Plot number of MS2 scans overlapping each chromatographic peak
-#'
-#' @title Plot Xcms Peaks Ms2 Scans
 #' @description Visualizes the number of MS2 scans that overlap each chromatographic peak based on retention time and m/z ranges. Produces a scatter plot with jitter, violin distribution, and counts of peaks with 0-5 MS2 scans.
 #' @param xcms.xcms XCMSnExp object with detected peaks and MS2 scans.
 #' @param plot.title Character title for the plot (default "Peaks Sans of MS2").
 #'
-#' @describeIn xcms_extenstion plot MS2 scan counts for peaks
+#' @describeIn xcms_extension_plot plot MS2 scan counts for peaks
 #' @return ggplot object.
 #' @export
 #'
@@ -2717,10 +2696,9 @@ plot_xcms_peaks_SN_distribution <- function(xcms.xcms,plot.title = "Peaks SNR(Si
 
 }
 
-#' @title plot_xcms_peaks_Chromatogram
 #' @description extract EIC according to peaks' mzrange and rtrange,
 #' note that if multiple sample in xcms object, only first sample will be extracted
-#' @describeIn xcms_extenstion plot chromatogram for a peak
+#' @describeIn xcms_extension_plot plot chromatogram for a peak
 #' @param xcms.xcms XCMSnExp object
 #' @param peak_id peak id
 #' @param rt expansion range for rt
@@ -3170,8 +3148,7 @@ matchSpectra_Features <- function(xcmsFeatureDef, spec){
 
 
 
-#' @describeIn xcms_extenstion plot feature intensity
-#' @title plot_xcms_feature_intensity
+#' @describeIn xcms_extension_plot plot feature intensity
 #' @description plot feature's intensity, ordered by `Biobase::pData(xcms.xcms)$analysis.time.positive` or
 #'  `Biobase::pData(xcms.xcms)$analysis.time.negative`
 #'
@@ -3320,10 +3297,9 @@ xcms_get_scan_Stat <- function(xcms.xcms){
 
 
 
-#' @title plot_xcms_TIC
 #' @description Plot MS1 total ion chromatograms (TIC) for an XCMSnExp object,
 #' colored by sample group from `Biobase::pData(xcms.xcms)$group`.
-#' @describeIn xcms_extenstion plot TIC
+#' @describeIn xcms_extension_plot plot TIC
 #'
 #' @param xcms.xcms XCMSnExp object
 #' @param col.group named character vector of colors for groups. If `NULL`,
@@ -4240,7 +4216,7 @@ xcms_filter_feature_rt_rsd <- function(xcms.xcms, rt.shift = 5 ){
   pts[is.finite(pts$rt) & is.finite(pts$mz) & is.finite(pts$intensity), , drop = FALSE]
 }
 
-#' @describeIn xcms_extenstion ggplot2 XIC plot matching xcms \code{plot(type = \"XIC\")}
+#' @describeIn xcms_extension_plot ggplot2 XIC plot matching xcms \code{plot(type = \"XIC\")}
 #'
 #' Upper panel: extracted ion chromatogram (intensity vs retention time).
 #' Lower panel: m/z vs retention time with points coloured by intensity.
