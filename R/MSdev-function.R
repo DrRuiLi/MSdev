@@ -331,11 +331,20 @@ MSdev_get_xcms <- function(object){
     if (!is.null(object@xcmsData$Negative) && !identical(object@xcmsData$Negative, NA)) {
       return(object)
     }
+    ## Legacy slot names from pre-XcmsExperiment MSdev
+    if (!is.null(object@xcmsData$PositiveMS1) && !identical(object@xcmsData$PositiveMS1, NA)) {
+      return(object)
+    }
+    if (!is.null(object@xcmsData$NegativeMS1) && !identical(object@xcmsData$NegativeMS1, NA)) {
+      return(object)
+    }
   }
 
   polarity.index <- c("0" = "Negative",
                       "1" = "Positive")
   for (i in c(0, 1)) {
+    ## Import all polarity-matching files (including dual-polarity "0;1"),
+    ## then keep only the requested polarity via Spectra::filterPolarity.
     sample.info.polarity <- object@sampleInfo %>%
       dplyr::filter(grepl(i, polarity))
     if (!nrow(sample.info.polarity)) {
@@ -392,8 +401,14 @@ xcmsProcessingMSdev.DDA <- function(object,...){
       xcms.xcms <-NA
       next
     }
-    xcms.xcms <- xcms::filterFile(object@xcmsData[[polarity.tag]],
-      which(Biobase::pData(object@xcmsData[[polarity.tag]])$sample.name%in% sample.info.polarity$sample.name)
+    xcms_slot <- object@xcmsData[[polarity.tag]]
+    if (is.null(xcms_slot) || identical(xcms_slot, NA)) {
+      xcms_slot <- object@xcmsData[[paste0(polarity.tag, "MS1")]]
+    }
+    if (is.null(xcms_slot) || identical(xcms_slot, NA)) next
+    xcms.xcms <- xcms::filterFile(
+      xcms_slot,
+      which(Biobase::pData(xcms_slot)$sample.name%in% sample.info.polarity$sample.name)
     )
 
     xcms.xcms <-
