@@ -3588,7 +3588,10 @@ get_xcms_centwave_tune <- function(xcms.xcms,
 
 #' @title get_xcms_Spectra
 #' @description
-#' Build a [Spectra::Spectra] object from the raw files behind an
+#' **Deprecated.** Use \code{ProtGenerics::spectra(xcms.xcms)} (and optionally
+#' \code{Spectra::filterMsLevel()} / \code{Spectra::filterPolarity()}) instead.
+#'
+#' Previously: build a [Spectra::Spectra] object from the raw files behind an
 #' `XCMSnExp`, filtered to the polarity of `xcms.xcms`. Scan IDs from
 #' `get_xcms_scan_Stat()` are assigned as `spectraNames` and the
 #' `scan_id` spectra variable.
@@ -3598,9 +3601,11 @@ get_xcms_centwave_tune <- function(xcms.xcms,
 #' @return A `Spectra` object with `scan_id` matching xcms scan metadata.
 #' @export
 get_xcms_Spectra <- function(xcms.xcms){
+  .Deprecated("ProtGenerics::spectra")
 
   xcms.files <- filepaths(xcms.xcms)
   xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
+  message_with_time("loading Spectra from files...")
   xcms.sp <- Spectra::Spectra(xcms.files,
                          backend = Spectra::MsBackendMemory(),
                          BPPARAM = SerialParam(progressbar = T))%>%
@@ -3855,8 +3860,8 @@ simulate_prm <- function(xcms.fdf,
 #' in each sample file (matched by \code{Spectra::dataOrigin}). Purity is calculated
 #' within an isolation window around the feature m/z.
 #'
-#' If \code{xcms.ms1.sp} is not provided, MS1 spectra are built via
-#' \code{get_xcms_Spectra(xcms.xcms)} and filtered to MS level 1.
+#' If \code{xcms.ms1.sp} is not provided, MS1 spectra are taken via
+#' \code{ProtGenerics::spectra(xcms.xcms)} and filtered to MS level 1.
 #'
 #' Optimized path: closest-scan lookup via \code{findInterval}, a single
 #' \code{peaksData()} extraction, and purity computed on peak matrices
@@ -3864,7 +3869,7 @@ simulate_prm <- function(xcms.fdf,
 #'
 #' @param xcms.xcms \code{XCMSnExp} with grouped features (must have \code{featureDefinitions}).
 #' @param xcms.ms1.sp Optional MS1 \code{Spectra} covering the same files as \code{xcms.xcms}.
-#'   If missing or \code{NULL}, built with \code{get_xcms_Spectra()}.
+#'   If missing or \code{NULL}, taken from \code{ProtGenerics::spectra()}.
 #' @param ppm numeric, ppm tolerance for m/z window.
 #' @param isolation_half_window numeric, half isolation window (m/z).
 #'
@@ -3882,8 +3887,8 @@ get_xcms_feature_purity_matrix <- function(xcms.xcms,
   ppm_tol <- ppm * 1e-6
 
   if (missing(xcms.ms1.sp) || is.null(xcms.ms1.sp)) {
-    message_with_time("xcms.ms1.sp not provided; building via get_xcms_Spectra()...")
-    xcms.ms1.sp <- get_xcms_Spectra(xcms.xcms) %>%
+    message_with_time("xcms.ms1.sp not provided; extracting MS1 via spectra()...")
+    xcms.ms1.sp <- ProtGenerics::spectra(xcms.xcms) %>%
       Spectra::filterMsLevel(1L)
   }
 
@@ -3921,7 +3926,7 @@ get_xcms_feature_purity_matrix <- function(xcms.xcms,
     message_with_time("extracting peaks data...")
     all_pd <- as.list(Spectra::peaksData(xcms.ms1.sp))
 
-    message_with_time("calculating MS1 purity...")
+    message_with_time("calculating MS1 purity per feature x sample...")
     ms1_purity_matrix <- matrix(0, nrow = n_features, ncol = n_files)
     colnames(ms1_purity_matrix) <- basename(origins)
     rownames(ms1_purity_matrix) <- xcms.fdf$feature_id
@@ -3947,45 +3952,111 @@ get_xcms_feature_purity_matrix <- function(xcms.xcms,
 
 
 
+#' @title Store MS1 feature purity matrix in XcmsExperiment qdata
+#' @description
+#' Compute a feature-by-sample MS1 purity matrix and store it as assay
+#' \code{"purity_matrix"} in \code{MsExperiment::qdata(xcms.xcms)}.
+#'
+#' Requires an \code{XcmsExperiment}. MS1 spectra are taken from
+#' \code{ProtGenerics::spectra(xcms.xcms)} filtered with
+#' \code{Spectra::filterMsLevel(1L)}. The matrix is computed by
+#' \code{\link{get_xcms_feature_purity_matrix}}. If \code{qdata} is missing,
+#' it is created with \code{xcms::quantify()} (assay \code{"raw"}), then
+#' assay \code{"purity_matrix"} is added. Does not write aggregated purity
+#' into \code{featureDefinitions}.
+#'
+#' @param xcms.xcms \code{XcmsExperiment} with grouped features.
+#' @param ppm numeric, ppm tolerance for m/z window.
+#' @param isolation_half_window numeric, half isolation window (m/z).
+#'
+#' @return \code{XcmsExperiment} with \code{qdata} containing assay
+#'   \code{"purity_matrix"} (aligned to existing \code{qdata} rows/columns).
+#'
+#' @seealso \code{\link{get_xcms_feature_purity_matrix}}
+#' @export
 xcms_get_feature_purity <- function(xcms.xcms,
-                                    xcms.ms1.sp,
-                                    ms1_purity_matrix = NULL,
-                                    split_source = F,
-                                    selected.sample =which( pData(xcms.xcms)$sample.type !="Blank"),
-                                    FUN = max,
-                                    ppm = 10 ,
-                                    isolation_half_window = 0.2
-                                    ){
+                                    ppm = 10,
+                                    isolation_half_window = 0.2) {
 
-  xcms.fdf <- xcms::featureDefinitions(xcms.xcms)
+  if (!inherits(xcms.xcms, "XcmsExperiment")) {
+    stop("'xcms.xcms' must be an XcmsExperiment (qdata is not available on XCMSnExp).")
+  }
+
+  ### MS1 spectra from xcms object
+  message_with_time("extracting MS1 Spectra from xcms...")
+  xcms.ms1.sp <- ProtGenerics::spectra(xcms.xcms) %>%
+    Spectra::filterMsLevel(1L)
 
   ### calc ms1_purity_matrix
-  {
-    if (is.null(ms1_purity_matrix)) {
-      ms1_purity_matrix <- get_xcms_feature_purity_matrix(xcms.xcms,
-                                                          xcms.ms1.sp = xcms.ms1.sp,
-                                                          ppm = ppm,
-                                                          isolation_half_window = isolation_half_window)
-    }
+  message_with_time("computing feature purity matrix...")
+  ms1_purity_matrix <- get_xcms_feature_purity_matrix(
+    xcms.xcms,
+    xcms.ms1.sp = xcms.ms1.sp,
+    ppm = ppm,
+    isolation_half_window = isolation_half_window
+  )
+
+  ### ensure qdata (SummarizedExperiment)
+  se <- MsExperiment::qdata(xcms.xcms)
+  if (is.null(se)) {
+    message_with_time("qdata missing; creating via quantify()...")
+    se <- xcms::quantify(xcms.xcms)
+  }
+  if (!inherits(se, "SummarizedExperiment")) {
+    stop("'qdata(xcms.xcms)' must be a SummarizedExperiment (or NULL).")
   }
 
-  ### aggregate purity
+  ### align purity matrix to qdata dimensions
   {
-
-    xcms.pdata <- pData(xcms.xcms)[selected.sample,]
-    xcms.pm <- ms1_purity_matrix[,xcms.pdata$sampleNames,drop = F]
-    if (split_source) {
-      xcms.pm <- apply(xcms.pm,1,mean_f,xcms.pdata$sample.source,simplify =F)%>%
-        do.call(rbind,.)
+    se_rows <- rownames(se)
+    if (is.null(se_rows) || !length(se_rows) || all(se_rows == as.character(seq_len(nrow(se))))) {
+      rd <- SummarizedExperiment::rowData(se)
+      if ("feature_id" %in% colnames(rd)) {
+        se_rows <- as.character(rd$feature_id)
+      } else {
+        se_rows <- as.character(seq_len(nrow(se)))
+      }
+    }
+    pm_rows <- rownames(ms1_purity_matrix)
+    row_idx <- match(se_rows, pm_rows)
+    if (anyNA(row_idx)) {
+      if (nrow(ms1_purity_matrix) == nrow(se)) {
+        row_idx <- seq_len(nrow(se))
+      } else {
+        stop("Cannot align purity matrix rows to qdata (feature ids / dimensions mismatch).")
+      }
     }
 
-    ms1_purity <- apply(xcms.pm,1,FUN,na.rm =T)
+    se_cols <- colnames(se)
+    if (is.null(se_cols) || !length(se_cols)) {
+      se_cols <- basename(as.character(xcms::fileNames(xcms.xcms)))
+    }
+    pm_cols <- colnames(ms1_purity_matrix)
+    col_idx <- match(se_cols, pm_cols)
+    if (anyNA(col_idx)) {
+      ## try basename(fileNames) vs sampleNames bridge
+      fn_base <- basename(as.character(xcms::fileNames(xcms.xcms)))
+      sn <- tryCatch(as.character(Biobase::sampleNames(xcms.xcms)), error = function(e) fn_base)
+      alt <- se_cols
+      map_fn <- match(se_cols, sn)
+      alt[!is.na(map_fn)] <- fn_base[map_fn[!is.na(map_fn)]]
+      col_idx <- match(alt, pm_cols)
+    }
+    if (anyNA(col_idx)) {
+      if (ncol(ms1_purity_matrix) == ncol(se)) {
+        col_idx <- seq_len(ncol(se))
+      } else {
+        stop("Cannot align purity matrix columns to qdata (sample names / dimensions mismatch).")
+      }
+    }
 
+    aligned <- ms1_purity_matrix[row_idx, col_idx, drop = FALSE]
+    dimnames(aligned) <- list(rownames(se), colnames(se))
   }
 
-  xcms.fdf$ms1_purity <- ms1_purity
-  xcms.fdf -> xcms::featureDefinitions(xcms.xcms)
-  return(xcms.xcms)
+  SummarizedExperiment::assay(se, "purity_matrix") <- aligned
+  MsExperiment::qdata(xcms.xcms) <- se
+  xcms.xcms
 }
 
 
