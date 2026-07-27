@@ -3088,14 +3088,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
     }
   }
 
-  if (inherits(xcms.xcms, "MsExperiment") || inherits(xcms.xcms, "XcmsExperiment")) {
-    sp <- ProtGenerics::spectra(xcms.xcms)
-    if (length(sp)) {
-      ProtGenerics::spectra(xcms.xcms) <- Spectra::filterPolarity(sp, ion_mode)
-    }
-  } else {
-    xcms.xcms <- ProtGenerics::filterPolarity(xcms.xcms, ion_mode)
-  }
+  xcms.xcms <- ProtGenerics::filterPolarity(xcms.xcms, ion_mode)
 
 
   ### Find peaks
@@ -3639,6 +3632,25 @@ setMethod("fData", "MsExperiment", function(object) {
 setMethod("polarity", "MsExperiment", function(object) {
   .xcms_polarity(object)
 })
+
+#' Filter MsExperiment / XcmsExperiment spectra by polarity
+#'
+#' Uses \code{MsExperiment::filterSpectra} so sample–spectra links stay
+#' consistent. Covers \code{XcmsExperiment} via inheritance. Does not sync
+#' \code{chromPeaks} (use before peak detection).
+#'
+#' @noRd
+#' @importFrom ProtGenerics filterPolarity
+#' @importFrom methods setMethod
+setMethod(
+  "filterPolarity", "MsExperiment",
+  function(object, polarity = integer()) {
+    if (!length(ProtGenerics::spectra(object))) {
+      return(object)
+    }
+    MsExperiment::filterSpectra(object, Spectra::filterPolarity, polarity)
+  }
+)
 
 #' @importFrom Biobase pData
 #' @importFrom methods setMethod setReplaceMethod

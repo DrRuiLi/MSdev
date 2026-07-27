@@ -365,11 +365,7 @@ MSdev_get_xcms <- function(object){
       spectraFiles = files,
       sampleData = sd
     )
-    sp <- ProtGenerics::spectra(xcms.xcms)
-    if (length(sp)) {
-      sp <- Spectra::filterPolarity(sp, i)
-      ProtGenerics::spectra(xcms.xcms) <- sp
-    }
+    xcms.xcms <- ProtGenerics::filterPolarity(xcms.xcms, i)
     polarity.tag <- polarity.index[as.character(i)]
     object@xcmsData[[polarity.tag]] <- xcms.xcms
   }
