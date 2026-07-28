@@ -324,16 +324,19 @@ MSdev_add_sample <- function(object,
 #' @description Perform peak detection and grouping using xcms functions based on acquisition mode (FS/DDA/MRM).
 #' @describeIn MSdev_workflow use xcms to Processing data
 #' @param object MSdev
+#' @param BPPARAM BiocParallel backend passed to xcms peak processing.
 #' @param ... additional arguments passed to xcms functions
 #' @return MSdev
 #' @export
-MSdev_xcmsProcessing <- function(object,...){
+MSdev_xcmsProcessing <- function(object,
+                                 BPPARAM = BiocParallel::SnowParam(workers = 4, progressbar = TRUE),
+                                 ...){
 
   MS.mode <- object@projectInfo$msAcquisition
 
   if ("FS" %in% MS.mode|"DDA" %in% MS.mode) {
     object <- MSdev_get_xcms(object)
-    object <- xcmsProcessingMSdev.DDA(object,...)
+    object <- xcmsProcessingMSdev.DDA(object, BPPARAM = BPPARAM, ...)
     return(object)
   }
 
@@ -397,10 +400,13 @@ MSdev_get_xcms <- function(object){
 #' @title Process DDA data using xcms
 #' @description Perform peak detection on DDA data using xcms, grouping features across samples.
 #' @param object MSdev
+#' @param BPPARAM BiocParallel backend passed to xcms peak processing.
 #' @param ... additional arguments passed to xcms functions
 #' @return MSdev
 #' @export
-xcmsProcessingMSdev.DDA <- function(object,...){
+xcmsProcessingMSdev.DDA <- function(object,
+                                    BPPARAM = BiocParallel::SnowParam(workers = 4, progressbar = TRUE),
+                                    ...){
 
   xcms.param <- get_MSdev_param(object )
   sampleInfo <-dplyr::filter(object@sampleInfo,
@@ -430,6 +436,7 @@ xcmsProcessingMSdev.DDA <- function(object,...){
       xcmsProcessingMS1(xcms.xcms = xcms.xcms,
                         ion_mode = i,
                         xcms_param  = xcms.param,
+                        BPPARAM = BPPARAM,
                         ...
     )
 
