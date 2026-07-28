@@ -3091,6 +3091,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   message_with_time(" Find peaks...")
   xcms.xcms<-xcms::findChromPeaks(xcms.xcms,
                             param = xcms_param$findChromPeaks,
+                            chunkSize = -1,
                             BPPARAM  = BPPARAM,...)
 
   xcms.xcms <- xcms_filter_peaks_NA(xcms.xcms)
