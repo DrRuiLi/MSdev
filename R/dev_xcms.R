@@ -2960,6 +2960,23 @@ xcms_filter_peaks_NA <- function(xcms.xcms, verbose = TRUE) {
   if (n_bad > 0) {
     pks2 <- pks[!bad, , drop = FALSE]
     xcms::chromPeaks(xcms.xcms) <- pks2
+    # Keep chromPeakData synchronized with chromPeaks for XcmsExperiment.
+    # The chromPeaks<- setter updates only @chromPeaks, which can desync
+    # row counts and later trigger out-of-bounds indexing in xcms internals.
+    cpd <- tryCatch(xcms::chromPeakData(xcms.xcms), error = function(e) NULL)
+    if (!is.null(cpd) && nrow(cpd) > 0 && nrow(cpd) != nrow(pks2)) {
+      rn <- rownames(pks2)
+      if (!is.null(rn) && length(rn) == nrow(pks2)) {
+        idx <- match(rn, rownames(cpd))
+        if (!anyNA(idx)) {
+          xcms::chromPeakData(xcms.xcms) <- cpd[idx, , drop = FALSE]
+        } else if (nrow(cpd) >= nrow(pks2)) {
+          xcms::chromPeakData(xcms.xcms) <- cpd[seq_len(nrow(pks2)), , drop = FALSE]
+        }
+      } else if (nrow(cpd) >= nrow(pks2)) {
+        xcms::chromPeakData(xcms.xcms) <- cpd[seq_len(nrow(pks2)), , drop = FALSE]
+      }
+    }
   }
 
   return(xcms.xcms)
@@ -3151,13 +3168,17 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   #xcms.xcms <- xcms_filter_feature_mz_rsd(xcms.xcms,rsd.ppm = 2)
   xcms.xcms <- xcms_get_feature_wmean(xcms.xcms)
   message_with_time(" ",nrow(xcms::featureDefinitions(xcms.xcms))," feature found")
+
+
+  ### fill peaks
+  message_with_time(" Fill peaks...")
   fill_param <- if (inherits(xcms.xcms, "XcmsExperiment") ||
                     inherits(xcms.xcms, "MsExperiment")) {
     xcms::ChromPeakAreaParam()
   } else {
     xcms::FillChromPeaksParam()
   }
-  xcms.xcms <- xcms::fillChromPeaks(xcms.xcms, param = fill_param)
+  xcms.xcms <- xcms::fillChromPeaks(xcms.xcms,chunkSize =-1, param = fill_param)
 
 
 
