@@ -3178,7 +3178,11 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   } else {
     xcms::FillChromPeaksParam()
   }
-  xcms.xcms <- xcms::fillChromPeaks(xcms.xcms,chunkSize =-1, param = fill_param)
+  xcms.xcms <- xcms::fillChromPeaks(xcms.xcms,
+                                    chunkSize = length(sampleNames(xcms.xcms)),
+                                    param = fill_param,
+                                    BPPARAM = BiocParallel::SerialParam(progressbar = T)
+                                    )
 
 
 

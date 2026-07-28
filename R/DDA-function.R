@@ -89,7 +89,7 @@ xcms_get_dda_scan_stimulate <- function(xcms.xcms ,
   feature_def$ms2_acquire_count <-feature_def.temp$ms2_acquire_count
   feature_def$ms2_acquired <- feature_def.temp$ms2_acquired
 
-  xcms::featureDefinitions(xcms.xcms) <- S4Vectors::DataFrame(feature_def)
+  xcms.xcms <- .xcms_featureDefinitions_replace(xcms.xcms, feature_def)
   rownames(xcms.scan) <- rownames(fData(xcms.xcms))
   fData(xcms.xcms) <- xcms.scan
   return(xcms.xcms)
@@ -149,10 +149,9 @@ xcms_get_dda_ms2_assignment <- function(xcms.xcms){
                                    })
 
   fData(xcms.xcms) <- xcms.scan
-  xcms::featureDefinitions(xcms.xcms) <- featuredef%>%
-    dplyr::mutate(ms2_acquire_count = sapply(ms2_scan_id,length) ,
-                  ms2_acquired= ms2_acquire_count>0)%>%
-    S4Vectors::DataFrame()
+  xcms.xcms <- .xcms_featureDefinitions_replace(xcms.xcms, featuredef %>%
+    dplyr::mutate(ms2_acquire_count = sapply(ms2_scan_id, length),
+                  ms2_acquired = ms2_acquire_count > 0))
 
 
   return(xcms.xcms)
