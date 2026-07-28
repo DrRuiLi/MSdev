@@ -424,48 +424,44 @@ get_Spectra_ms2_feature_id <- function(sp,
                                     ppm = 5,
                                     rt.tol = 5){
 
-  sp.data <- Spectra::spectraData(sp) %>%
-    as.data.frame() %>%
-    dplyr::mutate(
-      precursorMZ = precursorMz,
-      retentionTime = rtime,
-      sp_idx = dplyr::row_number(),
-      feature_id = NA_character_
-    )
 
-  if (!"feature_id" %in% colnames(featuredef)) {
-    featuredef$feature_id <- rownames(featuredef)
-  }
 
-  ms2 <- dplyr::filter(sp.data, msLevel == 2)
-  if (!nrow(ms2)) {
-    return(sp.data)
-  }
+  sp.data <- Spectra::spectraData(sp)%>%
+    as.data.frame()%>%
+    dplyr::mutate(precursorMZ = precursorMz,
+                  retentionTime = rtime)%>%
+    dplyr::filter(msLevel == 2)
 
   match.df <- match_mz_rt(featuredef$mzmed,
                           featuredef$rtmed,
-                          ms2$precursorMZ,
-                          ms2$retentionTime,
+                          sp.data$precursorMZ,
+                          sp.data$retentionTime,
                           mz.ppm = ppm,
                           rt.tol = rt.tol)
-
-  if (!nrow(match.df)) {
-    return(sp.data)
-  }
-
-  ## ion2 indexes into ms2 rows; map back to indices in `sp`
-  match.df <- match.df %>%
-    dplyr::mutate(
-      feature_id = as.character(featuredef$feature_id[ion1]),
-      sp_idx = ms2$sp_idx[ion2]
-    ) %>%
-    dplyr::group_by(sp_idx) %>%
-    dplyr::slice_min(mz.error, n = 1, with_ties = FALSE) %>%
+  match.df <- match.df%>%
+    dplyr::mutate(featuredef[ion1,],
+                  sp_id = sp.data$sp_id[ion2],
+                  sp_rt = sp.data$retentionTime[ion2])%>%
+    dplyr::group_by(sp_id)%>%
+    dplyr::slice_min(mz.error)%>%
     dplyr::ungroup()
 
-  sp.data$feature_id[match.df$sp_idx] <- match.df$feature_id
+
+
+  sp.data$feature_id<- sapply(
+    1:nrow(sp.data),
+    function(i){
+      fid <- match.df$feature_id[match.df$ion2==i]
+      if (length(fid)==0) {
+        return(NA)
+      }
+      return(fid)
+    }
+  )
 
   return(sp.data)
+
+
 
 }
 
