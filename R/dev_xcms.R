@@ -2969,12 +2969,12 @@ xcms_filter_peaks_NA <- function(xcms.xcms, verbose = TRUE) {
       if (!is.null(rn) && length(rn) == nrow(pks2)) {
         idx <- match(rn, rownames(cpd))
         if (!anyNA(idx)) {
-          xcms::chromPeakData(xcms.xcms) <- cpd[idx, , drop = FALSE]
+          xcms::chromPeakData(xcms.xcms) <- as.data.frame(cpd[idx, , drop = FALSE])
         } else if (nrow(cpd) >= nrow(pks2)) {
-          xcms::chromPeakData(xcms.xcms) <- cpd[seq_len(nrow(pks2)), , drop = FALSE]
+          xcms::chromPeakData(xcms.xcms) <- as.data.frame(cpd[seq_len(nrow(pks2)), , drop = FALSE])
         }
       } else if (nrow(cpd) >= nrow(pks2)) {
-        xcms::chromPeakData(xcms.xcms) <- cpd[seq_len(nrow(pks2)), , drop = FALSE]
+        xcms::chromPeakData(xcms.xcms) <- as.data.frame(cpd[seq_len(nrow(pks2)), , drop = FALSE])
       }
     }
   }
