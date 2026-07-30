@@ -1495,30 +1495,73 @@ MSdev_xcms_group_features <- function(object,
 }
 
 
-#' Pairwise EIC similarity for one sample column (RT-neighbor pairs only)
+#' Split 1:n into n_chunks nearly equal integer index vectors
 #' @noRd
-.eic_similarity_matrix_one_sample <- function(chroms_col,
-                                              pairs,
-                                              nft,
-                                              fids,
-                                              ALIGNFUN = MSnbase::alignRt,
-                                              ALIGNFUNARGS = list(tolerance = 0, method = "closest"),
-                                              FUN = stats::cor,
-                                              FUNARGS = list(use = "pairwise.complete.obs")) {
-  mat <- matrix(NA_real_, nrow = nft, ncol = nft, dimnames = list(fids, fids))
-  diag(mat) <- 1
-  if (nrow(pairs) == 0L) {
-    return(mat)
+.eic_sim_split_job_indices <- function(n, n_chunks) {
+  if (n <= 0L) {
+    return(list())
   }
-  for (k in seq_len(nrow(pairs))) {
-    i <- pairs[k, 1L]
-    j <- pairs[k, 2L]
-    chi <- chroms_col[i, 1L]
-    chj <- chroms_col[j, 1L]
-    score <- tryCatch(
+  n_chunks <- max(1L, min(as.integer(n_chunks), n))
+  base <- n %/% n_chunks
+  rem <- n %% n_chunks
+  sizes <- rep.int(base, n_chunks)
+  if (rem > 0L) {
+    sizes[seq_len(rem)] <- sizes[seq_len(rem)] + 1L
+  }
+  ends <- cumsum(sizes)
+  starts <- ends - sizes + 1L
+  lapply(seq_len(n_chunks), function(i) seq.int(starts[i], ends[i]))
+}
+
+
+#' Build bplapply payloads: sample-major jobs; only chrom columns used by each chunk
+#' @noRd
+.eic_sim_make_chunk_payloads <- function(chroms, sample_idx, pairs, n_chunks) {
+  ns <- length(sample_idx)
+  np <- nrow(pairs)
+  n_jobs <- ns * np
+  job_groups <- .eic_sim_split_job_indices(n_jobs, n_chunks)
+  chrom_by_sample <- lapply(seq_along(sample_idx), function(si) {
+    chroms[, sample_idx[si], drop = FALSE]
+  })
+  lapply(job_groups, function(T) {
+    si <- as.integer(((T - 1L) %/% np) + 1L)
+    pk <- as.integer(((T - 1L) %% np) + 1L)
+    u <- sort(unique(si))
+    chroms_sub <- chrom_by_sample[u]
+    names(chroms_sub) <- as.character(u)
+    list(si = si, pk = pk, chroms = chroms_sub)
+  })
+}
+
+
+#' Score one chunk of pooled (sample, pair) jobs; chroms list keyed by si
+#' @noRd
+.eic_sim_chunk <- function(payload,
+                           pairs,
+                           ALIGNFUN = MSnbase::alignRt,
+                           ALIGNFUNARGS = list(tolerance = 0, method = "closest"),
+                           FUN = stats::cor,
+                           FUNARGS = list(use = "pairwise.complete.obs")) {
+  si <- payload$si
+  pk <- payload$pk
+  chroms_map <- payload$chroms
+  n <- length(si)
+  if (n == 0L) {
+    return(data.frame(
+      si = integer(0), i = integer(0), j = integer(0), score = numeric(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+  i_vec <- pairs[pk, 1L]
+  j_vec <- pairs[pk, 2L]
+  scores <- rep(NA_real_, n)
+  for (k in seq_len(n)) {
+    chroms_col <- chroms_map[[as.character(si[k])]]
+    scores[k] <- tryCatch(
       MSnbase::compareChromatograms(
-        chi,
-        chj,
+        chroms_col[i_vec[k], 1L],
+        chroms_col[j_vec[k], 1L],
         ALIGNFUN = ALIGNFUN,
         ALIGNFUNARGS = ALIGNFUNARGS,
         FUN = FUN,
@@ -1526,17 +1569,101 @@ MSdev_xcms_group_features <- function(object,
       ),
       error = function(e) NA_real_
     )
-    mat[i, j] <- score
-    mat[j, i] <- score
+  }
+  ok <- is.finite(scores)
+  data.frame(
+    si = si[ok], i = i_vec[ok], j = j_vec[ok], score = scores[ok],
+    stringsAsFactors = FALSE
+  )
+}
+
+
+#' Build diagonal-only or scored sparse similarity matrix for one sample
+#' @noRd
+.eic_sim_sparse_from_edges <- function(i, j, score, nft, fids) {
+  if (nft < 1L) {
+    return(Matrix::sparseMatrix(
+      i = integer(0), j = integer(0), x = numeric(0),
+      dims = c(0L, 0L), dimnames = list(fids, fids)
+    ))
+  }
+  if (length(score) == 0L) {
+    return(Matrix::sparseMatrix(
+      i = seq_len(nft), j = seq_len(nft), x = rep(1, nft),
+      dims = c(nft, nft), dimnames = list(fids, fids)
+    ))
+  }
+  Matrix::sparseMatrix(
+    i = c(i, j, seq_len(nft)),
+    j = c(j, i, seq_len(nft)),
+    x = c(score, score, rep(1, nft)),
+    dims = c(nft, nft),
+    dimnames = list(fids, fids)
+  )
+}
+
+
+#' Densify sparse similarity with NA for absent (non-neighbor) entries
+#' @noRd
+.sparse_sim_to_dense_na <- function(sp) {
+  n <- nrow(sp)
+  mat <- matrix(NA_real_, nrow = n, ncol = n, dimnames = dimnames(sp))
+  s <- Matrix::summary(sp)
+  if (nrow(s) > 0L) {
+    mat[cbind(s$i, s$j)] <- s$x
+  }
+  if (n > 0L) {
+    diag(mat) <- 1
   }
   mat
+}
+
+
+#' Aggregate a list of sparse similarity matrices (75%-quantile by default)
+#' @noRd
+.aggregate_sparse_sim_list <- function(sim_list, prob = 0.75) {
+  sp0 <- sim_list[[1L]]
+  nft <- nrow(sp0)
+  fids <- rownames(sp0)
+  parts <- lapply(sim_list, function(sp) {
+    s <- Matrix::summary(sp)
+    s[s$i != s$j, , drop = FALSE]
+  })
+  all <- do.call(rbind, parts)
+  if (is.null(all) || nrow(all) == 0L) {
+    return(Matrix::sparseMatrix(
+      i = seq_len(nft), j = seq_len(nft), x = rep(1, nft),
+      dims = c(nft, nft), dimnames = list(fids, fids)
+    ))
+  }
+  agg <- stats::aggregate(
+    x ~ i + j,
+    data = all,
+    FUN = function(z) {
+      as.numeric(stats::quantile(z, probs = prob, na.rm = TRUE))
+    }
+  )
+  finite <- is.finite(agg$x)
+  agg <- agg[finite, , drop = FALSE]
+  Matrix::sparseMatrix(
+    i = c(agg$i, seq_len(nft)),
+    j = c(agg$j, seq_len(nft)),
+    x = c(agg$x, rep(1, nft)),
+    dims = c(nft, nft),
+    dimnames = list(fids, fids)
+  )
 }
 
 
 #' @title Pairwise EIC similarity for xcms features
 #' @description Compute per-sample feature-by-feature EIC similarity matrices
 #'   for pairs with \code{|rtmed_i - rtmed_j| < rt_tol}. Used by
-#'   \code{\link{MSdev_group_feature_EIC}}.
+#'   \code{\link{MSdev_group_feature_EIC}}. Results are stored as symmetric
+#'   \code{Matrix} sparse matrices; absent entries are non-neighbor pairs
+#'   (treated as \code{NA} when densified for grouping). Pairwise scores are
+#'   pooled across selected samples and evaluated in
+#'   \code{bpnworkers(BPPARAM)} chunks (each chunk ships only the chromatogram
+#'   columns it needs).
 #' @param xcms.xcms XCMSnExp / XcmsExperiment with feature definitions.
 #' @param chroms Chromatograms (e.g. from \code{\link{get_xcms_feature_chromatogram}})
 #'   with feature rownames matching \code{featureDefinitions}.
@@ -1546,14 +1673,18 @@ MSdev_xcms_group_features <- function(object,
 #'   peaks are removed before correlation.
 #' @param selected_sample NULL, integer index/indices, or sample name(s)
 #'   (\code{sample.name} / chromatogram colnames). NULL uses all samples.
-#' @return Named list of feature-by-feature numeric matrices (one per selected
-#'   sample).
+#' @param BPPARAM BiocParallel backend. Chunk count is
+#'   \code{min(bpnworkers(BPPARAM), n_jobs)}. Default \code{SerialParam()}.
+#' @return Named list of feature-by-feature \code{dgCMatrix} similarity matrices
+#'   (one per selected sample).
+#' @importFrom Matrix sparseMatrix summary
 #' @export
 get_xcms_feature_EIC_similarity <- function(xcms.xcms,
                                             chroms,
                                             rt_tol = 5,
                                             onlyPeak = TRUE,
-                                            selected_sample = NULL) {
+                                            selected_sample = NULL,
+                                            BPPARAM = BiocParallel::SerialParam()) {
   if (!is.numeric(rt_tol) || length(rt_tol) != 1L || rt_tol <= 0) {
     stop("'rt_tol' must be a positive numeric(1)")
   }
@@ -1589,43 +1720,170 @@ get_xcms_feature_EIC_similarity <- function(xcms.xcms,
   sample_names <- chrom_names[sample_idx]
 
   pairs <- .rt_neighbor_pairs(rt, rt_tol)
+  ns <- length(sample_idx)
+  np <- nrow(pairs)
+  n_jobs <- ns * np
+  n_workers <- max(1L, as.integer(BiocParallel::bpnworkers(BPPARAM)))
+  n_chunks <- max(1L, min(n_workers, max(n_jobs, 1L)))
   message(
     "  features=", length(fids),
-    " rt_neighbor_pairs=", nrow(pairs),
-    " samples=", length(sample_idx),
+    " rt_neighbor_pairs=", np,
+    " samples=", ns,
+    " jobs=", n_jobs,
+    " chunks=", if (n_jobs == 0L) 0L else n_chunks,
     " (rt_tol=", rt_tol, ")"
   )
 
+  nft <- length(fids)
   ALIGNFUNARGS <- list(tolerance = 0, method = "closest")
   FUNARGS <- list(use = "pairwise.complete.obs")
-  nft <- length(fids)
-  sim_list <- vector("list", length(sample_idx))
+
+  if (n_jobs == 0L) {
+    sim_list <- vector("list", ns)
+    names(sim_list) <- sample_names
+    for (si in seq_len(ns)) {
+      sim_list[[si]] <- .eic_sim_sparse_from_edges(
+        i = integer(0), j = integer(0), score = numeric(0),
+        nft = nft, fids = fids
+      )
+    }
+    return(sim_list)
+  }
+
+  payloads <- .eic_sim_make_chunk_payloads(
+    chroms = chroms,
+    sample_idx = sample_idx,
+    pairs = pairs,
+    n_chunks = n_chunks
+  )
+  res_chunks <- BiocParallel::bplapply(
+    payloads,
+    FUN = .eic_sim_chunk,
+    pairs = pairs,
+    ALIGNFUNARGS = ALIGNFUNARGS,
+    FUNARGS = FUNARGS,
+    BPPARAM = BPPARAM
+  )
+  edges <- do.call(rbind, res_chunks)
+
+  sim_list <- vector("list", ns)
   names(sim_list) <- sample_names
-  for (si in seq_along(sample_idx)) {
-    col <- sample_idx[si]
-    message("  sample: ", sample_names[si])
-    chroms_col <- chroms[, col, drop = FALSE]
-    sim_list[[si]] <- .eic_similarity_matrix_one_sample(
-      chroms_col = chroms_col,
-      pairs = pairs,
-      nft = nft,
-      fids = fids,
-      ALIGNFUNARGS = ALIGNFUNARGS,
-      FUNARGS = FUNARGS
+  for (si in seq_len(ns)) {
+    if (is.null(edges) || nrow(edges) == 0L) {
+      sub_i <- integer(0)
+      sub_j <- integer(0)
+      sub_x <- numeric(0)
+    } else {
+      keep <- edges$si == si
+      sub_i <- edges$i[keep]
+      sub_j <- edges$j[keep]
+      sub_x <- edges$score[keep]
+    }
+    sim_list[[si]] <- .eic_sim_sparse_from_edges(
+      i = sub_i, j = sub_j, score = sub_x,
+      nft = nft, fids = fids
     )
   }
   sim_list
 }
 
 
-#' @title Group features by EIC similarity within RT tolerance
+#' @title Group xcms features by EIC similarity within RT tolerance
 #' @description Compare extracted-ion chromatogram shapes for feature pairs with
-#'   \code{|rtmed_i - rtmed_j| < rt_tol} (not limited to existing feature groups)
-#'   via \code{\link{get_xcms_feature_EIC_similarity}}. Reuses chromatograms from
-#'   \code{\link{MSdev_get_feature_chrom}}, stores per-sample feature-by-feature
-#'   similarity matrices under \code{object@advancedAna$featureGroups$EIC_Similarity},
-#'   and updates \code{feature_group} labels via 75\%-quantile aggregation across
-#'   selected samples and \code{MsFeatures::groupSimilarityMatrix}.
+#'   \code{|rtmed_i - rtmed_j| < rt_tol} via \code{\link{get_xcms_feature_EIC_similarity}},
+#'   aggregate across selected samples (75\% quantile), assign \code{feature_group}
+#'   labels with \code{MsFeatures::groupSimilarityMatrix}, and optionally store
+#'   per-sample sparse similarity matrices in \code{otherData(xcms)$EIC_Similarity}.
+#' @param xcms.xcms XcmsExperiment / MsExperiment with feature definitions and
+#'   an \code{otherData} slot.
+#' @param chroms Chromatograms with feature rownames matching
+#'   \code{featureDefinitions}.
+#' @param rt_tol numeric(1). Maximum absolute RT difference (seconds) for which
+#'   EIC similarity is computed. Default 5.
+#' @param threshold numeric(1). Similarity cut-off for
+#'   \code{MsFeatures::groupSimilarityMatrix}. Default 0.5.
+#' @param onlyPeak logical(1). If TRUE, intensities outside chromatographic
+#'   peaks are removed before correlation.
+#' @param selected_sample NULL, integer index/indices, or sample name(s).
+#'   NULL uses all samples.
+#' @param keep_Similarity_Matrix logical(1). If TRUE (default), store the named
+#'   list of per-sample \code{dgCMatrix} similarity matrices in
+#'   \code{otherData(xcms)$EIC_Similarity}. If FALSE, matrices are discarded after
+#'   grouping.
+#' @param BPPARAM BiocParallel backend passed to
+#'   \code{\link{get_xcms_feature_EIC_similarity}}. Default \code{SerialParam()}.
+#' @return Updated \code{xcms.xcms} with \code{featureGroups} set; when
+#'   \code{keep_Similarity_Matrix} is TRUE, also
+#'   \code{otherData(xcms)$EIC_Similarity}.
+#' @export
+xcms_group_feature_EIC <- function(xcms.xcms,
+                                   chroms,
+                                   rt_tol = 5,
+                                   threshold = 0.5,
+                                   onlyPeak = TRUE,
+                                   selected_sample = NULL,
+                                   keep_Similarity_Matrix = TRUE,
+                                   BPPARAM = BiocParallel::SerialParam()) {
+  if (!is.numeric(rt_tol) || length(rt_tol) != 1L || rt_tol <= 0) {
+    stop("'rt_tol' must be a positive numeric(1)")
+  }
+  if (!is.numeric(threshold) || length(threshold) != 1L) {
+    stop("'threshold' must be numeric(1)")
+  }
+  if (!is.logical(keep_Similarity_Matrix) || length(keep_Similarity_Matrix) != 1L) {
+    stop("'keep_Similarity_Matrix' must be logical(1)")
+  }
+
+  sim_list <- get_xcms_feature_EIC_similarity(
+    xcms.xcms = xcms.xcms,
+    chroms = chroms,
+    rt_tol = rt_tol,
+    onlyPeak = onlyPeak,
+    selected_sample = selected_sample,
+    BPPARAM = BPPARAM
+  )
+
+  fids <- rownames(sim_list[[1L]])
+  fdf <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
+
+  ns <- length(sim_list)
+  sim_sp <- if (ns == 1L) {
+    sim_list[[1L]]
+  } else {
+    .aggregate_sparse_sim_list(sim_list, prob = 0.75)
+  }
+  sim2d <- .sparse_sim_to_dense_na(sim_sp)
+
+  grp <- MsFeatures::groupSimilarityMatrix(sim2d, threshold = threshold)
+  f_new <- paste0("FG.", MsFeatures:::.format_id(grp))
+  names(f_new) <- fids
+
+  if ("feature_id" %in% colnames(fdf)) {
+    lab <- f_new[as.character(fdf$feature_id)]
+  } else {
+    lab <- f_new[rownames(fdf)]
+  }
+  if (anyNA(lab)) {
+    lab[is.na(lab)] <- paste0("FG.", MsFeatures:::.format_id(seq_len(sum(is.na(lab)))))
+  }
+  xcms::featureGroups(xcms.xcms) <- as.character(lab)
+
+  if (isTRUE(keep_Similarity_Matrix)) {
+    od <- MsExperiment::otherData(xcms.xcms)
+    od$EIC_Similarity <- sim_list
+    MsExperiment::otherData(xcms.xcms) <- od
+  }
+
+  message("  feature groups: ", length(unique(lab)))
+  xcms.xcms
+}
+
+
+#' @title Group features by EIC similarity within RT tolerance
+#' @description Per-polarity wrapper around \code{\link{xcms_group_feature_EIC}}.
+#'   Reuses chromatograms from \code{\link{MSdev_get_feature_chrom}}, updates MS1
+#'   \code{feature_group} labels, and optionally stores per-sample sparse
+#'   similarity matrices in \code{otherData(xcms)$EIC_Similarity}.
 #' @param object MSdev object
 #' @param rt_tol numeric(1). Maximum absolute RT difference (seconds) for which
 #'   EIC similarity is computed. Default 5.
@@ -1637,10 +1895,13 @@ get_xcms_feature_EIC_similarity <- function(xcms.xcms,
 #'   (\code{sample.name} / chromatogram colnames). NULL uses all samples.
 #' @param forceExtractChrom logical(1). If TRUE, (re)extract chromatograms via
 #'   \code{MSdev_get_feature_chrom} even if already stored.
-#' @param BPPARAM BiocParallel backend passed to \code{MSdev_get_feature_chrom}
-#'   when extraction is needed.
-#' @return MSdev object with updated MS1 \code{feature_group} labels and
-#'   \code{advancedAna$featureGroups$EIC_Similarity}.
+#' @param keep_Similarity_Matrix logical(1). Passed to
+#'   \code{xcms_group_feature_EIC}. Default TRUE.
+#' @param BPPARAM BiocParallel backend for chromatogram extraction and EIC
+#'   similarity scoring.
+#' @return MSdev object with updated MS1 \code{feature_group} labels; when
+#'   \code{keep_Similarity_Matrix} is TRUE, also
+#'   \code{otherData(xcms)$EIC_Similarity} on each polarity's MS1 object.
 #' @export
 MSdev_group_feature_EIC <- function(object,
                                     rt_tol = 5,
@@ -1648,6 +1909,7 @@ MSdev_group_feature_EIC <- function(object,
                                     onlyPeak = TRUE,
                                     selected_sample = NULL,
                                     forceExtractChrom = FALSE,
+                                    keep_Similarity_Matrix = TRUE,
                                     BPPARAM = SnowParam(
                                       workers = parallel::detectCores() - 1,
                                       progressbar = TRUE)) {
@@ -1678,12 +1940,6 @@ MSdev_group_feature_EIC <- function(object,
     object <- MSdev_get_feature_chrom(object, BPPARAM = BPPARAM)
   }
 
-  if (is.null(object@advancedAna$featureGroups) ||
-      !is.list(object@advancedAna$featureGroups)) {
-    object@advancedAna$featureGroups <- list()
-  }
-  object@advancedAna$featureGroups$EIC_Similarity <- list()
-
   for (pol in polarities) {
     ms1_key <- paste0(pol, "MS1")
     chrom_key <- paste0(pol, "_Chromatograms")
@@ -1697,57 +1953,17 @@ MSdev_group_feature_EIC <- function(object,
     }
 
     message_with_time("EIC similarity grouping: ", pol)
-    sim_list <- get_xcms_feature_EIC_similarity(
+    xcms.xcms <- xcms_group_feature_EIC(
       xcms.xcms = xcms.xcms,
       chroms = onDiskData_retrieve(object@xcmsData[[chrom_key]]),
       rt_tol = rt_tol,
+      threshold = threshold,
       onlyPeak = onlyPeak,
-      selected_sample = selected_sample
+      selected_sample = selected_sample,
+      keep_Similarity_Matrix = keep_Similarity_Matrix,
+      BPPARAM = BPPARAM
     )
-    object@advancedAna$featureGroups$EIC_Similarity[[pol]] <- sim_list
-
-    fids <- rownames(sim_list[[1L]])
-    nft <- length(fids)
-    sample_names <- names(sim_list)
-    fdf <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
-
-    ## Aggregate across selected samples for clustering only (not stored)
-    ns <- length(sim_list)
-    if (ns == 1L) {
-      sim2d <- sim_list[[1L]]
-    } else {
-      arr <- array(NA_real_, dim = c(nft, nft, ns),
-                   dimnames = list(fids, fids, sample_names))
-      for (k in seq_len(ns)) {
-        arr[, , k] <- sim_list[[k]]
-      }
-      sim2d <- apply(arr, c(1L, 2L), function(z) {
-        if (all(is.na(z))) {
-          return(NA_real_)
-        }
-        as.numeric(stats::quantile(z, probs = 0.75, na.rm = TRUE))
-      })
-      dimnames(sim2d) <- list(fids, fids)
-    }
-    sim2d[!is.finite(sim2d)] <- NA_real_
-    diag(sim2d) <- 1
-
-    grp <- MsFeatures::groupSimilarityMatrix(sim2d, threshold = threshold)
-    f_new <- paste0("FG.", MsFeatures:::.format_id(grp))
-    names(f_new) <- fids
-
-    ## Write labels in featureDefinitions row order
-    if ("feature_id" %in% colnames(fdf)) {
-      lab <- f_new[as.character(fdf$feature_id)]
-    } else {
-      lab <- f_new[rownames(fdf)]
-    }
-    if (anyNA(lab)) {
-      lab[is.na(lab)] <- paste0("FG.", MsFeatures:::.format_id(seq_len(sum(is.na(lab)))))
-    }
-    xcms::featureGroups(xcms.xcms) <- as.character(lab)
     object@xcmsData[[ms1_key]] <- xcms.xcms
-    message("  feature groups: ", length(unique(lab)))
   }
 
   object

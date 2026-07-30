@@ -11,6 +11,7 @@ Depends:
 Imports: 
     Biobase,
     magrittr,
+    Matrix,
     ProtGenerics,
     tidyr
 Suggests: 
