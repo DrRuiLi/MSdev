@@ -40,6 +40,7 @@ Suggests:
     FELLA,
     fmcsR,
     ggbreak,
+    ggh4x,
     ggimage,
     ggplot2,
     ggpubr,

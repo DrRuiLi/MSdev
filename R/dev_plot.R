@@ -393,3 +393,318 @@ ggplot_irange <- function(IR, scale = 1e-6){
     geom_segment( aes(x = start,xend = end, y = no,yend = no) )
 
 }
+
+
+#' Mirror EIC comparison grid for feature groups
+#'
+#' Pairwise chromatogram comparison for features in one or more xcms feature
+#' groups on an \code{XcmsExperiment} (or compatible) object. Panel \eqn{(i,j)}
+#' shows the column feature EIC above \eqn{y = 0} and the row feature EIC below
+#' (each cropped to \code{rtmed +/- rt_half} and normalized to its own max).
+#' Cell labels are EIC similarities from
+#' \code{MsExperiment::otherData(xcms)$EIC_Similarity} when available (e.g.
+#' after \code{\link{xcms_group_feature_EIC}}). Strip backgrounds are colored
+#' by feature group when \pkg{ggh4x} is installed.
+#'
+#' @param xcms An \code{XcmsExperiment} / \code{MsExperiment} (or
+#'   \code{XCMSnExp}) with feature definitions and \code{featureGroups}.
+#' @param feature_group Character vector of feature group id(s) to compare.
+#' @param chroms Optional chromatograms for the selected features (rownames =
+#'   feature ids). If \code{NULL}, extracted via
+#'   \code{\link{get_xcms_feature_chromatogram}}.
+#' @param rt_half Half-width (seconds) of the RT window around each feature
+#'   \code{rtmed} (default \code{20}).
+#' @param max_features Maximum features kept per group (ordered by
+#'   \code{rtmed}). \code{NULL} keeps all members (default).
+#' @param sample_index Sample index into
+#'   \code{otherData(xcms)$EIC_Similarity} when several samples are stored
+#'   (default \code{1L}).
+#' @param title Optional plot title. Default summarizes group ids and grid size.
+#' @return A \code{ggplot} object.
+#' @export
+plot_feature_group_EIC_comparasion <- function(xcms,
+                                               feature_group,
+                                               chroms = NULL,
+                                               rt_half = 20,
+                                               max_features = NULL,
+                                               sample_index = 1L,
+                                               title = NULL) {
+  if (!(inherits(xcms, "XcmsExperiment") ||
+        inherits(xcms, "MsExperiment") ||
+        inherits(xcms, "XCMSnExp"))) {
+    stop("`xcms` must be an XcmsExperiment, MsExperiment, or XCMSnExp")
+  }
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for plot_feature_group_EIC_comparasion()")
+  }
+  if (!requireNamespace("xcms", quietly = TRUE)) {
+    stop("Package 'xcms' is required for plot_feature_group_EIC_comparasion()")
+  }
+  if (missing(feature_group) || !length(feature_group)) {
+    stop("`feature_group` must be a non-empty character vector")
+  }
+  feature_group <- as.character(feature_group)
+  feature_group <- feature_group[!is.na(feature_group) & nzchar(feature_group)]
+  if (!length(feature_group)) {
+    stop("`feature_group` must be a non-empty character vector")
+  }
+  if (!is.numeric(rt_half) || length(rt_half) != 1L || rt_half <= 0) {
+    stop("`rt_half` must be a positive numeric(1)")
+  }
+
+  fdf <- as.data.frame(xcms::featureDefinitions(xcms))
+  fg_all <- as.character(xcms::featureGroups(xcms))
+  if ("feature_id" %in% names(fdf)) {
+    fids_all <- as.character(fdf$feature_id)
+  } else {
+    fids_all <- rownames(fdf)
+  }
+  rt_all <- as.numeric(fdf$rtmed)
+  mz_all <- as.numeric(fdf$mzmed)
+  names(rt_all) <- names(mz_all) <- names(fg_all) <- fids_all
+
+  miss <- setdiff(feature_group, unique(stats::na.omit(fg_all)))
+  if (length(miss)) {
+    stop(
+      "Unknown feature_group: ", paste(miss, collapse = ", "),
+      ". Available examples: ",
+      paste(utils::head(unique(stats::na.omit(fg_all)), 5L), collapse = ", ")
+    )
+  }
+
+  # Preserve caller order of groups; features within group by rtmed
+  sel_fg <- feature_group
+  gfids_list <- lapply(sel_fg, function(g) {
+    gfids <- fids_all[fg_all == g]
+    gfids <- gfids[order(rt_all[gfids], na.last = TRUE)]
+    if (!is.null(max_features) && length(gfids) > as.integer(max_features)) {
+      gfids <- gfids[seq_len(as.integer(max_features))]
+    }
+    gfids
+  })
+  names(gfids_list) <- sel_fg
+  sel_fids <- unlist(gfids_list, use.names = FALSE)
+  if (length(sel_fids) < 2L) {
+    stop("Need at least 2 features across the selected feature_group(s)")
+  }
+  n <- length(sel_fids)
+  sel_fg_of <- fg_all[sel_fids]
+
+  sim_mat <- NULL
+  if (requireNamespace("MsExperiment", quietly = TRUE) &&
+      (inherits(xcms, "MsExperiment") || inherits(xcms, "XcmsExperiment"))) {
+    od <- tryCatch(MsExperiment::otherData(xcms), error = function(e) NULL)
+    sim_store <- if (!is.null(od)) od$EIC_Similarity else NULL
+    if (!is.null(sim_store) && length(sim_store)) {
+      si <- as.integer(sample_index)[[1]]
+      if (si < 1L || si > length(sim_store)) si <- 1L
+      sim_mat <- sim_store[[si]]
+    }
+  }
+
+  if (is.null(chroms) || identical(chroms, NA)) {
+    message("Extracting chromatograms for ", length(sel_fids), " features...")
+    bpp <- if (requireNamespace("BiocParallel", quietly = TRUE)) {
+      BiocParallel::SerialParam()
+    } else {
+      NULL
+    }
+    chrom_args <- list(
+      xcms.xcms = xcms,
+      feature.id = sel_fids,
+      selected_sample = "maxo",
+      rt = "expand",
+      expandRt = rt_half,
+      aggregationFun = "max",
+      attachPeaks = FALSE
+    )
+    if (!is.null(bpp)) chrom_args$BPPARAM <- bpp
+    chroms <- do.call(get_xcms_feature_chromatogram, chrom_args)
+  }
+
+  .eic_df <- function(fid) {
+    rn <- rownames(chroms)
+    ii <- match(fid, rn)
+    rt_med <- rt_all[[fid]]
+    if (is.na(ii) || !is.finite(rt_med)) {
+      return(NULL)
+    }
+    ch <- chroms[ii, 1L]
+    if (!requireNamespace("MSnbase", quietly = TRUE)) {
+      stop("Package 'MSnbase' is required to read chromatogram rtime/intensity")
+    }
+    rt <- as.numeric(MSnbase::rtime(ch))
+    inten <- as.numeric(MSnbase::intensity(ch))
+    keep <- is.finite(rt) & rt >= (rt_med - rt_half) & rt <= (rt_med + rt_half)
+    if (!any(keep)) {
+      return(NULL)
+    }
+    data.frame(rt = rt[keep], intensity = inten[keep], stringsAsFactors = FALSE)
+  }
+
+  eic_cache <- lapply(sel_fids, .eic_df)
+  names(eic_cache) <- sel_fids
+
+  mz_lab <- sprintf("%.3f", mz_all[sel_fids])
+  names(mz_lab) <- sel_fids
+  if (anyDuplicated(mz_lab)) {
+    mz_lab <- make.unique(mz_lab, sep = "_")
+    names(mz_lab) <- sel_fids
+  }
+  feat_lab <- sprintf("%s\n%s", sel_fg_of, mz_lab)
+  names(feat_lab) <- sel_fids
+  lab_levels <- unname(feat_lab[sel_fids])
+
+  fg_pal <- grDevices::hcl.colors(max(3L, length(sel_fg)), "Dark 3")[seq_along(sel_fg)]
+  names(fg_pal) <- sel_fg
+  strip_fills <- unname(fg_pal[sel_fg_of])
+  strip_bg <- lapply(strip_fills, function(col) {
+    ggplot2::element_rect(fill = col, colour = "grey40", linewidth = 0.2)
+  })
+
+  .sim_ij <- function(fi, fj) {
+    if (is.null(sim_mat)) return(NA_real_)
+    if (identical(fi, fj)) return(1)
+    ii <- match(fi, rownames(sim_mat))
+    jj <- match(fj, colnames(sim_mat))
+    if (is.na(ii) || is.na(jj)) return(NA_real_)
+    as.numeric(sim_mat[ii, jj])
+  }
+
+  parts <- vector("list", n * n)
+  labs_list <- vector("list", n * n)
+  k <- 0L
+  for (i in seq_len(n)) {
+    for (j in seq_len(n)) {
+      k <- k + 1L
+      fi <- sel_fids[[i]]
+      fj <- sel_fids[[j]]
+      d_col <- eic_cache[[fj]]
+      d_row <- eic_cache[[fi]]
+      if (is.null(d_col) || is.null(d_row)) next
+      mc <- max(d_col$intensity, na.rm = TRUE)
+      mr <- max(d_row$intensity, na.rm = TRUE)
+      if (!is.finite(mc) || mc <= 0) mc <- 1
+      if (!is.finite(mr) || mr <= 0) mr <- 1
+      s <- .sim_ij(fi, fj)
+      s_lab <- if (is.finite(s)) sprintf("%.2f", s) else "NA"
+      parts[[k]] <- rbind(
+        data.frame(
+          rt = d_col$rt,
+          intensity = d_col$intensity / mc,
+          role = "column",
+          feature_group = unname(sel_fg_of[[fj]]),
+          row_lab = feat_lab[[fi]],
+          col_lab = feat_lab[[fj]],
+          stringsAsFactors = FALSE
+        ),
+        data.frame(
+          rt = d_row$rt,
+          intensity = -d_row$intensity / mr,
+          role = "row",
+          feature_group = unname(sel_fg_of[[fi]]),
+          row_lab = feat_lab[[fi]],
+          col_lab = feat_lab[[fj]],
+          stringsAsFactors = FALSE
+        )
+      )
+      labs_list[[k]] <- data.frame(
+        rt = mean(range(c(d_col$rt, d_row$rt), na.rm = TRUE)),
+        intensity = 0.95,
+        row_lab = feat_lab[[fi]],
+        col_lab = feat_lab[[fj]],
+        sim_lab = s_lab,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+
+  plot_df <- do.call(rbind, parts[!vapply(parts, is.null, logical(1))])
+  lab_df <- do.call(rbind, labs_list[!vapply(labs_list, is.null, logical(1))])
+  if (is.null(plot_df) || !nrow(plot_df)) {
+    stop("No chromatogram data available for the selected feature_group(s)")
+  }
+  plot_df$row_lab <- factor(plot_df$row_lab, levels = lab_levels)
+  plot_df$col_lab <- factor(plot_df$col_lab, levels = lab_levels)
+  plot_df$feature_group <- factor(plot_df$feature_group, levels = sel_fg)
+  lab_df$row_lab <- factor(lab_df$row_lab, levels = lab_levels)
+  lab_df$col_lab <- factor(lab_df$col_lab, levels = lab_levels)
+
+  if (is.null(title)) {
+    title <- sprintf(
+      "%d x %d mirror EIC — groups: %s",
+      n, n, paste(sel_fg, collapse = ", ")
+    )
+  }
+
+  p <- ggplot2::ggplot(
+    plot_df,
+    ggplot2::aes(
+      x = .data$rt,
+      y = .data$intensity,
+      color = .data$feature_group,
+      fill = .data$feature_group,
+      group = .data$role
+    )
+  ) +
+    ggplot2::geom_hline(yintercept = 0, linewidth = 0.2, color = "grey40") +
+    ggplot2::geom_area(alpha = 0.35, position = "identity", linewidth = 0) +
+    ggplot2::geom_line(linewidth = 0.3, na.rm = TRUE) +
+    ggplot2::geom_text(
+      data = lab_df,
+      ggplot2::aes(x = .data$rt, y = .data$intensity, label = .data$sim_lab),
+      inherit.aes = FALSE,
+      size = 1.6,
+      color = "black",
+      fontface = "bold"
+    ) +
+    ggplot2::scale_color_manual(name = "feature group", values = fg_pal) +
+    ggplot2::scale_fill_manual(name = "feature group", values = fg_pal) +
+    ggplot2::coord_cartesian(ylim = c(-1.05, 1.05)) +
+    ggplot2::labs(
+      x = "Retention time (s)",
+      y = "Normalized intensity (mirror)",
+      title = title,
+      subtitle = sprintf(
+        "Top = column feature (group color); bottom = row feature (group color); chrom = rtmed +/- %ss",
+        rt_half
+      )
+    ) +
+    ggplot2::theme_bw(base_size = 6) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      strip.background = ggplot2::element_blank(),
+      strip.text.x = ggplot2::element_text(size = 3.2, angle = 0, lineheight = 0.85),
+      strip.text.y = ggplot2::element_text(size = 3.2, angle = 0, lineheight = 0.85),
+      axis.text = ggplot2::element_blank(),
+      axis.ticks = ggplot2::element_blank(),
+      panel.spacing = grid::unit(0.05, "lines"),
+      plot.title = ggplot2::element_text(size = 9, face = "bold"),
+      plot.subtitle = ggplot2::element_text(size = 7)
+    )
+
+  if (requireNamespace("ggh4x", quietly = TRUE)) {
+    p <- p + ggh4x::facet_grid2(
+      rows = ggplot2::vars(row_lab),
+      cols = ggplot2::vars(col_lab),
+      scales = "free_x",
+      strip = ggh4x::strip_themed(
+        background_x = strip_bg,
+        background_y = strip_bg,
+        by_layer_x = FALSE,
+        by_layer_y = FALSE
+      )
+    )
+  } else {
+    message("Package 'ggh4x' not installed; strip fills by feature group disabled.")
+    p <- p + ggplot2::facet_grid(
+      rows = ggplot2::vars(row_lab),
+      cols = ggplot2::vars(col_lab),
+      scales = "free_x"
+    )
+  }
+
+  attr(p, "feature_group") <- sel_fg
+  attr(p, "feature_id") <- sel_fids
+  p
+}
