@@ -422,7 +422,7 @@ ggplot_irange <- function(IR, scale = 1e-6){
 #' @param title Optional plot title. Default summarizes group ids and grid size.
 #' @return A \code{ggplot} object.
 #' @export
-plot_feature_group_EIC_comparasion <- function(xcms,
+plot_xcms_feature_group_EIC_comparasion <- function(xcms,
                                                feature_group,
                                                chroms = NULL,
                                                rt_half = 20,
@@ -435,10 +435,10 @@ plot_feature_group_EIC_comparasion <- function(xcms,
     stop("`xcms` must be an XcmsExperiment, MsExperiment, or XCMSnExp")
   }
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("Package 'ggplot2' is required for plot_feature_group_EIC_comparasion()")
+    stop("Package 'ggplot2' is required for plot_xcms_feature_group_EIC_comparasion()")
   }
   if (!requireNamespace("xcms", quietly = TRUE)) {
-    stop("Package 'xcms' is required for plot_feature_group_EIC_comparasion()")
+    stop("Package 'xcms' is required for plot_xcms_feature_group_EIC_comparasion()")
   }
   if (missing(feature_group) || !length(feature_group)) {
     stop("`feature_group` must be a non-empty character vector")
@@ -551,7 +551,7 @@ plot_feature_group_EIC_comparasion <- function(xcms,
     mz_lab <- make.unique(mz_lab, sep = "_")
     names(mz_lab) <- sel_fids
   }
-  feat_lab <- sprintf("%s\n%s", sel_fg_of, mz_lab)
+  feat_lab <- sprintf("%s\n%s", sel_fids, mz_lab)
   names(feat_lab) <- sel_fids
   lab_levels <- unname(feat_lab[sel_fids])
 
@@ -664,23 +664,18 @@ plot_feature_group_EIC_comparasion <- function(xcms,
     ggplot2::labs(
       x = "Retention time (s)",
       y = "Normalized intensity (mirror)",
-      title = title,
-      subtitle = sprintf(
-        "Top = column feature (group color); bottom = row feature (group color); chrom = rtmed +/- %ss",
-        rt_half
-      )
+      title = title
     ) +
     ggplot2::theme_bw(base_size = 6) +
     ggplot2::theme(
       legend.position = "bottom",
       strip.background = ggplot2::element_blank(),
       strip.text.x = ggplot2::element_text(size = 3.2, angle = 0, lineheight = 0.85),
-      strip.text.y = ggplot2::element_text(size = 3.2, angle = 0, lineheight = 0.85),
+      strip.text.y = ggplot2::element_text(size = 3.2, angle = -90, lineheight = 0.85),
       axis.text = ggplot2::element_blank(),
       axis.ticks = ggplot2::element_blank(),
       panel.spacing = grid::unit(0.05, "lines"),
-      plot.title = ggplot2::element_text(size = 9, face = "bold"),
-      plot.subtitle = ggplot2::element_text(size = 7)
+      plot.title = ggplot2::element_text(size = 9, face = "bold")
     )
 
   if (requireNamespace("ggh4x", quietly = TRUE)) {
@@ -707,4 +702,146 @@ plot_feature_group_EIC_comparasion <- function(xcms,
   attr(p, "feature_group") <- sel_fg
   attr(p, "feature_id") <- sel_fids
   p
+}
+
+
+#' Mirror plot of two chromatograms
+#'
+#' Overlay two chromatograms on a shared RT axis: \code{chrom1} above
+#' \eqn{y = 0} and \code{chrom2} mirrored below. Intensities are optionally
+#' normalized to each chromatogram's own maximum.
+#'
+#' @param chrom1,chrom2 A \code{Chromatogram} / \code{XChromatogram}, a
+#'   one-cell \code{MChromatograms} / \code{XChromatograms}, or a
+#'   \code{data.frame} with columns \code{rt} and \code{intensity}.
+#' @param labels Character length-2 labels for the legend (default
+#'   \code{c("chrom1", "chrom2")}).
+#' @param normalize Logical; if \code{TRUE} (default), scale each trace to
+#'   its own max intensity.
+#' @param colors Optional length-2 color vector for the two traces.
+#' @param title Optional plot title.
+#' @return A \code{ggplot} object.
+#' @export
+plot_Chromatograph_mirror <- function(chrom1,
+                                      chrom2,
+                                      labels = c("chrom1", "chrom2"),
+                                      normalize = TRUE,
+                                      colors = NULL,
+                                      title = NULL) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for plot_Chromatograph_mirror()")
+  }
+  labels <- as.character(labels)
+  if (length(labels) < 2L) {
+    labels <- c(labels, paste0(labels[[1]], "_2"))[seq_len(2L)]
+  }
+  labels <- labels[seq_len(2L)]
+
+  .chrom_to_df <- function(chrom, lab) {
+    if (is.null(chrom)) {
+      stop("Chromatogram input cannot be NULL")
+    }
+    if (is.data.frame(chrom)) {
+      nm <- names(chrom)
+      if (!all(c("rt", "intensity") %in% nm)) {
+        stop("data.frame chrom must have columns `rt` and `intensity`")
+      }
+      df <- data.frame(
+        rt = as.numeric(chrom$rt),
+        intensity = as.numeric(chrom$intensity),
+        stringsAsFactors = FALSE
+      )
+    } else if (inherits(chrom, c("MChromatograms", "XChromatograms"))) {
+      if (!requireNamespace("MSnbase", quietly = TRUE)) {
+        stop("Package 'MSnbase' is required to read chromatogram objects")
+      }
+      ch <- chrom[1L, 1L]
+      df <- data.frame(
+        rt = as.numeric(MSnbase::rtime(ch)),
+        intensity = as.numeric(MSnbase::intensity(ch)),
+        stringsAsFactors = FALSE
+      )
+    } else if (inherits(chrom, c("Chromatogram", "XChromatogram"))) {
+      if (!requireNamespace("MSnbase", quietly = TRUE)) {
+        stop("Package 'MSnbase' is required to read chromatogram objects")
+      }
+      df <- data.frame(
+        rt = as.numeric(MSnbase::rtime(chrom)),
+        intensity = as.numeric(MSnbase::intensity(chrom)),
+        stringsAsFactors = FALSE
+      )
+    } else {
+      stop(
+        "Unsupported chrom type: ", paste(class(chrom), collapse = "/"),
+        ". Expect Chromatogram, MChromatograms, or data.frame(rt, intensity)."
+      )
+    }
+    keep <- is.finite(df$rt) & is.finite(df$intensity)
+    df <- df[keep, , drop = FALSE]
+    if (!nrow(df)) {
+      stop("No finite rt/intensity points in chromatogram: ", lab)
+    }
+    df$label <- lab
+    df
+  }
+
+  d1 <- .chrom_to_df(chrom1, labels[[1]])
+  d2 <- .chrom_to_df(chrom2, labels[[2]])
+
+  if (isTRUE(normalize)) {
+    m1 <- max(d1$intensity, na.rm = TRUE)
+    m2 <- max(d2$intensity, na.rm = TRUE)
+    if (!is.finite(m1) || m1 <= 0) m1 <- 1
+    if (!is.finite(m2) || m2 <= 0) m2 <- 1
+    d1$intensity <- d1$intensity / m1
+    d2$intensity <- d2$intensity / m2
+  }
+  d2$intensity <- -d2$intensity
+
+  plot_df <- rbind(d1, d2)
+  plot_df$label <- factor(plot_df$label, levels = labels)
+
+  if (is.null(colors)) {
+    colors <- grDevices::hcl.colors(3L, "Dark 3")[c(1L, 3L)]
+  }
+  if (length(colors) < 2L) {
+    colors <- rep(colors, length.out = 2L)
+  }
+  colors <- unname(colors[seq_len(2L)])
+  names(colors) <- labels
+
+  if (is.null(title)) {
+    title <- sprintf("Mirror chromatogram: %s vs %s", labels[[1]], labels[[2]])
+  }
+  y_lab <- if (isTRUE(normalize)) {
+    "Normalized intensity (mirror)"
+  } else {
+    "Intensity (mirror)"
+  }
+
+  ggplot2::ggplot(
+    plot_df,
+    ggplot2::aes(
+      x = .data$rt,
+      y = .data$intensity,
+      color = .data$label,
+      fill = .data$label,
+      group = .data$label
+    )
+  ) +
+    ggplot2::geom_hline(yintercept = 0, linewidth = 0.3, color = "grey40") +
+    ggplot2::geom_area(alpha = 0.35, position = "identity", linewidth = 0) +
+    ggplot2::geom_line(linewidth = 0.45, na.rm = TRUE) +
+    ggplot2::scale_color_manual(name = NULL, values = colors) +
+    ggplot2::scale_fill_manual(name = NULL, values = colors) +
+    ggplot2::labs(
+      x = "Retention time (s)",
+      y = y_lab,
+      title = title
+    ) +
+    ggplot2::theme_bw(base_size = 11) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      plot.title = ggplot2::element_text(size = 11, face = "bold")
+    )
 }
