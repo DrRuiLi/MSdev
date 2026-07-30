@@ -516,9 +516,10 @@ get_xcms_chromatogram <- function(object,
 #'   \code{\link{get_xcms_chromatogram}} as the engine.
 #' @param xcms.xcms XCMSnExp / XcmsExperiment with chromPeaks.
 #' @param peaks.id character or numeric peak IDs / indices.
-#' @param all.sample logical. If FALSE (default), extract each peak only in its
-#'   owning sample (one-column result, chromPeakChromatograms contract). If
-#'   TRUE, extract every peak box in all samples.
+#' @param selected_sample Sample selection. \code{NULL} (default) extracts each
+#'   peak only in its owning sample (one-column result, chromPeakChromatograms
+#'   contract). \code{"all"} extracts every peak box in all samples. Integer
+#'   indices or sample name(s) extract in those samples only.
 #' @param rt.range one of \code{c("all","identity","expand")}.
 #' @param expandRt numeric seconds added on each side when \code{rt.range="expand"}.
 #' @param aggregationFun passed to \code{get_xcms_chromatogram}.
@@ -528,7 +529,7 @@ get_xcms_chromatogram <- function(object,
 #' @export
 get_xcms_peaks_chromatogram <- function(xcms.xcms,
                                         peaks.id,
-                                        all.sample = FALSE,
+                                        selected_sample = NULL,
                                         rt.range = c("expand", "identity", "all"),
                                         expandRt = 15,
                                         aggregationFun = "max",
@@ -552,9 +553,21 @@ get_xcms_peaks_chromatogram <- function(xcms.xcms,
   rownames(mzr) <- rownames(peaks.data)
   rownames(rtr) <- rownames(peaks.data)
 
-  if (isTRUE(all.sample)) {
+  owning_only <- is.null(selected_sample)
+  if (!owning_only) {
+    if (identical(selected_sample, "all")) {
+      xcms.sub <- xcms.xcms
+    } else {
+      sn <- .xcms_sample_names(xcms.xcms)
+      pdata_names <- tryCatch(
+        as.character(Biobase::pData(xcms.xcms)$sample.name),
+        error = function(e) NULL
+      )
+      sample_idx <- .resolve_selected_sample(selected_sample, sn, pdata_names)
+      xcms.sub <- .xcms_filter_file(xcms.xcms, sample_idx)
+    }
     return(get_xcms_chromatogram(
-      xcms.xcms,
+      xcms.sub,
       mz = mzr,
       rt = rtr,
       aggregationFun = aggregationFun,
@@ -760,8 +773,9 @@ get_xcms_peaks_chromatogram <- function(xcms.xcms,
 #'   per feature is applied to each selected sample.
 #' @param xcms.xcms XCMSnExp / XcmsExperiment with featureDefinitions.
 #' @param feature.id character/numeric feature IDs (default all).
-#' @param sample \code{"maxo"} (sample with highest mean feature value),
-#'   \code{"all"}, or integer sample indices.
+#' @param selected_sample Sample selection. \code{"maxo"} (default) uses the
+#'   sample with highest mean feature value; \code{"all"} uses all samples;
+#'   integer indices or sample name(s) select those samples.
 #' @param rt one of \code{c("all","expand","identity")}.
 #' @param expandRt seconds added each side when \code{rt="expand"}.
 #' @param mz.expand fraction of mz width to expand on each side.
@@ -774,13 +788,13 @@ get_xcms_peaks_chromatogram <- function(xcms.xcms,
 #' @export
 get_xcms_feature_chromatogram <- function(xcms.xcms,
                                           feature.id = NULL,
-                                          sample = "maxo",
+                                          selected_sample = "maxo",
                                           rt = c("expand", "identity", "all"),
                                           expandRt = 15,
                                           mz.expand = 0,
                                           aggregationFun = "max",
                                           attachPeaks = TRUE,
-                                          BPPARAM = SerialParam()) {
+                                          BPPARAM = SerialParam(progressbar = TRUE)) {
   rt <- match.arg(rt)
   fdef_all <- xcms::featureDefinitions(xcms.xcms)
   if (is.null(feature.id)) {
@@ -809,14 +823,22 @@ get_xcms_feature_chromatogram <- function(xcms.xcms,
   }
   rownames(features.data) <- feature.id
 
-  if (identical(sample, "maxo")) {
+  if (identical(selected_sample, "maxo")) {
     features.val <- xcms::featureValues(xcms.xcms, missing = "rowmin_half")
     features.val <- features.val[rownames(features.data), , drop = FALSE]
-    xcms.sub <- .xcms_filter_file(xcms.xcms, which.max(colMeans(features.val, na.rm = TRUE)))
-  } else if (identical(sample, "all")) {
+    orig_idx <- which.max(colMeans(features.val, na.rm = TRUE))
+    xcms.sub <- .xcms_filter_file(xcms.xcms, orig_idx)
+  } else if (identical(selected_sample, "all") || is.null(selected_sample)) {
+    orig_idx <- NULL
     xcms.sub <- xcms.xcms
   } else {
-    xcms.sub <- .xcms_filter_file(xcms.xcms, sample)
+    sn <- .xcms_sample_names(xcms.xcms)
+    pdata_names <- tryCatch(
+      as.character(Biobase::pData(xcms.xcms)$sample.name),
+      error = function(e) NULL
+    )
+    orig_idx <- .resolve_selected_sample(selected_sample, sn, pdata_names)
+    xcms.sub <- .xcms_filter_file(xcms.xcms, orig_idx)
   }
 
   boxes <- .feature_mz_rt_boxes(
@@ -832,18 +854,11 @@ get_xcms_feature_chromatogram <- function(xcms.xcms,
   )
   if (isTRUE(attachPeaks)) {
     ## sample indices in subset must map to original sample numbers for peak attach
-    if (identical(sample, "all")) {
+    if (identical(selected_sample, "all") || is.null(selected_sample)) {
       x.chrom <- .attach_feature_chrom_peaks(x.chrom, xcms.xcms, feature.id)
     } else {
       x.chrom <- as(x.chrom, "XChromatograms")
       ## remap: subset has 1..k columns; chromPeaks sample ids are original
-      orig_idx <- if (identical(sample, "maxo")) {
-        features.val <- xcms::featureValues(xcms.xcms, missing = "rowmin_half")
-        features.val <- features.val[rownames(features.data), , drop = FALSE]
-        which.max(colMeans(features.val, na.rm = TRUE))
-      } else {
-        as.integer(sample)
-      }
       pks <- xcms::chromPeaks(xcms.xcms)
       pkd <- tryCatch(as(xcms::chromPeakData(xcms.xcms), "DataFrame"), error = function(e) NULL)
       fdef <- xcms::featureDefinitions(xcms.xcms)
