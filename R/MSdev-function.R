@@ -2038,32 +2038,84 @@ MSdev_update_xcms_pdata <- function(object,
 
 
 
-#' @title Retrieve MS1 spectra from MSdev object
-#' @description Retrieve the stored MS1 Spectra object from the MSdev object.
+#' @title Retrieve spectra from MSdev object
+#' @description Retrieve stored Spectra from \code{object@spectra} filtered by
+#'   MS level and polarity. MS1 / MS2 are read from \code{MS1_Spectra} /
+#'   \code{MS2_Spectra} (on-disk when applicable) and combined when both levels
+#'   are requested.
 #' @param object MSdev object
+#' @param msLevel integer; MS level(s) to retrieve. Default \code{c(1, 2)}.
+#' @param polarity integer; polarity/polarities to keep (\code{0} negative,
+#'   \code{1} positive). Default \code{c(0, 1)}.
 #' @return Spectra object
 #' @export
 #'
-get_MSdev_ms1_Spectra <- function(object){
+get_MSdev_Spectra <- function(object, msLevel = c(1, 2), polarity = c(0, 1)) {
+  stopifnot(inherits(object, "MSdev"))
+  msLevel <- as.integer(unique(msLevel))
+  polarity <- as.integer(unique(polarity))
+  if (!length(msLevel) || !all(msLevel %in% c(1L, 2L))) {
+    stop("'msLevel' must be a subset of c(1, 2)")
+  }
+  if (!length(polarity) || !all(polarity %in% c(0L, 1L))) {
+    stop("'polarity' must be a subset of c(0, 1)")
+  }
 
-  sp <- object@spectra$MS1_Spectra%>%
-    onDiskData_retrieve()
-  return(sp)
+  sp_list <- list()
+  if (1L %in% msLevel && !is.null(object@spectra$MS1_Spectra)) {
+    sp_list$MS1 <- onDiskData_retrieve(object@spectra$MS1_Spectra)
+  }
+  if (2L %in% msLevel && !is.null(object@spectra$MS2_Spectra)) {
+    sp_list$MS2 <- onDiskData_retrieve(object@spectra$MS2_Spectra)
+  }
+  if (!length(sp_list)) {
+    return(Spectra::Spectra())
+  }
+
+  sp <- if (length(sp_list) == 1L) {
+    sp_list[[1L]]
+  } else {
+    do.call(c, unname(sp_list))
+  }
+  Spectra::filterPolarity(sp, polarity)
 }
 
 
-#' @title Retrieve MS2 spectra from MSdev object
-#' @description Retrieve the stored MS2 Spectra object from the MSdev object.
+#' @title Retrieve feature chromatograms from MSdev object
+#' @description Retrieve stored feature chromatograms from
+#'   \code{object@xcmsData$Positive_Chromatograms} /
+#'   \code{$Negative_Chromatograms} (on-disk when applicable), filtered by
+#'   polarity.
 #' @param object MSdev object
-#' @return Spectra object
+#' @param polarity integer; polarity/polarities to retrieve (\code{0} negative,
+#'   \code{1} positive). Default \code{c(0, 1)}. A single polarity returns the
+#'   chromatogram object; multiple polarities return a named list
+#'   (\code{Negative} / \code{Positive}).
+#' @return Chromatograms object, or a named list when \code{length(polarity) > 1}
 #' @export
 #'
-get_MSdev_ms2_Spectra <- function(object){
+get_MSdev_Chromatogram <- function(object, polarity = c(0, 1)) {
+  stopifnot(inherits(object, "MSdev"))
+  polarity <- as.integer(unique(polarity))
+  if (!length(polarity) || !all(polarity %in% c(0L, 1L))) {
+    stop("'polarity' must be a subset of c(0, 1)")
+  }
 
-  sp <- object@spectra$MS2_Spectra%>%
-    onDiskData_retrieve()
-  #sp.total <- do.call(`c`,unname(object@spectra))
-  return(sp)
+  polarity.index <- c("0" = "Negative", "1" = "Positive")
+  out <- lapply(polarity, function(p) {
+    pol <- unname(polarity.index[as.character(p)])
+    chrom <- object@xcmsData[[paste0(pol, "_Chromatograms")]]
+    if (is.null(chrom)) {
+      return(NULL)
+    }
+    onDiskData_retrieve(chrom)
+  })
+  names(out) <- unname(polarity.index[as.character(polarity)])
+
+  if (length(out) == 1L) {
+    return(out[[1L]])
+  }
+  out
 }
 
 
@@ -2096,7 +2148,7 @@ get_MSdev_spectra_target_list <- function(object,
   prefer <- match.arg(prefer)
   group_by <- match.arg(group_by)
 
-  sp <- get_MSdev_ms2_Spectra(object)
+  sp <- get_MSdev_Spectra(object, msLevel = 2L)
   if (length(sp) == 0) {
     return(data.frame(mz = numeric(0), rt = numeric(0),
                       rtmin = numeric(0), rtmax = numeric(0),

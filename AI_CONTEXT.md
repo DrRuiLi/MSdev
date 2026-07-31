@@ -55,7 +55,7 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 - Optional storage: `otherData(xcms)$EIC_Similarity` (per-sample sparse matrices).
 - Report: `Report_MSdev_feature_group_EIC` writes `Feature_group_EIC_Positive.pdf` / `Feature_group_EIC_Negative.pdf` under `projectDir` via `plot_xcms_feature_group_EIC_comparasion`.
 - Shared helper `.resolve_selected_sample` lives here (also used by chromatogram extractors in `dev_xcms.R`).
-- Chromatograms reused from `xcmsData$Positive_Chromatograms` / `$Negative_Chromatograms` (often via `MSdev_get_feature_chrom` in `MSdev-function.R`).
+- Chromatograms reused from `xcmsData$Positive_Chromatograms` / `$Negative_Chromatograms` (extract via `MSdev_get_feature_chrom`; retrieve via `get_MSdev_Chromatogram(polarity=…)` in `MSdev-function.R`).
 
 ---
 
@@ -76,9 +76,9 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 - `MSdev_extract_Spectra` is first-class: reads raw files, splits MS1/MS2, assigns `sp_id`, stores onDisk into `@spectra`, then calls `MSdev_match_Spectra_to_feature`.
 - Matching is median-based (`mzmed` / `rtmed` + `ppm` / `rt.tol`), not `xcms::featureSpectra` peak-box matching (`get_Spectra_ms2_feature_id`).
 - `MSdev_annotation` / `xcms_get_feature_ms2_score` pull MS2 from `@spectra$MS2_Spectra` via character `ms2_id` matched to `spectraNames`.
-- Helpers: `get_MSdev_ms1_Spectra`, `get_MSdev_ms2_Spectra`, `get_MSdev_spectra_target_list` read `@spectra`.
+- Helpers: `get_MSdev_Spectra(msLevel=…, polarity=…)`, `get_MSdev_Chromatogram(polarity=…)`, `get_MSdev_spectra_target_list`. Prefer these over direct `@spectra` / `*_Chromatograms` slot access. Old `get_MSdev_ms1_Spectra` / `get_MSdev_ms2_Spectra` were removed.
 - `.update_MSdev_object` migrates short-lived `xcmsData$Positive` / `$Negative` → `PositiveMS1` / `NegativeMS1` and MS1-filters when needed.
-- Chromatogram keys stay `Positive_Chromatograms` / `Negative_Chromatograms` (unchanged).
+- Chromatogram keys stay `Positive_Chromatograms` / `Negative_Chromatograms` (retrieve with `get_MSdev_Chromatogram`; polarity `0`/`1` → Negative/Positive).
 - `get_xcms_Spectra` remains deprecated; prefer `ProtGenerics::spectra()` on MS1 `XcmsExperiment` objects.
 
 ---
@@ -93,4 +93,4 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 
 ---
 
-Last refreshed after splitting feature-group EIC APIs into `R/MSdev-feature-group-EIC.R` (similarity, complete-linkage grouping, PDF report) with related plots remaining in `dev_plot.R`. This file is a navigation aid, not a substitute for reading source.
+Last refreshed after unifying spectra/chromatogram getters: `get_MSdev_Spectra(msLevel, polarity)` and `get_MSdev_Chromatogram(polarity)` replace `get_MSdev_ms1_Spectra` / `get_MSdev_ms2_Spectra`. This file is a navigation aid, not a substitute for reading source.
