@@ -263,8 +263,14 @@ NULL
 #'   with feature rownames matching \code{featureDefinitions}.
 #' @param rt_tol numeric(1). Maximum absolute RT difference (seconds) for which
 #'   EIC similarity is computed. Default 5.
-#' @param onlyPeak logical(1). If TRUE, intensities outside chromatographic
-#'   peaks are removed before correlation.
+#' @param expandRt numeric(1). Seconds added on each side of each feature's
+#'   \code{peakRtMin}/\code{peakRtMax} window when cropping EICs via
+#'   \code{\link{XChromatograms_subset_feature}} before correlation (requires
+#'   \code{peakRtMin}/\code{peakRtMax} in \code{chroms@featureDefinitions}).
+#'   Default \code{2}.
+#' @param min_width numeric(1). Minimum RT window width (seconds) after
+#'   \code{expandRt}; shorter windows are padded equally on both sides.
+#'   Default \code{20}.
 #' @param selected_sample NULL, integer index/indices, or sample name(s)
 #'   (\code{sample.name} / chromatogram colnames). NULL uses all samples.
 #' @param BPPARAM BiocParallel backend. Chunk count is
@@ -276,16 +282,17 @@ NULL
 get_xcms_feature_EIC_similarity <- function(xcms.xcms,
                                             chroms,
                                             rt_tol = 5,
-                                            onlyPeak = TRUE,
+                                            expandRt = 2,
+                                            min_width = 20,
                                             selected_sample = NULL,
                                             BPPARAM = BiocParallel::SerialParam()) {
   if (!is.numeric(rt_tol) || length(rt_tol) != 1L || rt_tol <= 0) {
     stop("'rt_tol' must be a positive numeric(1)")
   }
 
-  if (onlyPeak) {
-    chroms <- xcms::removeIntensity(chroms, which = "outside_chromPeak")
-  }
+  chroms <- XChromatograms_subset_feature(chroms,
+                                          expandRt = expandRt,
+                                          min_width = min_width)
 
   fdf <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
   fids <- rownames(chroms)
@@ -523,8 +530,13 @@ groupSimilarityMatrix_completeLinkage <- function(x,
 #'   EIC similarity is computed. Default 5.
 #' @param threshold numeric(1). Similarity cut-off for
 #'   \code{\link{groupSimilarityMatrix_completeLinkage}}. Default 0.5.
-#' @param onlyPeak logical(1). If TRUE, intensities outside chromatographic
-#'   peaks are removed before correlation.
+#' @param expandRt numeric(1). Seconds added on each side of each feature's
+#'   \code{peakRtMin}/\code{peakRtMax} window when cropping EICs via
+#'   \code{\link{XChromatograms_subset_feature}} before correlation.
+#'   Default \code{2}.
+#' @param min_width numeric(1). Minimum RT window width (seconds) after
+#'   \code{expandRt}; shorter windows are padded equally on both sides.
+#'   Default \code{20}.
 #' @param selected_sample NULL, integer index/indices, or sample name(s).
 #'   NULL uses all samples.
 #' @param keep_Similarity_Matrix logical(1). If TRUE (default), store the named
@@ -546,7 +558,8 @@ xcms_group_feature_EIC <- function(xcms.xcms,
                                    chroms,
                                    rt_tol = 5,
                                    threshold = 0.5,
-                                   onlyPeak = TRUE,
+                                   expandRt = 2,
+                                   min_width = 20,
                                    selected_sample = NULL,
                                    keep_Similarity_Matrix = TRUE,
                                    absent_sim = 0,
@@ -568,7 +581,8 @@ xcms_group_feature_EIC <- function(xcms.xcms,
     xcms.xcms = xcms.xcms,
     chroms = chroms,
     rt_tol = rt_tol,
-    onlyPeak = onlyPeak,
+    expandRt = expandRt,
+    min_width = min_width,
     selected_sample = selected_sample,
     BPPARAM = BPPARAM
   )
@@ -619,8 +633,13 @@ xcms_group_feature_EIC <- function(xcms.xcms,
 #'   EIC similarity is computed. Default 5.
 #' @param threshold numeric(1). Similarity cut-off for
 #'   \code{\link{groupSimilarityMatrix_completeLinkage}}. Default 0.5.
-#' @param onlyPeak logical(1). If TRUE, intensities outside chromatographic
-#'   peaks are removed before correlation (xcms default for EIC grouping).
+#' @param expandRt numeric(1). Seconds added on each side of each feature's
+#'   \code{peakRtMin}/\code{peakRtMax} window when cropping EICs via
+#'   \code{\link{XChromatograms_subset_feature}} before correlation.
+#'   Default \code{2}.
+#' @param min_width numeric(1). Minimum RT window width (seconds) after
+#'   \code{expandRt}; shorter windows are padded equally on both sides.
+#'   Default \code{20}.
 #' @param selected_sample NULL, integer index/indices, or sample name(s)
 #'   (\code{sample.name} / chromatogram colnames). NULL uses all samples.
 #' @param forceExtractChrom logical(1). If TRUE, (re)extract chromatograms via
@@ -638,7 +657,8 @@ xcms_group_feature_EIC <- function(xcms.xcms,
 MSdev_group_feature_EIC <- function(object,
                                     rt_tol = 5,
                                     threshold = 0.5,
-                                    onlyPeak = TRUE,
+                                    expandRt = 2,
+                                    min_width = 20,
                                     selected_sample = NULL,
                                     forceExtractChrom = FALSE,
                                     keep_Similarity_Matrix = TRUE,
@@ -694,7 +714,8 @@ MSdev_group_feature_EIC <- function(object,
       chroms = onDiskData_retrieve(object@xcmsData[[chrom_key]]),
       rt_tol = rt_tol,
       threshold = threshold,
-      onlyPeak = onlyPeak,
+      expandRt = expandRt,
+      min_width = min_width,
       selected_sample = selected_sample,
       keep_Similarity_Matrix = keep_Similarity_Matrix,
       absent_sim = absent_sim,

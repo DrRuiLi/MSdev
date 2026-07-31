@@ -784,7 +784,11 @@ get_xcms_peaks_chromatogram <- function(xcms.xcms,
 #'   \code{XChromatograms} (needed for \code{removeIntensity(..., "outside_chromPeak")}).
 #' @param BPPARAM BiocParallel backend.
 #'
-#' @return XChromatograms (if \code{attachPeaks}) or MChromatograms.
+#' @return XChromatograms. The parent \code{featureDefinitions} rows for the
+#'   extracted features are stored in the \code{featureDefinitions} slot
+#'   (access with \code{obj@featureDefinitions}), so the object is
+#'   self-describing (carries \code{feature_id}, \code{mzmed}, \code{rtmed},
+#'   and \code{peakRtMin}/\code{peakRtMax} when present).
 #' @export
 get_xcms_feature_chromatogram <- function(xcms.xcms,
                                           feature.id = NULL,
@@ -888,6 +892,12 @@ get_xcms_feature_chromatogram <- function(xcms.xcms,
       slot(x.chrom, ".Data", check = FALSE) <- tmp
     }
   }
+  ## Store parent featureDefinitions on the chroms (self-describing)
+  if (!inherits(x.chrom, "XChromatograms")) {
+    x.chrom <- as(x.chrom, "XChromatograms")
+  }
+  fdf <- S4Vectors::DataFrame(features.data[rownames(x.chrom), , drop = FALSE])
+  x.chrom@featureDefinitions <- fdf
   x.chrom
 }
 
@@ -1058,6 +1068,93 @@ XChromatograms_rt_unit <- function(xchroms,unit_to = "s",
 
 }
 
+
+#' @describeIn xcms_extension_chromatogram subset feature chromatograms by peak RT
+#' @description Crop each feature row of an \code{XChromatograms} object to its
+#'   \code{peakRtMin}/\code{peakRtMax} window read from the
+#'   \code{featureDefinitions} slot. Optional \code{expandRt} (seconds each
+#'   side) widens the window; if the resulting width is still below
+#'   \code{min_width}, both sides are padded equally until the width reaches
+#'   \code{min_width}. Requires \code{peakRtMin} and \code{peakRtMax} in
+#'   \code{obj@featureDefinitions} (e.g. after
+#'   \code{\link{get_xcms_feature_chromatogram}} on an object that has run
+#'   \code{\link{xcms_get_feature_def_stat}}).
+#' @param xchroms XChromatograms with feature rownames and a
+#'   \code{featureDefinitions} slot containing \code{peakRtMin},
+#'   \code{peakRtMax}.
+#' @param expandRt numeric(1). Seconds added on each side of
+#'   \code{[peakRtMin, peakRtMax]}. Default \code{0} (no expansion).
+#' @param min_width numeric(1). Minimum RT window width (seconds) after
+#'   \code{expandRt}. If the window is shorter, pad both sides equally.
+#'   Default \code{0} (no minimum).
+#'
+#' @return XChromatograms with each feature's EIC cropped to its RT window.
+#'   The \code{phenoData}, \code{featureData}, and \code{featureDefinitions}
+#'   slots are carried over from the input unchanged.
+#' @export
+#'
+XChromatograms_subset_feature <- function(xchroms,
+                                          expandRt = 0,
+                                          min_width = 0) {
+  if (!inherits(xchroms, "XChromatograms")) {
+    stop("`xchroms` must be an XChromatograms object (with a featureDefinitions slot)")
+  }
+  if (!is.numeric(expandRt) || length(expandRt) != 1L || !is.finite(expandRt)) {
+    stop("`expandRt` must be a finite numeric(1)")
+  }
+  if (!is.numeric(min_width) || length(min_width) != 1L ||
+      !is.finite(min_width) || min_width < 0) {
+    stop("`min_width` must be a non-negative finite numeric(1)")
+  }
+
+  fdef <- xchroms@featureDefinitions
+  if (!all(c("peakRtMin", "peakRtMax") %in% colnames(fdef))) {
+    stop(
+      "featureDefinitions slot must contain 'peakRtMin' and 'peakRtMax' ",
+      "(run get_xcms_feature_chromatogram after xcms_get_feature_def_stat)"
+    )
+  }
+  if (nrow(fdef) != nrow(xchroms)) {
+    stop("featureDefinitions rows (", nrow(fdef),
+         ") do not match chromatogram rows (", nrow(xchroms), ")")
+  }
+
+  nr <- nrow(xchroms)
+  nc <- ncol(xchroms)
+  peak_rt_min <- as.numeric(fdef$peakRtMin)
+  peak_rt_max <- as.numeric(fdef$peakRtMax)
+  chrom_list <- vector("list", nr * nc)
+  k <- 0L
+  for (i in seq_len(nr)) {
+    rmin <- peak_rt_min[i] - expandRt
+    rmax <- peak_rt_max[i] + expandRt
+    if (!is.finite(rmin) || !is.finite(rmax)) {
+      stop("Non-finite peakRtMin/peakRtMax for row ", i,
+           " (", rownames(fdef)[i], ")")
+    }
+    w <- rmax - rmin
+    if (is.finite(w) && w < min_width) {
+      pad <- (min_width - w) / 2
+      rmin <- rmin - pad
+      rmax <- rmax + pad
+    }
+    for (j in seq_len(nc)) {
+      k <- k + 1L
+      chrom_list[[k]] <- MSnbase::filterRt(xchroms[i, j], rt = c(rmin, rmax))
+    }
+  }
+
+  out <- xcms::XChromatograms(chrom_list, nrow = nr, byrow = TRUE)
+  ## Assign metadata via slots: pData<-/fData<- each validate their rownames
+  ## against the other slot, so neither can be set first (chicken-and-egg).
+  ## Slot assignment skips validObject; phenoData/featureData carried from the
+  ## input are already mutually consistent.
+  out@phenoData <- xchroms@phenoData
+  out@featureData <- xchroms@featureData
+  out@featureDefinitions <- fdef
+  dimnames(out@.Data) <- list(rownames(xchroms), colnames(xchroms))
+  out
+}
 
 
 #' @describeIn xcms_extension_chromatogram fill chromatograms with fewer than two data points
