@@ -134,20 +134,45 @@ NULL
   }
   i_vec <- pairs[pk, 1L]
   j_vec <- pairs[pk, 2L]
+  ## Zero-fill both chromatograms of a pair onto their union RT grid. The two
+  ## EICs share the same sample RT grid but are cropped to their own peak
+  ## windows, so the shorter one is padded with 0 at RTs it lacks. This keeps
+  ## the correlation over the full window instead of only the shorter overlap.
+  fill0 <- function(cx, cy) {
+    rx <- MSnbase::rtime(cx)
+    ry <- MSnbase::rtime(cy)
+    ix <- as.numeric(MSnbase::intensity(cx))
+    iy <- as.numeric(MSnbase::intensity(cy))
+    ix[!is.finite(ix)] <- 0
+    iy[!is.finite(iy)] <- 0
+    ru <- sort(unique(c(rx, ry)))
+    fx <- numeric(length(ru))
+    fy <- numeric(length(ru))
+    mx <- match(ru, rx)
+    my <- match(ru, ry)
+    ax <- !is.na(mx)
+    ay <- !is.na(my)
+    fx[ax] <- ix[mx[ax]]
+    fy[ay] <- iy[my[ay]]
+    list(
+      x = MSnbase::Chromatogram(rtime = ru, intensity = fx),
+      y = MSnbase::Chromatogram(rtime = ru, intensity = fy)
+    )
+  }
   scores <- rep(NA_real_, n)
   for (k in seq_len(n)) {
     chroms_col <- chroms_map[[as.character(si[k])]]
-    scores[k] <- tryCatch(
+    scores[k] <- tryCatch({
+      fp <- fill0(chroms_col[i_vec[k], 1L], chroms_col[j_vec[k], 1L])
       MSnbase::compareChromatograms(
-        chroms_col[i_vec[k], 1L],
-        chroms_col[j_vec[k], 1L],
+        fp$x,
+        fp$y,
         ALIGNFUN = ALIGNFUN,
         ALIGNFUNARGS = ALIGNFUNARGS,
         FUN = FUN,
         FUNARGS = FUNARGS
-      ),
-      error = function(e) NA_real_
-    )
+      )
+    }, error = function(e) NA_real_)
   }
   ok <- is.finite(scores)
   data.frame(
@@ -257,7 +282,10 @@ NULL
 #'   (filled when densified for grouping; see \code{absent_sim} in
 #'   \code{\link{xcms_group_feature_EIC}}). Pairwise scores are pooled across
 #'   selected samples and evaluated in \code{bpnworkers(BPPARAM)} chunks (each
-#'   chunk ships only the chromatogram columns it needs).
+#'   chunk ships only the chromatogram columns it needs). Within each pair the
+#'   two EICs are zero-filled onto their union RT grid before correlation, so
+#'   the score reflects the full peak window rather than only the shorter
+#'   overlap.
 #' @param xcms.xcms XCMSnExp / XcmsExperiment with feature definitions.
 #' @param chroms Chromatograms (e.g. from \code{\link{get_xcms_feature_chromatogram}})
 #'   with feature rownames matching \code{featureDefinitions}.
