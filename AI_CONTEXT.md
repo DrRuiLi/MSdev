@@ -38,14 +38,24 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 |------|---------------|------------------|
 | Project shell and orchestration | `MSdev-class.R`, `MSdev-function.R`, `MSdev-workflow.R`, `Demo.R` | Understanding core object lifecycle, setup, and top-level API |
 | xcms / feature processing | `dev_xcms.R`, `MSdev-function.R`, `onDiskData.R` | Debugging peak picking/grouping/RT alignment or feature extraction |
+| Feature-group EIC similarity | `MSdev-feature-group-EIC.R` | EIC pairwise similarity, complete-linkage grouping, or FG EIC PDF reports |
 | Feature–MS2 match / annotation | `MSdev-function.R` (`MSdev_extract_Spectra`, `MSdev_match_Spectra_to_feature`, `MSdev_annotation`), `dev_xcms.R` (`xcms_get_feature_ms2_score`), `dev_Spectra.R` (`get_Spectra_ms2_feature_id`) | Extracting spectra, assigning MS2 to features, or scoring annotations |
 | DDA / pseudo-MS2 workflow | `DDA-function.R`, `DDA_Mine_function.R`, `DDA_mine-workflow.R`, `Pseudo-workflow.R` | Following DDA simulation/mining flow |
 | MRM | `MRM-function.R`, `MRM-WorkFlow.R` | Investigating targeted chromatogram pipeline |
 | Network / atom-transfer wrappers | `Metabolic_flux_network.R`, `Reaction_atom_transfer.R`, `0_mscc_graph_generics_imports.R` | Tracing graph accessors, reaction transfer, and MSCC integration points |
 | Statistics and downstream analysis | `StatisticFunction.R`, `MSdev-Sta_function.R`, `dev_DEP.R`, `dev_caret.R`, `dev_MetaboSignal.R`, `dev_FELLA.R`, `dev_KEGG.R` | Fixing modeling/DE/pathway/stat output behavior |
-| Visualization and plotting | `dev_plot.R` | Plot behavior and formatting |
+| Visualization and plotting | `dev_plot.R` (`plot_xcms_feature_group_EIC_comparasion`, `plot_Chromatograph_mirror`, `export_graph2pdf`, …) | Plot behavior and formatting |
 | Utility layers | `dev_base.R`, `dev_string.R`, `dev_tidyverse.R`, `dev_math.R`, `dev_others.R`, `dev_openxlsx.R`, `dev_RStudio.R` | Shared helpers and local utilities |
 | Spectra/instrument helpers | `dev_Spectra.R`, `dev_mzR.R`, `dev_MSInstrument.R`, `MS_Exp-function.R`, `MS_exp-class.R` | Spectra parsing, metadata, and instrument-specific behavior |
+
+### Feature-group EIC notes (`MSdev-feature-group-EIC.R`)
+
+- Pipeline: `get_xcms_feature_EIC_similarity` → `xcms_group_feature_EIC` → `MSdev_group_feature_EIC` (per-polarity wrapper).
+- Grouping uses `groupSimilarityMatrix_completeLinkage` (not `MsFeatures::groupSimilarityMatrix`).
+- Optional storage: `otherData(xcms)$EIC_Similarity` (per-sample sparse matrices).
+- Report: `Report_MSdev_feature_group_EIC` writes `Feature_group_EIC_Positive.pdf` / `Feature_group_EIC_Negative.pdf` under `projectDir` via `plot_xcms_feature_group_EIC_comparasion`.
+- Shared helper `.resolve_selected_sample` lives here (also used by chromatogram extractors in `dev_xcms.R`).
+- Chromatograms reused from `xcmsData$Positive_Chromatograms` / `$Negative_Chromatograms` (often via `MSdev_get_feature_chrom` in `MSdev-function.R`).
 
 ---
 
@@ -58,7 +68,7 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 | MS1 / features | Per-polarity **MS1-only** `XcmsExperiment` in `xcmsData$PositiveMS1` / `$NegativeMS1` (peak picking, feature defs). MS1 access: `ProtGenerics::spectra(xcms)` |
 | Spectra source of truth | `object@spectra$MS1_Spectra` / `$MS2_Spectra` (onDiskData); IDs are character `sp_id` (`MS1_SP…` / `MS2_SP…`) also used as `spectraNames` |
 | Feature–MS2 link | Bidirectional: `featureDefinitions$ms2_id` = **character `sp_id` vectors**; MS2 spectra carry `feature_id` |
-| Typical chain | `MSdev_checkSampleInfo` -> `MSdev_msConvert` -> `MSdev_xcmsProcessing` -> `MSdev_extract_Spectra` -> `MSdev_match_Spectra_to_feature` -> `MSdev_annotation` -> stats/export -> save/load |
+| Typical chain | `MSdev_checkSampleInfo` -> `MSdev_msConvert` -> `MSdev_xcmsProcessing` -> `MSdev_extract_Spectra` -> `MSdev_match_Spectra_to_feature` -> (`MSdev_group_feature_EIC`) -> `MSdev_annotation` -> stats/export/report -> save/load |
 | Outputs | Serialized project objects and tabular/plot exports |
 
 ### Spectra matching notes
@@ -78,8 +88,9 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 1. Read `AI_CONTEXT.md` first, then open the smallest domain file that owns the behavior.
 2. For graph/generic issues, check `R/0_mscc_graph_generics_imports.R` and `NAMESPACE` imports from `MSCC` before touching network files.
 3. Avoid broad edits in large utility files (especially `dev_xcms.R`) unless caller boundaries are clear.
-4. If architecture shifts again (new migrations between `MSdev` and `MSCC`), update this file only after explicit user request.
+4. For EIC feature-group work, edit `R/MSdev-feature-group-EIC.R` (logic) and `R/dev_plot.R` (mirror plots) rather than re-growing `MSdev-function.R`.
+5. If architecture shifts again (new migrations between `MSdev` and `MSCC`), update this file only after explicit user request.
 
 ---
 
-Last refreshed after restoring `@spectra` + character `sp_id` linking and `xcmsData$PositiveMS1` / `$NegativeMS1` (MS1-only `XcmsExperiment`). This file is a navigation aid, not a substitute for reading source.
+Last refreshed after splitting feature-group EIC APIs into `R/MSdev-feature-group-EIC.R` (similarity, complete-linkage grouping, PDF report) with related plots remaining in `dev_plot.R`. This file is a navigation aid, not a substitute for reading source.
