@@ -400,8 +400,9 @@ ggplot_irange <- function(IR, scale = 1e-6){
 #' Pairwise chromatogram comparison for features in one or more xcms feature
 #' groups on an \code{XcmsExperiment} (or compatible) object. Panel \eqn{(i,j)}
 #' shows the column feature EIC above \eqn{y = 0} and the row feature EIC below
-#' (each cropped to \code{rtmed +/- rt_half} and normalized to its own max).
-#' Cell labels are EIC similarities from
+#' (each cropped to its peak RT window via
+#' \code{\link{XChromatograms_subset_feature}}, exactly as the EIC grouping
+#' does, then normalized to its own max). Cell labels are EIC similarities from
 #' \code{MsExperiment::otherData(xcms)$EIC_Similarity} when available (e.g.
 #' after \code{\link{xcms_group_feature_EIC}}). Strip backgrounds are colored
 #' by feature group when \pkg{ggh4x} is installed.
@@ -409,11 +410,16 @@ ggplot_irange <- function(IR, scale = 1e-6){
 #' @param xcms An \code{XcmsExperiment} / \code{MsExperiment} (or
 #'   \code{XCMSnExp}) with feature definitions and \code{featureGroups}.
 #' @param feature_group Character vector of feature group id(s) to compare.
-#' @param chroms Optional chromatograms for the selected features (rownames =
-#'   feature ids). If \code{NULL}, extracted via
+#' @param chroms Optional \code{XChromatograms} for the features (rownames =
+#'   feature ids) with a \code{featureDefinitions} slot carrying
+#'   \code{peakRtMin}/\code{peakRtMax}. If \code{NULL}, extracted via
 #'   \code{\link{get_xcms_feature_chromatogram}}.
-#' @param rt_half Half-width (seconds) of the RT window around each feature
-#'   \code{rtmed} (default \code{20}).
+#' @param expandRt numeric(1). Seconds added on each side of each feature's
+#'   \code{[peakRtMin, peakRtMax]} window when cropping via
+#'   \code{\link{XChromatograms_subset_feature}} (default \code{2}).
+#' @param min_width numeric(1). Minimum RT window width (seconds) after
+#'   \code{expandRt}; shorter windows are padded equally on both sides
+#'   (default \code{20}).
 #' @param max_features Maximum features kept per group (ordered by
 #'   \code{rtmed}). \code{NULL} keeps all members (default).
 #' @param sample_index Sample index into
@@ -427,7 +433,8 @@ ggplot_irange <- function(IR, scale = 1e-6){
 plot_xcms_feature_group_EIC_comparasion <- function(xcms,
                                                feature_group,
                                                chroms = NULL,
-                                               rt_half = 20,
+                                               expandRt = 2,
+                                               min_width = 20,
                                                max_features = NULL,
                                                sample_index = 1L,
                                                title = NULL) {
@@ -450,8 +457,12 @@ plot_xcms_feature_group_EIC_comparasion <- function(xcms,
   if (!length(feature_group)) {
     stop("`feature_group` must be a non-empty character vector")
   }
-  if (!is.numeric(rt_half) || length(rt_half) != 1L || rt_half <= 0) {
-    stop("`rt_half` must be a positive numeric(1)")
+  if (!is.numeric(expandRt) || length(expandRt) != 1L || !is.finite(expandRt)) {
+    stop("`expandRt` must be a finite numeric(1)")
+  }
+  if (!is.numeric(min_width) || length(min_width) != 1L ||
+      !is.finite(min_width) || min_width < 0) {
+    stop("`min_width` must be a non-negative finite numeric(1)")
   }
 
   fdf <- as.data.frame(xcms::featureDefinitions(xcms))
@@ -521,28 +532,47 @@ plot_xcms_feature_group_EIC_comparasion <- function(xcms,
       feature.id = sel_fids,
       selected_sample = "maxo",
       rt = "expand",
-      expandRt = rt_half,
+      expandRt = expandRt + min_width,
       aggregationFun = "max",
       attachPeaks = FALSE
     )
     if (!is.null(bpp)) chrom_args$BPPARAM <- bpp
     chroms <- do.call(get_xcms_feature_chromatogram, chrom_args)
   }
+  if (!inherits(chroms, "XChromatograms")) {
+    stop("`chroms` must be an XChromatograms with a featureDefinitions slot")
+  }
+
+  ## Crop each feature's EIC to its peak RT window exactly as the EIC grouping
+  ## does (see get_xcms_feature_EIC_similarity), so the displayed traces match
+  ## the chromatograms used for grouping. Re-attach featureDefinitions to the
+  ## row subset so XChromatograms_subset_feature sees an aligned slot.
+  sel_idx <- match(sel_fids, rownames(chroms))
+  if (anyNA(sel_idx)) {
+    stop("Chromatograms missing for features: ",
+         paste(sel_fids[is.na(sel_idx)], collapse = ", "))
+  }
+  chroms_sel <- suppressWarnings(chroms[sel_idx, , drop = FALSE])
+  chroms_sel@featureDefinitions <-
+    chroms@featureDefinitions[sel_idx, , drop = FALSE]
+  chroms_crop <- XChromatograms_subset_feature(
+    chroms_sel,
+    expandRt = expandRt,
+    min_width = min_width
+  )
 
   .eic_df <- function(fid) {
-    rn <- rownames(chroms)
-    ii <- match(fid, rn)
-    rt_med <- rt_all[[fid]]
-    if (is.na(ii) || !is.finite(rt_med)) {
+    ii <- match(fid, rownames(chroms_crop))
+    if (is.na(ii)) {
       return(NULL)
     }
-    ch <- chroms[ii, 1L]
+    ch <- chroms_crop[ii, 1L]
     if (!requireNamespace("MSnbase", quietly = TRUE)) {
       stop("Package 'MSnbase' is required to read chromatogram rtime/intensity")
     }
     rt <- as.numeric(MSnbase::rtime(ch))
     inten <- as.numeric(MSnbase::intensity(ch))
-    keep <- is.finite(rt) & rt >= (rt_med - rt_half) & rt <= (rt_med + rt_half)
+    keep <- is.finite(rt) & is.finite(inten)
     if (!any(keep)) {
       return(NULL)
     }

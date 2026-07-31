@@ -754,7 +754,10 @@ MSdev_group_feature_EIC <- function(object,
 #'   (\code{Positive_Chromatograms} / \code{Negative_Chromatograms}).
 #' @param object An \code{MSdev} object with \code{featureGroups} on MS1 xcms
 #'   objects (e.g. after \code{\link{MSdev_group_feature_EIC}}).
-#' @param rt_half Half-width (seconds) passed to
+#' @param expandRt numeric(1). Seconds added on each side of each feature's
+#'   peak RT window, passed to
+#'   \code{plot_xcms_feature_group_EIC_comparasion} (default \code{2}).
+#' @param min_width numeric(1). Minimum RT window width (seconds), passed to
 #'   \code{plot_xcms_feature_group_EIC_comparasion} (default \code{20}).
 #' @param max_features Maximum features per group plot; \code{NULL} keeps all
 #'   (default).
@@ -766,7 +769,8 @@ MSdev_group_feature_EIC <- function(object,
 #' @return Invisible character vector of written PDF path(s).
 #' @export
 Report_MSdev_feature_group_EIC <- function(object,
-                                           rt_half = 20,
+                                           expandRt = 2,
+                                           min_width = 20,
                                            max_features = NULL,
                                            sample_index = 1L,
                                            min_features = 2L,
@@ -850,10 +854,10 @@ Report_MSdev_feature_group_EIC <- function(object,
           xcms = xcms.xcms,
           feature_group = g,
           chroms = chroms,
-          rt_half = rt_half,
+          expandRt = expandRt,
+          min_width = min_width,
           max_features = max_features,
-          sample_index = sample_index,
-          title = sprintf("%s 鈥?%s (%d features)", pol, g, n_feat)
+          sample_index = sample_index
         ),
         error = function(e) {
           warning("Skip ", pol, " / ", g, ": ", conditionMessage(e))
