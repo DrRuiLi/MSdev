@@ -419,7 +419,9 @@ ggplot_irange <- function(IR, scale = 1e-6){
 #' @param sample_index Sample index into
 #'   \code{otherData(xcms)$EIC_Similarity} when several samples are stored
 #'   (default \code{1L}).
-#' @param title Optional plot title. Default summarizes group ids and grid size.
+#' @param title Optional plot title. Default is
+#'   \code{"Feature group: <id> (<rt center>), ..."}, where the RT center is the
+#'   median \code{rtmed} of each group's member features.
 #' @return A \code{ggplot} object.
 #' @export
 plot_xcms_feature_group_EIC_comparasion <- function(xcms,
@@ -461,7 +463,12 @@ plot_xcms_feature_group_EIC_comparasion <- function(xcms,
   }
   rt_all <- as.numeric(fdf$rtmed)
   mz_all <- as.numeric(fdf$mzmed)
-  names(rt_all) <- names(mz_all) <- names(fg_all) <- fids_all
+  if ("feature_group_rt" %in% names(fdf)) {
+    fgrt_all <- as.numeric(fdf$feature_group_rt)
+  } else {
+    fgrt_all <- rep(NA_real_, length(fids_all))
+  }
+  names(rt_all) <- names(mz_all) <- names(fg_all) <- names(fgrt_all) <- fids_all
 
   miss <- setdiff(feature_group, unique(stats::na.omit(fg_all)))
   if (length(miss)) {
@@ -631,9 +638,18 @@ plot_xcms_feature_group_EIC_comparasion <- function(xcms,
   lab_df$col_lab <- factor(lab_df$col_lab, levels = lab_levels)
 
   if (is.null(title)) {
+    fg_rt <- vapply(sel_fg, function(g) {
+      gfids <- gfids_list[[g]]
+      as.numeric(fgrt_all[gfids[[1L]]])
+    }, numeric(1))
+    fg_lab <- ifelse(
+      is.finite(fg_rt),
+      sprintf("%s (%s)", sel_fg, round(fg_rt)),
+      sel_fg
+    )
     title <- sprintf(
-      "%d x %d mirror EIC — groups: %s",
-      n, n, paste(sel_fg, collapse = ", ")
+      "Feature group: %s",
+      paste(fg_lab, collapse = ", ")
     )
   }
 

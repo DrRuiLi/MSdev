@@ -578,7 +578,9 @@ groupSimilarityMatrix_completeLinkage <- function(x,
 #'   leave absents unknown.
 #' @param BPPARAM BiocParallel backend passed to
 #'   \code{\link{get_xcms_feature_EIC_similarity}}. Default \code{SerialParam()}.
-#' @return Updated \code{xcms.xcms} with \code{featureGroups} set; when
+#' @return Updated \code{xcms.xcms} with \code{featureGroups} set and a
+#'   \code{feature_group_rt} column added to \code{featureDefinitions} (the
+#'   median \code{rtmed} of each group's member features); when
 #'   \code{keep_Similarity_Matrix} is TRUE, also
 #'   \code{otherData(xcms)$EIC_Similarity}.
 #' @export
@@ -639,6 +641,14 @@ xcms_group_feature_EIC <- function(xcms.xcms,
     lab[is.na(lab)] <- paste0("FG.", MsFeatures:::.format_id(seq_len(sum(is.na(lab)))))
   }
   xcms::featureGroups(xcms.xcms) <- as.character(lab)
+
+  fd <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
+  fd$feature_group_rt <- stats::ave(
+    as.numeric(fd$rtmed),
+    as.character(lab),
+    FUN = function(x) stats::median(x, na.rm = TRUE)
+  )
+  xcms.xcms <- .xcms_featureDefinitions_replace(xcms.xcms, fd)
 
   if (isTRUE(keep_Similarity_Matrix)) {
     od <- MsExperiment::otherData(xcms.xcms)
