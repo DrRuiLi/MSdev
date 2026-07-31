@@ -1078,7 +1078,10 @@ XChromatograms_rt_unit <- function(xchroms,unit_to = "s",
 #'   \code{min_width}. Requires \code{peakRtMin} and \code{peakRtMax} in
 #'   \code{obj@featureDefinitions} (e.g. after
 #'   \code{\link{get_xcms_feature_chromatogram}} on an object that has run
-#'   \code{\link{xcms_get_feature_def_stat}}).
+#'   \code{\link{xcms_get_feature_def_stat}}). \code{NA} intensities inside the
+#'   window are set to \code{0} so every feature carries a full baseline over
+#'   its window; because all features share the sample's master RT grid, this
+#'   keeps RTs aligned across features for pairwise comparison.
 #' @param xchroms XChromatograms with feature rownames and a
 #'   \code{featureDefinitions} slot containing \code{peakRtMin},
 #'   \code{peakRtMax}.
@@ -1088,9 +1091,10 @@ XChromatograms_rt_unit <- function(xchroms,unit_to = "s",
 #'   \code{expandRt}. If the window is shorter, pad both sides equally.
 #'   Default \code{0} (no minimum).
 #'
-#' @return XChromatograms with each feature's EIC cropped to its RT window.
-#'   The \code{phenoData}, \code{featureData}, and \code{featureDefinitions}
-#'   slots are carried over from the input unchanged.
+#' @return XChromatograms with each feature's EIC cropped to its RT window and
+#'   \code{NA} intensities filled with \code{0}. The \code{phenoData},
+#'   \code{featureData}, and \code{featureDefinitions} slots are carried over
+#'   from the input unchanged.
 #' @export
 #'
 XChromatograms_subset_feature <- function(xchroms,
@@ -1140,7 +1144,15 @@ XChromatograms_subset_feature <- function(xchroms,
     }
     for (j in seq_len(nc)) {
       k <- k + 1L
-      chrom_list[[k]] <- MSnbase::filterRt(xchroms[i, j], rt = c(rmin, rmax))
+      ch <- MSnbase::filterRt(xchroms[i, j], rt = c(rmin, rmax))
+      ## Extraction keeps every scan RT in the window (NA where no signal);
+      ## fill NA intensities with 0 so a baseline exists across the whole
+      ## window. All features share the master RT grid, so filling per feature
+      ## keeps RTs aligned across features for pairwise comparison.
+      inten <- MSnbase::intensity(ch)
+      inten[!is.finite(inten)] <- 0
+      ch@intensity <- inten
+      chrom_list[[k]] <- ch
     }
   }
 
