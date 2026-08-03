@@ -2499,3 +2499,117 @@ MSdev_get_feature_wmean <- function(object){
 
   return(object)
 }
+
+
+#' @title Compute MS1 feature purity for both polarities
+#' @description Per-polarity wrapper around \code{\link{xcms_get_feature_purity}}.
+#'   For each available MS1 \code{XcmsExperiment} (\code{PositiveMS1} /
+#'   \code{NegativeMS1}), computes the feature-by-sample purity matrix and stores
+#'   it as assay \code{"purity_matrix"} in \code{qdata}.
+#'
+#'   Skips a polarity when \code{purity_matrix} already exists unless
+#'   \code{force = TRUE}. Failures are caught per polarity so one missing
+#'   xcms slot does not abort the other.
+#' @param object MSdev object
+#' @param ppm numeric, ppm tolerance for m/z window. Default 10.
+#' @param isolation_half_window numeric, half isolation window (m/z). Default 0.2.
+#' @param force logical; if \code{FALSE} (default), skip a polarity when
+#'   \code{purity_matrix} already exists in qdata. If \code{TRUE}, recompute.
+#' @param drop_blank logical; retained for API compatibility (unused; blanks
+#'   are not stripped from qdata).
+#' @param ... ignored (retained for API compatibility).
+#' @return MSdev object with updated MS1 xcms \code{qdata} assays.
+#' @seealso \code{\link{xcms_get_feature_purity}}
+#' @export
+MSdev_get_feature_purity <- function(object,
+                                     ppm = 10,
+                                     isolation_half_window = 0.2,
+                                     force = FALSE,
+                                     drop_blank = TRUE,
+                                     ...) {
+  stopifnot(inherits(object, "MSdev"))
+  message_with_time("MSdev_get_feature_purity: start")
+  if (length(list(...))) {
+    cli::cli_alert_info(
+      "MSdev_get_feature_purity: extra arguments in ... are ignored (qdata API)."
+    )
+  }
+  invisible(drop_blank)
+
+  for (pol in c("Negative", "Positive")) {
+    polarity.tag <- paste0(pol, "MS1")
+    xcms.xcms <- object@xcmsData[[polarity.tag]]
+    if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) {
+      cli::cli_alert_warning(
+        "MSdev_get_feature_purity: {.field {polarity.tag}} is missing; skipped."
+      )
+      next
+    }
+
+    if (!isTRUE(force) && .msdev_has_purity_matrix(xcms.xcms)) {
+      cli::cli_alert_info(
+        "MSdev_get_feature_purity: {.field {pol}} purity_matrix already in qdata; skipped (use force = TRUE to recompute)."
+      )
+      next
+    }
+
+    message_with_time("MSdev_get_feature_purity [", pol, "]: calculate purity_matrix")
+    xcms.xcms <- tryCatch(
+      xcms_get_feature_purity(
+        xcms.xcms,
+        ppm = ppm,
+        isolation_half_window = isolation_half_window
+      ),
+      error = function(e) {
+        cli::cli_alert_warning(
+          "MSdev_get_feature_purity [{pol}]: xcms_get_feature_purity() failed: {conditionMessage(e)}"
+        )
+        NULL
+      }
+    )
+    if (is.null(xcms.xcms)) next
+
+    object@xcmsData[[polarity.tag]] <- xcms.xcms
+    mat <- .msdev_get_purity_matrix(xcms.xcms)
+    if (!is.null(mat)) {
+      message_with_time(
+        "MSdev_get_feature_purity [", pol, "]: stored purity_matrix ",
+        nrow(mat), " features x ", ncol(mat), " samples in qdata"
+      )
+    } else {
+      cli::cli_alert_warning(
+        "MSdev_get_feature_purity: {.field {pol}} purity_matrix unavailable after compute."
+      )
+    }
+  }
+
+  message_with_time("MSdev_get_feature_purity: done")
+  object
+}
+
+
+#' Read feature purity matrix from XcmsExperiment qdata
+#' @keywords internal
+.msdev_get_purity_matrix <- function(xcms) {
+  se <- tryCatch(MsExperiment::qdata(xcms), error = function(e) NULL)
+  if (is.null(se)) return(NULL)
+  an <- tryCatch(
+    SummarizedExperiment::assayNames(se),
+    error = function(e) character(0)
+  )
+  if (!"purity_matrix" %in% an) return(NULL)
+  mat <- tryCatch(
+    SummarizedExperiment::assay(se, "purity_matrix"),
+    error = function(e) NULL
+  )
+  if (is.null(mat)) return(NULL)
+  as.matrix(mat)
+}
+
+
+#' Whether qdata already has a non-empty purity_matrix assay
+#' @keywords internal
+.msdev_has_purity_matrix <- function(xcms) {
+  mat <- .msdev_get_purity_matrix(xcms)
+  !is.null(mat) && is.matrix(mat) && nrow(mat) > 0 && ncol(mat) > 0
+}
