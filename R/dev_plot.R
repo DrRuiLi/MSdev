@@ -891,3 +891,288 @@ plot_Chromatograph_mirror <- function(chrom1,
       plot.title = ggplot2::element_text(size = 11, face = "bold")
     )
 }
+
+#' Heatmap of xcms feature-group EIC similarity
+#'
+#' Draws the EIC similarity matrix produced by
+#' \code{\link{MSdev_group_feature_EIC}} /
+#' \code{\link{xcms_group_feature_EIC}} (stored on the xcms object at
+#' \code{MsExperiment::otherData(xcms)$EIC_Similarity}) as a
+#' \pkg{ComplexHeatmap}. Rows/columns are ordered either by \code{rtmed}
+#' (\code{order_by = "rtmed"}) or by feature group
+#' (\code{order_by = "feature_group"}: groups sorted by each group's median
+#' \code{rtmed}, features within a group by \code{rtmed}). The stored matrix is
+#' sparse: only compared pairs (within \code{rt_tol}) carry a score, so absent
+#' (uncompared) entries are densified to \code{NA} and shown in \code{na_col}
+#' (grey), while a genuine zero correlation stays on the ramp (white). A top
+#' color bar encodes \code{rtmed} (plus a feature-group bar when groups exist).
+#'
+#' @param xcms An xcms object (\code{XcmsExperiment} / \code{XCMSnExp}) that
+#'   carries feature definitions, \code{featureGroups}, and an
+#'   \code{EIC_Similarity} entry (e.g. \code{ms@xcmsData$PositiveMS1}).
+#' @param order_by \code{"rtmed"} (default) or \code{"feature_group"}.
+#' @param sample Sample name or index selecting the per-sample similarity
+#'   matrix (default first sample).
+#' @param rt_window Optional half-width (seconds) of a fixed RT window centered
+#'   on the densest RT region, keeping the diagonal band visible. \code{NULL}
+#'   (default) keeps all features.
+#' @param na_col Color for uncompared (\code{NA}) cells (default
+#'   \code{"#BDBDBD"}, grey).
+#' @param box_top_n Number of largest feature groups to outline with a box on
+#'   the diagonal. Only applies to \code{order_by = "feature_group"} (where
+#'   each group is a contiguous block). Set \code{0} / \code{NULL} to disable
+#'   (default \code{10}).
+#' @return (Invisibly) a \code{ComplexHeatmap::Heatmap} object.
+#' @export
+plot_xcms_feature_group_similarity <- function(xcms,
+                                               order_by = c("rtmed", "feature_group"),
+                                               sample = 1L,
+                                               rt_window = NULL,
+                                               na_col = "#BDBDBD",
+                                               box_top_n = 10L) {
+  order_by <- match.arg(order_by)
+  for (pkg in c("ComplexHeatmap", "circlize")) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      stop(
+        "Package '", pkg,
+        "' is required for plot_xcms_feature_group_similarity()"
+      )
+    }
+  }
+  if (!(inherits(xcms, "XcmsExperiment") ||
+        inherits(xcms, "MsExperiment") ||
+        inherits(xcms, "XCMSnExp"))) {
+    stop("`xcms` must be an XcmsExperiment, MsExperiment, or XCMSnExp")
+  }
+
+  ex <- .xcms_extract_eic_similarity(xcms, sample = sample)
+  sim <- ex$sim
+  rt <- ex$rt
+  feature_group <- ex$feature_group
+  sample_label <- ex$sample_label
+  storage.mode(sim) <- "double"
+  if (nrow(sim) < 2L) {
+    stop("Similarity matrix needs at least 2 features to plot")
+  }
+
+  fids <- rownames(sim)
+  if (is.null(fids)) {
+    fids <- as.character(seq_len(nrow(sim)))
+  }
+
+  # --- Order rows/columns ---
+  if (identical(order_by, "feature_group")) {
+    rt_center <- tapply(rt, feature_group, stats::median, na.rm = TRUE)
+    fg_levels <- names(rt_center)[order(rt_center, na.last = TRUE)]
+    ord <- order(factor(feature_group, levels = fg_levels), rt, na.last = TRUE)
+  } else {
+    ord <- order(rt, na.last = TRUE)
+  }
+  sim <- sim[ord, ord, drop = FALSE]
+  rt <- rt[ord]
+  feature_group <- feature_group[ord]
+  fids <- fids[ord]
+
+  # --- Optional fixed RT window around densest region ---
+  if (!is.null(rt_window) && is.finite(rt_window) && rt_window > 0 &&
+      length(rt) > 2L) {
+    br0 <- graphics::hist(rt, breaks = 50, plot = FALSE)
+    center <- br0$mids[which.max(br0$counts)]
+    keep <- which(rt >= center - rt_window & rt <= center + rt_window)
+    if (length(keep) >= 2L) {
+      sim <- sim[keep, keep, drop = FALSE]
+      rt <- rt[keep]
+      feature_group <- feature_group[keep]
+      fids <- fids[keep]
+    }
+  }
+
+  diag(sim) <- 1
+
+  lab <- as.character(fids)
+  if (anyDuplicated(lab)) {
+    lab <- make.unique(lab, sep = "_")
+  }
+  dimnames(sim) <- list(lab, lab)
+
+  # --- Colors + top annotation ---
+  col_fun <- circlize::colorRamp2(
+    c(0, 0.5, 1),
+    c("#FFFFFF", "#F7844F", "#B20C26")
+  )
+  rt_col <- circlize::colorRamp2(
+    c(min(rt, na.rm = TRUE), max(rt, na.rm = TRUE)),
+    c("#2166AC", "#B2182B")
+  )
+
+  # Feature-group color bar (shown for both orderings when groups exist)
+  has_fg <- any(!is.na(feature_group) & nzchar(feature_group))
+  if (has_fg) {
+    fg_fac <- factor(feature_group, levels = unique(feature_group))
+    n_fg <- nlevels(fg_fac)
+    fg_pal <- if (n_fg <= 12L) {
+      grDevices::hcl.colors(n_fg, "Dark 3")
+    } else {
+      grDevices::hcl.colors(n_fg, "Dynamic")
+    }
+    names(fg_pal) <- levels(fg_fac)
+    top_anno <- ComplexHeatmap::HeatmapAnnotation(
+      rtmed = rt,
+      feature_group = fg_fac,
+      col = list(rtmed = rt_col, feature_group = fg_pal),
+      annotation_name_side = "left",
+      annotation_name_gp = grid::gpar(fontsize = 8),
+      simple_anno_size = grid::unit(4, "mm"),
+      show_legend = c(rtmed = TRUE, feature_group = n_fg <= 20L),
+      annotation_legend_param = list(
+        rtmed = list(title = "rtmed (s)"),
+        feature_group = list(title = "feature_group")
+      )
+    )
+  } else {
+    n_fg <- 0L
+    top_anno <- ComplexHeatmap::HeatmapAnnotation(
+      rtmed = rt,
+      col = list(rtmed = rt_col),
+      annotation_name_side = "left",
+      annotation_name_gp = grid::gpar(fontsize = 8),
+      simple_anno_size = grid::unit(4, "mm"),
+      annotation_legend_param = list(rtmed = list(title = "rtmed (s)"))
+    )
+  }
+
+  if (identical(order_by, "feature_group")) {
+    row_title <- "feature_id (groups by rt.center)"
+    column_title <- sprintf(
+      paste0(
+        "EIC similarity by feature group (groups ordered by rt.center)\n",
+        "%d features, %d groups; sample: %s"
+      ),
+      length(fids), n_fg, sample_label
+    )
+  } else {
+    row_title <- "feature_id (ordered by rtmed)"
+    column_title <- sprintf(
+      paste0(
+        "EIC similarity - grey = not compared\n",
+        "%d features, RT %.1f-%.1f s; sample: %s"
+      ),
+      length(fids),
+      min(rt, na.rm = TRUE), max(rt, na.rm = TRUE), sample_label
+    )
+  }
+
+  # Outline the largest feature-group blocks on the diagonal (contiguous only
+  # when ordered by feature group).
+  box_top_n <- if (is.null(box_top_n)) 0L else as.integer(box_top_n)[[1]]
+  layer_fun <- NULL
+  if (has_fg && identical(order_by, "feature_group") &&
+      is.finite(box_top_n) && box_top_n > 0L) {
+    grp <- as.character(fg_fac)
+    sizes <- sort(table(grp), decreasing = TRUE)
+    top_groups <- names(sizes)[seq_len(min(box_top_n, length(sizes)))]
+    n_cell <- length(grp)
+    boxes <- lapply(top_groups, function(g) range(which(grp == g)))
+    layer_fun <- function(j, i, x, y, w, h, fill) {
+      for (b in boxes) {
+        r1 <- b[[1]]
+        r2 <- b[[2]]
+        span <- (r2 - r1 + 1) / n_cell
+        grid::grid.rect(
+          x = grid::unit((r1 - 1 + r2) / (2 * n_cell), "npc"),
+          y = grid::unit(1 - (r1 - 1 + r2) / (2 * n_cell), "npc"),
+          width = grid::unit(span, "npc"),
+          height = grid::unit(span, "npc"),
+          gp = grid::gpar(col = "black", fill = NA, lwd = 1.5)
+        )
+      }
+    }
+  }
+
+  ht <- ComplexHeatmap::Heatmap(
+    sim,
+    name = "EIC\nsimilarity",
+    col = col_fun,
+    na_col = na_col,
+    cluster_rows = FALSE,
+    cluster_columns = FALSE,
+    show_row_names = FALSE,
+    show_column_names = FALSE,
+    row_title = row_title,
+    column_title = column_title,
+    top_annotation = top_anno,
+    layer_fun = layer_fun,
+    heatmap_legend_param = list(
+      at = c(0, 0.5, 1),
+      labels = c("0", "0.5", "1")
+    )
+  )
+
+  invisible(ht)
+}
+
+#' Extract EIC similarity matrix + rtmed / feature_group from an xcms object
+#'
+#' Reads \code{MsExperiment::otherData(xcms)$EIC_Similarity} (a per-sample list
+#' of sparse matrices, or a single matrix), selects one sample, densifies it
+#' with absent pairs as \code{NA} via \code{.sparse_sim_to_dense_na}, and maps
+#' the matrix's feature ids to \code{rtmed} and \code{featureGroups}.
+#' @noRd
+.xcms_extract_eic_similarity <- function(xcms, sample = 1L) {
+  if (!requireNamespace("xcms", quietly = TRUE)) {
+    stop("Package 'xcms' is required to read feature definitions")
+  }
+  store <- NULL
+  if (requireNamespace("MsExperiment", quietly = TRUE)) {
+    store <- tryCatch(
+      MsExperiment::otherData(xcms)$EIC_Similarity,
+      error = function(e) NULL
+    )
+  }
+  if (is.null(store) || !length(store)) {
+    stop(
+      "No EIC_Similarity found on the xcms object. Run ",
+      "MSdev_group_feature_EIC(keep_Similarity_Matrix = TRUE) first."
+    )
+  }
+  if (is.matrix(store) || is.data.frame(store) ||
+      methods::is(store, "Matrix")) {
+    store <- list(store)
+  }
+  idx <- if (is.numeric(sample)) {
+    as.integer(sample)[[1]]
+  } else {
+    match(as.character(sample)[[1]], names(store))
+  }
+  if (is.na(idx) || idx < 1L || idx > length(store)) {
+    stop(
+      "`sample` does not select a similarity matrix (available: ",
+      paste(names(store), collapse = ", "), ")"
+    )
+  }
+  sim <- .sparse_sim_to_dense_na(store[[idx]])
+  sample_label <- if (!is.null(names(store)) && nzchar(names(store)[[idx]])) {
+    names(store)[[idx]]
+  } else {
+    as.character(idx)
+  }
+
+  fdf <- as.data.frame(xcms::featureDefinitions(xcms))
+  fids <- rownames(sim)
+  if (is.null(fids)) {
+    stop("Similarity matrix has no feature-id rownames")
+  }
+  mch <- if ("feature_id" %in% names(fdf)) {
+    match(fids, as.character(fdf$feature_id))
+  } else {
+    match(fids, rownames(fdf))
+  }
+  rt <- as.numeric(fdf$rtmed[mch])
+  fg <- as.character(xcms::featureGroups(xcms))[mch]
+  list(
+    sim = sim,
+    rt = rt,
+    feature_group = fg,
+    sample_label = sample_label
+  )
+}
