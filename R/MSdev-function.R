@@ -1553,8 +1553,11 @@ MSdev_msConvert<- function(object,format.to = "mzML"){
 
 #' @title Extract and store MS1 and MS2 spectra from raw data files
 #' @description Read raw data files, split spectra by MS level, evaluate noise and purity,
-#' store as on-disk data in \code{object@spectra}, and match MS2 to features via
-#' \code{\link{MSdev_match_Spectra_to_feature}}.
+#' store as on-disk data in \code{object@spectra}. When polarity \code{xcmsData}
+#' slots are xcms-processed (\code{XcmsExperiment}/\code{XCMSnExp}) and have
+#' features, also match MS2 to features via
+#' \code{\link{MSdev_match_Spectra_to_feature}}; otherwise matching is skipped
+#' (e.g. plain \code{MsExperiment} without feature definitions).
 #' @describeIn MSdev_workflow Extract all spectra, split to MS1 and MS2, store as onDiskData
 #' @param object MSdev object
 #' @param rt.tol retention time tolerance for matching spectra to features (seconds)
@@ -1639,15 +1642,30 @@ MSdev_extract_Spectra <- function(object,
   }
 
 
-  ### assign to feature
+  ### assign to feature (skip if not xcms-processed / no features)
   {
-
-    object <-  MSdev_match_Spectra_to_feature(object,rt.tol = rt.tol)
+    can_match <- any(vapply(c("PositiveMS1", "NegativeMS1"), function(nm) {
+      .xcms_has_features(object@xcmsData[[nm]])
+    }, logical(1)))
+    if (can_match) {
+      object <- MSdev_match_Spectra_to_feature(object, rt.tol = rt.tol)
+    } else {
+      message("no xcms features, skip MSdev_match_Spectra_to_feature")
+    }
   }
 
 
   return(object)
 
+}
+
+#' Whether an xcms object supports and currently has feature definitions.
+#' Plain MsExperiment has no hasFeatures method; only XcmsExperiment / XCMSnExp.
+.xcms_has_features <- function(x) {
+  !is.null(x) &&
+    !identical(x, NA) &&
+    (inherits(x, "XcmsExperiment") || inherits(x, "XCMSnExp")) &&
+    isTRUE(xcms::hasFeatures(x))
 }
 
 
@@ -1677,7 +1695,7 @@ MSdev_match_Spectra_to_feature <- function(object,
       ProtGenerics::filterPolarity(i)
     if (length(sp.ms2)==0) next
     xcms.xcms <- object@xcmsData[[polarity.tag]]
-    if (is.null(xcms.xcms) || !isTRUE(xcms::hasFeatures(xcms.xcms))) {
+    if (!.xcms_has_features(xcms.xcms)) {
       message("no features, skip match to feature")
       next
     }
@@ -2192,7 +2210,7 @@ get_MSdev_spectra_target_list <- function(object,
     for (i in 0:1) {
       pol <- ifelse(i == 0, "Negative", "Positive")
       x <- object@xcmsData[[paste0(pol, "MS1")]]
-      if (is.null(x) || !isTRUE(xcms::hasFeatures(x))) next
+      if (!.xcms_has_features(x)) next
       fdf <- as.data.frame(xcms::featureDefinitions(x), stringsAsFactors = FALSE)
       if (!("feature_id" %in% colnames(fdf))) fdf$feature_id <- rownames(fdf)
       fdf$polarity_label <- pol
