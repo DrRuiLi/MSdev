@@ -337,6 +337,7 @@ MSdev_xcmsProcessing <- function(object,
   if ("FS" %in% MS.mode|"DDA" %in% MS.mode) {
     object <- MSdev_get_xcms(object)
     object <- xcmsProcessingMSdev.DDA(object, BPPARAM = BPPARAM, ...)
+    object <- MSdev_match_Spectra_to_feature(object)
     return(object)
   }
 
@@ -352,23 +353,91 @@ MSdev_xcmsProcessing <- function(object,
 }
 
 
+.MSdev_has_stored_Spectra <- function(object) {
+  sp <- object@spectra
+  if (!is.list(sp)) return(FALSE)
+  has_ms1 <- !is.null(sp$MS1_Spectra) && !identical(sp$MS1_Spectra, NA)
+  has_ms2 <- !is.null(sp$MS2_Spectra) && !identical(sp$MS2_Spectra, NA)
+  has_ms1 || has_ms2
+}
+
+.MSdev_has_ms1_xcms <- function(object) {
+  if (!is.list(object@xcmsData)) return(FALSE)
+  for (nm in c("PositiveMS1", "NegativeMS1")) {
+    x <- object@xcmsData[[nm]]
+    if (!is.null(x) && !identical(x, NA)) return(TRUE)
+  }
+  FALSE
+}
+
+#' Finalize MS1/MS2 Spectra copies into object@spectra (sp_id, metadata, onDiskData).
+#' Does not modify xcmsData. sp.ms1 / sp.ms2 may be NULL or length-0.
+#' @noRd
+.MSdev_finalize_Spectra <- function(object, sp.ms1 = NULL, sp.ms2 = NULL) {
+  sampleInfo <- object@sampleInfo
+  if (is.null(object@spectra) || !is.list(object@spectra)) {
+    object@spectra <- list()
+  }
+
+  if (!is.null(sp.ms1) && length(sp.ms1)) {
+    sp.ms1$sp_id <- paste0("MS1_SP", num2str(seq_len(length(sp.ms1))))
+    Spectra::spectraNames(sp.ms1) <- sp.ms1$sp_id
+    if ("sample.source" %in% colnames(sampleInfo)) {
+      sp.ms1$sample.source <- sampleInfo$sample.source[
+        match(Biobase::sampleNames(sp.ms1), basename(sampleInfo$msData.files))
+      ]
+    }
+    object@spectra$MS1_Spectra <- onDiskData(
+      sp.ms1,
+      path = paste0(object@projectInfo$projectDir, "/MS1_Spectra.rds")
+    )
+  }
+
+  if (!is.null(sp.ms2) && length(sp.ms2)) {
+    sp.ms2$sp_id <- paste0("MS2_SP", num2str(seq_len(length(sp.ms2))))
+    sp.ms2$precursorMz <- sp.ms2$isolationWindowTargetMz
+    Spectra::spectraNames(sp.ms2) <- sp.ms2$sp_id
+    if ("isotope_tracer" %in% colnames(sampleInfo)) {
+      sp.ms2$isotope_tracer <- sampleInfo$isotope_tracer[
+        match(Biobase::sampleNames(sp.ms2), basename(sampleInfo$msData.files))
+      ]
+      sp.ms2$from_isotope_tracer <- !is.na(sp.ms2$isotope_tracer)
+    }
+    if ("sample.source" %in% colnames(sampleInfo)) {
+      sp.ms2$sample.source <- sampleInfo$sample.source[
+        match(Biobase::sampleNames(sp.ms2), basename(sampleInfo$msData.files))
+      ]
+    }
+    object@spectra$MS2_Spectra <- onDiskData(
+      sp.ms2,
+      path = paste0(object@projectInfo$projectDir, "/MS2_Spectra.rds")
+    )
+  }
+
+  object
+}
+
 MSdev_get_xcms <- function(object){
 
-  if (is.list(object@xcmsData)) {
-    if (!is.null(object@xcmsData$PositiveMS1) && !identical(object@xcmsData$PositiveMS1, NA)) {
-      return(object)
+  if (.MSdev_has_ms1_xcms(object)) {
+    if (!.MSdev_has_stored_Spectra(object)) {
+      message(
+        "xcms MS1 already present but @spectra is empty; ",
+        "call MSdev_extract_Spectra() for a file-based fill, ",
+        "or clear xcmsData and re-run MSdev_get_xcms / MSdev_xcmsProcessing"
+      )
     }
-    if (!is.null(object@xcmsData$NegativeMS1) && !identical(object@xcmsData$NegativeMS1, NA)) {
-      return(object)
-    }
+    return(object)
   }
 
   polarity.index <- c("0" = "Negative",
                       "1" = "Positive")
+  ms1_list <- list()
+  ms2_list <- list()
   for (i in c(0, 1)) {
     ## Import all polarity-matching files (including dual-polarity "0;1"),
     ## then keep polarity / MS1 via experiment-level filters (filterSpectra)
-    ## so sample鈥搒pectrum links stay valid for later filterFile / [.
+    ## so sample-spectrum links stay valid for later filterFile / [.
     sample.info.polarity <- object@sampleInfo %>%
       dplyr::filter(grepl(i, polarity))
     if (!nrow(sample.info.polarity)) {
@@ -390,10 +459,26 @@ MSdev_get_xcms <- function(object){
       sampleData = sd
     )
     xcms.xcms <- ProtGenerics::filterPolarity(xcms.xcms, i)
+
+    ## Copy Spectra for @spectra (do not write filtered/backend-changed
+    ## Spectra back into the experiment). Then MS1-only for xcmsData.
+    sp <- ProtGenerics::spectra(xcms.xcms)
+    if (length(sp)) {
+      sp <- Spectra::setBackend(sp, Spectra::MsBackendMemory())
+      sp1 <- Spectra::filterMsLevel(sp, 1L)
+      sp2 <- Spectra::filterMsLevel(sp, 2L)
+      if (length(sp1)) ms1_list[[length(ms1_list) + 1L]] <- sp1
+      if (length(sp2)) ms2_list[[length(ms2_list) + 1L]] <- sp2
+    }
+
     xcms.xcms <- ProtGenerics::filterMsLevel(xcms.xcms, 1L)
     polarity.tag <- paste0(polarity.index[as.character(i)], "MS1")
     object@xcmsData[[polarity.tag]] <- xcms.xcms
   }
+
+  sp.ms1 <- if (length(ms1_list)) do.call(c, ms1_list) else NULL
+  sp.ms2 <- if (length(ms2_list)) do.call(c, ms2_list) else NULL
+  object <- .MSdev_finalize_Spectra(object, sp.ms1 = sp.ms1, sp.ms2 = sp.ms2)
   return(object)
 }
 
@@ -1552,15 +1637,23 @@ MSdev_msConvert<- function(object,format.to = "mzML"){
 
 
 #' @title Extract and store MS1 and MS2 spectra from raw data files
-#' @description Read raw data files, split spectra by MS level, evaluate noise and purity,
-#' store as on-disk data in \code{object@spectra}. When polarity \code{xcmsData}
-#' slots are xcms-processed (\code{XcmsExperiment}/\code{XCMSnExp}) and have
-#' features, also match MS2 to features via
-#' \code{\link{MSdev_match_Spectra_to_feature}}; otherwise matching is skipped
-#' (e.g. plain \code{MsExperiment} without feature definitions).
+#' @description File-based spectra importer for cases without (or after) xcms init.
+#' Reads raw data files, splits by MS level, optionally evaluates noise/purity,
+#' and stores on-disk data in \code{object@spectra}.
+#'
+#' On the main FS/DDA path, prefer \code{\link{MSdev_xcmsProcessing}} /
+#' \code{MSdev_get_xcms}, which copy Spectra from the freshly read
+#' \code{MsExperiment} (filter / \code{setBackend} only; xcms data unchanged)
+#' so files are not read twice. Use this function when xcms is absent, skipped,
+#' or already locked (e.g. after \code{\link{MSdev_add_sample}}).
+#'
+#' Feature matching is not performed here; call
+#' \code{\link{MSdev_match_Spectra_to_feature}} after xcms feature definitions
+#' exist (also done at the end of \code{MSdev_xcmsProcessing}).
 #' @describeIn MSdev_workflow Extract all spectra, split to MS1 and MS2, store as onDiskData
 #' @param object MSdev object
-#' @param rt.tol retention time tolerance for matching spectra to features (seconds)
+#' @param rt.tol unused; kept for backward compatibility. Matching is via
+#'   \code{\link{MSdev_match_Spectra_to_feature}}.
 #' @param eval.noise logical, whether to evaluate noise in MS2 spectra
 #' @param eval.ms1 logical, whether to evaluate purity using MS1 scans
 #' @return MSdev object with spectra stored in \code{object@spectra}
@@ -1574,87 +1667,24 @@ MSdev_extract_Spectra <- function(object,
   sampleInfo <- object@sampleInfo%>%
     dplyr::mutate(msData.files = normalizePath(msData.files))
 
-  sp.list <- list()
-  if (nrow(sampleInfo)==0) {
-    sp <- Spectra::Spectra()
-  } else {
+  sp.ms1 <- NULL
+  sp.ms2 <- NULL
+  if (nrow(sampleInfo) > 0) {
     sp <- Spectra::Spectra(na.omit(sampleInfo$msData.files),
                            backend = Spectra::MsBackendMemory())
-    if(1 %in% msLevel(sp)){
-      sp.ms1 <- filterMsLevel(sp,1)
-      sp.ms1$sp_id <- paste0("MS1_SP",num2str(1:length(sp.ms1)))
-      Spectra::spectraNames(sp.ms1) <- sp.ms1$sp_id
+    if (1L %in% Spectra::msLevel(sp)) {
+      sp.ms1 <- Spectra::filterMsLevel(sp, 1L)
     }
-    if (2 %in% msLevel(sp)) {
-      sp.ms2 <- filterMsLevel(sp,2)
-      sp.ms2$sp_id <- paste0("MS2_SP",num2str(1:length(sp.ms2)))
-      sp.ms2$precursorMz <- sp.ms2$isolationWindowTargetMz
-      if(eval.noise) sp.ms2 <- Spectra_get_noise(sp.ms2)
-      if(eval.ms1) sp.ms2 <- Spectra_get_purity(sp.ms2,msLevel = 1,sp.ms1 = sp.ms1)
-      Spectra::spectraNames(sp.ms2) <- sp.ms2$sp_id
-    }
-
-
-  }
-
-  ### iso-labeled ms2
-  {
-    if ("isotope_tracer"%in% colnames(sampleInfo)) {
-
-      sp.ms2$isotope_tracer <- sampleInfo$isotope_tracer[match(Biobase::sampleNames(sp.ms2),
-                                     basename(sampleInfo$msData.files))]
-      sp.ms2$from_isotope_tracer <- !is.na(sp.ms2$isotope_tracer)
-
-    }
-
-  }
-
-  ### sample.source
-  {
-    if ("sample.source"%in% colnames(sampleInfo)) {
-      if (1 %in% msLevel(sp)) {
-        sp.ms1$sample.source <- sampleInfo$sample.source[match(Biobase::sampleNames(sp.ms1),
-                                     basename(sampleInfo$msData.files))]
-      }
-      if (2 %in% msLevel(sp)) {
-        sp.ms2$sample.source <- sampleInfo$sample.source[match(Biobase::sampleNames(sp.ms2),
-                                     basename(sampleInfo$msData.files))]
+    if (2L %in% Spectra::msLevel(sp)) {
+      sp.ms2 <- Spectra::filterMsLevel(sp, 2L)
+      if (isTRUE(eval.noise)) sp.ms2 <- Spectra_get_noise(sp.ms2)
+      if (isTRUE(eval.ms1) && !is.null(sp.ms1) && length(sp.ms1)) {
+        sp.ms2 <- Spectra_get_purity(sp.ms2, msLevel = 1, sp.ms1 = sp.ms1)
       }
     }
-
   }
 
-
-  ### save on disk
-  {
-    if(1 %in% msLevel(sp)){
-      sp.ms1 <- onDiskData(sp.ms1,
-                           path = paste0(object@projectInfo$projectDir,"/MS1_Spectra.rds"))
-      object@spectra$MS1_Spectra <- sp.ms1
-    }
-
-    if(2 %in% msLevel(sp)){
-      sp.ms2 <- onDiskData(sp.ms2,
-                           path = paste0(object@projectInfo$projectDir,"/MS2_Spectra.rds"))
-      object@spectra$MS2_Spectra <- sp.ms2
-    }
-
-  }
-
-
-  ### assign to feature (skip if not xcms-processed / no features)
-  {
-    can_match <- any(vapply(c("PositiveMS1", "NegativeMS1"), function(nm) {
-      .xcms_has_features(object@xcmsData[[nm]])
-    }, logical(1)))
-    if (can_match) {
-      object <- MSdev_match_Spectra_to_feature(object, rt.tol = rt.tol)
-    } else {
-      message("no xcms features, skip MSdev_match_Spectra_to_feature")
-    }
-  }
-
-
+  object <- .MSdev_finalize_Spectra(object, sp.ms1 = sp.ms1, sp.ms2 = sp.ms2)
   return(object)
 
 }
@@ -1684,7 +1714,10 @@ MSdev_match_Spectra_to_feature <- function(object,
                                            rt.tol = 10,
                                            ppm = 20){
 
-
+  if (is.null(object@spectra$MS2_Spectra) || identical(object@spectra$MS2_Spectra, NA)) {
+    message("no MS2 spectra, skip MSdev_match_Spectra_to_feature")
+    return(object)
+  }
 
   MS2_Spectra <- onDiskData_retrieve(object@spectra$MS2_Spectra)
   MS2_Spectra$feature_id<-NA

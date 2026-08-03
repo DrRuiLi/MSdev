@@ -5,8 +5,6 @@ MSdev_1.4_workflow <- function(){
   msdev.demo <- MSdev_msConvert(msdev.demo)
   get_MSdev_param(msdev.demo)
   msdev.demo <- MSdev_xcmsProcessing(msdev.demo)
-  msdev.demo <- MSdev_extract_Spectra(msdev.demo)
-  msdev.demo <- MSdev_match_Spectra_to_feature(msdev.demo)
   msdev.demo <- MSdev_annotation(msdev.demo)
   msdev.demo <- MSdev_get_Stat(msdev.demo)
   MSdev_export(msdev.demo)
