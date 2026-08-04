@@ -1379,7 +1379,9 @@ export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
 #' @title Generate sample information table from raw data files
 #' @description Read raw MS data files from a directory and generate a sample information data frame.
 #' @param raw.data.dir Path to directory containing raw data files
-#' @param rawDataFormat File extension of raw data files (default ".raw")
+#' @param rawDataFormat File extension of raw data files (default \code{".raw"};
+#'   also \code{".mzXML"}, \code{".mzML"}, \code{".wiff"}, \code{".lcd"};
+#'   matching is case-insensitive)
 #' @param verbose Logical indicating whether to print messages
 #' @return data.frame with sample information
 #' @export
@@ -1390,12 +1392,13 @@ get_MS_sampleinfo <- function(raw.data.dir,
                               verbose=T){
 
 
-  raw.files <- dir(path = raw.data.dir,
-                   pattern = paste0(rawDataFormat,"$"),
-                   full.names = T,recursive = T)
-  raw.files <- normalizePath(raw.files,winslash = "/")
-  if (length(raw.files)==0) {
-    stop("No ",rawDataFormat," files exist")
+  raw.files <- dir(path = raw.data.dir, full.names = TRUE, recursive = TRUE)
+  raw.files <- raw.files[
+    grepl(paste0("\\", rawDataFormat, "$"), raw.files, ignore.case = TRUE)
+  ]
+  raw.files <- normalizePath(raw.files, winslash = "/")
+  if (length(raw.files) == 0) {
+    stop("No ", rawDataFormat, " files exist", call. = FALSE)
   }
 
   ### generate sampleInfo

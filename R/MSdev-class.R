@@ -38,6 +38,8 @@ setClass("MSdev",
 #' and creates sample information from the raw data directory.
 #'
 #' @param rawDataDir path to directory containing raw mass spectrometry data files
+#'   (supported extensions: \code{.wiff}, \code{.raw}, \code{.mzXML},
+#'   \code{.mzML}, \code{.lcd}; matching is case-insensitive)
 #' @param projectDir project directory for storing processed data, defaults to parent of rawDataDir
 #' @param experimentInfo MS_Exp object containing experiment metadata
 #'
@@ -79,16 +81,35 @@ MSdev <- function(rawDataDir =
 
     ### check raw data
     {
-      rowDataFile <- dir(.Object@projectInfo$rawDataDir,recursive = T)
-      .Object@projectInfo$rawDataFormat =
-        dplyr::case_when(any(grepl(pattern = ".wiff$", x = rowDataFile))~".wiff",
-                         any(grepl(pattern = ".raw$", x = rowDataFile))~".raw",
-                         any(grepl(pattern = ".mzXML$", x = rowDataFile))~".mzXML",
-                         any(grepl(pattern = ".mzML$", x = rowDataFile))~".mzML",
-                         any(grepl(pattern = ".lcd$", x = rowDataFile))~".lcd")
-      rowDataFile <- dir(path = .Object@projectInfo$rawDataDir,
-                         pattern =paste0(.Object@projectInfo$rawDataFormat,"$") ,
-                         full.names = T,recursive = T)
+      rowDataFile <- dir(.Object@projectInfo$rawDataDir, recursive = TRUE)
+      .Object@projectInfo$rawDataFormat <- dplyr::case_when(
+        any(grepl("\\.wiff$", rowDataFile, ignore.case = TRUE)) ~ ".wiff",
+        any(grepl("\\.raw$", rowDataFile, ignore.case = TRUE)) ~ ".raw",
+        any(grepl("\\.mzXML$", rowDataFile, ignore.case = TRUE)) ~ ".mzXML",
+        any(grepl("\\.mzML$", rowDataFile, ignore.case = TRUE)) ~ ".mzML",
+        any(grepl("\\.lcd$", rowDataFile, ignore.case = TRUE)) ~ ".lcd",
+        TRUE ~ NA_character_
+      )
+      if (is.na(.Object@projectInfo$rawDataFormat)) {
+        stop(
+          "No supported raw data files found under ",
+          .Object@projectInfo$rawDataDir,
+          " (expected .wiff, .raw, .mzXML, .mzML, or .lcd).",
+          call. = FALSE
+        )
+      }
+      rowDataFile <- dir(
+        path = .Object@projectInfo$rawDataDir,
+        full.names = TRUE,
+        recursive = TRUE
+      )
+      rowDataFile <- rowDataFile[
+        grepl(
+          paste0("\\", .Object@projectInfo$rawDataFormat, "$"),
+          rowDataFile,
+          ignore.case = TRUE
+        )
+      ]
       .Object@projectInfo$rawDataFileCount <- length(rowDataFile)
       .Object@projectInfo$experimentTime <- max(file.info(rowDataFile)$mtime)
 
