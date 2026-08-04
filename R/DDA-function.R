@@ -305,7 +305,7 @@ plot_xcms_dda_feature_stat <- function(xcms.xcms){
 plot_xcms_dda_cycle_stat <- function(xcms.xcms){
 
 
-  xcms.scan <- fData(xcms.xcms)
+  xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
   xcms.scan.ms1 <- dplyr::filter(xcms.scan,msLevel == 1)
   ggplot(xcms.scan.ms1)+
     geom_histogram(aes(y = ms2_count),

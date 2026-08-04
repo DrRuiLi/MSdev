@@ -2687,6 +2687,76 @@ plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"
 
 
 
+#' @description Dot-plot MS1 scan frequency along retention time. Scans are
+#' counted in successive \code{rt_window}-wide RT bins (per file); frequency is
+#' \code{scan_count / rt_window}.
+#' @describeIn xcms_extension_plot plot MS1 scan frequency vs RT
+#' @param xcms XCMSnExp / XcmsExperiment object
+#' @param rt_window positive numeric; RT window width (same unit as retention
+#'   time, typically seconds)
+#' @param plot.title title
+#'
+#' @return ggplot object
+#' @export
+#'
+plot_xcms_ms1_scan_freq <- function(xcms, rt_window,
+                                    plot.title = "MS1 Scan Frequency") {
+
+  if (!is.numeric(rt_window) || length(rt_window) != 1L ||
+      !is.finite(rt_window) || rt_window <= 0) {
+    stop("'rt_window' must be a single positive finite number.", call. = FALSE)
+  }
+
+  xcms.scans <- get_xcms_scan_Stat(xcms) %>%
+    dplyr::filter(as.integer(msLevel) == 1L)
+
+  if (!nrow(xcms.scans)) {
+    stop("No MS1 scans found in 'xcms'.", call. = FALSE)
+  }
+
+  ## MS1 only: count MS1 scans per RT window (MS2 excluded)
+  freq_df <- xcms.scans %>%
+    dplyr::group_by(fileIdx) %>%
+    dplyr::mutate(
+      rt0 = min(retentionTime, na.rm = TRUE),
+      rt_bin = floor((retentionTime - rt0) / rt_window)
+    ) %>%
+    dplyr::group_by(fileIdx, rt_bin, rt0) %>%
+    dplyr::summarise(
+      scan_count = dplyr::n(),
+      rt = dplyr::first(rt0) + (dplyr::first(rt_bin) + 0.5) * rt_window,
+      .groups = "drop"
+    ) %>%
+    dplyr::mutate(freq = scan_count / rt_window)
+
+  rt_span <- diff(range(freq_df$rt, na.rm = TRUE))
+  if (!is.finite(rt_span) || rt_span <= 0) {
+    rt_span <- rt_window
+  }
+
+  ggplot(freq_df) +
+    geom_point(aes(x = rt, y = freq, col = freq), size = 0.6) +
+    geom_boxplot(aes(x = max(rt) * 1.2, y = freq),
+                 width = rt_span * 0.1) +
+    labs(title = plot.title,
+         subtitle = paste0("rt_window = ", rt_window, " (MS1 only)"),
+         col = "MS1 freq",
+         x = "Retention time",
+         y = "MS1 scan frequency (count / rt_window)") +
+    guides(alpha = "none") +
+    scale_color_gradientn(
+      breaks = c(0, 1, 2, 3, 4, 5),
+      labels = c(0, 1, 2, 3, 4, 5),
+      limits = c(0, 5),
+      colors = c("#ffffbf", "#ffff88", "#fff00f", "#fdae61", "#d7191c"),
+      na.value = "#d7191c"
+    ) +
+    theme_bw() +
+    theme(text = element_text(size = 8))
+}
+
+
+
 #' @description Visualizes the number of MS2 scans that overlap each chromatographic peak based on retention time and m/z ranges. Produces a scatter plot with jitter, violin distribution, and counts of peaks with 0-5 MS2 scans.
 #' @param xcms.xcms XCMSnExp object with detected peaks and MS2 scans.
 #' @param plot.title Character title for the plot (default "Peaks Sans of MS2").
@@ -2760,7 +2830,7 @@ plot_xcms_ms2_distribution <- function(xcms.xcms,plot.title = "MS2 Precursor dis
 
  ggplot(scan.data)+
    #geom_vline(xintercept = ms1.rt,linewidth = 0.05,col = "black")+
-   geom_point(aes(x = retentionTime,y= precursorMZ,
+   geom_point(aes(x = retentionTime,y= precursorMz,
                   col = log10(precursorIntensity)),
    )+
    labs(title = plot.title,
@@ -3608,7 +3678,7 @@ plot_xcms_scan <- function(xcms.xcms){
 
   ggplot(xcms.scan)+
     geom_point(aes(x = retentionTime ,
-                   y = precursorMZ ,
+                   y = precursorMz ,
                    col = log10(precursorIntensity)))
 
 
