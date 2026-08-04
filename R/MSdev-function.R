@@ -1559,12 +1559,18 @@ MSdev_checkSampleInfo <- function(object){
 #' @describeIn MSdev_workflow convert raw files
 #' @param object MSdev object
 #' @param format.to target format (default "mzML")
+#' @param BPPARAM BiocParallel backend passed to \code{MSconvertR::msConvert}.
 #' @return MSdev object with converted files
 #' @export
 
 #'
 
-MSdev_msConvert<- function(object,format.to = "mzML"){
+MSdev_msConvert <- function(object,
+                            format.to = "mzML",
+                            BPPARAM = BiocParallel::SnowParam(
+                              workers = max(1L, parallel::detectCores() - 1L),
+                              progressbar = TRUE
+                            )) {
 
   ## Open-format inputs: use raw path as msData path; no MSconvert step.
   .need_msconvert <- function(raw.paths) {
@@ -1593,10 +1599,7 @@ MSdev_msConvert<- function(object,format.to = "mzML"){
         raw.files  = sample.info$raw.files,
         ms.data.names = sample.info$msData.files,
         format.to = format.to,
-        BPPARAM = SnowParam(
-          workers = parallel::detectCores() - 1L,
-          progressbar = TRUE
-        )
+        BPPARAM = BPPARAM
       ),
       warning = function(w) {
         if (grepl("may not be available when loading", conditionMessage(w), fixed = TRUE)) {
