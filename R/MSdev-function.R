@@ -1829,6 +1829,88 @@ MSdev_annotation <- function(object,
 }
 
 
+#' @title Annotate MS2 precursor peaks using a compound database
+#' @description Annotate \code{object@advancedAna$MS2_Precursor} (from
+#'   \code{\link{MSdev_get_peak_table_from_spectra}}) with CompDb MS1 candidates
+#'   and MS2 spectral scores. Isotope-pattern scoring is skipped (no MS1
+#'   intensity matrix). Requires \code{ms2_id} on the peak table linking to
+#'   \code{MS2_Spectra} \code{sp_id} / spectraNames.
+#' @describeIn MSdev_workflow annotate MS2 precursor peaks
+#' @param object MSdev object with \code{advancedAna$MS2_Precursor}
+#' @param cpdb_path path to CompoundDb SQLite database
+#' @param ppm m/z tolerance in parts per million for candidate matching
+#' @param weight_mz weight for m/z error score (default \code{0.2})
+#' @param weight_ms2 weight for MS2 similarity score (default \code{0.8})
+#' @param ... additional arguments passed to annotation helpers
+#' @return MSdev object with annotated \code{advancedAna$MS2_Precursor}
+#' @export
+#'
+MSdev_annotation_MS2_Precursor <- function(
+    object,
+    cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite",
+    ppm = 10,
+    weight_mz = 0.2,
+    weight_ms2 = 0.8,
+    ...) {
+  stopifnot(inherits(object, "MSdev"))
+
+  peak_table <- object@advancedAna$MS2_Precursor
+  if (is.null(peak_table) || !is.data.frame(peak_table) || !nrow(peak_table)) {
+    message("no MS2_Precursor table; run MSdev_get_peak_table_from_spectra first")
+    return(object)
+  }
+  if (!"ms2_id" %in% names(peak_table)) {
+    stop("'advancedAna$MS2_Precursor' is missing ms2_id; ",
+         "re-run MSdev_get_peak_table_from_spectra", call. = FALSE)
+  }
+  if (!"feature_id" %in% names(peak_table)) {
+    peak_table$feature_id <- rownames(peak_table)
+  }
+
+  cpdb <- CompoundDb::CompDb(cpdb_path)
+  sp.ms2 <- get_MSdev_Spectra(object, msLevel = 2L)
+
+  pols <- sort(unique(as.integer(peak_table$polarity)))
+  pols <- pols[!is.na(pols)]
+  if (!length(pols)) {
+    message("MS2_Precursor has no polarity values; skip annotation")
+    return(object)
+  }
+
+  annotated <- lapply(pols, function(pol) {
+    fdf <- peak_table[as.integer(peak_table$polarity) == pol, , drop = FALSE]
+    if (!nrow(fdf)) {
+      return(fdf)
+    }
+    message_with_time("MS2_Precursor annotation polarity=", pol,
+                      " (n=", nrow(fdf), ")")
+    message_with_time("Find MS1 candidate...")
+    fdf <- fdf_get_ms1_candidate(fdf, cpdb, polarity = pol, mz.ppm = ppm, ...)
+    message_with_time("Calculate MS2 score...")
+    fdf <- fdf_get_ms2_score(fdf, cpdb, sp.ms2 = sp.ms2, polarity = pol, ...)
+    fdf$score.isopattern <- lapply(fdf$candidate.id, function(x) rep(0, length(x)))
+    message_with_time("Pick annotation (no isopattern)...")
+    fdf <- fdf_get_feature_annotation(
+      fdf,
+      cpdb,
+      weight_mz = weight_mz,
+      weight_ms2 = weight_ms2,
+      weight_isopattern = 0,
+      ...
+    )
+    fdf
+  })
+
+  peak_table_out <- dplyr::bind_rows(annotated)
+  if ("feature_id" %in% names(peak_table_out) && nrow(peak_table_out)) {
+    rownames(peak_table_out) <- peak_table_out$feature_id
+  }
+  object@advancedAna$MS2_Precursor <- peak_table_out
+  object@projectInfo$CompoundDB_path <- cpdb_path
+  object
+}
+
+
 #'
 #' @title Extract and format statistical data from processed MS features
 #' @description Build \code{advancedAna$feature.se} via \code{\link{MSdev_get_Se}}, then
@@ -2129,6 +2211,207 @@ get_MSdev_Spectra <- function(object, msLevel = c(1, 2), polarity = c(0, 1)) {
     do.call(c, unname(sp_list))
   }
   Spectra::filterPolarity(sp, polarity)
+}
+
+
+#' Consecutive RT-gap labels within an already m/z-grouped set
+#' @keywords internal
+.rt_gap_groups <- function(rt, rt_tol) {
+  n <- length(rt)
+  if (n == 0L) {
+    return(integer(0))
+  }
+  if (n == 1L) {
+    return(1L)
+  }
+  ord <- order(rt)
+  gaps <- diff(rt[ord])
+  split_id <- cumsum(c(0L, as.integer(gaps >= rt_tol))) + 1L
+  out <- integer(n)
+  out[ord] <- split_id
+  out
+}
+
+
+#' @title Build MS2 precursor peak table from spectra
+#' @description Construct an xcms \code{featureDefinitions}-style peak table from
+#'   MS2 precursor m/z and retention time. Continuous MS2 spectra
+#'   (\code{|delta rt| < rt_tol} and m/z within \code{ppm} after m/z grouping)
+#'   are collapsed to one peak. Result is stored in
+#'   \code{object@advancedAna$MS2_Precursor}.
+#' @param object MSdev object with \code{MS2_Spectra}
+#' @param rt_tol numeric; max RT gap (seconds) between consecutive MS2 in the
+#'   same peak (default \code{10})
+#' @param ppm numeric; m/z tolerance in ppm for grouping precursors (default
+#'   \code{10})
+#' @return MSdev object with \code{advancedAna$MS2_Precursor} set
+#' @export
+#'
+MSdev_get_peak_table_from_spectra <- function(object,
+                                              rt_tol = 5,
+                                              ppm = 5) {
+  stopifnot(inherits(object, "MSdev"))
+  if (!is.numeric(rt_tol) || length(rt_tol) != 1L ||
+      !is.finite(rt_tol) || rt_tol <= 0) {
+    stop("'rt_tol' must be a single positive finite number.", call. = FALSE)
+  }
+  if (!is.numeric(ppm) || length(ppm) != 1L ||
+      !is.finite(ppm) || ppm <= 0) {
+    stop("'ppm' must be a single positive finite number.", call. = FALSE)
+  }
+
+  empty_fdf <- data.frame(
+    feature_id = character(0),
+    mzmed = numeric(0),
+    mzmin = numeric(0),
+    mzmax = numeric(0),
+    rtmed = numeric(0),
+    rtmin = numeric(0),
+    rtmax = numeric(0),
+    npeaks = integer(0),
+    polarity = integer(0),
+    stringsAsFactors = FALSE
+  )
+  empty_fdf$peakidx <- list()
+  empty_fdf$ms2_id <- list()
+
+  if (is.null(object@spectra$MS2_Spectra) ||
+      identical(object@spectra$MS2_Spectra, NA)) {
+    message("no MS2 spectra, skip MSdev_get_peak_table_from_spectra")
+    object@advancedAna$MS2_Precursor <- empty_fdf
+    return(object)
+  }
+
+  sp <- get_MSdev_Spectra(object, msLevel = 2L)
+  if (!length(sp)) {
+    message("no MS2 spectra, skip MSdev_get_peak_table_from_spectra")
+    object@advancedAna$MS2_Precursor <- empty_fdf
+    return(object)
+  }
+
+  sdat <- as.data.frame(Spectra::spectraData(sp), stringsAsFactors = FALSE)
+  if (!"precursorMz" %in% names(sdat)) {
+    sdat$precursorMz <- as.numeric(Spectra::precursorMz(sp))
+  }
+  if (!"rtime" %in% names(sdat)) {
+    sdat$rtime <- as.numeric(Spectra::rtime(sp))
+  }
+  if (!"polarity" %in% names(sdat)) {
+    sdat$polarity <- as.integer(Spectra::polarity(sp))
+  }
+  if (!"sp_id" %in% names(sdat)) {
+    sn <- Spectra::spectraNames(sp)
+    sdat$sp_id <- if (!is.null(sn) && length(sn)) {
+      as.character(sn)
+    } else {
+      paste0("MS2_SP", seq_len(nrow(sdat)))
+    }
+  }
+
+  sdat$precursorMz <- as.numeric(sdat$precursorMz)
+  sdat$rtime <- as.numeric(sdat$rtime)
+  sdat$polarity <- as.integer(sdat$polarity)
+  sdat$sp_id <- as.character(sdat$sp_id)
+  sdat$.idx <- seq_len(nrow(sdat))
+
+  keep <- is.finite(sdat$precursorMz) & is.finite(sdat$rtime) &
+    !is.na(sdat$polarity)
+  sdat <- sdat[keep, , drop = FALSE]
+  if (!nrow(sdat)) {
+    object@advancedAna$MS2_Precursor <- empty_fdf
+    return(object)
+  }
+
+  parts <- split(sdat, sdat$polarity)
+  peak_list <- lapply(parts, function(df) {
+    df$mz_group <- groupMz(df$precursorMz, ppm = ppm, return.type = "vector")
+    mz_parts <- split(df, df$mz_group)
+    rows <- lapply(mz_parts, function(g) {
+      g$rt_group <- .rt_gap_groups(g$rtime, rt_tol)
+      rt_parts <- split(g, g$rt_group)
+      lapply(rt_parts, function(p) {
+        tibble::tibble(
+          mzmed = stats::median(p$precursorMz, na.rm = TRUE),
+          mzmin = min(p$precursorMz, na.rm = TRUE),
+          mzmax = max(p$precursorMz, na.rm = TRUE),
+          rtmed = stats::median(p$rtime, na.rm = TRUE),
+          rtmin = min(p$rtime, na.rm = TRUE),
+          rtmax = max(p$rtime, na.rm = TRUE),
+          npeaks = nrow(p),
+          polarity = as.integer(p$polarity[[1L]]),
+          peakidx = list(as.integer(p$.idx)),
+          ms2_id = list(as.character(p$sp_id))
+        )
+      })
+    })
+    dplyr::bind_rows(unlist(rows, recursive = FALSE))
+  })
+
+  peak_table <- dplyr::bind_rows(peak_list)
+  if (!nrow(peak_table)) {
+    object@advancedAna$MS2_Precursor <- empty_fdf
+    return(object)
+  }
+
+  peak_table <- peak_table %>%
+    dplyr::arrange(polarity, rtmed, mzmed) %>%
+    dplyr::mutate(
+      feature_id = paste0("MS2P", sprintf("%06d", dplyr::row_number())),
+      .before = mzmed
+    ) %>%
+    as.data.frame()
+  rownames(peak_table) <- peak_table$feature_id
+
+  ## Ensure ms2_id is always a character list (never NULL)
+  peak_table$ms2_id <- lapply(peak_table$ms2_id, function(x) {
+    if (is.null(x)) character(0) else as.character(x)
+  })
+
+  ## Write feature_id back onto MS2 spectra (overwrite for grouped sp_ids)
+  MS2_Spectra <- onDiskData_retrieve(object@spectra$MS2_Spectra)
+  sp_dat <- as.data.frame(Spectra::spectraData(MS2_Spectra),
+                          stringsAsFactors = FALSE)
+  if (!"sp_id" %in% names(sp_dat)) {
+    sn <- Spectra::spectraNames(MS2_Spectra)
+    sp_dat$sp_id <- if (!is.null(sn) && length(sn)) {
+      as.character(sn)
+    } else {
+      paste0("MS2_SP", seq_len(nrow(sp_dat)))
+    }
+  }
+  if (!"feature_id" %in% names(sp_dat)) {
+    sp_dat$feature_id <- NA_character_
+  }
+  sp_to_fid <- unlist(
+    Map(
+      function(fid, ids) {
+        ids <- as.character(ids)
+        if (!length(ids)) {
+          return(character(0))
+        }
+        stats::setNames(rep(as.character(fid), length(ids)), ids)
+      },
+      peak_table$feature_id,
+      peak_table$ms2_id
+    ),
+    use.names = TRUE
+  )
+  hit <- which(as.character(sp_dat$sp_id) %in% names(sp_to_fid))
+  if (length(hit)) {
+    sp_dat$feature_id[hit] <- unname(sp_to_fid[as.character(sp_dat$sp_id)[hit]])
+  }
+  Spectra::spectraData(MS2_Spectra) <- S4Vectors::DataFrame(sp_dat)
+  object@spectra$MS2_Spectra <- onDiskData(
+    MS2_Spectra,
+    path = object@spectra$MS2_Spectra@path
+  )
+
+  object@advancedAna$MS2_Precursor <- peak_table
+  message_with_time(
+    "MS2 precursor peaks: ", nrow(peak_table),
+    " (rt_tol=", rt_tol, ", ppm=", ppm, ")"
+  )
+  object
 }
 
 

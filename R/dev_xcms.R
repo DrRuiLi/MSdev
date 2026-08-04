@@ -2304,6 +2304,309 @@ xcms_get_feature_annotation <- function(xcms.xcms,
 }
 
 
+#' MS1 candidate matching on a featureDefinitions-style data.frame
+#' @param fdf data.frame with at least \code{mzmed} (and preferably
+#'   \code{feature_id})
+#' @param cpdb CompoundDb object
+#' @param polarity integer polarity/polarities to keep for adducts
+#' @param mz.ppm m/z tolerance in ppm
+#' @param mz_range numeric length-2 m/z range for filtering DB adducts; default
+#'   \code{range(fdf$mzmed)}
+#' @param selected_adduct adduct names
+#' @param ... unused
+#' @return \code{fdf} with candidate.* list columns
+#' @keywords internal
+fdf_get_ms1_candidate <- function(fdf,
+                                  cpdb,
+                                  polarity,
+                                  mz.ppm = 10,
+                                  mz_range = NULL,
+                                  selected_adduct = MSCC::adduct.table$Adduct,
+                                  ...) {
+  fdf <- as.data.frame(fdf, stringsAsFactors = FALSE)
+  if (!nrow(fdf)) {
+    return(fdf)
+  }
+  if (!"feature_id" %in% names(fdf)) {
+    fdf$feature_id <- rownames(fdf)
+  }
+  polarity <- as.integer(unique(polarity))
+  if (is.null(mz_range)) {
+    mz_range <- range(as.numeric(fdf$mzmed), na.rm = TRUE)
+  }
+
+  cpdbt <- compounds(cpdb, columns = CompoundDb::compoundVariables(cpdb, includeId = TRUE))
+  if ("has_sp" %in% colnames(cpdbt)) {
+    cpdbt <- cpdbt[cpdbt$has_sp > 0, ]
+  }
+  cpdbt$formula <- MSCC::chemform_formate(cpdbt$formula)
+
+  polarity_keep <- polarity
+  adducts <- MSCC::chemform_adduct_check(selected_adduct) %>%
+    dplyr::mutate(polarity = dplyr::case_when(Ion_mode == "negative" ~ 0L, TRUE ~ 1L)) %>%
+    dplyr::filter(.data$polarity %in% polarity_keep)
+
+  empty_candi <- function(fdf) {
+    fdf$candidate.id <- replicate(nrow(fdf), character(0), simplify = FALSE)
+    fdf$candidate.formula <- replicate(nrow(fdf), character(0), simplify = FALSE)
+    fdf$candidate.adduct <- replicate(nrow(fdf), character(0), simplify = FALSE)
+    fdf$candidate.mz <- replicate(nrow(fdf), numeric(0), simplify = FALSE)
+    fdf
+  }
+
+  if (!nrow(adducts) || !nrow(cpdbt)) {
+    return(empty_candi(fdf))
+  }
+
+  cp.adduct <- MSCC::chemform_adduct(cpdbt$formula,
+                                     adducts$adduct.formated,
+                                     value = "all")
+  cp.adduct <- cp.adduct %>%
+    dplyr::mutate(compound_id = cpdbt$compound_id[id]) %>%
+    dplyr::filter(findInterval(chemform.adduct.mz, mz_range) == 1)
+
+  if (!nrow(cp.adduct)) {
+    return(empty_candi(fdf))
+  }
+
+  matched.df <- match_mz_foverlaps(
+    mz1 = fdf$mzmed,
+    mz2 = cp.adduct$chemform.adduct.mz,
+    ppm = mz.ppm
+  )
+  fdf$candidate.id <- lapply(seq_len(nrow(fdf)), function(i) {
+    idx <- matched.df$ion2[matched.df$ion1 == i]
+    cp.adduct$compound_id[as.numeric(idx)]
+  })
+  fdf$candidate.formula <- lapply(seq_len(nrow(fdf)), function(i) {
+    idx <- matched.df$ion2[matched.df$ion1 == i]
+    cp.adduct$chemform[as.numeric(idx)]
+  })
+  fdf$candidate.adduct <- lapply(seq_len(nrow(fdf)), function(i) {
+    idx <- matched.df$ion2[matched.df$ion1 == i]
+    cp.adduct$adduct[as.numeric(idx)]
+  })
+  fdf$candidate.mz <- lapply(seq_len(nrow(fdf)), function(i) {
+    idx <- matched.df$ion2[matched.df$ion1 == i]
+    cp.adduct$chemform.adduct.mz[as.numeric(idx)]
+  })
+  fdf
+}
+
+
+#' MS2 spectral similarity scores on a featureDefinitions-style data.frame
+#' @param fdf data.frame with \code{feature_id}, \code{candidate.*}, \code{ms2_id}
+#' @param cpdb CompoundDb object
+#' @param sp.ms2 Spectra object (experimental MS2)
+#' @param polarity integer polarity for filtering CompDb Spectra
+#' @param ... unused
+#' @return \code{fdf} with \code{score.ms2} list column
+#' @keywords internal
+fdf_get_ms2_score <- function(fdf,
+                              cpdb,
+                              sp.ms2,
+                              polarity,
+                              ...) {
+  fdf <- as.data.frame(fdf, stringsAsFactors = FALSE)
+  if (!nrow(fdf)) {
+    return(fdf)
+  }
+  if (!"feature_id" %in% names(fdf)) {
+    fdf$feature_id <- rownames(fdf)
+  }
+  if (!"ms2_id" %in% names(fdf)) {
+    fdf$ms2_id <- replicate(nrow(fdf), character(0), simplify = FALSE)
+  }
+  if (!"candidate.id" %in% names(fdf)) {
+    fdf$score.ms2 <- lapply(seq_len(nrow(fdf)), function(i) numeric(0))
+    return(fdf)
+  }
+
+  if (!length(sp.ms2)) {
+    fdf$score.ms2 <- lapply(fdf$candidate.id, function(x) rep(0, length(x)))
+    return(fdf)
+  }
+
+  polarity <- as.integer(unique(polarity))
+  Spectra_database <- Spectra::Spectra(cpdb)
+  Spectra_database <- Spectra_set_MEM_backend(Spectra_database)
+  Spectra_database <- ProtGenerics::filterPolarity(Spectra_database, polarity)
+
+  Spectra_database <- Spectra_database %>%
+    filterSpectra_below_PrecursorMz() %>%
+    normalizeSpectra(norm_to = "max") %>%
+    filterSpectraIntensity(ratio = 0.05) %>%
+    Spectra::applyProcessing()
+  sp.ms2 <- sp.ms2 %>%
+    filterSpectra_below_PrecursorMz() %>%
+    normalizeSpectra(norm_to = "max") %>%
+    filterSpectraIntensity(ratio = 0.05) %>%
+    Spectra_set_MEM_backend() %>%
+    Spectra::applyProcessing()
+
+  missing_ids <- setdiff(unlist(fdf$candidate.id), Spectra_database$compound_id)
+  if (length(missing_ids)) {
+    sp.empty <- makeEmptySpectra(compound_id = missing_ids)
+    Spectra_database <- c(Spectra_database, sp.empty)
+  }
+
+  sp_names <- Spectra::spectraNames(sp.ms2)
+  sp.exp <- lapply(seq_len(nrow(fdf)), function(i) {
+    x <- fdf$ms2_id[[i]]
+    if (is.null(x) || !length(x)) {
+      return(NULL)
+    }
+    idx <- match(as.character(x), sp_names)
+    idx <- idx[!is.na(idx)]
+    if (!length(idx)) {
+      return(NULL)
+    }
+    sp.ms2[idx]
+  })
+  names(sp.exp) <- fdf$feature_id
+
+  sp.split.list <- lapply(seq_len(nrow(fdf)), function(i) {
+    i.candi <- fdf$candidate.id[[i]]
+    i.adduct <- fdf$candidate.adduct[[i]]
+    if (!length(i.candi)) {
+      return(NULL)
+    }
+    i.df <- lapply(i.candi, function(x) which(Spectra_database$compound_id == x)) %>%
+      `names<-`(fdf$candidate.id[[i]]) %>%
+      unlist_to_df(name_to = "compound_id", value_to = "sp_id")
+    i.df$adduct <- i.adduct[match(i.df$compound_id, i.candi)]
+    i.df
+  })
+  sp.split.df <- data.table::rbindlist(sp.split.list, use.names = TRUE, idcol = "feature_id")
+  if (!nrow(sp.split.df)) {
+    fdf$score.ms2 <- lapply(fdf$candidate.id, function(x) rep(0, length(x)))
+    return(fdf)
+  }
+
+  sp.ref <- Spectra_database[sp.split.df$sp_id]
+  sp.ref$adduct <- sp.split.df$adduct
+  sp.ref <- split(sp.ref, fdf$feature_id[sp.split.df$feature_id])
+
+  .f <- function(expSpec, refSpec, ...) {
+    if (is.null(expSpec)) {
+      if (is.null(refSpec)) {
+        return(NULL)
+      }
+      x <- unique(paste0(refSpec$compound_id, "_", refSpec$adduct))
+      y <- rep(0, length(x))
+      names(y) <- x
+      return(y)
+    }
+    if (is.null(refSpec)) {
+      return(NULL)
+    }
+    scorem <- Spectra::compareSpectra(expSpec, refSpec, , FUN = MsCoreUtils::ndotproduct, m = 2)
+    dim(scorem) <- c(length(expSpec), length(refSpec))
+    scorem[is.infinite(scorem) | is.na(scorem)] <- 0
+    scores <- apply(scorem, 2, max, na.rm = TRUE)
+    mean_f(scores, paste0(refSpec$compound_id, "_", refSpec$adduct))
+  }
+
+  fdf$score.ms2 <- BiocParallel::bplapply(
+    seq_along(sp.exp),
+    function(i) {
+      fid <- fdf$feature_id[i]
+      s <- .f(expSpec = sp.exp[[i]], refSpec = sp.ref[[fid]])
+      unname(s[paste0(fdf$candidate.id[[i]], "_", fdf$candidate.adduct[[i]])])
+    },
+    BPPARAM = BiocParallel::SerialParam(progressbar = TRUE)
+  )
+  fdf
+}
+
+
+#' Final annotation pick on a featureDefinitions-style data.frame
+#' @param fdf data.frame with candidate.* and score.ms2
+#' @param cpdb CompoundDb object
+#' @param cpdb.keys CompDb columns to attach
+#' @param weight_mz,weight_ms2,weight_isopattern score weights
+#' @param ... unused
+#' @return annotated \code{fdf}
+#' @keywords internal
+fdf_get_feature_annotation <- function(fdf,
+                                       cpdb,
+                                       cpdb.keys = c("name", "formula", "smiles"),
+                                       weight_mz = 0.1,
+                                       weight_ms2 = 0.7,
+                                       weight_isopattern = 0.2,
+                                       ...) {
+  fdf <- as.data.frame(fdf, stringsAsFactors = FALSE)
+  if (!nrow(fdf)) {
+    return(fdf)
+  }
+  if (!"feature_id" %in% names(fdf)) {
+    fdf$feature_id <- rownames(fdf)
+  }
+  fdf$compound_id <- NA_character_
+  fdf$adduct <- NA_character_
+  fdf$score <- NA_real_
+  fdf$mz_ref <- NA_real_
+
+  if (!"score.isopattern" %in% names(fdf)) {
+    fdf$score.isopattern <- lapply(fdf$candidate.id, function(x) rep(0, length(x)))
+  }
+
+  candi_idx <- which(lengths(fdf$candidate.id) != 0)
+  if (length(candi_idx)) {
+    xcms.candi.dt <- lapply(candi_idx, function(i) {
+      iso <- fdf$score.isopattern[[i]]
+      if (is.null(iso) || length(iso) != length(fdf$candidate.id[[i]])) {
+        iso <- rep(0, length(fdf$candidate.id[[i]]))
+      }
+      ms2 <- fdf$score.ms2[[i]]
+      if (is.null(ms2) || length(ms2) != length(fdf$candidate.id[[i]])) {
+        ms2 <- rep(0, length(fdf$candidate.id[[i]]))
+      }
+      data.table::data.table(
+        feature_id = fdf$feature_id[i],
+        mz = fdf$mzmed[i],
+        candidate.id = fdf$candidate.id[[i]],
+        candidate.adduct = fdf$candidate.adduct[[i]],
+        candidate.formula = fdf$candidate.formula[[i]],
+        candidate.mz = fdf$candidate.mz[[i]],
+        score.ms2 = ms2,
+        score.isopattern = iso
+      )
+    }) %>% data.table::rbindlist()
+
+    xcms.candi.dt <- xcms.candi.dt[
+      , score.isopattern := ifelse(is.na(score.isopattern), 0, score.isopattern)][
+      , score.isopattern := ifelse(is.nan(score.isopattern), 0, score.isopattern)][
+      , score.mz := 1 - abs(candidate.mz - mz) / mz * 1e6 / 20][
+      , score.mz := ifelse(score.mz < 0, 0, score.mz)][
+      , score := score.isopattern * weight_isopattern +
+          score.ms2 * weight_ms2 + score.mz * weight_mz]
+
+    xcms.candi.dt.max <- xcms.candi.dt[, .SD[which.max(score)], by = feature_id]
+    data.table::setnames(
+      xcms.candi.dt.max,
+      old = c("candidate.id", "candidate.adduct", "candidate.formula", "candidate.mz"),
+      new = c("compound_id", "adduct", "formula", "mz_ref")
+    )
+    data.table::setkey(xcms.candi.dt.max, feature_id)
+
+    xcms.candi <- xcms.candi.dt.max[fdf$feature_id]
+    fdf$compound_id <- xcms.candi$compound_id
+    fdf$adduct <- xcms.candi$adduct
+    fdf$formula <- xcms.candi$formula
+    fdf$score <- xcms.candi$score
+    fdf$mz_ref <- xcms.candi$mz_ref
+    fdf$score.ms2 <- xcms.candi$score.ms2
+    fdf$score.isopattern <- xcms.candi$score.isopattern
+    fdf$score.mz <- xcms.candi$score.mz
+  }
+
+  dbinfo <- get_CompDb_info(cpdb, fdf$compound_id, keys = cpdb.keys)
+  fdf[, colnames(dbinfo)] <- dbinfo
+  fdf
+}
+
+
 get_xcms_feature_definitions <- function(xcms.xcms){
   xcms.fdf <- xcms::featureDefinitions(xcms.xcms)%>%
     as.data.frame()%>%
