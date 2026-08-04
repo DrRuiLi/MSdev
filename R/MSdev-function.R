@@ -1528,17 +1528,52 @@ MSdev_xcms_group_features <- function(object,
 #' @description Open the sample information data frame in Excel for manual editing, then update the MSdev object.
 #' @describeIn MSdev_workflow manually check sampleInfo using excel
 #' @param object a MSdev object
+#' @param interactive Logical; if TRUE (default) use interactive Excel editing. If FALSE,
+#'   write `sample.info.xlsx` under `object@projectInfo$projectDir`, then ask the user to
+#'   edit it and press ENTER to confirm (and read it back).
 #' @return MSdev a MSdev object
 #' @export
 #'
 
-MSdev_checkSampleInfo <- function(object){
+MSdev_checkSampleInfo <- function(object, interactive = TRUE){
 
   sampleInfo <- object@sampleInfo%>%
     dplyr::group_by(polarity)%>%
     dplyr::mutate(sample.name = str_duplicate_suffix(sample.name))%>%
     dplyr::ungroup()
-  sampleInfo <- edit_df_in_excel(sampleInfo,rowname = F)
+  if (isTRUE(interactive)) {
+    sampleInfo <- edit_df_in_excel(sampleInfo, rowname = F)
+  } else {
+    sample_info_path <- file.path(object@projectInfo$projectDir, "sample.info.xlsx")
+    if (!dir.exists(dirname(sample_info_path))) {
+      dir.create(dirname(sample_info_path), recursive = TRUE, showWarnings = FALSE)
+    }
+    sample_info_path <- normalizePath(sample_info_path, winslash = "/", mustWork = FALSE)
+
+    if (interactive()) {
+      ## Terminal session — open Excel and wait for user
+      openxlsx::write.xlsx(sampleInfo, file = sample_info_path, rowNames = FALSE)
+      message("please edit ", sample_info_path, " and press ENTER to confirm")
+      invisible(readline())
+      sampleInfo <- openxlsx::read.xlsx(sample_info_path, sheet = 1)
+    } else {
+      ## Notebook / non-interactive session — two-pass workflow
+      if (file.exists(sample_info_path)) {
+        ## Pass 2: file already exists, read it back
+        message("reading edited file: ", sample_info_path)
+        sampleInfo <- openxlsx::read.xlsx(sample_info_path, sheet = 1)
+      } else {
+        ## Pass 1: write the file and ask user to edit
+        openxlsx::write.xlsx(sampleInfo, file = sample_info_path, rowNames = FALSE)
+        message(
+          "\n[MSdev_checkSampleInfo] wrote: ", sample_info_path,
+          "\n  1. Open and edit the file in Excel",
+          "\n  2. Re-run this same code chunk to read it back"
+        )
+        return(object)
+      }
+    }
+  }
   ### save
   {
     object@sampleInfo <- sampleInfo
