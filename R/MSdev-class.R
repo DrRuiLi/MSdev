@@ -14,24 +14,23 @@ setClass("MSdev",
 
 
 #' @importFrom magrittr `%>%` `%<>%`
-#' @import  tidyverse dplyr ggplot2 patchwork
+#' @import dplyr ggplot2 patchwork
 #' @importFrom BiocParallel SnowParam SerialParam bpmapply bplapply snowWorkers register
 #' @importFrom tibble tibble as.tibble rownames_to_column remove_rownames
 #' @importFrom S4Vectors isEmpty
 #' @importFrom Biobase pData fData
 #' @import ProtGenerics
 #' @importFrom CompoundDb compounds
-#' @importFrom ChemmineR atomcountMA MF `cid<-` cid validSDF canonicalize atomblock bonds bondblock rings
 #' @importFrom stringr str_extract str_split str_extract_all
 #' @importFrom plotly layout add_bars
 #' @importFrom SummarizedExperiment rowData colData assay `rowData<-` `colData<-` `assay<-`
-#' @importFrom shiny shinyApp fluidPage fluidRow HTML div checkboxInput selectInput navbarPage runApp column h1 h3 h4 br wellPanel icon
 #' @importFrom plotly add_markers plot_ly add_pie add_segments event_data add_text add_lines
 #' @importFrom visNetwork visNetwork visLayout visOptions visInteraction visEvents visEdges visGetEdges visNetworkProxy visUpdateEdges
 #' @importFrom igraph as_adjacency_matrix distances edge.attributes degree V E `V<-` `E<-`
 #' @importFrom ComplexHeatmap draw Legend rowAnnotation
 #' @importFrom grid gpar grid.rect grid.circle
 #' @importFrom data.table rbindlist data.table
+#' @importFrom readr write_csv
 
 #' @title Create an MSdev object
 #' @description Create a new MSdev object for mass spectrometry data analysis.
