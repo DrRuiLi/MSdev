@@ -39,7 +39,7 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 | Project shell and orchestration | `MSdev-class.R`, `MSdev-function.R`, `MSdev-workflow.R`, `Demo.R` | Understanding core object lifecycle, setup, and top-level API |
 | xcms / feature processing | `dev_xcms.R`, `MSdev-function.R`, `onDiskData.R` | Debugging peak picking/grouping/RT alignment or feature extraction |
 | Feature-group EIC similarity | `MSdev-feature-group-EIC.R` | EIC pairwise similarity, complete-linkage grouping, or FG EIC PDF reports |
-| Feature–MS2 match / annotation | `MSdev-function.R` (`MSdev_extract_Spectra`, `MSdev_match_Spectra_to_feature`, `MSdev_annotation`), `dev_xcms.R` (`xcms_get_feature_ms2_score`), `dev_Spectra.R` (`get_Spectra_ms2_feature_id`) | Extracting spectra, assigning MS2 to features, or scoring annotations |
+| Feature–MS2 match / annotation | `MSdev-function.R` (`MSdev_extract_Spectra`, `MSdev_assign_MS2`, `MSdev_annotation`), `dev_xcms.R` (`xcms_get_feature_ms2_score`), `dev_Spectra.R` (`get_Spectra_ms2_feature_id`) | Extracting spectra, assigning MS2 to features, or scoring annotations |
 | DDA / pseudo-MS2 workflow | `DDA-function.R`, `DDA_Mine_function.R`, `DDA_mine-workflow.R`, `Pseudo-workflow.R` | Following DDA simulation/mining flow |
 | MRM | `MRM-function.R`, `MRM-WorkFlow.R` | Investigating targeted chromatogram pipeline |
 | Network / atom-transfer wrappers | `Metabolic_flux_network.R`, `Reaction_atom_transfer.R`, `0_mscc_graph_generics_imports.R` | Tracing graph accessors, reaction transfer, and MSCC integration points |
@@ -68,12 +68,12 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 | MS1 / features | Per-polarity **MS1-only** `XcmsExperiment` in `xcmsData$PositiveMS1` / `$NegativeMS1` (peak picking, feature defs). MS1 access: `ProtGenerics::spectra(xcms)` |
 | Spectra source of truth | `object@spectra$MS1_Spectra` / `$MS2_Spectra` (onDiskData); IDs are character `sp_id` (`MS1_SP…` / `MS2_SP…`) also used as `spectraNames` |
 | Feature–MS2 link | Bidirectional: `featureDefinitions$ms2_id` = **character `sp_id` vectors**; MS2 spectra carry `feature_id` |
-| Typical chain | `MSdev_checkSampleInfo` -> `MSdev_msConvert` -> `MSdev_xcmsProcessing` -> `MSdev_extract_Spectra` -> `MSdev_match_Spectra_to_feature` -> (`MSdev_group_feature_EIC`) -> `MSdev_annotation` -> stats/export/report -> save/load |
+| Typical chain | `MSdev_checkSampleInfo` -> `MSdev_msConvert` -> `MSdev_xcmsProcessing` -> `MSdev_extract_Spectra` -> `MSdev_assign_MS2` -> (`MSdev_group_feature_EIC`) -> `MSdev_annotation` -> stats/export/report -> save/load |
 | Outputs | Serialized project objects and tabular/plot exports |
 
 ### Spectra matching notes
 
-- `MSdev_extract_Spectra` is first-class: reads raw files, splits MS1/MS2, assigns `sp_id`, stores onDisk into `@spectra`, then calls `MSdev_match_Spectra_to_feature`.
+- `MSdev_extract_Spectra` is first-class: reads raw files, splits MS1/MS2, assigns `sp_id`, stores onDisk into `@spectra`, then calls `MSdev_assign_MS2`.
 - Matching is median-based (`mzmed` / `rtmed` + `ppm` / `rt.tol`), not `xcms::featureSpectra` peak-box matching (`get_Spectra_ms2_feature_id`).
 - `MSdev_annotation` / `xcms_get_feature_ms2_score` pull MS2 from `@spectra$MS2_Spectra` via character `ms2_id` matched to `spectraNames`.
 - Helpers: `get_MSdev_Spectra(msLevel=…, polarity=…)`, `get_MSdev_Chromatogram(polarity=…)`, `get_MSdev_spectra_target_list`. Prefer these over direct `@spectra` / `*_Chromatograms` slot access. Old `get_MSdev_ms1_Spectra` / `get_MSdev_ms2_Spectra` were removed.

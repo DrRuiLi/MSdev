@@ -337,7 +337,7 @@ MSdev_xcmsProcessing <- function(object,
   if ("FS" %in% MS.mode|"DDA" %in% MS.mode) {
     object <- MSdev_get_xcms(object)
     object <- xcmsProcessingMSdev.DDA(object, BPPARAM = BPPARAM, ...)
-    object <- MSdev_match_Spectra_to_feature(object)
+    object <- MSdev_assign_MS2(object)
     return(object)
   }
 
@@ -1697,12 +1697,12 @@ MSdev_msConvert <- function(object,
 #' or already locked (e.g. after \code{\link{MSdev_add_sample}}).
 #'
 #' Feature matching is not performed here; call
-#' \code{\link{MSdev_match_Spectra_to_feature}} after xcms feature definitions
+#' \code{\link{MSdev_assign_MS2}} after xcms feature definitions
 #' exist (also done at the end of \code{MSdev_xcmsProcessing}).
 #' @describeIn MSdev_workflow Extract all spectra, split to MS1 and MS2, store as onDiskData
 #' @param object MSdev object
 #' @param rt.tol unused; kept for backward compatibility. Matching is via
-#'   \code{\link{MSdev_match_Spectra_to_feature}}.
+#'   \code{\link{MSdev_assign_MS2}}.
 #' @param eval.noise logical, whether to evaluate noise in MS2 spectra
 #' @param eval.ms1 logical, whether to evaluate purity using MS1 scans
 #' @return MSdev object with spectra stored in \code{object@spectra}
@@ -1752,19 +1752,19 @@ MSdev_extract_Spectra <- function(object,
 #' @description Match MS2 spectra in \code{object@spectra$MS2_Spectra} to features using
 #' precursor m/z and retention time tolerances. Stores character \code{sp_id} vectors in
 #' \code{featureDefinitions$ms2_id} and writes \code{feature_id} onto the MS2 spectra.
-#' @describeIn MSdev_workflow assign Spectra to feature
+#' @describeIn MSdev_workflow assign MS2 spectra to features
 #' @param object MSdev object
 #' @param rt.tol retention time tolerance (seconds)
 #' @param ppm m/z tolerance in parts per million
 #' @return MSdev object with updated feature-spectra assignments
 #' @export
 #'
-MSdev_match_Spectra_to_feature <- function(object,
-                                           rt.tol = 10,
-                                           ppm = 20){
+MSdev_assign_MS2 <- function(object,
+                             rt.tol = 10,
+                             ppm = 20){
 
   if (is.null(object@spectra$MS2_Spectra) || identical(object@spectra$MS2_Spectra, NA)) {
-    message("no MS2 spectra, skip MSdev_match_Spectra_to_feature")
+    message("no MS2 spectra, skip MSdev_assign_MS2")
     return(object)
   }
 
@@ -1778,7 +1778,7 @@ MSdev_match_Spectra_to_feature <- function(object,
     if (length(sp.ms2)==0) next
     xcms.xcms <- object@xcmsData[[polarity.tag]]
     if (!.xcms_has_features(xcms.xcms)) {
-      message("no features, skip match to feature")
+      message("no features, skip MSdev_assign_MS2 for ", pol)
       next
     }
     xcms.fdf <- xcms::featureDefinitions(xcms.xcms) %>%
@@ -1801,14 +1801,25 @@ MSdev_match_Spectra_to_feature <- function(object,
 
     ### update xcms featuredef
     xcms.fdf$ms2_id <- sapply(xcms.fdf$feature_id,
-                              function(i){
-                                sp_id <- sp.ms2.data$sp_id[which(sp.ms2.data$feature_id==i)]
+                              function(fid){
+                                sp_id <- sp.ms2.data$sp_id[which(sp.ms2.data$feature_id==fid)]
                                 return(sp_id)
                               }
     )
     xcms.xcms <- .xcms_featureDefinitions_replace(xcms.xcms, xcms.fdf)
     xcms.xcms -> object@xcmsData[[polarity.tag]]
 
+    n_ms2_total <- nrow(sp.ms2.data)
+    n_ms2_assigned <- sum(!is.na(sp.ms2.data$feature_id))
+    n_feat_total <- nrow(xcms.fdf)
+    n_feat_with_ms2 <- sum(lengths(xcms.fdf$ms2_id) > 0)
+    pct_ms2 <- if (n_ms2_total > 0) round(100 * n_ms2_assigned / n_ms2_total) else 0
+    pct_feat <- if (n_feat_total > 0) round(100 * n_feat_with_ms2 / n_feat_total) else 0
+    message(
+      pol, ": ",
+      n_ms2_assigned, "/", n_ms2_total, " (", pct_ms2, "%) MS2 assigned, ",
+      n_feat_with_ms2, "/", n_feat_total, " (", pct_feat, "%) features with MS2"
+    )
 
   }
   object@spectra$MS2_Spectra <- onDiskData(MS2_Spectra,
