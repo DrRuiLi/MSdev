@@ -395,7 +395,21 @@ MSdev_xcmsProcessing <- function(object,
 
   if (!is.null(sp.ms2) && length(sp.ms2)) {
     sp.ms2$sp_id <- paste0("MS2_SP", num2str(seq_len(length(sp.ms2))))
-    sp.ms2$precursorMz <- sp.ms2$isolationWindowTargetMz
+    ## Some importers/files (e.g. mzXML) do not provide `isolationWindowTargetMz`.
+    ## Only fill `precursorMz` from it when it exists and contains usable values.
+    precursor_now <- as.numeric(Spectra::precursorMz(sp.ms2))
+    isolation_target <- tryCatch(
+      as.numeric(sp.ms2$isolationWindowTargetMz),
+      error = function(e) NULL
+    )
+    if (!is.null(isolation_target) &&
+        length(isolation_target) == length(precursor_now) &&
+        any(is.finite(isolation_target), na.rm = TRUE)) {
+      ## Fill missing precursor values but preserve existing non-NA data.
+      missing_prec <- !is.finite(precursor_now)
+      precursor_now[missing_prec] <- isolation_target[missing_prec]
+      sp.ms2$precursorMz <- precursor_now
+    }
     Spectra::spectraNames(sp.ms2) <- sp.ms2$sp_id
     if ("isotope_tracer" %in% colnames(sampleInfo)) {
       sp.ms2$isotope_tracer <- sampleInfo$isotope_tracer[
