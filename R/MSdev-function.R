@@ -177,12 +177,14 @@ MSdev_load <- function(file_to_load) {
     if (!"xcmsProcessing" %in% colnames(sampleInfo) || any(is.na(sampleInfo$xcmsProcessing))) {
       sampleInfo <- sampleInfo %>%
         dplyr::mutate(
+          xcmsProcessing = as.character(xcmsProcessing),
+          msLevels = as.character(msLevels),
           xcmsProcessing = dplyr::case_when(
-            !is.na(xcmsProcessing) ~ xcmsProcessing,
+            !is.na(xcmsProcessing) & nzchar(xcmsProcessing) ~ xcmsProcessing,
             msLevels == "1" ~ "MS1",
             msLevels == "2" ~ "MS2",
             msLevels == "1;2" ~ "Both",
-            TRUE ~ NA
+            TRUE ~ NA_character_
           )
         )
       object@sampleInfo <- sampleInfo
@@ -1557,6 +1559,11 @@ MSdev_checkSampleInfo <- function(object, interactive = TRUE){
     dplyr::ungroup()
   if (isTRUE(interactive)) {
     sampleInfo <- edit_df_in_excel(sampleInfo, rowname = F)
+    object@sampleInfo <- sampleInfo
+    if (!rlang::is_empty(object@xcmsData)) {
+      object <- MSdev_update_xcms_pdata(object)
+    }
+    object <- .updateProjectInfoFromSampleInfo(object)
   } else {
     sample_info_path <- file.path(object@projectInfo$projectDir, "sample.info.xlsx")
     if (!dir.exists(dirname(sample_info_path))) {
@@ -1569,34 +1576,88 @@ MSdev_checkSampleInfo <- function(object, interactive = TRUE){
       openxlsx::write.xlsx(sampleInfo, file = sample_info_path, rowNames = FALSE)
       message("please edit ", sample_info_path, " and press ENTER to confirm")
       invisible(readline())
-      sampleInfo <- openxlsx::read.xlsx(sample_info_path, sheet = 1)
+      object <- MSdev_import_sampleinfo(object, file = sample_info_path)
     } else {
       ## Notebook / non-interactive session — two-pass workflow
       if (file.exists(sample_info_path)) {
         ## Pass 2: file already exists, read it back
-        message("reading edited file: ", sample_info_path)
-        sampleInfo <- openxlsx::read.xlsx(sample_info_path, sheet = 1)
+        object <- MSdev_import_sampleinfo(object, file = sample_info_path)
       } else {
         ## Pass 1: write the file and ask user to edit
         openxlsx::write.xlsx(sampleInfo, file = sample_info_path, rowNames = FALSE)
         message(
           "\n[MSdev_checkSampleInfo] wrote: ", sample_info_path,
           "\n  1. Open and edit the file in Excel",
-          "\n  2. Re-run this same code chunk to read it back"
+          "\n  2. Re-run this same code chunk (or call MSdev_import_sampleinfo) to read it back"
         )
         return(object)
       }
     }
   }
-  ### save
-  {
-    object@sampleInfo <- sampleInfo
-    if(!rlang::is_empty(object@xcmsData)){
-      object <- MSdev_update_xcms_pdata(object )}
-    object <- .updateProjectInfoFromSampleInfo(object )
 
+  object
+}
+
+
+#' @title Import sample information from Excel
+#' @description Read an edited sample-info Excel file into an MSdev object,
+#'   then refresh project metadata and (when present) xcms \code{pData}.
+#' @describeIn MSdev_workflow import sampleInfo from Excel
+#' @param object MSdev object
+#' @param file path to the Excel file. Default:
+#'   \code{file.path(object@projectInfo$projectDir, "sample.info.xlsx")}.
+#' @param sheet sheet name or index passed to \code{openxlsx::read.xlsx}
+#'   (default \code{1}).
+#' @return MSdev object with updated \code{sampleInfo}
+#' @export
+#'
+MSdev_import_sampleinfo <- function(object,
+                                    file = NULL,
+                                    sheet = 1) {
+  stopifnot(inherits(object, "MSdev"))
+
+  if (is.null(file) || !nzchar(file)) {
+    file <- file.path(object@projectInfo$projectDir, "sample.info.xlsx")
+  }
+  file <- normalizePath(file, winslash = "/", mustWork = FALSE)
+  if (!file.exists(file)) {
+    stop("Sample info file not found: ", file, call. = FALSE)
   }
 
+  message("reading sample info: ", file)
+  sampleInfo <- openxlsx::read.xlsx(file, sheet = sheet)
+  if (!is.data.frame(sampleInfo) || nrow(sampleInfo) == 0L) {
+    stop("No rows read from: ", file, call. = FALSE)
+  }
+  if (!"sample.name" %in% colnames(sampleInfo)) {
+    stop("Imported sample info must contain a 'sample.name' column", call. = FALSE)
+  }
+
+  ## Excel often coerces character columns to logical/numeric when mostly empty.
+  char_cols <- c(
+    "sample.name", "sample.type", "sample.labels", "sample.source", "group",
+    "raw.files", "polarity", "analysis.time", "msData.files", "ms.name",
+    "xcmsProcessing", "isotope_tracer", "files", "ExpTime", "msLevels",
+    "manufacturer", "model", "msType", "scanType"
+  )
+  for (col in intersect(char_cols, colnames(sampleInfo))) {
+    sampleInfo[[col]] <- as.character(sampleInfo[[col]])
+  }
+  if ("no" %in% colnames(sampleInfo)) {
+    sampleInfo$no <- as.integer(sampleInfo$no)
+  }
+  if ("weight" %in% colnames(sampleInfo)) {
+    sampleInfo$weight <- suppressWarnings(as.numeric(sampleInfo$weight))
+  }
+  if ("polarity_paired" %in% colnames(sampleInfo)) {
+    sampleInfo$polarity_paired <- as.logical(sampleInfo$polarity_paired)
+  }
+
+  object@sampleInfo <- sampleInfo
+  if (!rlang::is_empty(object@xcmsData)) {
+    object <- MSdev_update_xcms_pdata(object)
+  }
+  object <- .updateProjectInfoFromSampleInfo(object)
   object
 }
 
