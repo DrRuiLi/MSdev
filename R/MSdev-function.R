@@ -417,6 +417,14 @@ MSdev_xcmsProcessing <- function(object,
   object
 }
 
+#' @title Initialize xcms data from raw files
+#' @description Read raw MS data files and create xcms experiments for both
+#'   polarities, storing them in \code{object@xcmsData}. Also extracts and
+#'   stores MS1 and MS2 spectra in \code{object@spectra}.
+#' @describeIn MSdev_workflow Initialize xcms data
+#' @param object MSdev object
+#' @return MSdev object with xcmsData and spectra populated
+#' @export
 MSdev_get_xcms <- function(object){
 
   if (.MSdev_has_ms1_xcms(object)) {
