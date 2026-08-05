@@ -1,0 +1,35 @@
+# MSdev_untargeted_workflow
+
+## Update
+
+``` text
+# Thu Apr 23 14:06:27 2026 ------------------------------
+update 'MSdev' initialize, 'MSdev_get_MSinfo' and .updateProjectInfoFromSampleInfo:
+1. the sampleInfo$msLevels should be "1", "2" or "1;2", according to every files' mslevel
+2. the sampleInfo$xcmsProcessing should be 'MS1' (when msLevels == '1'), 'MS2' (when msLevels == '2') or 'Both'(when msLevels == '1;2')
+```
+
+##### Tue Apr 28 15:19:27 2026 ——————————
+
+``` text
+1. when ini MSdev, the info from 'get_MSinfo_mzR()' are not ready, thus lead to message: "Warning message: Unknown or uninitialised column: `manufacturer`.", fix it 
+2. update 'MSdev_get_xcms', when xcms exsit, do not read in files again, just return
+```
+
+##### Tue Apr 28 15:19:27 2026 ——————————
+
+``` text
+1. sometimes, xcms's chrompeak containing peaks with mz NA/NAN, lead to error in grouppeaks, add a fcuntion 'xcms_filter_peaks_NA' to remove chrompeaks with mz of NA/NAN
+  - check the count of peaks with NA/NAN
+  - remove these peaks
+  - message the count and ratio of NA/NAN peaks 
+  - return xcms object
+```
+
+##### Wed May 6 12:28:39 2026 ——————————
+
+``` text
+1. When MSdev initialization, if the input files' format (msdev.obj@sampleInfo$raw.files) is ".mzML" or ".mzXML", set the 'raw.files' as 'msdev.obj@sampleInfo$msData.files'. and do not need convert in 'MSdev_msConvert'
+```
+
+## to do
