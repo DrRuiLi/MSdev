@@ -79,7 +79,7 @@ pkgdown::build_site()
 
 ## Author
 
-**Rui Li** ([ORCID](https://orcid.org/0000-0002-3199-287X)) — [lirui3\@shanghaitech.edu.cn](mailto:lirui3@shanghaitech.edu.cn){.email}
+**Rui Li** ([ORCID](https://orcid.org/0000-0002-3199-287X)) — [rli\@sinh.ac.cn](mailto:rli@sinh.ac.cn){.email}
 
 ## License
 

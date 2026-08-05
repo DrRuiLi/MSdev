@@ -2,14 +2,6 @@ url: https://drruili.github.io/MSdev/
 
 template:
   bootstrap: 5
-  light-switch: true
-  theme: atom-one-light
-  theme-dark: atom-one-dark
-  bslib:
-    primary: "#0F766E"
-    base_font: {google: "Source Sans 3"}
-    heading_font: {google: "IBM Plex Sans"}
-    code_font: {google: "IBM Plex Mono"}
 
 home:
   title: MSdev
@@ -22,7 +14,7 @@ home:
   - text: GitHub
     href: https://github.com/DrRuiLi/MSdev
   - text: Email
-    href: mailto:lirui3@shanghaitech.edu.cn
+    href: mailto:rli@sinh.ac.cn
 
 navbar:
   structure:
