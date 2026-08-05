@@ -59,6 +59,7 @@ Package vignettes and articles (pkgdown):
 - Untargeted workflow notes: `vignettes/MSdev_untargeted_workflow.Rmd`
 - Articles under `vignettes/articles/`:
   - Spectra backends (`MsBackend*`)
+  - Fast chromatogram extraction (xcms vs MSdev triad)
   - Feature grouping with `EicSimilarityParam`
   - Rdisop mass decomposition (`decomposeMass`)
 
