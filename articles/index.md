@@ -2,8 +2,18 @@
 
 ### Get started
 
-- [MSdev](https://drruili.github.io/MSdev/articles/MSdev.md):
-- [MSdev_untargeted_workflow](https://drruili.github.io/MSdev/articles/MSdev_untargeted_workflow.md):
+- [Get started with
+  MSdev](https://drruili.github.io/MSdev/articles/MSdev.md):
+
+  Overview of the MSdev S4 project object, core slots, preferred
+  accessors, and a minimal untargeted LC-MS pipeline.
+
+- [MSdev untargeted
+  workflow](https://drruili.github.io/MSdev/articles/MSdev_untargeted_workflow.md):
+
+  End-to-end untargeted LC-MS (lipidomics-style) pipeline: convert, xcms
+  processing, spectra extraction, CompoundDb annotation, stats, export,
+  and differential figures by sample.type.
 
 ### Technical notes
 

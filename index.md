@@ -76,7 +76,7 @@ Build the site locally with pkgdown when configured:
 ## Author
 
 **Rui Li** ([ORCID](https://orcid.org/0000-0002-3199-287X)) —
-<lirui3@shanghaitech.edu.cn>
+<rli@sinh.ac.cn>
 
 ## License
 

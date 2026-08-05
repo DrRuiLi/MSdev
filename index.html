@@ -6,12 +6,9 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>MSdev • MSdev</title>
-<script src="lightswitch.js"></script><script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/Source_Sans_3-0.4.10/font.css" rel="stylesheet">
-<link href="deps/IBM_Plex_Mono-0.4.10/font.css" rel="stylesheet">
-<link href="deps/IBM_Plex_Sans-0.4.10/font.css" rel="stylesheet">
-<link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="MSdev">
 <meta name="description" content="LC-MS processing shell for project orchestration, xcms feature processing, spectra, annotation, and downstream analysis.
@@ -23,7 +20,7 @@
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
-    <nav class="navbar navbar-expand-lg fixed-top " aria-label="Site navigation"><div class="container">
+    <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
 
     <a class="navbar-brand me-2" href="index.html">MSdev</a>
 
@@ -41,7 +38,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/MSdev_untargeted_workflow.html">MSdev_untargeted_workflow</a></li>
+<li><a class="dropdown-item" href="articles/MSdev_untargeted_workflow.html">MSdev untargeted workflow</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="articles/index.html">More articles...</a></li>
   </ul>
@@ -51,14 +48,6 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json">
 </form></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
-  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch">
-<li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
-    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
-    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
-  </ul>
-</li>
       </ul>
 </div>
 
@@ -126,7 +115,7 @@
 <div class="section level2">
 <h2 id="typical-untargeted-workflow">Typical untargeted workflow<a class="anchor" aria-label="anchor" href="#typical-untargeted-workflow"></a>
 </h2>
-<pre><code><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">MSdev</span><span class="op">)</span></span>
+<pre><code><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://drruili.github.io/MSdev/">MSdev</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev.html">MSdev</a></span><span class="op">(</span>rawDataDir <span class="op">=</span> <span class="st">"path/to/raw"</span><span class="op">)</span></span>
 <span></span>
@@ -195,7 +184,7 @@
 <div class="section level2">
 <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a>
 </h2>
-<p><strong>Rui Li</strong> (<a href="https://orcid.org/0000-0002-3199-287X" class="external-link">ORCID</a>) — <a href="mailto:lirui3@shanghaitech.edu.cn" class="email">lirui3@shanghaitech.edu.cn</a></p>
+<p><strong>Rui Li</strong> (<a href="https://orcid.org/0000-0002-3199-287X" class="external-link">ORCID</a>) — <a href="mailto:rli@sinh.ac.cn" class="email">rli@sinh.ac.cn</a></p>
 </div>
 <div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
@@ -208,7 +197,7 @@
 <ul class="list-unstyled">
 <li><a href="https://drruili.github.io/" class="external-link">Personal page</a></li>
 <li><a href="https://github.com/DrRuiLi/MSdev" class="external-link">GitHub</a></li>
-<li><a href="mailto:lirui3@shanghaitech.edu.cn">Email</a></li>
+<li><a href="mailto:rli@sinh.ac.cn">Email</a></li>
 </ul>
 </div>
 
