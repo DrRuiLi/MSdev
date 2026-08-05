@@ -21,7 +21,6 @@ Imports:
     magrittr,
     Matrix,
     methods,
-    MSCC,
     patchwork,
     plotly,
     ProtGenerics,
@@ -34,6 +33,7 @@ Imports:
     visNetwork,
     xcms
 Suggests: 
+    MSCC,
     knitr,
     ChemmineR,
     circlize,
