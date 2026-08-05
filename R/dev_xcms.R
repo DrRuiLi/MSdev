@@ -3010,7 +3010,7 @@ plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"
 #' @return ggplot object
 #' @export
 #'
-plot_xcms_ms1_scan_freq <- function(xcms, rt_window,
+plot_xcms_ms1_scan_freq <- function(xcms, rt_window = 5,
                                     plot.title = "MS1 Scan Frequency") {
 
   if (!is.numeric(rt_window) || length(rt_window) != 1L ||
@@ -3059,8 +3059,8 @@ plot_xcms_ms1_scan_freq <- function(xcms, rt_window,
       breaks = c(0, 1, 2, 3, 4, 5),
       labels = c(0, 1, 2, 3, 4, 5),
       limits = c(0, 5),
-      colors = c("#ffffbf", "#ffff88", "#fff00f", "#fdae61", "#d7191c"),
-      na.value = "#d7191c"
+      colors = ggsci::pal_bs5("indigo")(6),
+      na.value = "#666666"
     ) +
     theme_bw() +
     theme(text = element_text(size = 8))
