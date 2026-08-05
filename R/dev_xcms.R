@@ -2277,6 +2277,10 @@ xcms_get_feature_annotation <- function(xcms.xcms,
     xcms.fdf$formula <- xcms.candi$formula
     xcms.fdf$score <- xcms.candi$score
     xcms.fdf$mz_ref <- xcms.candi$mz_ref
+    ## keep per-candidate score lists for candidate.se expansion
+    xcms.fdf$candidate.score.ms2 <- xcms.fdf$score.ms2
+    xcms.fdf$candidate.score.isopattern <- xcms.fdf$score.isopattern
+    ## best-candidate scalars for feature / metabolite export
     xcms.fdf$score.ms2 <- xcms.candi$score.ms2
     xcms.fdf$score.isopattern <- xcms.candi$score.isopattern
     xcms.fdf$score.mz <- xcms.candi$score.mz
@@ -2596,6 +2600,10 @@ fdf_get_feature_annotation <- function(fdf,
     fdf$formula <- xcms.candi$formula
     fdf$score <- xcms.candi$score
     fdf$mz_ref <- xcms.candi$mz_ref
+    ## keep per-candidate score lists for candidate.se expansion
+    fdf$candidate.score.ms2 <- fdf$score.ms2
+    fdf$candidate.score.isopattern <- fdf$score.isopattern
+    ## best-candidate scalars for feature / metabolite export
     fdf$score.ms2 <- xcms.candi$score.ms2
     fdf$score.isopattern <- xcms.candi$score.isopattern
     fdf$score.mz <- xcms.candi$score.mz

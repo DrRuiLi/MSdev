@@ -2092,8 +2092,9 @@ MSdev_get_Stat <- function(object,
       dplyr::select(any_of(
         c("feature_id","mzmed","rtmed","compound_id", "adduct","mz_ref","rt_ref","polarity",
           "pave_seed",  "pave_CN",   "pave_cor",
-          "score","qc_rsd","sample_rsd","peakMaxo",#ms2_id,
-                             "candidate.id","candidate.adduct","candidate.mz","score.ms2")))
+          "score","score.ms2","score.isopattern","qc_rsd","sample_rsd","peakMaxo",
+          "candidate.id","candidate.adduct","candidate.mz",
+          "candidate.score.ms2","candidate.score.isopattern")))
 
     ### retrieve data
     if (!is.null(rda$compound_id)) {
@@ -2108,7 +2109,8 @@ MSdev_get_Stat <- function(object,
     }
 
 
-    rowData(feature.se) <- rda
+    rowData(feature.se) <- rda%>%
+      dplyr::select(-any_of(c("candidate.score.ms2","candidate.score.isopattern")))
 
 
     ### adjust
@@ -2127,6 +2129,8 @@ MSdev_get_Stat <- function(object,
     {
       candi.rda <- rda%>%
         dplyr::mutate(candidate.n = sapply(candidate.id,length))
+      has.candi.ms2 <- "candidate.score.ms2" %in% names(candi.rda)
+      has.candi.iso <- "candidate.score.isopattern" %in% names(candi.rda)
       candi.rda.split <- candi.rda[rep(candi.rda$feature_id,candi.rda$candidate.n),]%>%
         dplyr::group_by(feature_id)%>%
         dplyr::mutate(temp_id = 1:n())%>%
@@ -2134,8 +2138,27 @@ MSdev_get_Stat <- function(object,
         dplyr::mutate(compound_id = candidate.id[[temp_id]],
                       adduct = candidate.adduct[[temp_id]],
                       mz_ref = candidate.mz[[temp_id]],
-                      score = score.ms2[[temp_id]])%>%
-        dplyr::ungroup()
+                      score.ms2 = if (has.candi.ms2) {
+                        candidate.score.ms2[[temp_id]]
+                      } else if ("score.ms2" %in% names(candi.rda)) {
+                        score.ms2
+                      } else {
+                        NA_real_
+                      },
+                      score.isopattern = if (has.candi.iso) {
+                        candidate.score.isopattern[[temp_id]]
+                      } else if ("score.isopattern" %in% names(candi.rda)) {
+                        score.isopattern
+                      } else {
+                        NA_real_
+                      },
+                      score = score.ms2)%>%
+        dplyr::ungroup()%>%
+        dplyr::select(-any_of(c("candidate.id","candidate.adduct","candidate.mz",
+                                "candidate.score.ms2","candidate.score.isopattern",
+                                "candidate.n","temp_id")))%>%
+        dplyr::relocate(any_of(c("score","score.ms2","score.isopattern")),
+                        .after = any_of("adduct"))
       cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
       db.info <- get_CompDb_info(compound_id = candi.rda.split$compound_id,
                                  keys = keys,
