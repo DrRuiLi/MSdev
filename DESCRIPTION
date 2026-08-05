@@ -33,7 +33,6 @@ Imports:
     visNetwork,
     xcms
 Suggests: 
-    MSCC,
     knitr,
     ChemmineR,
     circlize,
@@ -90,6 +89,7 @@ Suggests:
     survminer,
     VennDiagram,
     webchem,
+    MSCC,
     DEP
 VignetteBuilder: 
     knitr

@@ -1,11 +1,156 @@
 ---
-title: "MSdev"
+title: "Get started with MSdev"
+description: >
+  Overview of the MSdev S4 project object, core slots, preferred accessors,
+  and a minimal untargeted LC-MS pipeline.
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{MSdev}
+  %\VignetteIndexEntry{Get started with MSdev}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
 
-### SSS
+`MSdev` is an LC-MS **project shell**: one S4 object holds sample metadata,
+xcms feature results, spectra, annotation, and downstream analysis state.
+Chemistry / molecule-graph helpers live in companion package **MSCC**; this
+package focuses on processing, annotation glue, and stats/export.
+
+For a full lipidomics-style run (params, CompoundDb annotation, DEP figures),
+see the vignette *MSdev untargeted workflow*.
+
+---
+
+## 1. Install and load
+
+```{r}
+# remotes::install_github("DrRuiLi/MSdev")
+library(MSdev)
+```
+
+Bioconductor dependencies such as `xcms`, `Spectra`, and `ProtGenerics` must
+be available. Install with `BiocManager::install()` if needed.
+
+---
+
+## 2. The `MSdev` object
+
+Create from a directory of raw files (`.wiff`, `.raw`, `.mzML`, `.mzXML`, …):
+
+```{r}
+object <- MSdev(rawDataDir = "path/to/rawDataDir")
+# optional: projectDir = "...", experimentInfo = MS_Exp()
+```
+
+Resume a saved project:
+
+```{r}
+object <- MSdev_load("path/to/MSdev_YYYY_MM_DD.Rdata")
+```
+
+| Slot | Role |
+|------|------|
+| `projectInfo` | Paths, counts, save file name, acquisition summary |
+| `processingInfo` | xcms / pipeline parameters |
+| `sampleInfo` | Per-file sample table (groups, polarity, msLevels, …) |
+| `experimentInfo` | `MS_Exp` experiment metadata |
+| `xcmsData` | Polarity MS1 `XcmsExperiment`s (`PositiveMS1` / `NegativeMS1`) and chromatograms |
+| `spectra` | On-disk MS1 / MS2 (`sp_id` as `spectraNames`) |
+| `annotation` | Compound / MS2 annotation results |
+| `advancedAna` | Extra analyses (e.g. EIC similarity matrices) |
+
+---
+
+## 3. Minimal untargeted chain
+
+Stock order used in current project records:
+
+```{r}
+object <- MSdev("path/to/rawDataDir")
+
+object <- MSdev_msConvert(object)
+object <- MSdev_checkSampleInfo(object)
+
+object <- MSdev_set_param(
+  object,
+  findChromPeaks = xcms::CentWaveParam(ppm = 25, peakwidth = c(10, 60)),
+  groupChromPeaks = xcms::PeakDensityParam(
+    sampleGroups = "A", minFraction = 0.5, bw = 20, ppm = 25
+  )
+)
+
+object <- MSdev_xcmsProcessing(object)
+object <- MSdev_extract_Spectra(object)   # stores spectra + assigns MS2 to features
+
+object <- MSdev_annotation(
+  object,
+  expand_adduct = TRUE,
+  cpdb_path = "path/to/CompoundDb.sqlite"
+)
+
+object <- MSdev_get_Stat(object, score_thresh = 0.3)
+MSdev_export(object)
+MSdev_save(object)
+```
+
+Optional after features exist:
+
+```{r}
+object <- MSdev_xcms_group_features(object)  # RT → abundance → EIC (xcms-style)
+object <- MSdev_group_feature_EIC(object)    # custom EIC similarity + stored matrices
+```
+
+---
+
+## 4. Preferred accessors
+
+Prefer helpers over digging in slots:
+
+```{r}
+get_MSdev_Spectra(object, msLevel = 2, polarity = 1)
+get_MSdev_Chromatogram(object, polarity = 1)
+get_MSdev_spectra_target_list(object)
+```
+
+MS1 feature containers:
+
+```{r}
+object@xcmsData$PositiveMS1
+object@xcmsData$NegativeMS1
+# spectra on MS1 xcms objects: ProtGenerics::spectra(xcms)
+```
+
+Feature–MS2 links use character `sp_id` vectors in
+`featureDefinitions$ms2_id`, matched to MS2 `spectraNames`.
+
+---
+
+## 5. Demo data
+
+If bundled demos are available on your machine:
+
+```{r}
+msdev.demo <- load_demo("MSdev")
+xcms.demo <- load_demo("xcms")       # alias for XcmsExperiment
+```
+
+---
+
+## 6. Where to go next
+
+| Topic | Vignette / article |
+|-------|--------------------|
+| Full untargeted + DEP figures | *MSdev untargeted workflow* |
+| Spectra backends | article *Spectra backends* |
+| Fast chromatogram extraction | article *xcms chromatogram extraction* |
+| Feature grouping / EIC similarity | article *Feature grouping with EicSimilarityParam* |
+| Formula candidates (Rdisop) | article *Rdisop mass decomposition* |
+
+Related packages: **MSCC** (chemistry / graphs), **xcms**, **Spectra**.
