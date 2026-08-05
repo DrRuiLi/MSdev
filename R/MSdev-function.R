@@ -1654,10 +1654,14 @@ MSdev_import_sampleinfo <- function(object,
   }
 
   object@sampleInfo <- sampleInfo
+  ## Same post-import fill as MSdev_msConvert: derive MS metadata from
+  ## mzData headers (msLevels, manufacturer, scanType, xcmsProcessing, …)
+  ## then sync projectInfo.
+  object <- MSdev_get_MSinfo(object)
+  object <- .updateProjectInfoFromSampleInfo(object)
   if (!rlang::is_empty(object@xcmsData)) {
     object <- MSdev_update_xcms_pdata(object)
   }
-  object <- .updateProjectInfoFromSampleInfo(object)
   object
 }
 
