@@ -123,12 +123,18 @@ MSdev_get_MS2acquisitionStat <- function(object){
     sample.info <- object@sampleInfo%>%
       dplyr::filter(polarity %in% c(i,-1),
                     msLevels %in% c(2))
-    xcms.xcms <- readMSData(sample.info$msData.files,mode = "onDisk")
+    xcms.xcms <- MsExperiment::readMsExperiment(
+      spectraFiles = sample.info$msData.files
+    )
+    sample_nms <- rownames(MsExperiment::sampleData(xcms.xcms))
+    if (is.null(sample_nms) || !length(sample_nms)) {
+      sample_nms <- basename(as.character(sample.info$msData.files))
+    }
     xcms.scan <- get_xcms_scan_Stat(xcms.xcms)%>%
       dplyr::filter(msLevel==2)%>%
       #dplyr::rowwise()%>%
-      dplyr::mutate(assigned.id = assign_ms2_list(pmz = precursorMZ,
-                                                  rt = retentionTime,
+      dplyr::mutate(assigned.id = assign_ms2_list(pmz = precursorMz,
+                                                  rt = rtime,
                                                   ce = collisionEnergy,
                                                   il = DDA.queue)) %>%
       dplyr::filter(!is.na(assigned.id))%>%
@@ -139,7 +145,7 @@ MSdev_get_MS2acquisitionStat <- function(object){
       dplyr::group_by(fileIdx)%>%
       dplyr::mutate(total.id = paste0(assigned.id,collapse = ";"))%>%
       dplyr::distinct(fileIdx,total.id)%>%
-      dplyr::mutate(files = Biobase::sampleNames(xcms.xcms)[fileIdx])
+      dplyr::mutate(files = sample_nms[fileIdx])
 
     ms2.list <-lapply(ms2.stat$total.id,function(x){
       strsplit(x,";")%>%unlist()
@@ -153,7 +159,7 @@ MSdev_get_MS2acquisitionStat <- function(object){
                                            T~acquired),
                       acquired.in.list = case_when(
                         DDA.id %in% ids ~ paste0( acquired.in.list,
-                                                  ";",Biobase::sampleNames(xcms.xcms)[i]),
+                                                  ";",sample_nms[i]),
                         T~ acquired.in.list))%>%
         dplyr::ungroup()%>%
         dplyr::mutate(fail.time = case_when(acquired~0,

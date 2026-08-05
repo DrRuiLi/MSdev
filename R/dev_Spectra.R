@@ -449,14 +449,12 @@ get_Spectra_ms2_feature_id <- function(sp,
 
   sp.data <- Spectra::spectraData(sp)%>%
     as.data.frame()%>%
-    dplyr::mutate(precursorMZ = precursorMz,
-                  retentionTime = rtime)%>%
     dplyr::filter(msLevel == 2)
 
   match.df <- match_mz_rt(featuredef$mzmed,
                           featuredef$rtmed,
-                          sp.data$precursorMZ,
-                          sp.data$retentionTime,
+                          sp.data$precursorMz,
+                          sp.data$rtime,
                           mz.ppm = ppm,
                           rt.tol = rt.tol)
   ## Among candidates already within ppm + rt.tol, prefer closest RT to
@@ -464,7 +462,7 @@ get_Spectra_ms2_feature_id <- function(sp,
   match.df <- match.df%>%
     dplyr::mutate(featuredef[ion1,],
                   sp_id = sp.data$sp_id[ion2],
-                  sp_rt = sp.data$retentionTime[ion2])%>%
+                  sp_rt = sp.data$rtime[ion2])%>%
     dplyr::group_by(sp_id)%>%
     dplyr::arrange(rt.error, mz.error, .by_group = TRUE)%>%
     dplyr::slice_head(n = 1)%>%

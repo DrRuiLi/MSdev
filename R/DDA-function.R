@@ -48,7 +48,7 @@ xcms_get_dda_scan_stimulate <- function(xcms.xcms ,
 
     if (nrow(cycle.feature)!=0&nrow(cycle.ms2)!=0) {
 
-      mz.error <- abs(matrixSub(cycle.ms2$precursorMZ,cycle.feature$mzmed))/cycle.ms2$precursorMZ
+      mz.error <- abs(matrixSub(cycle.ms2$precursorMz,cycle.feature$mzmed))/cycle.ms2$precursorMz
       mz.min.error <- apply(mz.error, 1, which.min)
       mz.hit <- apply(mz.error, 1, min) < 1e-5
 
@@ -103,7 +103,7 @@ xcms_get_dda_scan_stimulate <- function(xcms.xcms ,
 #' xcms_get_dda_ms2_assignment
 #'
 #'  match xcms scan of msLevel 2 to feature Definitions
-#'  based on precursorMZ, retentionTime in `xcms.scan`;
+#'  based on precursorMz, rtime in `xcms.scan`;
 #'  peakRtMin, peakRtMax, feature_id in `featuredef`
 #'
 #' @param xcms.xcms xcms
@@ -118,12 +118,12 @@ xcms_get_dda_ms2_assignment <- function(xcms.xcms){
   xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
   featuredef <- xcms::featureDefinitions(xcms.xcms) %>% as.data.frame()
   match.df <- match_mz_rt(featuredef$mzmed,featuredef$rtmed,
-                          xcms.scan$precursorMZ,
-                          xcms.scan$retentionTime)
+                          xcms.scan$precursorMz,
+                          xcms.scan$rtime)
   match.df <- match.df%>%
     dplyr::mutate(featuredef[ion1,],
                   scan_id = xcms.scan$scan_id[ion2],
-                  scan_rt = xcms.scan$retentionTime[ion2])%>%
+                  scan_rt = xcms.scan$rtime[ion2])%>%
     dplyr::filter(scan_rt < peakRtMax&scan_rt>peakRtMin )%>%
     dplyr::group_by(scan_id)%>%
     dplyr::slice_min(mz.error)
@@ -176,9 +176,9 @@ plot_xcms_dda_acquisition <- function(xcms.xcms) {
     geom_segment(data = feature_def,
                  aes(x = peakRtMin , xend = peakRtMax,
                      y= mzmed , yend = mzmed , col = ms2_acquired))+
-    geom_point(data = xcms.scan.ms2, aes(x = retentionTime , y = precursorMZ,
+    geom_point(data = xcms.scan.ms2, aes(x = rtime , y = precursorMz,
                                          fill = ms2_hit),pch = 21)+
-    scale_x_continuous(breaks = seq(0,max(xcms.scan.ms2$retentionTime),60))+
+    scale_x_continuous(breaks = seq(0,max(xcms.scan.ms2$rtime),60))+
     #xlim(c(0,150))+
     #ylim(c(0,1200))+
     labs(x = "Acquisition windows",
@@ -208,7 +208,7 @@ plot_xcms_dda_cycle_stimulate <- function( xcms.xcms,
                                                "cycle_ion_ms2_count")))
 
   ggplot(plot.data)+
-    geom_bar(aes(x = retentionTime ,
+    geom_bar(aes(x = rtime ,
                  y = count,
                  fill = type),
              alpha = 0.5,
@@ -216,13 +216,13 @@ plot_xcms_dda_cycle_stimulate <- function( xcms.xcms,
              stat = "identity",
              position = "stack",
              show.legend = F)+
-    #geom_text(aes(x = max(plot.data$retentionTime)*0.8,
+    #geom_text(aes(x = max(plot.data$rtime)*0.8,
     #              y = max(plot.data$count)*0.9,
     #              label = "Features"),
     #          hjust=0,
     #          col = "#F7857D",
     #          check_overlap = T)+
-    #geom_text(aes(x = max(plot.data$retentionTime)*0.8,
+    #geom_text(aes(x = max(plot.data$rtime)*0.8,
     #              y = max(plot.data$count)*0.8,
     #              label = "MS2 Acquired"),
     #          hjust=0,
@@ -320,7 +320,7 @@ plot_xcms_dda_cycle_stat <- function(xcms.xcms){
       )->p1
 
   ggplot(xcms.scan.ms1)+
-    geom_jitter(aes(x = retentionTime ,
+    geom_jitter(aes(x = rtime ,
                    y = ms2_count,
                    col = log10(totIonCurrent)),
                 width = 0,

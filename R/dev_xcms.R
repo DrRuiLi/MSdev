@@ -2965,7 +2965,7 @@ plot_xcms_peaks_ms1_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS1"
   xcms.scans <- get_xcms_scan_Stat(xcms.xcms)%>%
     dplyr::filter(msLevel== 1)
   peaks_scans <- function(x,xcms.scans){
-    sum(x["rtmax"] > xcms.scans$retentionTime  & x["rtmin"] < xcms.scans$retentionTime )
+    sum(x["rtmax"] > xcms.scans$rtime  & x["rtmin"] < xcms.scans$rtime )
 
   }
   xcms.peaks$ms1_scans_no <- apply(xcms.peaks ,1,peaks_scans , xcms.scans)
@@ -3029,8 +3029,8 @@ plot_xcms_ms1_scan_freq <- function(xcms, rt_window,
   freq_df <- xcms.scans %>%
     dplyr::group_by(fileIdx) %>%
     dplyr::mutate(
-      rt0 = min(retentionTime, na.rm = TRUE),
-      rt_bin = floor((retentionTime - rt0) / rt_window)
+      rt0 = min(rtime, na.rm = TRUE),
+      rt_bin = floor((rtime - rt0) / rt_window)
     ) %>%
     dplyr::group_by(fileIdx, rt_bin, rt0) %>%
     dplyr::summarise(
@@ -3084,11 +3084,11 @@ plot_xcms_peaks_ms2_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS2"
     xcms::processParam()
   xcms.peaks <- xcms::chromPeaks(xcms.xcms)%>%
     as.data.frame()
-  xcms.scans <- Biobase::fData(xcms.xcms)%>%
+  xcms.scans <- get_xcms_scan_Stat(xcms.xcms)%>%
     dplyr::filter(msLevel== 2)
   peaks_scans <- function(x,xcms.scans){
-    sum(x["rtmax"] > xcms.scans$retentionTime  & x["rtmin"] < xcms.scans$retentionTime&
-          x["mzmax"] > xcms.scans$precursorMZ  & x["mzmin"] < xcms.scans$precursorMZ)
+    sum(x["rtmax"] > xcms.scans$rtime  & x["rtmin"] < xcms.scans$rtime&
+          x["mzmax"] > xcms.scans$precursorMz  & x["mzmin"] < xcms.scans$precursorMz)
 
   }
   xcms.peaks$ms2_scans_no <- apply(xcms.peaks ,1,peaks_scans , xcms.scans)
@@ -3132,16 +3132,16 @@ plot_xcms_peaks_ms2_scans <- function(xcms.xcms,plot.title = "Peaks Sans of MS2"
 
 plot_xcms_ms2_distribution <- function(xcms.xcms,plot.title = "MS2 Precursor distribution" ){
 
- scan.data <- fData(xcms.xcms)%>%
+ scan.data <- get_xcms_scan_Stat(xcms.xcms)%>%
    dplyr::filter(msLevel==2)
 
- ms1.rt <- fData(xcms.xcms)%>%
+ ms1.rt <- get_xcms_scan_Stat(xcms.xcms)%>%
    dplyr::filter(msLevel==1)%>%
-   dplyr::pull(retentionTime)
+   dplyr::pull(rtime)
 
  ggplot(scan.data)+
    #geom_vline(xintercept = ms1.rt,linewidth = 0.05,col = "black")+
-   geom_point(aes(x = retentionTime,y= precursorMz,
+   geom_point(aes(x = rtime,y= precursorMz,
                   col = log10(precursorIntensity)),
    )+
    labs(title = plot.title,
@@ -3263,7 +3263,7 @@ chromPeaks_Sta <- function(xcms.xcms){
 }
 
 
-#' Build per-spectrum scan table for XCMSnExp / MsExperiment / XcmsExperiment
+#' Build per-spectrum scan table for MsExperiment / XcmsExperiment
 #' @noRd
 .get_xcms_scan_table <- function(xcms.xcms) {
   if (inherits(xcms.xcms, "MsExperiment") || inherits(xcms.xcms, "XcmsExperiment")) {
@@ -3272,7 +3272,7 @@ chromPeaks_Sta <- function(xcms.xcms){
       return(data.frame(
         fileIdx = integer(),
         msLevel = integer(),
-        retentionTime = numeric(),
+        rtime = numeric(),
         polarity = integer(),
         stringsAsFactors = FALSE
       ))
@@ -3284,8 +3284,8 @@ chromPeaks_Sta <- function(xcms.xcms){
     }
     file_levels <- unique(origins)
     sd$fileIdx <- as.integer(match(origins, file_levels))
-    if (!"retentionTime" %in% names(sd)) {
-      sd$retentionTime <- as.numeric(Spectra::rtime(sp))
+    if (!"rtime" %in% names(sd)) {
+      sd$rtime <- as.numeric(Spectra::rtime(sp))
     }
     if (!"msLevel" %in% names(sd)) {
       sd$msLevel <- as.integer(Spectra::msLevel(sp))
@@ -3295,10 +3295,14 @@ chromPeaks_Sta <- function(xcms.xcms){
     }
     sd$msLevel <- as.integer(sd$msLevel)
     sd$polarity <- as.integer(sd$polarity)
-    sd$retentionTime <- as.numeric(sd$retentionTime)
+    sd$rtime <- as.numeric(sd$rtime)
     return(sd)
   }
-  Biobase::fData(xcms.xcms)
+  stop(
+    "OnDiskMSnExp / XCMSnExp scan tables are no longer supported; ",
+    "use MsExperiment / XcmsExperiment (Spectra columns: precursorMz, rtime).",
+    call. = FALSE
+  )
 }
 
 #' @title Build xcms centWave roiList from mz/rt targets
@@ -3349,7 +3353,7 @@ get_xcms_roi_list <- function(mzrt,
   if (is.null(fdat) || nrow(fdat) == 0) {
     stop("xcms.xcms has empty scan table; cannot derive scan indices for roiList.")
   }
-  need_cols <- c("fileIdx", "msLevel", "retentionTime", "polarity")
+  need_cols <- c("fileIdx", "msLevel", "rtime", "polarity")
   if (!all(need_cols %in% colnames(fdat))) {
     stop("xcms.xcms scan table must contain columns: ", paste(need_cols, collapse = ", "), ".")
   }
@@ -3371,7 +3375,7 @@ get_xcms_roi_list <- function(mzrt,
         as.integer(fdat$polarity) == ion_mode
     )
     if (!length(idx)) return(NULL)
-    rt <- as.numeric(fdat$retentionTime[idx])
+    rt <- as.numeric(fdat$rtime[idx])
     rt[order(rt)]
   })
   n_ms1 <- vapply(ms1_rt_by_file, function(x) {
@@ -3800,8 +3804,8 @@ get_xcms_scan_Stat <- function(xcms.xcms){
     file_levels <- unique(origins)
     sd$fileIdx <- match(origins, file_levels)
     sd$spIdx <- as.integer(seq_len(nrow(sd)))
-    if (!"retentionTime" %in% names(sd)) {
-      sd$retentionTime <- as.numeric(Spectra::rtime(sp))
+    if (!"rtime" %in% names(sd)) {
+      sd$rtime <- as.numeric(Spectra::rtime(sp))
     }
     if (!"msLevel" %in% names(sd)) {
       sd$msLevel <- as.integer(Spectra::msLevel(sp))
@@ -3818,13 +3822,13 @@ get_xcms_scan_Stat <- function(xcms.xcms){
       dplyr::ungroup() %>%
       dplyr::mutate(ms1_no_str = num2str(ms1_no)) %>%
       dplyr::group_by(fileIdx) %>%
-      dplyr::arrange(fileIdx, retentionTime) %>%
-      dplyr::mutate(scan_time = c(diff(retentionTime), 0),
+      dplyr::arrange(fileIdx, rtime) %>%
+      dplyr::mutate(scan_time = c(diff(rtime), 0),
                     ms1_group = paste0(fileStr, "_", ms1_no_str)) %>%
       dplyr::group_by(ms1_group) %>%
       dplyr::mutate(ms2_count = sum(msLevel == 2),
-                    ms1_group_rt = min(retentionTime),
-                    cycle_time = max(retentionTime) - min(retentionTime)) %>%
+                    ms1_group_rt = min(rtime),
+                    cycle_time = max(rtime) - min(rtime)) %>%
       dplyr::ungroup() %>%
       dplyr::group_by(fileStr) %>%
       dplyr::mutate(cycle_time = c(diff(ms1_group_rt), 0)) %>%
@@ -3840,37 +3844,11 @@ get_xcms_scan_Stat <- function(xcms.xcms){
     return(xcms.fdata)
   }
 
-  xcms.fdata <-Biobase::fData(xcms.xcms)%>%
-    dplyr::mutate(fileStr = num2str(fileIdx),
-                  spStr = num2str(spIdx)
-                  )%>%
-    dplyr::group_by(fileStr)%>%
-    dplyr::mutate(x = 2-msLevel,
-                  ms1_no = cumsum(x))%>%
-    dplyr::ungroup()%>%
-    dplyr::mutate(ms1_no_str = num2str(ms1_no))%>%
-    dplyr::group_by(fileIdx)%>%
-    dplyr::arrange(fileIdx,retentionTime  )%>%
-    dplyr::mutate(scan_time = c(diff(retentionTime),0),
-                  ms1_group = paste0(fileStr,"_",ms1_no_str))%>%
-    dplyr::group_by(ms1_group)%>%
-    dplyr::mutate(ms2_count = sum(msLevel==2),
-                  ms1_group_rt = min(retentionTime),
-                  cycle_time = max(retentionTime)-min(retentionTime))%>%
-    dplyr::ungroup()%>%
-    dplyr::group_by(fileStr)%>%
-    dplyr::mutate(cycle_time = c(diff(ms1_group_rt),0))%>%
-    dplyr::group_by(ms1_group)%>%
-    dplyr::mutate(cycle_time = max(cycle_time))%>%
-    dplyr::mutate(scan_id = paste0("scan_",fileStr,"_",spStr))%>%
-    dplyr::ungroup()%>%
-    dplyr::select(scan_id,ms1_no,ms1_group,ms1_group_rt,
-                  ms2_count,cycle_time,scan_time,everything(),
-                  -c(x,fileStr,spStr,ms1_no_str))%>%
-    as.data.frame()
-  suppressMessages(row.names(xcms.fdata) <- rownames(fData(xcms.xcms)))
-
-  xcms.fdata
+  stop(
+    "OnDiskMSnExp / XCMSnExp scan tables are no longer supported; ",
+    "use MsExperiment / XcmsExperiment (Spectra columns: precursorMz, rtime).",
+    call. = FALSE
+  )
 }
 
 
@@ -3933,7 +3911,7 @@ plot_xcms_TIC <- function(xcms.xcms,col.group = NULL,title = "TIC"){
   line_alpha <- max(1 / max(sample_count, 1), 0.1)
 
   ggplot(xcms.scan)+
-    geom_line(aes(x = retentionTime , y = tic,
+    geom_line(aes(x = rtime , y = tic,
                   col = group,
                   group=fileIdx),alpha = line_alpha)+
     scale_color_manual(values = col.group)+
@@ -3964,8 +3942,8 @@ plot_xcms_adjustedRT <- function(xcms.xcms){
  #                      setdiff(unique(xcms.scan$group),c("Blank","QC")))
 
   ggplot(xcms.scan)+
-    geom_line(aes(x = retentionTime ,
-                  y = adrt-retentionTime,
+    geom_line(aes(x = rtime ,
+                  y = adrt-rtime,
                   col = injection_order,group=fileIdx))+
     scale_color_gradient(low = "#FFD700",high = "#EE0000")+
     labs(title = "Retention Time adjust",
@@ -3982,13 +3960,13 @@ plot_xcms_adjustedRT <- function(xcms.xcms){
 plot_xcms_scan <- function(xcms.xcms){
 
   xcms.scan <- get_xcms_scan_Stat(xcms.xcms)
- #xcms.scan$precursorMZ <- estimatePrecursorIntensity(xcms.xcms,
+ #xcms.scan$precursorMz <- estimatePrecursorIntensity(xcms.xcms,
  #                                        BPPARAM = BatchtoolsParam(progressbar = T,
  #                                                                  log = F))
 
 
   ggplot(xcms.scan)+
-    geom_point(aes(x = retentionTime ,
+    geom_point(aes(x = rtime ,
                    y = precursorMz ,
                    col = log10(precursorIntensity)))
 
@@ -4325,8 +4303,8 @@ simulate_dda <- function(xcms.fdf,
   t <- 0
   scan.df <- data.frame(spIdx = 1,
                         msLevel= 1,
-                        retentionTime= 0,
-                        precursorMZ= NA,
+                        rtime= 0,
+                        precursorMz= NA,
                         ion_id = NA
   )
   while(t < max(xcms.fdf$rtmax)){
@@ -4335,8 +4313,8 @@ simulate_dda <- function(xcms.fdf,
     ion.to.ms2 <- na.omit(ion.to.ms2[order(xcms.fdf$peakMaxo[ion.to.ms2],decreasing = T)[1:topn]])
     ms2.scan <- data.frame(spIdx = rep(NA,length(ion.to.ms2)),
                            msLevel= rep(2,length(ion.to.ms2)),
-                           retentionTime= t + seq_along(ion.to.ms2)*ms2.time,
-                           precursorMZ = xcms.fdf$mzmed[ion.to.ms2],
+                           rtime= t + seq_along(ion.to.ms2)*ms2.time,
+                           precursorMz = xcms.fdf$mzmed[ion.to.ms2],
                            ion_id = ion.to.ms2
     )
     scan.df <- rbind(scan.df,ms2.scan)
@@ -4344,8 +4322,8 @@ simulate_dda <- function(xcms.fdf,
 
     ms1.scan <- data.frame(spIdx = NA,
                            msLevel= 1,
-                           retentionTime = t + ms1.time,
-                           precursorMZ= NA,
+                           rtime = t + ms1.time,
+                           precursorMz= NA,
                            ion_id = NA
     )
     scan.df <- rbind(scan.df,ms1.scan)
@@ -4366,8 +4344,8 @@ simulate_prm <- function(xcms.fdf,
   t <- 0
   scan.df <- data.frame(spIdx = NULL,
                         msLevel= NULL,
-                        retentionTime= NULL,
-                        precursorMZ= NULL,
+                        rtime= NULL,
+                        precursorMz= NULL,
                         ion_id = NULL
   )
   while(t < max(xcms.fdf$rtmax)){
@@ -4376,8 +4354,8 @@ simulate_prm <- function(xcms.fdf,
     ion.to.ms2 <- na.omit(ion.to.ms2)
     ms2.scan <- data.frame(spIdx = rep(NA,length(ion.to.ms2)),
                            msLevel= rep(2,length(ion.to.ms2)),
-                           retentionTime= t + seq_along(ion.to.ms2)*ms2.time,
-                           precursorMZ = xcms.fdf$mzmed[ion.to.ms2],
+                           rtime= t + seq_along(ion.to.ms2)*ms2.time,
+                           precursorMz = xcms.fdf$mzmed[ion.to.ms2],
                            ion_id = ion.to.ms2
     )
     scan.df <- rbind(scan.df,ms2.scan)

@@ -2644,7 +2644,9 @@ get_MSdev_Chromatogram <- function(object, polarity = c(0, 1)) {
 #'   missing, it falls back to the next available level.
 #' @param rt_expand numeric, seconds added to both sides of the final RT window.
 #' @param mz_col candidate mz columns in spectraData; first match is used.
+#'   Default prefers \code{isolationWindowTargetMz}, then \code{precursorMz}.
 #' @param rt_col candidate RT columns in spectraData; first match is used.
+#'   Default is \code{rtime} (Spectra / XcmsExperiment naming).
 #' @return data.frame with columns \code{mz, rt, rtmin, rtmax} plus grouping columns
 #'   when available.
 #' @export
@@ -2654,7 +2656,7 @@ get_MSdev_spectra_target_list <- function(object,
                                          group_by = c("compound_iso", "compound", "feature", "none"),
                                          rt_expand = 0,
                                          mz_col = c("isolationWindowTargetMz", "precursorMz"),
-                                         rt_col = c("rtime", "retentionTime")) {
+                                         rt_col = c("rtime")) {
   prefer <- match.arg(prefer)
   group_by <- match.arg(group_by)
 
