@@ -1,11 +1,10 @@
 ---
-title: "MSdev"
+title: "dev_xcms"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{MSdev}
+  %\VignetteIndexEntry{dev_xcms}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 
-### SSS

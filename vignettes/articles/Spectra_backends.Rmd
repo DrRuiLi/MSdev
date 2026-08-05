@@ -1,0 +1,92 @@
+---
+title: "Spectra backends (`MsBackend*`)"
+description: >
+  Quick reference for choosing and using Spectra backends in MSdev /
+  Bioconductor LC-MS workflows.
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+A backend decides **where** spectra live (memory vs disk/DB) and **how** peak data (m/z, intensity) is retrieved. The `Spectra` API stays the same; performance and memory footprint change with the backend.
+
+---
+
+## 1. In-memory backends
+
+| Backend | Package | Storage | Strengths | Weaknesses | Prefer when… |
+|---------|---------|---------|-----------|------------|--------------|
+| `MsBackendMemory` | Spectra | All data in memory (peaks in optimized structure) | Fastest full peak-matrix access; fastest subsetting / most spectra variables | High RAM | Default choice for processing that fits in memory |
+| `MsBackendDataFrame` | Spectra | All data in a `DataFrame` | Supports S4-class spectra variables; faster separate `mz()` / `intensity()` | Slower full peak matrices than Memory; high RAM | You need S4 columns as spectra variables |
+
+**Default:** `MsBackendMemory` (Spectra ≥ ~1.13). Prefer it over `MsBackendDataFrame` unless you need S4 spectra variables.
+
+---
+
+## 2. On-disk / database backends
+
+| Backend | Package | Peak storage | In memory | Notes |
+|---------|---------|--------------|-----------|-------|
+| `MsBackendMzR` | Spectra | Original mzML / mzXML / CDF via `mzR` | Spectra variables (header) | Small footprint; peaks read on demand; peaks effectively read-only |
+| `MsBackendHdf5Peaks` | Spectra | HDF5 files | Spectra variables | Similar idea to MzR; often better random access after HDF5 conversion |
+| `MsBackendCompDb` | CompoundDb | CompDb SQLite DB | Keys, compound IDs, precursor m/z (minimal) | Extends `MsBackendCached`; DB is read-only; edits to spectra variables are cached in-memory only |
+| `MsBackendSql` / `MsBackendOfflineSql` | MsBackendSql | SQL database | Minimal | Large-scale SQL-backed experiments |
+
+**Rule of thumb:** use on-disk backends for large experiments; switch to `MsBackendMemory` with `Spectra::setBackend()` when a working subset must be processed repeatedly and fits in RAM.
+
+---
+
+## 3. Library / file-format backends
+
+| Backend | Package | Use case |
+|---------|---------|----------|
+| `MsBackendMsp` | MsBackendMsp | `.msp` / Mona spectral libraries |
+| `MsBackendMgf` | MsBackendMgf | `.mgf` files |
+| `MsBackendCompDb` | CompoundDb | Reference MS2 from a `CompDb` (see above) |
+
+---
+
+## 4. Comparison at a glance
+
+```text
+Fast / high RAM          Medium                    Low RAM / slower I/O
+─────────────────────    ─────────────────────     ─────────────────────────
+MsBackendMemory     →    MsBackendHdf5Peaks   →    MsBackendMzR
+MsBackendDataFrame                                 MsBackendCompDb
+                                                   MsBackendSql*
+```
+
+| Concern | Best starting point |
+|---------|---------------------|
+| Interactive / repeated peak ops on modest data | `MsBackendMemory` |
+| Huge raw LC-MS files | `MsBackendMzR` (or HDF5 after conversion) |
+| Compound / library MS2 lookup | `MsBackendCompDb`, then `setBackend(MsBackendMemory())` if needed |
+| Import `.msp` / `.mgf` | `MsBackendMsp` / `MsBackendMgf` |
+
+---
+
+## 5. Usage in MSdev
+
+| Location | Backend | Role |
+|----------|---------|------|
+| `MSdev_extract_Spectra()` | `MsBackendMemory` | Load raw files into `@spectra` MS1/MS2 |
+| `extractSpectra_fullscan_DDA()` | `MsBackendDataFrame` | Older DDA MS2 extraction path |
+| `dev_xcms.R` (single-file reads) | `MsBackendMzR` | On-demand peaks from raw files |
+| `dev_Spectra.R` (library import) | `MsBackendMsp` / `MsBackendMgf` | Spectral library readers |
+| `Spectra_set_MEM_backend()` | CompDb → `MsBackendMemory` | Materialize CompDb spectra for faster local use |
+
+`MsExperiment::readMsExperiment()` / xcms objects also hold `Spectra` with a backend (often MzR-backed for large raw imports). Do **not** replace spectra with `spectra(x) <- Spectra::filterMsLevel(sp, …)` on `MsExperiment` / `XcmsExperiment`; that breaks sample–spectrum links. Use experiment-level `filterMsLevel()` / `filterSpectra()` instead.
+
+---
+
+## 6. Practical tips
+
+1. **Start on-disk, promote when needed:** import with `MsBackendMzR` or CompDb; `setBackend(MsBackendMemory())` for hot subsets.
+2. **CompDb is on-disk:** treat `MsBackendCompDb` like other lazy backends; repeated scoring benefits from memory backend conversion (`Spectra_set_MEM_backend()`).
+3. **Consistency:** new MSdev code should prefer `MsBackendMemory` over `MsBackendDataFrame` unless S4 spectra variables are required.
+4. **Upstream docs:** [Spectra backends](https://rformassspectrometry.github.io/Spectra/), [MsBackend reference](https://rformassspectrometry.github.io/Spectra/reference/MsBackend.html), [CompoundDb `MsBackendCompDb`](https://rdrr.io/bioc/CompoundDb/man/MsBackendCompDb.html).
