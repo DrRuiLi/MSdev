@@ -1828,14 +1828,28 @@ MSdev_extract_Spectra <- function(object,
 
 
 #' @title Assign MS2 spectra to features based on precursor m/z and retention time
-#' @description Match MS2 spectra in \code{object@spectra$MS2_Spectra} to features using
-#' precursor m/z and retention time tolerances. Stores character \code{sp_id} vectors in
-#' \code{featureDefinitions$ms2_id} and writes \code{feature_id} onto the MS2 spectra.
+#' @description Match MS2 spectra in \code{object@spectra$MS2_Spectra} to xcms
+#' features using precursor m/z and retention time tolerances. Stores character
+#' \code{sp_id} vectors in \code{featureDefinitions$ms2_id} and writes
+#' \code{feature_id} onto the MS2 spectra.
+#' @details
+#' Per polarity, matching is delegated to \code{get_Spectra_ms2_feature_id}:
+#' \enumerate{
+#'   \item Candidate pairs via \code{\link{match_mz_rt}} on feature
+#'     \code{mzmed}/\code{rtmed} vs MS2 \code{precursorMz}/\code{rtime}
+#'     (\code{ppm}, \code{rt.tol}).
+#'   \item For each MS2, keep the feature with smallest RT error to
+#'     \code{rtmed}, breaking ties by m/z error (not by m/z alone).
+#' }
+#' This is median-based matching, not \code{xcms::featureSpectra} peak-box
+#' matching. Progress is reported as counts/percentages of MS2 assigned and
+#' features with at least one MS2.
 #' @describeIn MSdev_workflow assign MS2 spectra to features
 #' @param object MSdev object
 #' @param rt.tol retention time tolerance (seconds)
 #' @param ppm m/z tolerance in parts per million
 #' @return MSdev object with updated feature-spectra assignments
+#' @seealso \code{get_Spectra_ms2_feature_id}, \code{\link{match_mz_rt}}
 #' @export
 #'
 MSdev_assign_MS2 <- function(object,

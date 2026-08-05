@@ -419,6 +419,27 @@ Spectra_fill_3CE <- function(sp){
   return(sp.filled)
 }
 
+#' @title Assign each MS2 spectrum to an xcms feature
+#' @description Match MS2 spectra to feature definitions by precursor m/z and
+#'   retention time using \code{\link{match_mz_rt}}, then pick one feature per
+#'   spectrum.
+#' @details
+#' Candidates are those with feature \code{mzmed}/\code{rtmed} within
+#' \code{ppm} and \code{rt.tol} of the spectrum \code{precursorMz}/\code{rtime}.
+#' When several features remain for one MS2 (\code{sp_id}), the closest RT to
+#' \code{rtmed} is preferred (MS2 is typically triggered near the chromatographic
+#' apex); ties are broken by smaller relative m/z error. Unmatched spectra get
+#' \code{feature_id = NA}.
+#' @param sp \code{Spectra} object (MS2; filtered to \code{msLevel == 2} internally)
+#' @param featuredef Feature definitions data.frame (must contain \code{mzmed},
+#'   \code{rtmed}, \code{feature_id})
+#' @param ppm m/z tolerance in ppm (default 5)
+#' @param rt.tol retention time tolerance in seconds (default 5)
+#' @return \code{sp.data} data.frame (MS2 spectra metadata) with a
+#'   \code{feature_id} column
+#' @seealso \code{\link{match_mz_rt}}, \code{\link{MSdev_assign_MS2}}
+#' @keywords internal
+#'
 get_Spectra_ms2_feature_id <- function(sp,
                                     featuredef,
                                     ppm = 5,
@@ -438,12 +459,15 @@ get_Spectra_ms2_feature_id <- function(sp,
                           sp.data$retentionTime,
                           mz.ppm = ppm,
                           rt.tol = rt.tol)
+  ## Among candidates already within ppm + rt.tol, prefer closest RT to
+  ## feature rtmed (MS2 is usually triggered near the apex); break ties by mz.
   match.df <- match.df%>%
     dplyr::mutate(featuredef[ion1,],
                   sp_id = sp.data$sp_id[ion2],
                   sp_rt = sp.data$retentionTime[ion2])%>%
     dplyr::group_by(sp_id)%>%
-    dplyr::slice_min(mz.error)%>%
+    dplyr::arrange(rt.error, mz.error, .by_group = TRUE)%>%
+    dplyr::slice_head(n = 1)%>%
     dplyr::ungroup()
 
 
