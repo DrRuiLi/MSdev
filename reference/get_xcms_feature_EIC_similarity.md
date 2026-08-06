@@ -67,8 +67,7 @@ get_xcms_feature_EIC_similarity(
 - BPPARAM:
 
   BiocParallel backend. Chunk count is
-  `min(bpnworkers(BPPARAM), n_jobs)`. Default
-  [`SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html).
+  `min(bpnworkers(BPPARAM), n_jobs)`. Default `SerialParam()`.
 
 ## Value
 

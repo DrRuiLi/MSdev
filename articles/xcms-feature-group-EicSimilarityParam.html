@@ -273,7 +273,7 @@ moved out of MsFeatures; default
 <code>eicCor</code> in <code><a href="../reference/xcms_extension_feature_group.html">xcms_get_feature_group()</a></code> with
 <code>n = 2</code>.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/MsFeatures/man/groupFeatures.html" class="external-link">groupFeatures</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu">xcms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcms/man/groupFeatures-eic-similarity.html" class="external-link">EicSimilarityParam</a></span><span class="op">(</span>threshold <span class="op">=</span> <span class="fl">0.7</span>, n <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu">groupFeatures</span><span class="op">(</span><span class="va">x</span>, <span class="fu">xcms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcms/man/groupFeatures-eic-similarity.html" class="external-link">EicSimilarityParam</a></span><span class="op">(</span>threshold <span class="op">=</span> <span class="fl">0.7</span>, n <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># internally: ... -&gt; similarity matrix -&gt; MsFeatures::groupSimilarityMatrix(sim, threshold)</span></span></code></pre></div>
 </div>
 <div class="section level3">
