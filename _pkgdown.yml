@@ -1,6 +1,8 @@
 url: https://drruili.github.io/MSdev/
 template:
   bootstrap: 5
+  bslib:
+    bootswatch: sketchy
 home:
   title: MSdev
   description: |
