@@ -81,7 +81,8 @@ xcms_group_feature_EIC(
 
   BiocParallel backend passed to
   [`get_xcms_feature_EIC_similarity`](https://drruili.github.io/MSdev/reference/get_xcms_feature_EIC_similarity.md).
-  Default `SerialParam()`.
+  Default
+  [`SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html).
 
 ## Value
 

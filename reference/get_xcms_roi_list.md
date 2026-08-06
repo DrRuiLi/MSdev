@@ -7,7 +7,8 @@ window `rtmin/rtmax` is mapped to scan indices.
 
 Scan indices are computed per file from MS1 spectra, then expanded to
 the union range across files and **clamped** to `[1, min(n_MS1)]` so one
-shared `roiList` stays valid for every file in `findChromPeaks()`.
+shared `roiList` stays valid for every file in
+[`findChromPeaks()`](https://rdrr.io/pkg/xcms/man/findChromPeaks.html).
 Unclamped unions can overflow shorter runs and raise
 `Error in scanrange` inside `.centWave_orig`.
 
