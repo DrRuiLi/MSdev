@@ -54,25 +54,43 @@ open_plot_win <- function(p,width = 5,height = 4){
 }
 
 
-open_plot_pdf <- function(p,width = 5,height = 4){
-
+#' @title open_plot_pdf
+#' @description
+#' Write a plot to a temporary PDF and open it (Windows default viewer).
+#' Supports \code{ggplot}, ComplexHeatmap (\code{Heatmap} / \code{HeatmapList}),
+#' and other objects handled by \code{export::graph2pdf()}.
+#'
+#' @param p A \code{ggplot}, ComplexHeatmap, or other plot object.
+#' @param width PDF width in inches.
+#' @param height PDF height in inches.
+#'
+#' @return \code{NULL}, invisibly. Side effect: opens the temp PDF via
+#'   \code{open_file()}.
+#' @seealso \code{\link{open_plot_win}}, \code{\link{open_plot_ppt}},
+#'   \code{\link{export_graph2pdf}}
+#' @export
+open_plot_pdf <- function(p, width = 5, height = 4) {
   temp.file <- tempfile(fileext = ".pdf")
-  if (any(c("Heatmap","HeatmapList")%in%class(p))) {
-    export::graph2png(ComplexHeatmap::draw(p),
-                      file =temp.file,
-                      width = width,height= height
+  if (any(c("Heatmap", "HeatmapList") %in% class(p))) {
+    export::graph2pdf(
+      ComplexHeatmap::draw(p, padding = unit(c(1, 1, 1, 3), "mm")),
+      file = temp.file,
+      width = width, height = height
     )
-  }else if(any(c("ggplot")%in%class(p))){
-    ggplot2::ggsave(filename = temp.file,plot = p,
-                    width = width,height= height,dpi = 600)
-  }else{
-    export::graph2pdf(p,
-                      file =temp.file,
-                      width = width,height= height
+  } else if (any(c("ggplot") %in% class(p))) {
+    ggplot2::ggsave(
+      filename = temp.file, plot = p,
+      width = width, height = height
+    )
+  } else {
+    export::graph2pdf(
+      p,
+      file = temp.file,
+      width = width, height = height
     )
   }
   open_file(temp.file)
-
+  invisible(NULL)
 }
 
 
