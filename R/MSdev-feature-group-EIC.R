@@ -403,12 +403,16 @@ get_xcms_feature_EIC_similarity <- function(xcms.xcms,
 #' join a group only if similarity to \emph{all} current members is finite and
 #' \code{>= threshold}.
 #'
+#' Available arguments: \code{x}, \code{threshold}, \code{full}, \code{...}.
+#'
 #' @param x numeric square similarity matrix (symmetric when \code{full = TRUE}).
 #' @param threshold numeric(1). Minimum similarity to join / stay linked.
 #'   Default \code{0.9}.
 #' @param full logical(1). If \code{FALSE}, only the upper triangle is used.
 #' @param ... Ignored; kept for call compatibility with MsFeatures.
 #' @return Integer vector of group IDs, length \code{nrow(x)}.
+#' @seealso \code{\link{groupSimilarityMatrix_hclustAverage}},
+#'   \code{\link{xcms_group_feature_EIC}}
 #' @export
 groupSimilarityMatrix_completeLinkage <- function(x,
                                                   threshold = 0.9,
@@ -522,40 +526,116 @@ groupSimilarityMatrix_completeLinkage <- function(x,
 }
 
 
+#' Group features by average-linkage hierarchical clustering on similarity
+#'
+#' Converts a similarity matrix to distance \code{1 - similarity}, runs
+#' \code{stats::hclust} with \code{method = "average"} (UPGMA), and cuts the
+#' tree at height \code{1 - threshold} so clusters keep average similarity
+#' at least \code{threshold}. Non-finite similarities are set to 0 before
+#' clustering.
+#'
+#' Available arguments: \code{x}, \code{threshold}.
+#'
+#' @param x numeric square similarity matrix.
+#' @param threshold numeric(1). Minimum average similarity within a cluster
+#'   (cut height \code{1 - threshold}). Default \code{0.9}.
+#' @return Integer vector of group IDs, length \code{nrow(x)}.
+#' @seealso \code{\link{groupSimilarityMatrix_completeLinkage}},
+#'   \code{\link{xcms_group_feature_EIC}}
+#' @export
+groupSimilarityMatrix_hclustAverage <- function(x, threshold = 0.9) {
+  if (!is.matrix(x) && !is.data.frame(x)) {
+    stop("'x' should be a matrix")
+  }
+  x <- as.matrix(x)
+  nr <- nrow(x)
+  if (nr != ncol(x)) {
+    stop("'x' should be a square matrix")
+  }
+  if (!is.numeric(threshold) || length(threshold) != 1L) {
+    stop("'threshold' must be numeric(1)")
+  }
+  if (nr == 0L) {
+    return(integer(0L))
+  }
+  if (nr == 1L) {
+    return(1L)
+  }
+
+  sl <- seq_len(nr)
+  x[cbind(sl, sl)] <- 1
+  x[!is.finite(x)] <- 0
+  # Keep matrix dims: pmax(scalar, matrix) drops dim and breaks as.dist.
+  dx <- 1 - x
+  dx[dx < 0] <- 0
+  d <- stats::as.dist(dx)
+  hc <- stats::hclust(d, method = "average")
+  as.integer(stats::cutree(hc, h = 1 - threshold))
+}
+
+
 #' @title Group xcms features by EIC similarity within RT tolerance
 #' @description Compare extracted-ion chromatogram shapes for feature pairs with
 #'   \code{|rtmed_i - rtmed_j| < rt_tol} via \code{\link{get_xcms_feature_EIC_similarity}},
 #'   aggregate across selected samples (75\% quantile), assign \code{feature_group}
-#'   labels with \code{\link{groupSimilarityMatrix_completeLinkage}}, and optionally store
-#'   per-sample sparse similarity matrices in \code{otherData(xcms)$EIC_Similarity}.
+#'   labels with \code{method}, and optionally store per-sample sparse similarity
+#'   matrices in \code{otherData(xcms)$EIC_Similarity}.
 #' @param xcms.xcms XcmsExperiment / MsExperiment with feature definitions and
-#'   an \code{otherData} slot.
+#'   an \code{otherData} slot. (all methods)
 #' @param chroms Chromatograms with feature rownames matching
-#'   \code{featureDefinitions}.
+#'   \code{featureDefinitions}. (all methods)
 #' @param rt_tol numeric(1). Maximum absolute RT difference (seconds) for which
-#'   EIC similarity is computed. Default 5.
-#' @param threshold numeric(1). Similarity cut-off for
-#'   \code{\link{groupSimilarityMatrix_completeLinkage}}. Default 0.5.
+#'   EIC similarity is computed. Default 5. (all methods)
+#' @param threshold numeric(1). Similarity cut-off for the chosen \code{method}
+#'   (see Details). Default 0.5. (all methods)
 #' @param expandRt numeric(1). Seconds added on each side of each feature's
 #'   \code{peakRtMin}/\code{peakRtMax} window when cropping EICs via
 #'   \code{\link{XChromatograms_subset_feature}} before correlation.
-#'   Default \code{2}.
+#'   Default \code{2}. (all methods)
 #' @param min_width numeric(1). Minimum RT window width (seconds) after
 #'   \code{expandRt}; shorter windows are padded equally on both sides.
-#'   Default \code{20}.
+#'   Default \code{20}. (all methods)
 #' @param selected_sample NULL, integer index/indices, or sample name(s).
-#'   NULL uses all samples.
+#'   NULL uses all samples. (all methods)
 #' @param keep_Similarity_Matrix logical(1). If TRUE (default), store the named
 #'   list of per-sample \code{dgCMatrix} similarity matrices in
 #'   \code{otherData(xcms)$EIC_Similarity}. If FALSE, matrices are discarded after
-#'   grouping.
+#'   grouping. (all methods)
 #' @param absent_sim numeric(1). Fill value for pairs outside \code{rt_tol}
-#'   when densifying the sparse similarity matrix for
-#'   \code{\link{groupSimilarityMatrix_completeLinkage}}. Default \code{0}
-#'   (non-overlap treated as dissimilar). Set \code{NA} / \code{NA_real_} to
-#'   leave absents unknown.
+#'   when densifying the sparse similarity matrix before grouping. Default
+#'   \code{0} (non-overlap treated as dissimilar). Interpretation depends on
+#'   \code{method} (see Details). (all methods)
+#' @param method character(1). Grouping algorithm on the dense similarity
+#'   matrix. One of \code{"complete_linkage"}, \code{"hclust_average"}.
+#'   Default \code{"complete_linkage"}. See Details for arguments used by each
+#'   method.
 #' @param BPPARAM BiocParallel backend passed to
 #'   \code{\link{get_xcms_feature_EIC_similarity}}. Default \code{SerialParam()}.
+#'   (all methods)
+#' @details
+#' \strong{Shared arguments} (used before grouping for every \code{method}):
+#' \code{xcms.xcms}, \code{chroms}, \code{rt_tol}, \code{expandRt},
+#' \code{min_width}, \code{selected_sample}, \code{keep_Similarity_Matrix},
+#' \code{absent_sim}, \code{BPPARAM}.
+#'
+#' \strong{Arguments by \code{method}} (how grouping uses densified similarity):
+#' \describe{
+#'   \item{\code{complete_linkage}}{
+#'     Calls \code{\link{groupSimilarityMatrix_completeLinkage}(x, threshold)}.
+#'     Available args: \code{threshold} (minimum finite similarity to every
+#'     current group member to join); \code{absent_sim} (\code{NA} leaves
+#'     pairs unknown and blocks joins that require those pairs;
+#'     numeric fill is used as the similarity value).
+#'     Helper-only args not exposed here: \code{full}, \code{...}.
+#'   }
+#'   \item{\code{hclust_average}}{
+#'     Calls \code{\link{groupSimilarityMatrix_hclustAverage}(x, threshold)}.
+#'     Available args: \code{threshold} (tree cut at height
+#'     \code{1 - threshold}, i.e. average similarity \eqn{\ge} threshold);
+#'     \code{absent_sim} (non-finite entries are set to similarity 0 before
+#'     converting to distance \code{1 - sim}).
+#'   }
+#' }
 #' @return Updated \code{xcms.xcms} with \code{featureGroups} set and a
 #'   \code{feature_group_rt} column added to \code{featureDefinitions} (the
 #'   median \code{rtmed} of each group's member features); when
@@ -571,7 +651,9 @@ xcms_group_feature_EIC <- function(xcms.xcms,
                                    selected_sample = NULL,
                                    keep_Similarity_Matrix = TRUE,
                                    absent_sim = 0,
+                                   method = c("complete_linkage", "hclust_average"),
                                    BPPARAM = BiocParallel::SerialParam()) {
+  method <- match.arg(method)
   if (!is.numeric(rt_tol) || length(rt_tol) != 1L || rt_tol <= 0) {
     stop("'rt_tol' must be a positive numeric(1)")
   }
@@ -606,7 +688,15 @@ xcms_group_feature_EIC <- function(xcms.xcms,
   }
   sim2d <- .sparse_sim_to_dense(sim_sp, absent = absent_sim)
 
-  grp <- groupSimilarityMatrix_completeLinkage(sim2d, threshold = threshold)
+  grp <- switch(
+    method,
+    complete_linkage = groupSimilarityMatrix_completeLinkage(
+      sim2d, threshold = threshold
+    ),
+    hclust_average = groupSimilarityMatrix_hclustAverage(
+      sim2d, threshold = threshold
+    )
+  )
   f_new <- paste0("FG.", MsFeatures:::.format_id(grp))
   names(f_new) <- fids
 

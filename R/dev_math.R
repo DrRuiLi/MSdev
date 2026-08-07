@@ -17,6 +17,27 @@ get_p_t_test <- function(...){
 
 
 
+#' @title Group m/z Values by ppm Tolerance
+#' @description Groups numeric m/z values into clusters within a given ppm
+#'   tolerance using \code{MsCoreUtils::group()}. \code{NA} inputs are preserved
+#'   in the output (as \code{NA} group ids).
+#' @param x Numeric vector of m/z values.
+#' @param ppm Numeric scalar ppm tolerance passed to \code{MsCoreUtils::group()}.
+#'   Default is 10.
+#' @param return.type Character; either \code{"vector"} (default) or
+#'   \code{"data.frame"}.
+#' @return If \code{return.type = "vector"}, an integer vector of group ids the
+#'   same length as \code{x} (\code{NA} where \code{x} is \code{NA}).
+#'   If \code{return.type = "data.frame"}, a data frame with columns
+#'   \code{mz}, \code{mz.group}, \code{mz.center} (median m/z per group),
+#'   \code{mz.diff}, \code{mz.ppm}, \code{mz.width}, and \code{mz.width.ppm}.
+#' @seealso \code{MsCoreUtils::group}
+#' @export
+#'
+#' @examples
+#' mz <- c(100.0000, 100.0008, 200.0000, NA, 200.0015)
+#' groupMz(mz, ppm = 10)
+#' groupMz(mz, ppm = 10, return.type = "data.frame")
 groupMz <- function(x,ppm = 10,return.type = c("vector","data.frame")){
 
  # x.table <- data.frame( mz = x)%>%
