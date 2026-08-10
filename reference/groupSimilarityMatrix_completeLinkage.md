@@ -34,3 +34,12 @@ groupSimilarityMatrix_completeLinkage(x, threshold = 0.9, full = TRUE, ...)
 ## Value
 
 Integer vector of group IDs, length `nrow(x)`.
+
+## Details
+
+Available arguments: `x`, `threshold`, `full`, `...`.
+
+## See also
+
+[`groupSimilarityMatrix_hclustAverage`](https://drruili.github.io/MSdev/reference/groupSimilarityMatrix_hclustAverage.md),
+[`xcms_group_feature_EIC`](https://drruili.github.io/MSdev/reference/xcms_group_feature_EIC.md)

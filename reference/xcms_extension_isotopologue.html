@@ -64,7 +64,7 @@ Identify isotopologues, compute labeling ratios, and isotopologue fractions."></
 <p>Calculates isotopologue-to-seed ratios and determines traced
 isotopologues (label-enriched isotopologues) using one of two methods:</p><ul><li><p><code>untraced_compare</code> (legacy): compare traced and untraced sample sources.</p></li>
 <li><p><code>natural_based</code>: compare observed ratio to theoretical natural isotope
-ratio derived from <code><a href="https://rdrr.io/pkg/MSCC/man/chemform_isotopes_pattern_enviPat.html" class="external-link">MSCC::chemform_isotopes_pattern_enviPat()</a></code>.</p></li>
+ratio derived from <code>MSCC::chemform_isotopes_pattern_enviPat()</code>.</p></li>
 </ul><p>Results are written to featureDefinitions as <code>is_labeled</code> and
 <code>Ratio_to_seed_*</code> columns (same output contract as the legacy function).</p>
 <p>Calculates the fraction of isotopologue intensities relative to their seed feature intensities for each sample. Returns a matrix of fractions without natural abundance adjustment.</p>

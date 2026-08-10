@@ -1,19 +1,17 @@
-# [`DEP`](https://rdrr.io/pkg/DEP/man/DEP.html) styled [`SummarizedExperiment`](https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html) and related analysis
+# `DEP` styled [`SummarizedExperiment`](https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html) and related analysis
 
 DEP styled SummarizedExperiment and related analysis
 
 DEP list contrast.
 
 Add significance rejections to a SummarizedExperiment based on p-values
-and fold changes. Reference to
-[`add_rejections`](https://rdrr.io/pkg/DEP/man/add_rejections.html),
-which does not support significance without p-adjustment. This function
-is a supplementary implementation.
+and fold changes. Reference to `add_rejections`, which does not support
+significance without p-adjustment. This function is a supplementary
+implementation.
 
 Adjust p-values for multiple testing across all contrasts.
 
-Wrapper of [`test_diff`](https://rdrr.io/pkg/DEP/man/test_diff.html) for
-differential analysis between conditions.
+Wrapper of `test_diff` for differential analysis between conditions.
 
 Filter significant features based on differential analysis results.
 
@@ -368,9 +366,8 @@ A SummarizedExperiment object with QC and/or Blank samples removed.
 - `DEP_list_contrast()`: list all contrast in SummarizedExperiment
 
 - `DEP_add_rejections()`: Add significant,Reference to
-  [`add_rejections`](https://rdrr.io/pkg/DEP/man/add_rejections.html),which
-  not support significant with out p adjust, this function as
-  supplymentary
+  `add_rejections`,which not support significant with out p adjust, this
+  function as supplymentary
 
 - `DEP_p_adjust()`: multiple test
 

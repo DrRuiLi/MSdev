@@ -67,8 +67,8 @@ MsBackendDataFrame                                 MsBackendCompDb
 
 | Location | Backend | Role |
 |----|----|----|
-| `MSdev_extract_Spectra()` | `MsBackendMemory` | Load raw files into `@spectra` MS1/MS2 |
-| `extractSpectra_fullscan_DDA()` | `MsBackendDataFrame` | Older DDA MS2 extraction path |
+| [`MSdev_extract_Spectra()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md) | `MsBackendMemory` | Load raw files into `@spectra` MS1/MS2 |
+| [`extractSpectra_fullscan_DDA()`](https://drruili.github.io/MSdev/reference/extractSpectra_fullscan_DDA.md) | `MsBackendDataFrame` | Older DDA MS2 extraction path |
 | `dev_xcms.R` (single-file reads) | `MsBackendMzR` | On-demand peaks from raw files |
 | `dev_Spectra.R` (library import) | `MsBackendMsp` / `MsBackendMgf` | Spectral library readers |
 | `Spectra_set_MEM_backend()` | CompDb → `MsBackendMemory` | Materialize CompDb spectra for faster local use |

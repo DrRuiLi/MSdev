@@ -119,9 +119,8 @@ plot_xcms_xic(
 - col.group:
 
   named character vector of colors for groups. If `NULL`, Blank/QC use
-  fixed colors and remaining groups use
-  [`ggsci::pal_aaas()`](https://nanx.me/ggsci/reference/pal_aaas.html)
-  (or an interpolated palette when there are more than 10 groups)
+  fixed colors and remaining groups use `ggsci::pal_aaas()` (or an
+  interpolated palette when there are more than 10 groups)
 
 - title:
 

@@ -3,7 +3,8 @@
 This note explains **xcms / MsFeatures feature compounding** (group by
 RT → abundance correlation → EIC shape), focusing on **EIC extraction**
 and the **similarity matrix**, and how MSdev’s stock path compares to
-custom `MSdev_group_feature_EIC()`.
+custom
+[`MSdev_group_feature_EIC()`](https://drruili.github.io/MSdev/reference/MSdev_group_feature_EIC.md).
 
 > **API note (xcms ≥ ~4.x / Bioc 3.21+):**  
 > `EicSimilarityParam` used to live in **MsFeatures**. It now lives in
@@ -103,7 +104,8 @@ Features with `feature_group = NA` are **skipped** by later steps.
 - Output: large RT-proximal clusters (false positives OK — later steps
   split them).
 - API (optional): `MsFeatures::SimilarRtimeParam(diffRt)`. MSdev maps
-  this to `diffRt` in `xcms_get_feature_group()`.
+  this to `diffRt` in
+  [`xcms_get_feature_group()`](https://drruili.github.io/MSdev/reference/xcms_extension_feature_group.md).
 
 ### 2.2 Group by abundance correlation
 
@@ -140,7 +142,8 @@ API (optional):
 [`xcms::EicSimilarityParam`](https://rdrr.io/pkg/xcms/man/groupFeatures-eic-similarity.html)
 (constructor moved out of MsFeatures; default
 `groupFun = groupSimilarityMatrix`). MSdev stock path: `eicCor` in
-`xcms_get_feature_group()` with `n = 2`.
+[`xcms_get_feature_group()`](https://drruili.github.io/MSdev/reference/xcms_extension_feature_group.md)
+with `n = 2`.
 
 ``` r
 
@@ -164,8 +167,8 @@ MSdev exposes **two** paths:
 
 | Path | Function | Role |
 |----|----|----|
-| Stock xcms-style | `xcms_get_feature_group()` / `MSdev_xcms_group_features()` | RT → abundance → EIC shape (incremental; similarity matrices discarded) |
-| Custom EIC | `MSdev_group_feature_EIC()` | RT-window EIC compare + **persist** per-sample similarity matrices |
+| Stock xcms-style | [`xcms_get_feature_group()`](https://drruili.github.io/MSdev/reference/xcms_extension_feature_group.md) / [`MSdev_xcms_group_features()`](https://drruili.github.io/MSdev/reference/MSdev_xcms_group_features.md) | RT → abundance → EIC shape (incremental; similarity matrices discarded) |
+| Custom EIC | [`MSdev_group_feature_EIC()`](https://drruili.github.io/MSdev/reference/MSdev_group_feature_EIC.md) | RT-window EIC compare + **persist** per-sample similarity matrices |
 
 ### 3.1 Stock path (mirrors xcms)
 
@@ -286,8 +289,9 @@ That fill is controlled by `absent_sim` in `xcms_group_feature_EIC` /
 [`MsFeatures::groupSimilarityMatrix`](https://rdrr.io/pkg/MsFeatures/man/groupSimilarityMatrix.html)
 can assign the wrong group ID when joining an existing group (integer
 positional indexing vs named group IDs). MSdev therefore uses
-`groupSimilarityMatrix_completeLinkage()` (same complete-linkage rule,
-fixed named-key lookup) inside `xcms_group_feature_EIC`.
+[`groupSimilarityMatrix_completeLinkage()`](https://drruili.github.io/MSdev/reference/groupSimilarityMatrix_completeLinkage.md)
+(same complete-linkage rule, fixed named-key lookup) inside
+`xcms_group_feature_EIC`.
 
 ``` text
 xcms:   many small matrices  → no global absent-fill problem
@@ -541,8 +545,9 @@ object <- MsFeatures::groupFeatures(
 
 ## 6. How MSdev wraps the stock path
 
-`MSdev::xcms_get_feature_group()` runs the three xcms/MsFeatures stages
-in order (any stage can be skipped with `NULL`). See also §3.1.
+[`MSdev::xcms_get_feature_group()`](https://drruili.github.io/MSdev/reference/xcms_extension_feature_group.md)
+runs the three xcms/MsFeatures stages in order (any stage can be skipped
+with `NULL`). See also §3.1.
 
 ``` r
 
@@ -589,9 +594,9 @@ xcms_get_feature_group(xcms.xcms, eicCor = NULL)
   EIC step uses peak-restricted chromatograms by default
   (`onlyPeak = TRUE`), which is a different signal definition.
 - **EIC ≠ exact per-sample peak ranges:**
-  `get_xcms_feature_chromatogram()` (like xcms) uses one m/z–RT box per
-  feature; shapes approximate, not identical to each sample’s chromPeak
-  window.
+  [`get_xcms_feature_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  (like xcms) uses one m/z–RT box per feature; shapes approximate, not
+  identical to each sample’s chromPeak window.
 - **`compareChromatograms` RT subset:** with default `closest` +
   `tolerance = 0`, only exact shared RTs contribute to `cor` (often much
   fewer points than the longer EIC). See §4.2 (`closest` vs `approx`).
@@ -635,17 +640,19 @@ x <- MSdev::xcms_get_feature_group(xodg, diffRt = 5, intCor = 0.5, eicCor = 0.5)
 ## EIC extraction engine
 
 Feature chromatograms for this workflow are extracted with
-`get_xcms_feature_chromatogram()` (via `MSdev_get_feature_chrom`), not
+[`get_xcms_feature_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+(via `MSdev_get_feature_chrom`), not
 [`xcms::featureChromatograms()`](https://rdrr.io/pkg/xcms/man/featureChromatograms.html).
 That helper sits on the fast triad:
 
-- `get_xcms_chromatogram()` — per-file load-once EIC engine (replaces
+- [`get_xcms_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  — per-file load-once EIC engine (replaces
   [`xcms::chromatogram`](https://rdrr.io/pkg/ProtGenerics/man/protgenerics.html)
   hot path)
-- `get_xcms_peaks_chromatogram()` — peak-level EICs
-  (`chromPeakChromatograms` analogue)
-- `get_xcms_feature_chromatogram()` — feature-level EICs
-  (`featureChromatograms` analogue)
+- [`get_xcms_peaks_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  — peak-level EICs (`chromPeakChromatograms` analogue)
+- [`get_xcms_feature_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  — feature-level EICs (`featureChromatograms` analogue)
 
 ------------------------------------------------------------------------
 
@@ -714,18 +721,23 @@ object@advancedAna$featureGroups$EIC_Similarity$Positive[[1]][1:5, 1:5]
   [`MsFeatures::SimilarRtimeParam`](https://rdrr.io/pkg/MsFeatures/man/groupFeatures-similar-rtime.html),
   [`MsFeatures::AbundanceSimilarityParam`](https://rdrr.io/pkg/MsFeatures/man/groupFeatures-similar-abundance.html),
   [`MsFeatures::groupSimilarityMatrix`](https://rdrr.io/pkg/MsFeatures/man/groupSimilarityMatrix.html),
-  `MSdev::groupSimilarityMatrix_completeLinkage`
+  [`MSdev::groupSimilarityMatrix_completeLinkage`](https://drruili.github.io/MSdev/reference/groupSimilarityMatrix_completeLinkage.md)
 - Chromatogram compare:
   [`MSnbase::compareChromatograms`](https://rdrr.io/pkg/ProtGenerics/man/protgenerics.html),
   `MSnbase::alignRt` (`closest` vs `approx`; see §4.2)
 - MSdev wrappers:
-  - `R/dev_xcms.R` → `xcms_get_feature_group()`,
-    `get_xcms_chromatogram()`, `get_xcms_peaks_chromatogram()`,
-    `get_xcms_feature_chromatogram()`
-  - `R/MSdev-feature-group-EIC.R` → `MSdev_group_feature_EIC()`,
-    `get_xcms_feature_EIC_similarity()`,
-    `groupSimilarityMatrix_completeLinkage()`,
-    `Report_MSdev_feature_group_EIC()`
-  - `R/MSdev-function.R` → `MSdev_get_feature_chrom()`
-  - `R/dev_plot.R` → `plot_xcms_feature_group_EIC_comparasion()`,
-    `plot_Chromatograph_mirror()`
+  - `R/dev_xcms.R` →
+    [`xcms_get_feature_group()`](https://drruili.github.io/MSdev/reference/xcms_extension_feature_group.md),
+    [`get_xcms_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md),
+    [`get_xcms_peaks_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md),
+    [`get_xcms_feature_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  - `R/MSdev-feature-group-EIC.R` →
+    [`MSdev_group_feature_EIC()`](https://drruili.github.io/MSdev/reference/MSdev_group_feature_EIC.md),
+    [`get_xcms_feature_EIC_similarity()`](https://drruili.github.io/MSdev/reference/get_xcms_feature_EIC_similarity.md),
+    [`groupSimilarityMatrix_completeLinkage()`](https://drruili.github.io/MSdev/reference/groupSimilarityMatrix_completeLinkage.md),
+    [`Report_MSdev_feature_group_EIC()`](https://drruili.github.io/MSdev/reference/Report_MSdev_feature_group_EIC.md)
+  - `R/MSdev-function.R` →
+    [`MSdev_get_feature_chrom()`](https://drruili.github.io/MSdev/reference/MSdev_get_feature_chrom.md)
+  - `R/dev_plot.R` →
+    [`plot_xcms_feature_group_EIC_comparasion()`](https://drruili.github.io/MSdev/reference/plot_xcms_feature_group_EIC_comparasion.md),
+    [`plot_Chromatograph_mirror()`](https://drruili.github.io/MSdev/reference/plot_Chromatograph_mirror.md)

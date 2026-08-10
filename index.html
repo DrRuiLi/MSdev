@@ -117,14 +117,14 @@
 </h2>
 <pre><code><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://drruili.github.io/MSdev/">MSdev</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev</span><span class="op">(</span>rawDataDir <span class="op">=</span> <span class="st">"path/to/raw"</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev.html">MSdev</a></span><span class="op">(</span>rawDataDir <span class="op">=</span> <span class="st">"path/to/raw"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_checkSampleInfo</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_msConvert</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_xcmsProcessing</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_extract_Spectra</span><span class="op">(</span><span class="va">object</span><span class="op">)</span>   <span class="co"># also assigns MS2 to features</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_group_feature_EIC</span><span class="op">(</span><span class="va">object</span><span class="op">)</span> <span class="co"># optional custom EIC grouping</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_annotation</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev_workflow.html">MSdev_checkSampleInfo</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev_workflow.html">MSdev_msConvert</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev_workflow.html">MSdev_xcmsProcessing</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev_workflow.html">MSdev_extract_Spectra</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span>   <span class="co"># also assigns MS2 to features</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev_group_feature_EIC.html">MSdev_group_feature_EIC</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span> <span class="co"># optional custom EIC grouping</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev_workflow.html">MSdev_annotation</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre>
 <p>Prefer accessors over slot digging:</p>
 <ul>
 <li><code>get_MSdev_Spectra(object, msLevel = …, polarity = …)</code></li>

@@ -70,7 +70,7 @@ target, <code>mzmin/mzmax</code> are calculated using ppm tolerance and the RT w
 <p>Scan indices are computed per file from MS1 spectra, then expanded to the
 union range across files and <strong>clamped</strong> to
 <code>[1, min(n_MS1)]</code> so one shared <code>roiList</code> stays valid for every
-file in <code><a href="https://rdrr.io/pkg/xcms/man/findChromPeaks.html" class="external-link">findChromPeaks()</a></code>. Unclamped unions can overflow shorter runs
+file in <code>findChromPeaks()</code>. Unclamped unions can overflow shorter runs
 and raise <code>Error in scanrange</code> inside <code>.centWave_orig</code>.</p>
 <p>Note: <code>scmin</code>/<code>scmax</code> must be finite integer scan indices
 (not <code>c(0, Inf)</code>). <code>centWave</code> uses them in arithmetic

@@ -1,1 +1,421 @@
-# 
+# Package index
+
+## All functions
+
+- [`get_MSdev_DEP_se()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_list_contrast()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_add_rejections()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_p_adjust()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_check_sig()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_test_diff()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_filter_significant()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_get_diff_table()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_plot_volcano()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP.plot.volcano.lipidomic()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP.plot.lfc.lipid.class()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_plot_heatmap()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_export_data()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_plot_PCA()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_pathway_enrich()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_pathway_enrich_gene()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`se_adjuset_by_weight()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_test_ANOVA()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_plot_single_bar()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_impute_mean()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_filter_miss()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_filter_QC_RSD()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_get_QC_RSD()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_preprocess()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_plot_normalization()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`get_DEP_se_group_color()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`get_DEP_se_sig_feature()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`get_DEP_se_from_ME_result()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  [`DEP_remove_QC()`](https://drruili.github.io/MSdev/reference/DEP_Style_se.md)
+  :
+
+  `DEP` styled
+  [`SummarizedExperiment`](https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html)
+  and related analysis
+
+- [`export_MChromatograms_Metabolites()`](https://drruili.github.io/MSdev/reference/MRM_data_analysis.md)
+  : Export MRM chromatograms as PDF
+
+- [`MS_Exp-class`](https://drruili.github.io/MSdev/reference/MS_Exp-class.md)
+  : MS_Exp-class
+
+- [`MSdev-feature-group-EIC`](https://drruili.github.io/MSdev/reference/MSdev-feature-group-EIC.md)
+  : Feature-group EIC similarity, grouping, and reporting
+
+- [`MSdev()`](https://drruili.github.io/MSdev/reference/MSdev.md) :
+  Create an MSdev object
+
+- [`plotPathwayEnrichment()`](https://drruili.github.io/MSdev/reference/MSdev_Bioinfo.md)
+  : Bioinformatic analysis
+
+- [`MSdev_save()`](https://drruili.github.io/MSdev/reference/MSdev_IO.md)
+  [`MSdev_load()`](https://drruili.github.io/MSdev/reference/MSdev_IO.md)
+  : MSdev input and output
+
+- [`MSdev_export()`](https://drruili.github.io/MSdev/reference/MSdev_export.md)
+  : Msdev Export
+
+- [`MSdev_get_feature_chrom()`](https://drruili.github.io/MSdev/reference/MSdev_get_feature_chrom.md)
+  : Extract chromatograms for features
+
+- [`MSdev_get_feature_purity()`](https://drruili.github.io/MSdev/reference/MSdev_get_feature_purity.md)
+  : Compute MS1 feature purity for both polarities
+
+- [`MSdev_get_peak_table_from_spectra()`](https://drruili.github.io/MSdev/reference/MSdev_get_peak_table_from_spectra.md)
+  : Build MS2 precursor peak table from spectra
+
+- [`MSdev_group_feature_EIC()`](https://drruili.github.io/MSdev/reference/MSdev_group_feature_EIC.md)
+  : Group features by EIC similarity within RT tolerance
+
+- [`plot_MSdev_normalization()`](https://drruili.github.io/MSdev/reference/MSdev_preprocess_visualization.md)
+  [`plot_MSdev_QC_RSD_hist()`](https://drruili.github.io/MSdev/reference/MSdev_preprocess_visualization.md)
+  [`plot_MSdev_QC_RSD_CDF()`](https://drruili.github.io/MSdev/reference/MSdev_preprocess_visualization.md)
+  [`plot_MSdev_TIC()`](https://drruili.github.io/MSdev/reference/MSdev_preprocess_visualization.md)
+  [`plot_MSdev_PCA()`](https://drruili.github.io/MSdev/reference/MSdev_preprocess_visualization.md)
+  : Plot Msdev Normalization
+
+- [`MSdev_processInfo()`](https://drruili.github.io/MSdev/reference/MSdev_processInfo.md)
+  : List process history of xcmsData
+
+- [`MSdev_add_sample()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`MSdev_xcmsProcessing()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`MSdev_get_xcms()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`MSdev_set_param()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`plot_MSdev_sample_peaks()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`MSdev_checkSampleInfo()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`MSdev_import_sampleinfo()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`MSdev_msConvert()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`MSdev_extract_Spectra()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`MSdev_assign_MS2()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`MSdev_annotation()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`MSdev_annotation_MS2_Precursor()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`MSdev_get_Stat()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  [`MSdev_get_Se()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  : Add new sample files to MSdev object
+
+- [`MSdev_xcms_group_features()`](https://drruili.github.io/MSdev/reference/MSdev_xcms_group_features.md)
+  : Group features across samples using xcms
+
+- [`MetaboSignalNetworkTable2df()`](https://drruili.github.io/MSdev/reference/MetaboSignalNetworkTable2df.md)
+  : MetaboSignalNetworkTable2df
+
+- [`MetaboSignalNetworkTableStandardNodeName()`](https://drruili.github.io/MSdev/reference/MetaboSignalNetworkTableStandardNodeName.md)
+  : MetaboSignalNetworkTableStandardNodeName
+
+- [`Report_MSdev_feature_group_EIC()`](https://drruili.github.io/MSdev/reference/Report_MSdev_feature_group_EIC.md)
+  : Report feature-group EIC mirror plots as PDFs
+
+- [`Spectra_filter_TIC()`](https://drruili.github.io/MSdev/reference/Spectra_filter_TIC.md)
+  : Filter Spectra by TIC (Top N per group)
+
+- [`Spectra_filter_noise()`](https://drruili.github.io/MSdev/reference/Spectra_filter_noise.md)
+  : Filter Peaks Below Noise Level
+
+- [`Spectra_get_noise()`](https://drruili.github.io/MSdev/reference/Spectra_get_noise.md)
+  : Estimate Noise Level for Spectra
+
+- [`Spectra_get_purity()`](https://drruili.github.io/MSdev/reference/Spectra_get_purity.md)
+  : Estimate Precursor Purity for Mass Spectra
+
+- [`capture_base_plot()`](https://drruili.github.io/MSdev/reference/capture_base_plot.md)
+  : capture_base_plot
+
+- [`colorMix()`](https://drruili.github.io/MSdev/reference/colorMix.md)
+  : Mix Colors with Alpha Blending
+
+- [`combineSpectra_ce_max_precursor()`](https://drruili.github.io/MSdev/reference/combineSpectra_ce_max_precursor.md)
+  : Select Spectra with Maximum Precursor Intensity per Collision Energy
+
+- [`combineSpectra_groupby_ce()`](https://drruili.github.io/MSdev/reference/combineSpectra_groupby_ce.md)
+  : Combine Spectra by Collision Energy
+
+- [`date_suffix()`](https://drruili.github.io/MSdev/reference/date_suffix.md)
+  : Generate Date Suffix
+
+- [`df_to_wb()`](https://drruili.github.io/MSdev/reference/df_to_wb.md)
+  : df_to_wb
+
+- [`.xcms_has_features()`](https://drruili.github.io/MSdev/reference/dot-xcms_has_features.md)
+  : Whether an xcms object supports and currently has feature
+  definitions. Plain MsExperiment has no hasFeatures method; only
+  XcmsExperiment / XCMSnExp.
+
+- [`edit_df_in_excel()`](https://drruili.github.io/MSdev/reference/edit_df_in_excel.md)
+  : edit_df_in_excel
+
+- [`export_MSdev_feature_MSMS()`](https://drruili.github.io/MSdev/reference/export_MSdev_feature_MSMS.md)
+  : Export MS/MS spectrum and chromatogram for a feature
+
+- [`export_Spectra_peak_list_for_cfm()`](https://drruili.github.io/MSdev/reference/export_Spectra_peak_list_for_cfm.md)
+  : Export Spectra peak list for CFM (Deprecated)
+
+- [`export_graph2pdf()`](https://drruili.github.io/MSdev/reference/export_graph2pdf.md)
+  : Export Graph2pdf
+
+- [`extractSpectra_fullscan_DDA()`](https://drruili.github.io/MSdev/reference/extractSpectra_fullscan_DDA.md)
+  : extractSpectra_fullscan_DDA
+
+- [`featureCandidate()`](https://drruili.github.io/MSdev/reference/featureCandidate.md)
+  : featureCandidate
+
+- [`featureSpectra_fullscan_DDA()`](https://drruili.github.io/MSdev/reference/featureSpectra_fullscan_DDA.md)
+  : featureSpectra_fullscan_DDA
+
+- [`fella_igraph()`](https://drruili.github.io/MSdev/reference/fella_igraph.md)
+  : Generate FELLA Enrichment igraph
+
+- [`findISMSdev()`](https://drruili.github.io/MSdev/reference/findISMSdev.md)
+  : Find internal standard features in MSdev
+
+- [`fix_xcms_chromPeaks_mz_width()`](https://drruili.github.io/MSdev/reference/fix_xcms_chromPeaks_mz_width.md)
+  : Fix overly wide xcms chromPeaks mz window
+
+- [`get_CFM_data_Spectra()`](https://drruili.github.io/MSdev/reference/get_CFM_data_Spectra.md)
+  : Convert CFM Data to Spectra Object
+
+- [`get_MS_sampleinfo()`](https://drruili.github.io/MSdev/reference/get_MS_sampleinfo.md)
+  : Generate sample information table from raw data files
+
+- [`get_MSdev_Chromatogram()`](https://drruili.github.io/MSdev/reference/get_MSdev_Chromatogram.md)
+  : Retrieve feature chromatograms from MSdev object
+
+- [`get_MSdev_Spectra()`](https://drruili.github.io/MSdev/reference/get_MSdev_Spectra.md)
+  : Retrieve spectra from MSdev object
+
+- [`get_MSdev_instrument()`](https://drruili.github.io/MSdev/reference/get_MSdev_instrument.md)
+  : MS instrument description from an MSdev object
+
+- [`get_MSdev_spectra_target_list()`](https://drruili.github.io/MSdev/reference/get_MSdev_spectra_target_list.md)
+  : Build MS2 spectra target list (mz/rt windows)
+
+- [`get_MSinfo_mzR()`](https://drruili.github.io/MSdev/reference/get_MSinfo_mzR.md)
+  : Get Msinfo Mzr
+
+- [`get_Spectra_data()`](https://drruili.github.io/MSdev/reference/get_Spectra_data.md)
+  : Get Spectra Data
+
+- [`get_chroms_data()`](https://drruili.github.io/MSdev/reference/get_chroms_data.md)
+  : get_chroms_data
+
+- [`get_features_from_xcms()`](https://drruili.github.io/MSdev/reference/get_features_from_xcms.md)
+  : get_features_from_xcms
+
+- [`get_igraph_membership()`](https://drruili.github.io/MSdev/reference/get_igraph_membership.md)
+  : Connected-component membership for igraph vertices
+
+- [`get_matrix_value_fill_with_NA()`](https://drruili.github.io/MSdev/reference/get_matrix_value_fill_with_NA.md)
+  : Subset a matrix with NA fill for missing rows/columns
+
+- [`get_node_info()`](https://drruili.github.io/MSdev/reference/get_node_info.md)
+  : get_node_info
+
+- [`get_p_t_test()`](https://drruili.github.io/MSdev/reference/get_p_t_test.md)
+  : Wrapper for t.test
+
+- [`get_xcms_Spectra()`](https://drruili.github.io/MSdev/reference/get_xcms_Spectra.md)
+  : get_xcms_Spectra
+
+- [`get_xcms_feature_EIC_similarity()`](https://drruili.github.io/MSdev/reference/get_xcms_feature_EIC_similarity.md)
+  : Pairwise EIC similarity for xcms features
+
+- [`get_xcms_feature_connect()`](https://drruili.github.io/MSdev/reference/get_xcms_feature_connect.md)
+  : TODO: unfinished. Build isotope mass shift grid for multi-tracer
+
+- [`get_xcms_feature_purity_matrix()`](https://drruili.github.io/MSdev/reference/get_xcms_feature_purity_matrix.md)
+  : Compute MS1 purity matrix for xcms features
+
+- [`get_xcms_roi_list()`](https://drruili.github.io/MSdev/reference/get_xcms_roi_list.md)
+  : Build xcms centWave roiList from mz/rt targets
+
+- [`getmsExpTime()`](https://drruili.github.io/MSdev/reference/getmsExpTime.md)
+  : getmsExpTime
+
+- [`ggplot_roc()`](https://drruili.github.io/MSdev/reference/ggplot_roc.md)
+  : ggplot_roc
+
+- [`ggplot_sum_patchwork()`](https://drruili.github.io/MSdev/reference/ggplot_sum_patchwork.md)
+  : ggplot_sum_patchwork
+
+- [`groupMz()`](https://drruili.github.io/MSdev/reference/groupMz.md) :
+  Group m/z Values by ppm Tolerance
+
+- [`groupSimilarityMatrix_completeLinkage()`](https://drruili.github.io/MSdev/reference/groupSimilarityMatrix_completeLinkage.md)
+  : Group features by complete-linkage similarity threshold
+
+- [`groupSimilarityMatrix_hclustAverage()`](https://drruili.github.io/MSdev/reference/groupSimilarityMatrix_hclustAverage.md)
+  : Group features by average-linkage hierarchical clustering on
+  similarity
+
+- [`groupStringFactor()`](https://drruili.github.io/MSdev/reference/groupStringFactor.md)
+  : groupStringFactor
+
+- [`igraph_filter_vertex()`](https://drruili.github.io/MSdev/reference/igraph_filter_vertex.md)
+  : Subset an igraph to selected vertices
+
+- [`list2df()`](https://drruili.github.io/MSdev/reference/list2df.md) :
+  list2df
+
+- [`load_all_msdev()`](https://drruili.github.io/MSdev/reference/load_all_msdev.md)
+  : Load MSdev-related development packages
+
+- [`load_as_var()`](https://drruili.github.io/MSdev/reference/load_as_var.md)
+  : Load RData File as Variable
+
+- [`load_demo()`](https://drruili.github.io/MSdev/reference/load_demo.md)
+  : Load bundled demo data objects
+
+- [`match_mz()`](https://drruili.github.io/MSdev/reference/match_mz.md)
+  : Match Ions by M/Z Only
+
+- [`match_mz_foverlaps()`](https://drruili.github.io/MSdev/reference/match_mz_foverlaps.md)
+  : Match m/z values using interval overlaps
+
+- [`match_mz_rt()`](https://drruili.github.io/MSdev/reference/match_mz_rt.md)
+  : Match Ions by M/Z and Retention Time
+
+- [`matrixSub()`](https://drruili.github.io/MSdev/reference/matrixSub.md)
+  : Matrix Subtraction of Two Vectors
+
+- [`median_part()`](https://drruili.github.io/MSdev/reference/median_part.md)
+  : Extract Middle Portion of Vector
+
+- [`message_with_time()`](https://drruili.github.io/MSdev/reference/message_with_time.md)
+  : Display Message with Timestamp
+
+- [`normalize_max_min()`](https://drruili.github.io/MSdev/reference/normalize_max_min.md)
+  : Normalize Values Using Min-Max Scaling
+
+- [`open_dir()`](https://drruili.github.io/MSdev/reference/open_dir.md)
+  : Open Directory in File Explorer
+
+- [`open_plot_pdf()`](https://drruili.github.io/MSdev/reference/open_plot_pdf.md)
+  : open_plot_pdf
+
+- [`open_plot_ppt()`](https://drruili.github.io/MSdev/reference/open_plot_ppt.md)
+  : open_plot_ppt
+
+- [`open_plot_win()`](https://drruili.github.io/MSdev/reference/open_plot_win.md)
+  : open_plot_win
+
+- [`plot_Chromatograph_mirror()`](https://drruili.github.io/MSdev/reference/plot_Chromatograph_mirror.md)
+  : Mirror plot of two chromatograms
+
+- [`plot_MSdev_feature_spectrum()`](https://drruili.github.io/MSdev/reference/plot_MSdev_feature_spectrum.md)
+  : Plot MS/MS spectrum for a feature
+
+- [`plot_PCA()`](https://drruili.github.io/MSdev/reference/plot_PCA.md)
+  : Plot Principal Component Analysis (PCA)
+
+- [`plot_Spectra()`](https://drruili.github.io/MSdev/reference/plot_Spectra.md)
+  : Plot Mass Spectra
+
+- [`plot_xcms_feature_group_EIC_comparasion()`](https://drruili.github.io/MSdev/reference/plot_xcms_feature_group_EIC_comparasion.md)
+  : Mirror EIC comparison grid for feature groups
+
+- [`plot_xcms_feature_group_similarity()`](https://drruili.github.io/MSdev/reference/plot_xcms_feature_group_similarity.md)
+  : Heatmap of xcms feature-group EIC similarity
+
+- [`plotly_Spectra()`](https://drruili.github.io/MSdev/reference/plotly_Spectra.md)
+  : Create Interactive Plotly Mass Spectrum
+
+- [`plotly_Spectra_Ring_Artifact()`](https://drruili.github.io/MSdev/reference/plotly_Spectra_Ring_Artifact.md)
+  : Interactive spectrum with click-locked reference peak
+
+- [`plotly_Spectra_iso_mirror()`](https://drruili.github.io/MSdev/reference/plotly_Spectra_iso_mirror.md)
+  : Create Interactive Isotopic Mirror Plot
+
+- [`plotly_Spectra_mirror()`](https://drruili.github.io/MSdev/reference/plotly_Spectra_mirror.md)
+  : Create Interactive Mirror Plot of Two Spectra
+
+- [`setRStudioDir()`](https://drruili.github.io/MSdev/reference/setRStudioDir.md)
+  : Set RStudio Files Pane Directory
+
+- [`setwdActivedFilePath()`](https://drruili.github.io/MSdev/reference/setwdActivedFilePath.md)
+  : setwdActivedFilePath
+
+- [`split_df()`](https://drruili.github.io/MSdev/reference/split_df.md)
+  : Split Data Frame Randomly
+
+- [`analyzePathwayGlobalTest()`](https://drruili.github.io/MSdev/reference/stat-pathway.md)
+  [`analyzePathwayHyperTest()`](https://drruili.github.io/MSdev/reference/stat-pathway.md)
+  : analyzePathwayGlobalTest
+
+- [`str_short()`](https://drruili.github.io/MSdev/reference/str_short.md)
+  : str_short
+
+- [`vector2str()`](https://drruili.github.io/MSdev/reference/vector2str.md)
+  : vector2str
+
+- [`write.xlsx()`](https://drruili.github.io/MSdev/reference/write.xlsx.md)
+  : Write data to Excel file
+
+- [`xcmsProcessingMS1()`](https://drruili.github.io/MSdev/reference/xcmsProcessingMS1.md)
+  : xcmsProcessingMS1
+
+- [`xcmsProcessingMSdev.DDA()`](https://drruili.github.io/MSdev/reference/xcmsProcessingMSdev.DDA.md)
+  : Process DDA data using xcms
+
+- [`xcms_get_feature_ms1_candidate()`](https://drruili.github.io/MSdev/reference/xcms_extension_annotation.md)
+  : XCMS MS1 annotation helpers
+
+- [`get_xcms_Autotuner()`](https://drruili.github.io/MSdev/reference/xcms_extension_autotuner.md)
+  : Get XCMS Parameters via Autotuner
+
+- [`get_xcms_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  [`get_xcms_peaks_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  [`get_xcms_feature_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  [`XChromatograms_rt_unit()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  [`XChromatograms_subset_feature()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  [`XChromatograms_fill_2point()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  [`plot_XChromatograms()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  : XCMS chromatogram helpers
+
+- [`get_xcms_feature_se()`](https://drruili.github.io/MSdev/reference/xcms_extension_feature.md)
+  [`xcms_get_feature_def_stat()`](https://drruili.github.io/MSdev/reference/xcms_extension_feature.md)
+  : XCMS feature helpers
+
+- [`xcms_get_feature_group()`](https://drruili.github.io/MSdev/reference/xcms_extension_feature_group.md)
+  : Group xcms Features
+
+- [`xcms_get_feature_isotopologues()`](https://drruili.github.io/MSdev/reference/xcms_extension_isotopologue.md)
+  [`xcms_get_feature_isotopologues_multi_tracer()`](https://drruili.github.io/MSdev/reference/xcms_extension_isotopologue.md)
+  [`xcms_get_feature_traced_isotopologue()`](https://drruili.github.io/MSdev/reference/xcms_extension_isotopologue.md)
+  [`get_xcms_iso_fraction()`](https://drruili.github.io/MSdev/reference/xcms_extension_isotopologue.md)
+  : XCMS isotopologue helpers
+
+- [`plot_xcms_peaks_distribution()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+  [`plot_xcms_features_distribution()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+  [`plot_xcms_feature_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+  [`plot_xcms_peaks_ms1_scans()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+  [`plot_xcms_ms1_scan_freq()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+  [`plot_xcms_peaks_ms2_scans()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+  [`plot_xcms_peaks_Chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+  [`plot_xcms_feature_intensity()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+  [`plot_xcms_TIC()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+  [`plot_xcms_xic()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+  : XCMS diagnostic plots
+
+- [`xcms_get_dda_ms2_assignment()`](https://drruili.github.io/MSdev/reference/xcms_get_dda_ms2_assignment.md)
+  : xcms_get_dda_ms2_assignment
+
+- [`xcms_get_dda_scan_stimulate()`](https://drruili.github.io/MSdev/reference/xcms_get_dda_scan_stimulate.md)
+  : Stimulate DDA cycle and assign MS2 to feature
+
+- [`xcms_get_feature_isotope_label()`](https://drruili.github.io/MSdev/reference/xcms_get_feature_isotope_label.md)
+  : Xcms Get Feature Isotope Label (Deprecated)
+
+- [`xcms_get_feature_purity()`](https://drruili.github.io/MSdev/reference/xcms_get_feature_purity.md)
+  : Store MS1 feature purity matrix in XcmsExperiment qdata
+
+- [`xcms_get_feature_wmean()`](https://drruili.github.io/MSdev/reference/xcms_get_feature_wmean.md)
+  : Update feature mz/rt using peak-intensity weighted means
+
+- [`xcms_group_feature_EIC()`](https://drruili.github.io/MSdev/reference/xcms_group_feature_EIC.md)
+  : Group xcms features by EIC similarity within RT tolerance
+
+- [`xlsx.write.list()`](https://drruili.github.io/MSdev/reference/xlsx.write.list.md)
+  : Write list of data frames to Excel

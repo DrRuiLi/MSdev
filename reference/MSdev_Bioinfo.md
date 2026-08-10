@@ -47,7 +47,7 @@ ggplot
 ``` r
 ### pathway analysis
 path <- analyzePathwayHyperTest()
-#> Error in msdb.info[Id, ] %>% dplyr::slice_max(Date, with_ties = F): could not find function "%>%"
+#> Error in loadNamespace(x): there is no package called ‘MSdb’
 p <- plotPathwayEnrichment(path)
 #> Error: object 'path' not found
 ```

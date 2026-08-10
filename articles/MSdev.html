@@ -95,11 +95,11 @@ Install with <code><a href="https://bioconductor.github.io/BiocManager/reference
 <p>Create from a directory of raw files (<code>.wiff</code>,
 <code>.raw</code>, <code>.mzML</code>, <code>.mzXML</code>, …):</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev</span><span class="op">(</span>rawDataDir <span class="op">=</span> <span class="st">"path/to/rawDataDir"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev.html">MSdev</a></span><span class="op">(</span>rawDataDir <span class="op">=</span> <span class="st">"path/to/rawDataDir"</span><span class="op">)</span></span>
 <span><span class="co"># optional: projectDir = "...", experimentInfo = MS_Exp()</span></span></code></pre></div>
 <p>Resume a saved project:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_load</span><span class="op">(</span><span class="st">"path/to/MSdev_YYYY_MM_DD.Rdata"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_IO.html">MSdev_load</a></span><span class="op">(</span><span class="st">"path/to/MSdev_YYYY_MM_DD.Rdata"</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -154,12 +154,12 @@ Install with <code><a href="https://bioconductor.github.io/BiocManager/reference
 </h2>
 <p>Stock order used in current project records:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev</span><span class="op">(</span><span class="st">"path/to/rawDataDir"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev.html">MSdev</a></span><span class="op">(</span><span class="st">"path/to/rawDataDir"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_msConvert</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_checkSampleInfo</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_msConvert</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_checkSampleInfo</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_set_param</span><span class="op">(</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_set_param</a></span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
 <span>  findChromPeaks <span class="op">=</span> <span class="fu">xcms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcms/man/findChromPeaks-centWave.html" class="external-link">CentWaveParam</a></span><span class="op">(</span>ppm <span class="op">=</span> <span class="fl">25</span>, peakwidth <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">60</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  groupChromPeaks <span class="op">=</span> <span class="fu">xcms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcms/man/groupChromPeaks.html" class="external-link">PeakDensityParam</a></span><span class="op">(</span></span>
@@ -167,22 +167,22 @@ Install with <code><a href="https://bioconductor.github.io/BiocManager/reference
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_xcmsProcessing</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_extract_Spectra</span><span class="op">(</span><span class="va">object</span><span class="op">)</span>   <span class="co"># stores spectra + assigns MS2 to features</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_xcmsProcessing</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_extract_Spectra</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span>   <span class="co"># stores spectra + assigns MS2 to features</span></span>
 <span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_annotation</span><span class="op">(</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_annotation</a></span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
 <span>  expand_adduct <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  cpdb_path <span class="op">=</span> <span class="st">"path/to/CompoundDb.sqlite"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_get_Stat</span><span class="op">(</span><span class="va">object</span>, score_thresh <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span></span>
-<span><span class="fu">MSdev_export</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
-<span><span class="fu">MSdev_save</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_get_Stat</a></span><span class="op">(</span><span class="va">object</span>, score_thresh <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/MSdev_export.html">MSdev_export</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/MSdev_IO.html">MSdev_save</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
 <p>Optional after features exist:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_xcms_group_features</span><span class="op">(</span><span class="va">object</span><span class="op">)</span>  <span class="co"># RT → abundance → EIC (xcms-style)</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_group_feature_EIC</span><span class="op">(</span><span class="va">object</span><span class="op">)</span>    <span class="co"># custom EIC similarity + stored matrices</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_xcms_group_features.html">MSdev_xcms_group_features</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span>  <span class="co"># RT → abundance → EIC (xcms-style)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_group_feature_EIC.html">MSdev_group_feature_EIC</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span>    <span class="co"># custom EIC similarity + stored matrices</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
@@ -190,9 +190,9 @@ Install with <code><a href="https://bioconductor.github.io/BiocManager/reference
 </h2>
 <p>Prefer helpers over digging in slots:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">get_MSdev_Spectra</span><span class="op">(</span><span class="va">object</span>, msLevel <span class="op">=</span> <span class="fl">2</span>, polarity <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="fu">get_MSdev_Chromatogram</span><span class="op">(</span><span class="va">object</span>, polarity <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="fu">get_MSdev_spectra_target_list</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/get_MSdev_Spectra.html">get_MSdev_Spectra</a></span><span class="op">(</span><span class="va">object</span>, msLevel <span class="op">=</span> <span class="fl">2</span>, polarity <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/get_MSdev_Chromatogram.html">get_MSdev_Chromatogram</a></span><span class="op">(</span><span class="va">object</span>, polarity <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/get_MSdev_spectra_target_list.html">get_MSdev_spectra_target_list</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
 <p>MS1 feature containers:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">object</span><span class="op">@</span><span class="va">xcmsData</span><span class="op">$</span><span class="va">PositiveMS1</span></span>
@@ -208,8 +208,8 @@ Install with <code><a href="https://bioconductor.github.io/BiocManager/reference
 </h2>
 <p>If bundled demos are available on your machine:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">msdev.demo</span> <span class="op">&lt;-</span> <span class="fu">load_demo</span><span class="op">(</span><span class="st">"MSdev"</span><span class="op">)</span></span>
-<span><span class="va">xcms.demo</span> <span class="op">&lt;-</span> <span class="fu">load_demo</span><span class="op">(</span><span class="st">"xcms"</span><span class="op">)</span>       <span class="co"># alias for XcmsExperiment</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">msdev.demo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_demo.html">load_demo</a></span><span class="op">(</span><span class="st">"MSdev"</span><span class="op">)</span></span>
+<span><span class="va">xcms.demo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_demo.html">load_demo</a></span><span class="op">(</span><span class="st">"xcms"</span><span class="op">)</span>       <span class="co"># alias for XcmsExperiment</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">

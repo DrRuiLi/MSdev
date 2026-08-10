@@ -16,8 +16,7 @@ isotopologues (label-enriched isotopologues) using one of two methods:
   sources.
 
 - `natural_based`: compare observed ratio to theoretical natural isotope
-  ratio derived from
-  [`MSCC::chemform_isotopes_pattern_enviPat()`](https://rdrr.io/pkg/MSCC/man/chemform_isotopes_pattern_enviPat.html).
+  ratio derived from `MSCC::chemform_isotopes_pattern_enviPat()`.
 
 Results are written to featureDefinitions as `is_labeled` and
 `Ratio_to_seed_*` columns (same output contract as the legacy function).

@@ -12,7 +12,7 @@ This article summarizes:
 3.  **Where** the speedup comes from (and what it cannot change)
 
 Implementation lives in `R/dev_xcms.R`. Project-level caching uses
-`MSdev_get_feature_chrom()`.
+[`MSdev_get_feature_chrom()`](https://drruili.github.io/MSdev/reference/MSdev_get_feature_chrom.md).
 
 ------------------------------------------------------------------------
 
@@ -20,9 +20,9 @@ Implementation lives in `R/dev_xcms.R`. Project-level caching uses
 
 | Question | xcms | MSdev |
 |----|----|----|
-| Extract EICs for arbitrary mz–RT boxes | `chromatogram()` | `get_xcms_chromatogram()` |
-| Exact EIC for each chromatographic peak (owning sample) | `chromPeakChromatograms()` | `get_xcms_peaks_chromatogram()` |
-| One shared box per feature, applied to selected samples | `featureChromatograms()` | `get_xcms_feature_chromatogram()` |
+| Extract EICs for arbitrary mz–RT boxes | `chromatogram()` | [`get_xcms_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md) |
+| Exact EIC for each chromatographic peak (owning sample) | `chromPeakChromatograms()` | [`get_xcms_peaks_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md) |
+| One shared box per feature, applied to selected samples | `featureChromatograms()` | [`get_xcms_feature_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md) |
 
 ``` mermaid
 flowchart TD
@@ -188,7 +188,8 @@ Wrappers only prepare boxes:
 
 ### 3.3 Project cache
 
-`MSdev_get_feature_chrom()` calls:
+[`MSdev_get_feature_chrom()`](https://drruili.github.io/MSdev/reference/MSdev_get_feature_chrom.md)
+calls:
 
 ``` r
 
@@ -203,8 +204,9 @@ get_xcms_feature_chromatogram(
 ```
 
 and stores `Positive_Chromatograms` / `Negative_Chromatograms` on disk.
-`MSdev_group_feature_EIC()` reuses those chromatograms instead of
-re-calling `featureChromatograms` per group.
+[`MSdev_group_feature_EIC()`](https://drruili.github.io/MSdev/reference/MSdev_group_feature_EIC.md)
+reuses those chromatograms instead of re-calling `featureChromatograms`
+per group.
 
 ------------------------------------------------------------------------
 

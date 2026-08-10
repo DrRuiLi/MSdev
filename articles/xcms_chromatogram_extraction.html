@@ -84,7 +84,7 @@ engine.</p>
 change)</li>
 </ol>
 <p>Implementation lives in <code>R/dev_xcms.R</code>. Project-level
-caching uses <code>MSdev_get_feature_chrom()</code>.</p>
+caching uses <code><a href="../reference/MSdev_get_feature_chrom.html">MSdev_get_feature_chrom()</a></code>.</p>
 <hr>
 <div class="section level2">
 <h2 id="the-three-extraction-problems">1. The three extraction problems<a class="anchor" aria-label="anchor" href="#the-three-extraction-problems"></a>
@@ -104,17 +104,17 @@ caching uses <code>MSdev_get_feature_chrom()</code>.</p>
 <tr class="odd">
 <td>Extract EICs for arbitrary mz–RT boxes</td>
 <td><code>chromatogram()</code></td>
-<td><code>get_xcms_chromatogram()</code></td>
+<td><code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_chromatogram()</a></code></td>
 </tr>
 <tr class="even">
 <td>Exact EIC for each chromatographic peak (owning sample)</td>
 <td><code>chromPeakChromatograms()</code></td>
-<td><code>get_xcms_peaks_chromatogram()</code></td>
+<td><code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_peaks_chromatogram()</a></code></td>
 </tr>
 <tr class="odd">
 <td>One shared box per feature, applied to selected samples</td>
 <td><code>featureChromatograms()</code></td>
-<td><code>get_xcms_feature_chromatogram()</code></td>
+<td><code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram()</a></code></td>
 </tr>
 </tbody>
 </table>
@@ -228,16 +228,16 @@ fix the per-file feature-outer kernel. With default
 </h3>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># arbitrary boxes (engine)</span></span>
-<span><span class="fu">get_xcms_chromatogram</span><span class="op">(</span><span class="va">object</span>, <span class="va">mz</span>, <span class="va">rt</span>, aggregationFun <span class="op">=</span> <span class="st">"max"</span>, BPPARAM <span class="op">=</span> <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/xcms_extension_chromatogram.html">get_xcms_chromatogram</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">mz</span>, <span class="va">rt</span>, aggregationFun <span class="op">=</span> <span class="st">"max"</span>, BPPARAM <span class="op">=</span> <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># peaks (chromPeakChromatograms analogue)</span></span>
-<span><span class="fu">get_xcms_peaks_chromatogram</span><span class="op">(</span></span>
+<span><span class="fu"><a href="../reference/xcms_extension_chromatogram.html">get_xcms_peaks_chromatogram</a></span><span class="op">(</span></span>
 <span>  <span class="va">xcms</span>, <span class="va">peaks.id</span>, all.sample <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  rt.range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"expand"</span>, <span class="st">"identity"</span>, <span class="st">"all"</span><span class="op">)</span>, expandRt <span class="op">=</span> <span class="fl">15</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># features (featureChromatograms analogue)</span></span>
-<span><span class="fu">get_xcms_feature_chromatogram</span><span class="op">(</span></span>
+<span><span class="fu"><a href="../reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram</a></span><span class="op">(</span></span>
 <span>  <span class="va">xcms</span>, feature.id <span class="op">=</span> <span class="cn">NULL</span>, sample <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"maxo"</span>, <span class="st">"all"</span>, <span class="va">...</span><span class="op">)</span>,</span>
 <span>  rt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"expand"</span>, <span class="st">"identity"</span>, <span class="st">"all"</span><span class="op">)</span>,</span>
 <span>  attachPeaks <span class="op">=</span> <span class="cn">TRUE</span>, BPPARAM <span class="op">=</span> <span class="va">...</span></span>
@@ -282,9 +282,9 @@ of <code>peakidx</code>); optional bulk chromPeak attach.</li>
 <div class="section level3">
 <h3 id="project-cache">3.3 Project cache<a class="anchor" aria-label="anchor" href="#project-cache"></a>
 </h3>
-<p><code>MSdev_get_feature_chrom()</code> calls:</p>
+<p><code><a href="../reference/MSdev_get_feature_chrom.html">MSdev_get_feature_chrom()</a></code> calls:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">get_xcms_feature_chromatogram</span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram</a></span><span class="op">(</span></span>
 <span>  <span class="va">xcms.xcms</span>,</span>
 <span>  feature.id <span class="op">=</span> <span class="va">fid</span>,</span>
 <span>  sample <span class="op">=</span> <span class="st">"all"</span>,</span>
@@ -294,7 +294,7 @@ of <code>peakidx</code>); optional bulk chromPeak attach.</li>
 <span><span class="op">)</span></span></code></pre></div>
 <p>and stores <code>Positive_Chromatograms</code> /
 <code>Negative_Chromatograms</code> on disk.
-<code>MSdev_group_feature_EIC()</code> reuses those chromatograms
+<code><a href="../reference/MSdev_group_feature_EIC.html">MSdev_group_feature_EIC()</a></code> reuses those chromatograms
 instead of re-calling <code>featureChromatograms</code> per group.</p>
 <hr>
 </div>
@@ -395,10 +395,10 @@ matching within numerical noise.</p>
 <span><span class="va">fids</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">50</span></span>
 <span><span class="va">pids</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">50</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu">get_xcms_feature_chromatogram</span><span class="op">(</span><span class="va">xcms</span>, <span class="va">fids</span>, sample <span class="op">=</span> <span class="st">"all"</span>, rt <span class="op">=</span> <span class="st">"expand"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu"><a href="../reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram</a></span><span class="op">(</span><span class="va">xcms</span>, <span class="va">fids</span>, sample <span class="op">=</span> <span class="st">"all"</span>, rt <span class="op">=</span> <span class="st">"expand"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu">xcms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcms/man/featureChromatograms.html" class="external-link">featureChromatograms</a></span><span class="op">(</span><span class="va">xcms</span>, features <span class="op">=</span> <span class="va">fids</span>, expandRt <span class="op">=</span> <span class="fl">15</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu">get_xcms_peaks_chromatogram</span><span class="op">(</span><span class="va">xcms</span>, <span class="va">pids</span>, rt.range <span class="op">=</span> <span class="st">"expand"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu"><a href="../reference/xcms_extension_chromatogram.html">get_xcms_peaks_chromatogram</a></span><span class="op">(</span><span class="va">xcms</span>, <span class="va">pids</span>, rt.range <span class="op">=</span> <span class="st">"expand"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu">xcms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcms/man/chromPeakChromatograms.html" class="external-link">chromPeakChromatograms</a></span><span class="op">(</span></span>
 <span>  <span class="va">xcms</span>, peaks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="fu">chromPeaks</span><span class="op">(</span><span class="va">xcms</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="va">pids</span><span class="op">]</span>, expandRt <span class="op">=</span> <span class="fl">15</span></span>
 <span><span class="op">)</span><span class="op">)</span></span></code></pre></div>

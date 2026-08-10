@@ -1,7 +1,6 @@
 # Export Spectra peak list for CFM (Deprecated)
 
-Deprecated wrapper. Use
-[`MSCC::export_Spectra_peak_list_for_cfm()`](https://rdrr.io/pkg/MSCC/man/export_Spectra_peak_list_for_cfm.html).
+Deprecated wrapper. Use `MSCC::export_Spectra_peak_list_for_cfm()`.
 
 ## Usage
 

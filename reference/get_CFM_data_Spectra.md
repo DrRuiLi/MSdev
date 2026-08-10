@@ -1,7 +1,6 @@
 # Convert CFM Data to Spectra Object
 
-Deprecated wrapper. Use
-[`MSCC::get_CFM_data_Spectra()`](https://rdrr.io/pkg/MSCC/man/get_CFM_data_Spectra.html).
+Deprecated wrapper. Use `MSCC::get_CFM_data_Spectra()`.
 
 ## Usage
 

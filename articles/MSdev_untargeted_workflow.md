@@ -49,11 +49,12 @@ object <- MSdev_msConvert(object)
 object <- MSdev_checkSampleInfo(object)
 ```
 
-- `MSdev_msConvert()` converts vendor raw files when needed; if inputs
-  are already `.mzML` / `.mzXML`, conversion is skipped.
-- `MSdev_checkSampleInfo()` validates `sampleInfo` (groups, polarity,
-  `msLevels`, `xcmsProcessing`, etc.). Fix metadata interactively if
-  prompted.
+- [`MSdev_msConvert()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  converts vendor raw files when needed; if inputs are already `.mzML` /
+  `.mzXML`, conversion is skipped.
+- [`MSdev_checkSampleInfo()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  validates `sampleInfo` (groups, polarity, `msLevels`,
+  `xcmsProcessing`, etc.). Fix metadata interactively if prompted.
 
 ------------------------------------------------------------------------
 
@@ -85,8 +86,9 @@ object <- MSdev_set_param(
 
 Adjust `ppm`, `peakwidth`, `bw`, and `minFraction` to the instrument and
 chromatography. `sampleGroups` in `PeakDensityParam` is a placeholder
-here; `MSdev_xcmsProcessing()` uses the project sample groups when it
-runs.
+here;
+[`MSdev_xcmsProcessing()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+uses the project sample groups when it runs.
 
 ------------------------------------------------------------------------
 
@@ -98,11 +100,12 @@ object <- MSdev_xcmsProcessing(object)
 object <- MSdev_extract_Spectra(object)
 ```
 
-- `MSdev_xcmsProcessing()` runs peak picking / grouping (and related
-  xcms steps) into polarity MS1 containers (`PositiveMS1` /
-  `NegativeMS1`).
-- `MSdev_extract_Spectra()` loads MS1/MS2 into `@spectra`, assigns
-  `sp_id`, and links MS2 to features (`MSdev_assign_MS2`).
+- [`MSdev_xcmsProcessing()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  runs peak picking / grouping (and related xcms steps) into polarity
+  MS1 containers (`PositiveMS1` / `NegativeMS1`).
+- [`MSdev_extract_Spectra()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
+  loads MS1/MS2 into `@spectra`, assigns `sp_id`, and links MS2 to
+  features (`MSdev_assign_MS2`).
 
 ------------------------------------------------------------------------
 
@@ -140,8 +143,11 @@ MSdev_save(object)
 
 - `score_thresh` filters annotation scores when building the stats /
   metabolite tables.
-- `MSdev_export()` writes tabular outputs under the project directory.
-- `MSdev_save()` serializes the `MSdev` object for later `MSdev_load()`.
+- [`MSdev_export()`](https://drruili.github.io/MSdev/reference/MSdev_export.md)
+  writes tabular outputs under the project directory.
+- [`MSdev_save()`](https://drruili.github.io/MSdev/reference/MSdev_IO.md)
+  serializes the `MSdev` object for later
+  [`MSdev_load()`](https://drruili.github.io/MSdev/reference/MSdev_IO.md).
 
 ------------------------------------------------------------------------
 
@@ -238,9 +244,9 @@ example).
 
 | Step | Function | When |
 |----|----|----|
-| Feature compounding (xcms-style) | `MSdev_xcms_group_features()` | After xcms, before or with annotation |
-| Custom EIC grouping | `MSdev_group_feature_EIC()` | When you need stored EIC similarity matrices |
-| Feature chromatograms | `MSdev_get_feature_chrom()` | Before custom EIC grouping / EIC reports |
+| Feature compounding (xcms-style) | [`MSdev_xcms_group_features()`](https://drruili.github.io/MSdev/reference/MSdev_xcms_group_features.md) | After xcms, before or with annotation |
+| Custom EIC grouping | [`MSdev_group_feature_EIC()`](https://drruili.github.io/MSdev/reference/MSdev_group_feature_EIC.md) | When you need stored EIC similarity matrices |
+| Feature chromatograms | [`MSdev_get_feature_chrom()`](https://drruili.github.io/MSdev/reference/MSdev_get_feature_chrom.md) | Before custom EIC grouping / EIC reports |
 
 See also the articles on Spectra backends, chromatogram extraction, and
 `EicSimilarityParam` feature grouping.
