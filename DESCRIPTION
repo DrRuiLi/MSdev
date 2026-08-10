@@ -5,7 +5,7 @@ Authors@R:
     person("Rui", "Li", , "rli@sinh.ac.cn", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-3199-287X"))
 Description: MS data basic manipulate and advanced algorithm.
-License: MIT + file LICENSE
+License: GPL (>= 3)
 Depends:
     R (>= 4.3.0)
 Imports: 
