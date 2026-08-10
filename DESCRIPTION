@@ -31,9 +31,10 @@ Imports:
     tibble,
     tidyr,
     visNetwork,
+    MSCC,
     xcms
 Remotes: 
-    DrRuiLi/MSCC
+    DrRuiLi/MSCC,
     DrRuiLi/MSconvertR
 Suggests: 
     knitr,
@@ -92,7 +93,6 @@ Suggests:
     survminer,
     VennDiagram,
     webchem,
-    MSCC,
     DEP
 VignetteBuilder: 
     knitr
