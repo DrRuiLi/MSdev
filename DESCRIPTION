@@ -32,6 +32,9 @@ Imports:
     tidyr,
     visNetwork,
     xcms
+Remotes: 
+    DrRuiLi/MSCC
+    DrRuiLi/MSconvertR
 Suggests: 
     knitr,
     ChemmineR,
