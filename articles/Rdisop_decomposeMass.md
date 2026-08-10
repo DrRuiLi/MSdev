@@ -67,9 +67,9 @@ and not 101.5.
   formula (output m/z).
 - **406** is the mass scale of a 2+ ion whose *observed* m/z is 203.
 
-[`MassTools::calcMF`](https://rdrr.io/pkg/MassTools/man/calcMF.html)
-only does `mz + z * m_e` then calls `decomposeMass` — it also does
-**not** multiply by `|z|`, so it has the same gap for $`|z| > 1`$.
+`MassTools::calcMF` only does `mz + z * m_e` then calls `decomposeMass`
+— it also does **not** multiply by `|z|`, so it has the same gap for
+$`|z| > 1`$.
 
 **Rule for a formula calculator:** convert m/z → search mass yourself
 (`mz * |z| ± z*me` and/or adduct correction via MSCC), then call
@@ -117,12 +117,8 @@ results <- decomposeMass(
 getFormula(results)
 ```
 
-Useful accessors:
-[`getFormula()`](https://rdrr.io/pkg/Rdisop/man/getMolecule.html),
-[`getMass()`](https://rdrr.io/pkg/Rdisop/man/getMolecule.html),
-[`getScore()`](https://rdrr.io/pkg/Rdisop/man/getMolecule.html),
-[`getValid()`](https://rdrr.io/pkg/Rdisop/man/getMolecule.html),
-[`getIsotope()`](https://rdrr.io/pkg/Rdisop/man/getMolecule.html).
+Useful accessors: `getFormula()`, `getMass()`, `getScore()`,
+`getValid()`, `getIsotope()`.
 
 With measured isotope peaks, prefer
 `decomposeIsotopes(masses, intensities, ...)` — same enumeration core,

@@ -64,7 +64,7 @@
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <pre><code><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"DrRuiLi/MSdev"</span><span class="op">)</span></span></code></pre>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"DrRuiLi/MSdev"</span><span class="op">)</span></span></code></pre>
 <p>Requires R ≥ 4.3 and Bioconductor packages such as <code>xcms</code>, <code>Spectra</code>, and <code>ProtGenerics</code>. Install Bioconductor dependencies first if needed:</p>
 <pre><code><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
@@ -115,16 +115,16 @@
 <div class="section level2">
 <h2 id="typical-untargeted-workflow">Typical untargeted workflow<a class="anchor" aria-label="anchor" href="#typical-untargeted-workflow"></a>
 </h2>
-<pre><code><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">MSdev</span><span class="op">)</span></span>
+<pre><code><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://drruili.github.io/MSdev/">MSdev</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev.html">MSdev</a></span><span class="op">(</span>rawDataDir <span class="op">=</span> <span class="st">"path/to/raw"</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev</span><span class="op">(</span>rawDataDir <span class="op">=</span> <span class="st">"path/to/raw"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev_workflow.html">MSdev_checkSampleInfo</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev_workflow.html">MSdev_msConvert</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev_workflow.html">MSdev_xcmsProcessing</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev_workflow.html">MSdev_extract_Spectra</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span>   <span class="co"># also assigns MS2 to features</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev_group_feature_EIC.html">MSdev_group_feature_EIC</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span> <span class="co"># optional custom EIC grouping</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/MSdev_workflow.html">MSdev_annotation</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_checkSampleInfo</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_msConvert</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_xcmsProcessing</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_extract_Spectra</span><span class="op">(</span><span class="va">object</span><span class="op">)</span>   <span class="co"># also assigns MS2 to features</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_group_feature_EIC</span><span class="op">(</span><span class="va">object</span><span class="op">)</span> <span class="co"># optional custom EIC grouping</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_annotation</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre>
 <p>Prefer accessors over slot digging:</p>
 <ul>
 <li><code>get_MSdev_Spectra(object, msLevel = …, polarity = …)</code></li>

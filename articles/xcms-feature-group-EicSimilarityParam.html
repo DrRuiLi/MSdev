@@ -72,7 +72,7 @@
 compounding</strong> (group by RT → abundance correlation → EIC shape),
 focusing on <strong>EIC extraction</strong> and the <strong>similarity
 matrix</strong>, and how MSdev’s stock path compares to custom
-<code><a href="../reference/MSdev_group_feature_EIC.html">MSdev_group_feature_EIC()</a></code>.</p>
+<code>MSdev_group_feature_EIC()</code>.</p>
 <blockquote>
 <p><strong>API note (xcms ≥ ~4.x / Bioc 3.21+):</strong><br><code>EicSimilarityParam</code> used to live in
 <strong>MsFeatures</strong>. It now lives in
@@ -173,7 +173,7 @@ into the same group (same-compound ions should co-elute).</p>
 split them).</li>
 <li>API (optional): <code>MsFeatures::SimilarRtimeParam(diffRt)</code>.
 MSdev maps this to <code>diffRt</code> in
-<code><a href="../reference/xcms_extension_feature_group.html">xcms_get_feature_group()</a></code>.</li>
+<code>xcms_get_feature_group()</code>.</li>
 </ul>
 </div>
 <div class="section level3">
@@ -270,10 +270,10 @@ links pairs with score ≥ <code>threshold</code>
 <p>API (optional): <code><a href="https://rdrr.io/pkg/xcms/man/groupFeatures-eic-similarity.html" class="external-link">xcms::EicSimilarityParam</a></code> (constructor
 moved out of MsFeatures; default
 <code>groupFun = groupSimilarityMatrix</code>). MSdev stock path:
-<code>eicCor</code> in <code><a href="../reference/xcms_extension_feature_group.html">xcms_get_feature_group()</a></code> with
+<code>eicCor</code> in <code>xcms_get_feature_group()</code> with
 <code>n = 2</code>.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/MsFeatures/man/groupFeatures.html" class="external-link">groupFeatures</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu">xcms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcms/man/groupFeatures-eic-similarity.html" class="external-link">EicSimilarityParam</a></span><span class="op">(</span>threshold <span class="op">=</span> <span class="fl">0.7</span>, n <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu">groupFeatures</span><span class="op">(</span><span class="va">x</span>, <span class="fu">xcms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcms/man/groupFeatures-eic-similarity.html" class="external-link">EicSimilarityParam</a></span><span class="op">(</span>threshold <span class="op">=</span> <span class="fl">0.7</span>, n <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># internally: ... -&gt; similarity matrix -&gt; MsFeatures::groupSimilarityMatrix(sim, threshold)</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -309,15 +309,15 @@ already-reduced groups.</li>
 <tr class="odd">
 <td>Stock xcms-style</td>
 <td>
-<code><a href="../reference/xcms_extension_feature_group.html">xcms_get_feature_group()</a></code> /
-<code><a href="../reference/MSdev_xcms_group_features.html">MSdev_xcms_group_features()</a></code>
+<code>xcms_get_feature_group()</code> /
+<code>MSdev_xcms_group_features()</code>
 </td>
 <td>RT → abundance → EIC shape (incremental; similarity matrices
 discarded)</td>
 </tr>
 <tr class="even">
 <td>Custom EIC</td>
-<td><code><a href="../reference/MSdev_group_feature_EIC.html">MSdev_group_feature_EIC()</a></code></td>
+<td><code>MSdev_group_feature_EIC()</code></td>
 <td>RT-window EIC compare + <strong>persist</strong> per-sample
 similarity matrices</td>
 </tr>
@@ -337,10 +337,10 @@ matrix (then discard):</p>
   CL --&gt; LBL["feature_group labels; matrix discarded"]</code></pre>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># per xcms object</span></span>
-<span><span class="fu"><a href="../reference/xcms_extension_feature_group.html">xcms_get_feature_group</a></span><span class="op">(</span><span class="va">xcms.xcms</span>, diffRt <span class="op">=</span> <span class="fl">5</span>, intCor <span class="op">=</span> <span class="fl">0.5</span>, eicCor <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
+<span><span class="fu">xcms_get_feature_group</span><span class="op">(</span><span class="va">xcms.xcms</span>, diffRt <span class="op">=</span> <span class="fl">5</span>, intCor <span class="op">=</span> <span class="fl">0.5</span>, eicCor <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># both polarities on MSdev</span></span>
-<span><span class="fu"><a href="../reference/MSdev_xcms_group_features.html">MSdev_xcms_group_features</a></span><span class="op">(</span><span class="va">object</span>, diffRt <span class="op">=</span> <span class="fl">5</span>, intCor <span class="op">=</span> <span class="fl">0.5</span>, eicCor <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">MSdev_xcms_group_features</span><span class="op">(</span><span class="va">object</span>, diffRt <span class="op">=</span> <span class="fl">5</span>, intCor <span class="op">=</span> <span class="fl">0.5</span>, eicCor <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></code></pre></div>
 <p>Set <code>eicCor = NULL</code> to stop after RT/abundance and hand
 off to the custom EIC function.</p>
 </div>
@@ -357,8 +357,8 @@ off to the custom EIC function.</p>
   AGG --&gt; GSM["Cluster: groupSimilarityMatrix_completeLinkage"]
   GSM --&gt; LBL["Update feature_group"]</code></pre>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_get_feature_chrom.html">MSdev_get_feature_chrom</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span>   <span class="co"># or auto inside if missing</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_group_feature_EIC.html">MSdev_group_feature_EIC</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_get_feature_chrom</span><span class="op">(</span><span class="va">object</span><span class="op">)</span>   <span class="co"># or auto inside if missing</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_group_feature_EIC</span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
 <span>  rt_tol <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>  threshold <span class="op">=</span> <span class="fl">0.5</span>,</span>
@@ -535,7 +535,7 @@ matrix with <code>NA</code> absents,
 <code><a href="https://rdrr.io/pkg/MsFeatures/man/groupSimilarityMatrix.html" class="external-link">MsFeatures::groupSimilarityMatrix</a></code> can assign the wrong
 group ID when joining an existing group (integer positional indexing vs
 named group IDs). MSdev therefore uses
-<code><a href="../reference/groupSimilarityMatrix_completeLinkage.html">groupSimilarityMatrix_completeLinkage()</a></code> (same
+<code>groupSimilarityMatrix_completeLinkage()</code> (same
 complete-linkage rule, fixed named-key lookup) inside
 <code>xcms_group_feature_EIC</code>.</p>
 <pre class="text"><code>xcms:   many small matrices  → no global absent-fill problem
@@ -887,11 +887,11 @@ positive <code>tolerance</code> for near-matches — see §4.2.</td>
 <div class="section level2">
 <h2 id="how-msdev-wraps-the-stock-path">6. How MSdev wraps the stock path<a class="anchor" aria-label="anchor" href="#how-msdev-wraps-the-stock-path"></a>
 </h2>
-<p><code><a href="../reference/xcms_extension_feature_group.html">MSdev::xcms_get_feature_group()</a></code> runs the three
+<p><code>MSdev::xcms_get_feature_group()</code> runs the three
 xcms/MsFeatures stages in order (any stage can be skipped with
 <code>NULL</code>). See also §3.1.</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/xcms_extension_feature_group.html">xcms_get_feature_group</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="fu">xcms_get_feature_group</span><span class="op">(</span></span>
 <span>  <span class="va">xcms.xcms</span>,</span>
 <span>  diffRt <span class="op">=</span> <span class="fl">5</span>,     <span class="co"># SimilarRtimeParam window (seconds)</span></span>
 <span>  intCor <span class="op">=</span> <span class="fl">0.5</span>,   <span class="co"># AbundanceSimilarityParam threshold</span></span>
@@ -921,7 +921,7 @@ column; inspect with <code>xcms::featureGroups()</code> /
 <code><a href="https://rdrr.io/pkg/xcms/man/XCMSnExp-class.html" class="external-link">featureDefinitions()</a></code>.</p>
 <p>To skip EIC (e.g. for a quick draft grouping):</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/xcms_extension_feature_group.html">xcms_get_feature_group</a></span><span class="op">(</span><span class="va">xcms.xcms</span>, eicCor <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">xcms_get_feature_group</span><span class="op">(</span><span class="va">xcms.xcms</span>, eicCor <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
@@ -941,7 +941,7 @@ by default (<code>onlyPeak = TRUE</code>), which is a different signal
 definition.</li>
 <li>
 <strong>EIC ≠ exact per-sample peak ranges:</strong>
-<code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram()</a></code> (like xcms) uses one m/z–RT
+<code>get_xcms_feature_chromatogram()</code> (like xcms) uses one m/z–RT
 box per feature; shapes approximate, not identical to each sample’s
 chromPeak window.</li>
 <li>
@@ -983,25 +983,25 @@ existing groups; they do not re-merge across RT-distant groups.</li>
 <span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/MsFeatures/man/featureGroups.html" class="external-link">featureGroups</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Or via MSdev (stock xcms-style incremental EIC step):</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu">MSdev</span><span class="fu">::</span><span class="fu"><a href="../reference/xcms_extension_feature_group.html">xcms_get_feature_group</a></span><span class="op">(</span><span class="va">xodg</span>, diffRt <span class="op">=</span> <span class="fl">5</span>, intCor <span class="op">=</span> <span class="fl">0.5</span>, eicCor <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu">MSdev</span><span class="fu">::</span><span class="fu">xcms_get_feature_group</span><span class="op">(</span><span class="va">xodg</span>, diffRt <span class="op">=</span> <span class="fl">5</span>, intCor <span class="op">=</span> <span class="fl">0.5</span>, eicCor <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="eic-extraction-engine">EIC extraction engine<a class="anchor" aria-label="anchor" href="#eic-extraction-engine"></a>
 </h2>
 <p>Feature chromatograms for this workflow are extracted with
-<code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram()</a></code> (via
+<code>get_xcms_feature_chromatogram()</code> (via
 <code>MSdev_get_feature_chrom</code>), not
 <code><a href="https://rdrr.io/pkg/xcms/man/featureChromatograms.html" class="external-link">xcms::featureChromatograms()</a></code>. That helper sits on the fast
 triad:</p>
 <ul>
 <li>
-<code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_chromatogram()</a></code> — per-file load-once EIC engine
+<code>get_xcms_chromatogram()</code> — per-file load-once EIC engine
 (replaces <code><a href="https://rdrr.io/pkg/ProtGenerics/man/protgenerics.html" class="external-link">xcms::chromatogram</a></code> hot path)</li>
 <li>
-<code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_peaks_chromatogram()</a></code> — peak-level EICs
+<code>get_xcms_peaks_chromatogram()</code> — peak-level EICs
 (<code>chromPeakChromatograms</code> analogue)</li>
 <li>
-<code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram()</a></code> — feature-level EICs
+<code>get_xcms_feature_chromatogram()</code> — feature-level EICs
 (<code>featureChromatograms</code> analogue)</li>
 </ul>
 <hr>
@@ -1073,12 +1073,12 @@ stored</strong>; it is used only in memory to call
 </h3>
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># optional: skip stock EIC in the RT/abundance wrapper</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_xcms_group_features.html">MSdev_xcms_group_features</a></span><span class="op">(</span><span class="va">object</span>, eicCor <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_xcms_group_features</span><span class="op">(</span><span class="va">object</span>, eicCor <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># extract once (or auto-run inside MSdev_group_feature_EIC if missing)</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_get_feature_chrom.html">MSdev_get_feature_chrom</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_get_feature_chrom</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_group_feature_EIC.html">MSdev_group_feature_EIC</a></span><span class="op">(</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_group_feature_EIC</span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
 <span>  rt_tol <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>  threshold <span class="op">=</span> <span class="fl">0.5</span>,</span>
@@ -1104,7 +1104,7 @@ stored</strong>; it is used only in memory to call
 <li>Related: <code><a href="https://rdrr.io/pkg/MsFeatures/man/groupFeatures-similar-rtime.html" class="external-link">MsFeatures::SimilarRtimeParam</a></code>,
 <code><a href="https://rdrr.io/pkg/MsFeatures/man/groupFeatures-similar-abundance.html" class="external-link">MsFeatures::AbundanceSimilarityParam</a></code>,
 <code><a href="https://rdrr.io/pkg/MsFeatures/man/groupSimilarityMatrix.html" class="external-link">MsFeatures::groupSimilarityMatrix</a></code>,
-<code><a href="../reference/groupSimilarityMatrix_completeLinkage.html">MSdev::groupSimilarityMatrix_completeLinkage</a></code>
+<code>MSdev::groupSimilarityMatrix_completeLinkage</code>
 </li>
 <li>Chromatogram compare: <code><a href="https://rdrr.io/pkg/ProtGenerics/man/protgenerics.html" class="external-link">MSnbase::compareChromatograms</a></code>,
 <code>MSnbase::alignRt</code> (<code>closest</code> vs
@@ -1112,26 +1112,26 @@ stored</strong>; it is used only in memory to call
 <li>MSdev wrappers:
 <ul>
 <li>
-<code>R/dev_xcms.R</code> → <code><a href="../reference/xcms_extension_feature_group.html">xcms_get_feature_group()</a></code>,
-<code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_chromatogram()</a></code>,
-<code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_peaks_chromatogram()</a></code>,
-<code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram()</a></code>
+<code>R/dev_xcms.R</code> → <code>xcms_get_feature_group()</code>,
+<code>get_xcms_chromatogram()</code>,
+<code>get_xcms_peaks_chromatogram()</code>,
+<code>get_xcms_feature_chromatogram()</code>
 </li>
 <li>
 <code>R/MSdev-feature-group-EIC.R</code> →
-<code><a href="../reference/MSdev_group_feature_EIC.html">MSdev_group_feature_EIC()</a></code>,
-<code><a href="../reference/get_xcms_feature_EIC_similarity.html">get_xcms_feature_EIC_similarity()</a></code>,
-<code><a href="../reference/groupSimilarityMatrix_completeLinkage.html">groupSimilarityMatrix_completeLinkage()</a></code>,
-<code><a href="../reference/Report_MSdev_feature_group_EIC.html">Report_MSdev_feature_group_EIC()</a></code>
+<code>MSdev_group_feature_EIC()</code>,
+<code>get_xcms_feature_EIC_similarity()</code>,
+<code>groupSimilarityMatrix_completeLinkage()</code>,
+<code>Report_MSdev_feature_group_EIC()</code>
 </li>
 <li>
 <code>R/MSdev-function.R</code> →
-<code><a href="../reference/MSdev_get_feature_chrom.html">MSdev_get_feature_chrom()</a></code>
+<code>MSdev_get_feature_chrom()</code>
 </li>
 <li>
 <code>R/dev_plot.R</code> →
-<code><a href="../reference/plot_xcms_feature_group_EIC_comparasion.html">plot_xcms_feature_group_EIC_comparasion()</a></code>,
-<code><a href="../reference/plot_Chromatograph_mirror.html">plot_Chromatograph_mirror()</a></code>
+<code>plot_xcms_feature_group_EIC_comparasion()</code>,
+<code>plot_Chromatograph_mirror()</code>
 </li>
 </ul>
 </li>

@@ -88,13 +88,13 @@ figures per <code>sample.type</code>.</p>
 </h2>
 <p><strong>New project</strong> from a raw-data directory:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">MSdev</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://drruili.github.io/MSdev/">MSdev</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev.html">MSdev</a></span><span class="op">(</span><span class="st">"path/to/rawDataDir"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev</span><span class="op">(</span><span class="st">"path/to/rawDataDir"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Resume</strong> a saved object (skip create + earlier steps
 already done):</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_IO.html">MSdev_load</a></span><span class="op">(</span><span class="st">"path/to/MSdev_YYYY_MM_DD.Rdata"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_load</span><span class="op">(</span><span class="st">"path/to/MSdev_YYYY_MM_DD.Rdata"</span><span class="op">)</span></span></code></pre></div>
 <p>In practice use one entry point: create for a fresh study, load when
 continuing.</p>
 <hr>
@@ -103,15 +103,15 @@ continuing.</p>
 <h2 id="convert-and-check-sample-info">2. Convert and check sample info<a class="anchor" aria-label="anchor" href="#convert-and-check-sample-info"></a>
 </h2>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_msConvert</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_checkSampleInfo</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_msConvert</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_checkSampleInfo</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
 <ul>
 <li>
-<code><a href="../reference/MSdev_workflow.html">MSdev_msConvert()</a></code> converts vendor raw files when
+<code>MSdev_msConvert()</code> converts vendor raw files when
 needed; if inputs are already <code>.mzML</code> / <code>.mzXML</code>,
 conversion is skipped.</li>
 <li>
-<code><a href="../reference/MSdev_workflow.html">MSdev_checkSampleInfo()</a></code> validates
+<code>MSdev_checkSampleInfo()</code> validates
 <code>sampleInfo</code> (groups, polarity, <code>msLevels</code>,
 <code>xcmsProcessing</code>, etc.). Fix metadata interactively if
 prompted.</li>
@@ -124,7 +124,7 @@ prompted.</li>
 <p>Tune peak picking and correspondence before processing (example
 values from a recent lipidomics run):</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_set_param</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_set_param</span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
 <span>  findChromPeaks <span class="op">=</span> <span class="fu">xcms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcms/man/findChromPeaks-centWave.html" class="external-link">CentWaveParam</a></span><span class="op">(</span></span>
 <span>    ppm <span class="op">=</span> <span class="fl">25</span>,</span>
@@ -144,7 +144,7 @@ values from a recent lipidomics run):</p>
 <p>Adjust <code>ppm</code>, <code>peakwidth</code>, <code>bw</code>, and
 <code>minFraction</code> to the instrument and chromatography.
 <code>sampleGroups</code> in <code>PeakDensityParam</code> is a
-placeholder here; <code><a href="../reference/MSdev_workflow.html">MSdev_xcmsProcessing()</a></code> uses the project
+placeholder here; <code>MSdev_xcmsProcessing()</code> uses the project
 sample groups when it runs.</p>
 <hr>
 </div>
@@ -152,15 +152,15 @@ sample groups when it runs.</p>
 <h2 id="feature-detection-and-spectra">4. Feature detection and spectra<a class="anchor" aria-label="anchor" href="#feature-detection-and-spectra"></a>
 </h2>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_xcmsProcessing</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
-<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_extract_Spectra</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_xcmsProcessing</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_extract_Spectra</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
 <ul>
 <li>
-<code><a href="../reference/MSdev_workflow.html">MSdev_xcmsProcessing()</a></code> runs peak picking / grouping
+<code>MSdev_xcmsProcessing()</code> runs peak picking / grouping
 (and related xcms steps) into polarity MS1 containers
 (<code>PositiveMS1</code> / <code>NegativeMS1</code>).</li>
 <li>
-<code><a href="../reference/MSdev_workflow.html">MSdev_extract_Spectra()</a></code> loads MS1/MS2 into
+<code>MSdev_extract_Spectra()</code> loads MS1/MS2 into
 <code>@spectra</code>, assigns <code>sp_id</code>, and links MS2 to
 features (<code>MSdev_assign_MS2</code>).</li>
 </ul>
@@ -172,7 +172,7 @@ features (<code>MSdev_assign_MS2</code>).</li>
 <p>Example: LipidBlast SQLite with common lipid adducts and expanded
 adduct matching:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_annotation</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_annotation</span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
 <span>  expand_adduct <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  cpdb_path <span class="op">=</span> <span class="st">"path/to/CompoundDB/Lipidblast.sqlite"</span>,</span>
@@ -190,19 +190,19 @@ lipidomics ion modes.</p>
 <h2 id="stats-table-export-and-save">6. Stats table, export, and save<a class="anchor" aria-label="anchor" href="#stats-table-export-and-save"></a>
 </h2>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/MSdev_workflow.html">MSdev_get_Stat</a></span><span class="op">(</span><span class="va">object</span>, score_thresh <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/MSdev_export.html">MSdev_export</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/MSdev_IO.html">MSdev_save</a></span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">object</span> <span class="op">&lt;-</span> <span class="fu">MSdev_get_Stat</span><span class="op">(</span><span class="va">object</span>, score_thresh <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span></span>
+<span><span class="fu">MSdev_export</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span>
+<span><span class="fu">MSdev_save</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
 <ul>
 <li>
 <code>score_thresh</code> filters annotation scores when building
 the stats / metabolite tables.</li>
 <li>
-<code><a href="../reference/MSdev_export.html">MSdev_export()</a></code> writes tabular outputs under the project
+<code>MSdev_export()</code> writes tabular outputs under the project
 directory.</li>
 <li>
-<code><a href="../reference/MSdev_IO.html">MSdev_save()</a></code> serializes the <code>MSdev</code> object
-for later <code><a href="../reference/MSdev_IO.html">MSdev_load()</a></code>.</li>
+<code>MSdev_save()</code> serializes the <code>MSdev</code> object
+for later <code>MSdev_load()</code>.</li>
 </ul>
 <hr>
 </div>
@@ -216,24 +216,24 @@ annotated metabolites and DEP helpers. Outputs go under
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">proj.dir</span> <span class="op">&lt;-</span> <span class="va">object</span><span class="op">@</span><span class="va">projectInfo</span><span class="op">$</span><span class="va">projectDir</span></span>
-<span><span class="va">data.se</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/DEP_Style_se.html">get_MSdev_DEP_se</a></span><span class="op">(</span><span class="va">object</span>, from <span class="op">=</span> <span class="st">"metabolite"</span>, QC_RSD <span class="op">=</span> <span class="cn">Inf</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">data.se</span> <span class="op">&lt;-</span> <span class="fu">get_MSdev_DEP_se</span><span class="op">(</span><span class="va">object</span>, from <span class="op">=</span> <span class="st">"metabolite"</span>, QC_RSD <span class="op">=</span> <span class="cn">Inf</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="pca-and-tic-overview">7.1 PCA and TIC overview<a class="anchor" aria-label="anchor" href="#pca-and-tic-overview"></a>
 </h3>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">p.pca</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/DEP_Style_se.html">DEP_plot_PCA</a></span><span class="op">(</span><span class="va">data.se</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/export_graph2pdf.html">export_graph2pdf</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">p.pca</span> <span class="op">&lt;-</span> <span class="fu">DEP_plot_PCA</span><span class="op">(</span><span class="va">data.se</span><span class="op">)</span></span>
+<span><span class="fu">export_graph2pdf</span><span class="op">(</span></span>
 <span>  <span class="va">p.pca</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">proj.dir</span>, <span class="st">"Statistic"</span>, <span class="st">"Figures.pdf"</span><span class="op">)</span>,</span>
 <span>  width <span class="op">=</span> <span class="fl">3</span>, height <span class="op">=</span> <span class="fl">3</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">p1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/xcms_extension_plot.html">plot_xcms_TIC</a></span><span class="op">(</span><span class="va">object</span><span class="op">@</span><span class="va">xcmsData</span><span class="op">$</span><span class="va">PositiveMS1</span><span class="op">)</span> <span class="op">+</span></span>
+<span><span class="va">p1</span> <span class="op">&lt;-</span> <span class="fu">plot_xcms_TIC</span><span class="op">(</span><span class="va">object</span><span class="op">@</span><span class="va">xcmsData</span><span class="op">$</span><span class="va">PositiveMS1</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">labs</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Positive TIC"</span><span class="op">)</span></span>
-<span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/xcms_extension_plot.html">plot_xcms_TIC</a></span><span class="op">(</span><span class="va">object</span><span class="op">@</span><span class="va">xcmsData</span><span class="op">$</span><span class="va">NegativeMS1</span><span class="op">)</span> <span class="op">+</span></span>
+<span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu">plot_xcms_TIC</span><span class="op">(</span><span class="va">object</span><span class="op">@</span><span class="va">xcmsData</span><span class="op">$</span><span class="va">NegativeMS1</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">labs</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Negative TIC"</span><span class="op">)</span></span>
 <span><span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p1</span> <span class="op">+</span> <span class="va">p2</span> <span class="op">+</span> <span class="fu"><a href="https://patchwork.data-imaginist.com/reference/plot_layout.html" class="external-link">plot_layout</a></span><span class="op">(</span>ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/export_graph2pdf.html">export_graph2pdf</a></span><span class="op">(</span></span>
+<span><span class="fu">export_graph2pdf</span><span class="op">(</span></span>
 <span>  <span class="va">p</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">proj.dir</span>, <span class="st">"Statistic"</span>, <span class="st">"Figures.pdf"</span><span class="op">)</span>,</span>
 <span>  width <span class="op">=</span> <span class="fl">10</span>, height <span class="op">=</span> <span class="fl">8</span>, append <span class="op">=</span> <span class="cn">TRUE</span></span>
@@ -263,28 +263,28 @@ tables</li>
 <span>  <span class="va">diff.xlsx</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out.dir</span>, <span class="st">"diff.metabolites.xlsx"</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="va">data.se1</span> <span class="op">&lt;-</span> <span class="va">data.se</span><span class="op">[</span>, <span class="va">data.se</span><span class="op">$</span><span class="va">sample.type</span> <span class="op">==</span> <span class="va">stype</span><span class="op">]</span></span>
-<span>  <span class="va">data.se.p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/DEP_Style_se.html">DEP_preprocess</a></span><span class="op">(</span><span class="va">data.se1</span><span class="op">)</span></span>
+<span>  <span class="va">data.se.p</span> <span class="op">&lt;-</span> <span class="fu">DEP_preprocess</span><span class="op">(</span><span class="va">data.se1</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="co"># volcano without p-adjustment</span></span>
-<span>  <span class="va">data.diff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/DEP_Style_se.html">DEP_test_diff</a></span><span class="op">(</span><span class="va">data.se.p</span>, type <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span>
-<span>  <span class="va">data.diff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/DEP_Style_se.html">DEP_add_rejections</a></span><span class="op">(</span><span class="va">data.diff</span>, p.adjust <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span>  <span class="va">p.diff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ggplot_sum_patchwork.html">ggplot_sum_patchwork</a></span><span class="op">(</span><span class="fu"><a href="../reference/DEP_Style_se.html">DEP_plot_volcano</a></span><span class="op">(</span><span class="va">data.diff</span>, <span class="st">"all"</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/export_graph2pdf.html">export_graph2pdf</a></span><span class="op">(</span><span class="va">p.diff</span>, <span class="va">fig.pdf</span>, width <span class="op">=</span> <span class="fl">10</span>, height <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
+<span>  <span class="va">data.diff</span> <span class="op">&lt;-</span> <span class="fu">DEP_test_diff</span><span class="op">(</span><span class="va">data.se.p</span>, type <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span>
+<span>  <span class="va">data.diff</span> <span class="op">&lt;-</span> <span class="fu">DEP_add_rejections</span><span class="op">(</span><span class="va">data.diff</span>, p.adjust <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="va">p.diff</span> <span class="op">&lt;-</span> <span class="fu">ggplot_sum_patchwork</span><span class="op">(</span><span class="fu">DEP_plot_volcano</span><span class="op">(</span><span class="va">data.diff</span>, <span class="st">"all"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu">export_graph2pdf</span><span class="op">(</span><span class="va">p.diff</span>, <span class="va">fig.pdf</span>, width <span class="op">=</span> <span class="fl">10</span>, height <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="co"># volcano with p-adjustment + export table</span></span>
-<span>  <span class="va">data.diff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/DEP_Style_se.html">DEP_test_diff</a></span><span class="op">(</span><span class="va">data.se.p</span><span class="op">)</span></span>
-<span>  <span class="va">data.diff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/DEP_Style_se.html">DEP_add_rejections</a></span><span class="op">(</span><span class="va">data.diff</span>, p.adjust <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>  <span class="va">p.diff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ggplot_sum_patchwork.html">ggplot_sum_patchwork</a></span><span class="op">(</span><span class="fu"><a href="../reference/DEP_Style_se.html">DEP_plot_volcano</a></span><span class="op">(</span><span class="va">data.diff</span>, <span class="st">"all"</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/export_graph2pdf.html">export_graph2pdf</a></span><span class="op">(</span><span class="va">p.diff</span>, <span class="va">fig.pdf</span>, width <span class="op">=</span> <span class="fl">10</span>, height <span class="op">=</span> <span class="fl">10</span>, append <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>  <span class="va">table.diff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/DEP_Style_se.html">DEP_get_diff_table</a></span><span class="op">(</span><span class="va">data.diff</span>, contrast <span class="op">=</span> <span class="st">"all"</span>, keep.all <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/xlsx.write.list.html">xlsx.write.list</a></span><span class="op">(</span><span class="va">table.diff</span>, <span class="va">diff.xlsx</span><span class="op">)</span></span>
+<span>  <span class="va">data.diff</span> <span class="op">&lt;-</span> <span class="fu">DEP_test_diff</span><span class="op">(</span><span class="va">data.se.p</span><span class="op">)</span></span>
+<span>  <span class="va">data.diff</span> <span class="op">&lt;-</span> <span class="fu">DEP_add_rejections</span><span class="op">(</span><span class="va">data.diff</span>, p.adjust <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">p.diff</span> <span class="op">&lt;-</span> <span class="fu">ggplot_sum_patchwork</span><span class="op">(</span><span class="fu">DEP_plot_volcano</span><span class="op">(</span><span class="va">data.diff</span>, <span class="st">"all"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu">export_graph2pdf</span><span class="op">(</span><span class="va">p.diff</span>, <span class="va">fig.pdf</span>, width <span class="op">=</span> <span class="fl">10</span>, height <span class="op">=</span> <span class="fl">10</span>, append <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">table.diff</span> <span class="op">&lt;-</span> <span class="fu">DEP_get_diff_table</span><span class="op">(</span><span class="va">data.diff</span>, contrast <span class="op">=</span> <span class="st">"all"</span>, keep.all <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="fu">xlsx.write.list</span><span class="op">(</span><span class="va">table.diff</span>, <span class="va">diff.xlsx</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="co"># significant features heatmap</span></span>
-<span>  <span class="va">data.diff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/DEP_Style_se.html">DEP_test_diff</a></span><span class="op">(</span><span class="va">data.se.p</span>, type <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span>
-<span>  <span class="va">data.diff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/DEP_Style_se.html">DEP_add_rejections</a></span><span class="op">(</span><span class="va">data.diff</span>, p.adjust <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span>  <span class="va">data.hm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/DEP_Style_se.html">DEP_filter_significant</a></span><span class="op">(</span><span class="va">data.diff</span><span class="op">)</span></span>
-<span>  <span class="va">hm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/DEP_Style_se.html">DEP_plot_heatmap</a></span><span class="op">(</span><span class="va">data.hm</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/export_graph2pdf.html">export_graph2pdf</a></span><span class="op">(</span><span class="va">hm</span>, <span class="va">fig.pdf</span>, width <span class="op">=</span> <span class="fl">10</span>, height <span class="op">=</span> <span class="fl">20</span>, append <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">data.diff</span> <span class="op">&lt;-</span> <span class="fu">DEP_test_diff</span><span class="op">(</span><span class="va">data.se.p</span>, type <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span>
+<span>  <span class="va">data.diff</span> <span class="op">&lt;-</span> <span class="fu">DEP_add_rejections</span><span class="op">(</span><span class="va">data.diff</span>, p.adjust <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="va">data.hm</span> <span class="op">&lt;-</span> <span class="fu">DEP_filter_significant</span><span class="op">(</span><span class="va">data.diff</span><span class="op">)</span></span>
+<span>  <span class="va">hm</span> <span class="op">&lt;-</span> <span class="fu">DEP_plot_heatmap</span><span class="op">(</span><span class="va">data.hm</span><span class="op">)</span></span>
+<span>  <span class="fu">export_graph2pdf</span><span class="op">(</span><span class="va">hm</span>, <span class="va">fig.pdf</span>, width <span class="op">=</span> <span class="fl">10</span>, height <span class="op">=</span> <span class="fl">20</span>, append <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Requires usable <code>sample.type</code> (and contrast design) in the
 DEP <code>SummarizedExperiment</code> column data. Skip or subset types
@@ -310,17 +310,17 @@ QC-RSD filtering in the example).</p>
 <tbody>
 <tr class="odd">
 <td>Feature compounding (xcms-style)</td>
-<td><code><a href="../reference/MSdev_xcms_group_features.html">MSdev_xcms_group_features()</a></code></td>
+<td><code>MSdev_xcms_group_features()</code></td>
 <td>After xcms, before or with annotation</td>
 </tr>
 <tr class="even">
 <td>Custom EIC grouping</td>
-<td><code><a href="../reference/MSdev_group_feature_EIC.html">MSdev_group_feature_EIC()</a></code></td>
+<td><code>MSdev_group_feature_EIC()</code></td>
 <td>When you need stored EIC similarity matrices</td>
 </tr>
 <tr class="odd">
 <td>Feature chromatograms</td>
-<td><code><a href="../reference/MSdev_get_feature_chrom.html">MSdev_get_feature_chrom()</a></code></td>
+<td><code>MSdev_get_feature_chrom()</code></td>
 <td>Before custom EIC grouping / EIC reports</td>
 </tr>
 </tbody>

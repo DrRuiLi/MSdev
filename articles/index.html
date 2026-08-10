@@ -40,10 +40,10 @@
       <h3>Get started</h3>
       <div class="section-desc"></div>
 
-      <dl><dt><a href="MSdev.html">Get started with MSdev</a></dt>
-        <dd><p>Overview of the MSdev S4 project object, core slots, preferred accessors, and a minimal untargeted LC-MS pipeline.</p>
-        </dd><dt><a href="MSdev_untargeted_workflow.html">MSdev untargeted workflow</a></dt>
+      <dl><dt><a href="MSdev_untargeted_workflow.html">MSdev untargeted workflow</a></dt>
         <dd><p>End-to-end untargeted LC-MS (lipidomics-style) pipeline: convert, xcms processing, spectra extraction, CompoundDb annotation, stats, export, and differential figures by sample.type.</p>
+        </dd><dt><a href="MSdev.html">Get started with MSdev</a></dt>
+        <dd><p>Overview of the MSdev S4 project object, core slots, preferred accessors, and a minimal untargeted LC-MS pipeline.</p>
       </dd></dl></div>
     <div class="section ">
       <h3>Technical notes</h3>
@@ -55,10 +55,10 @@
         <dd><p>Quick reference for how Rdisop turns an exact mass (or isotope pattern) into candidate sum formulas, and how that fits a formula-calculator workflow.</p>
         </dd><dt><a href="Spectra_backends.html">Spectra backends (`MsBackend*`)</a></dt>
         <dd><p>Quick reference for choosing and using Spectra backends in MSdev / Bioconductor LC-MS workflows.</p>
-        </dd><dt><a href="xcms-feature-group-EicSimilarityParam.html">Feature grouping with `EicSimilarityParam`</a></dt>
-        <dd><p>xcms / MsFeatures feature compounding (RT → abundance → EIC shape), focusing on EIC extraction and the similarity matrix, and how MSdev’s stock path compares to custom MSdev_group_feature_EIC().</p>
         </dd><dt><a href="xcms_chromatogram_extraction.html">Fast chromatogram extraction (xcms vs MSdev triad)</a></dt>
         <dd><p>How xcms::chromatogram / featureChromatograms / chromPeakChromatograms extract EICs, why that path is slow at scale, and how MSdev’s get_xcms_*_chromatogram triad speeds up the same work.</p>
+        </dd><dt><a href="xcms-feature-group-EicSimilarityParam.html">Feature grouping with `EicSimilarityParam`</a></dt>
+        <dd><p>xcms / MsFeatures feature compounding (RT → abundance → EIC shape), focusing on EIC extraction and the similarity matrix, and how MSdev’s stock path compares to custom MSdev_group_feature_EIC().</p>
       </dd></dl></div>
     <div class="section ">
       <h3>Developer notes</h3>

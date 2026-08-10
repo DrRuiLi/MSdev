@@ -170,11 +170,11 @@ i.e. <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semanti
 </table>
 <p>Empirical check (<code>mass = 203.0526</code>, CHNO, 5 ppm):</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/Rdisop/man/getMolecule.html" class="external-link">getFormula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/Rdisop/man/decomposeIsotopes.html" class="external-link">decomposeMass</a></span><span class="op">(</span><span class="fl">203.0526</span>, ppm <span class="op">=</span> <span class="fl">5</span>, z <span class="op">=</span> <span class="fl">1</span>, elements <span class="op">=</span> <span class="va">elements</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu">getFormula</span><span class="op">(</span><span class="fu">decomposeMass</span><span class="op">(</span><span class="fl">203.0526</span>, ppm <span class="op">=</span> <span class="fl">5</span>, z <span class="op">=</span> <span class="fl">1</span>, elements <span class="op">=</span> <span class="va">elements</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># C4H7N6O4, C3H11N2O8, ...</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/Rdisop/man/getMolecule.html" class="external-link">getFormula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/Rdisop/man/decomposeIsotopes.html" class="external-link">decomposeMass</a></span><span class="op">(</span><span class="fl">203.0526</span>, ppm <span class="op">=</span> <span class="fl">5</span>, z <span class="op">=</span> <span class="fl">2</span>, elements <span class="op">=</span> <span class="va">elements</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">getFormula</span><span class="op">(</span><span class="fu">decomposeMass</span><span class="op">(</span><span class="fl">203.0526</span>, ppm <span class="op">=</span> <span class="fl">5</span>, z <span class="op">=</span> <span class="fl">2</span>, elements <span class="op">=</span> <span class="va">elements</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># same list — still ~203 Da formulas, not ~406 Da</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/Rdisop/man/getMolecule.html" class="external-link">getMass</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/Rdisop/man/getMolecule.html" class="external-link">getMolecule</a></span><span class="op">(</span><span class="st">"C4H7N6O4"</span>, z <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">getMass</span><span class="op">(</span><span class="fu">getMolecule</span><span class="op">(</span><span class="st">"C4H7N6O4"</span>, z <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># ~101.5259  ← display m/z only, not what decomposeMass searches</span></span></code></pre></div>
 <p><strong>Correct pre-conversion</strong> before calling
 <code>decomposeMass</code> (bare charge / electron correction; adducts
@@ -192,7 +192,7 @@ decompose <strong>~406.1 Da</strong>, not 203 and not 101.5.</p>
 <strong>406</strong> is the mass scale of a 2+ ion whose
 <em>observed</em> m/z is 203.</li>
 </ul>
-<p><code><a href="https://rdrr.io/pkg/MassTools/man/calcMF.html" class="external-link">MassTools::calcMF</a></code> only does <code>mz + z * m_e</code>
+<p><code>MassTools::calcMF</code> only does <code>mz + z * m_e</code>
 then calls <code>decomposeMass</code> — it also does
 <strong>not</strong> multiply by <code>|z|</code>, so it has the same
 gap for
@@ -248,19 +248,19 @@ lies within the mass tolerance window.</p>
 </blockquote>
 <p>Typical R call:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/sneumann/Rdisop" class="external-link">Rdisop</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">Rdisop</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">elements</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Rdisop/man/initializeElements.html" class="external-link">initializeElements</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"C"</span>, <span class="st">"H"</span>, <span class="st">"N"</span>, <span class="st">"O"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Rdisop/man/decomposeIsotopes.html" class="external-link">decomposeMass</a></span><span class="op">(</span></span>
+<span><span class="va">elements</span> <span class="op">&lt;-</span> <span class="fu">initializeElements</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"C"</span>, <span class="st">"H"</span>, <span class="st">"N"</span>, <span class="st">"O"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu">decomposeMass</span><span class="op">(</span></span>
 <span>  mass <span class="op">=</span> <span class="fl">203.0526</span>,</span>
 <span>  ppm <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>  z <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  elements <span class="op">=</span> <span class="va">elements</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/Rdisop/man/getMolecule.html" class="external-link">getFormula</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
-<p>Useful accessors: <code><a href="https://rdrr.io/pkg/Rdisop/man/getMolecule.html" class="external-link">getFormula()</a></code>, <code><a href="https://rdrr.io/pkg/Rdisop/man/getMolecule.html" class="external-link">getMass()</a></code>,
-<code><a href="https://rdrr.io/pkg/Rdisop/man/getMolecule.html" class="external-link">getScore()</a></code>, <code><a href="https://rdrr.io/pkg/Rdisop/man/getMolecule.html" class="external-link">getValid()</a></code>,
-<code><a href="https://rdrr.io/pkg/Rdisop/man/getMolecule.html" class="external-link">getIsotope()</a></code>.</p>
+<span><span class="fu">getFormula</span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
+<p>Useful accessors: <code>getFormula()</code>, <code>getMass()</code>,
+<code>getScore()</code>, <code>getValid()</code>,
+<code>getIsotope()</code>.</p>
 <p>With measured isotope peaks, prefer
 <code>decomposeIsotopes(masses, intensities, ...)</code> — same
 enumeration core, better ranking.</p>
