@@ -645,8 +645,10 @@ get_MSdev_param <- function(object){
 #' These parameters will be used during xcms processing.
 #'
 #' @param object MSdev object
-#' @param findChromPeaks xcms parameter object for peak detection (default: `xcms::CentWaveParam()`)
-#' @param groupChromPeaks xcms parameter object for peak grouping (default: `xcms::PeakDensityParam("A")`)
+#' @param findChromPeaks xcms parameter object for peak detection.
+#'   If `NULL` (default), uses the value from `get_MSdev_param(object)`.
+#' @param groupChromPeaks xcms parameter object for peak grouping.
+#'   If `NULL` (default), uses the value from `get_MSdev_param(object)`.
 #'
 #' @return MSdev object with updated parameters
 #' @export
@@ -676,9 +678,17 @@ get_MSdev_param <- function(object){
 #' msdev <- MSdev_set_param(msdev, findChromPeaks = cwp, groupChromPeaks = gpp)
 #' }
 MSdev_set_param <- function(object,
-                            findChromPeaks = xcms::CentWaveParam(),
-                            groupChromPeaks = xcms::PeakDensityParam("A")
+                            findChromPeaks = NULL,
+                            groupChromPeaks = NULL
                             ){
+
+  default.param <- get_MSdev_param(object)
+  if (is.null(findChromPeaks)) {
+    findChromPeaks <- default.param$findChromPeaks
+  }
+  if (is.null(groupChromPeaks)) {
+    groupChromPeaks <- default.param$groupChromPeaks
+  }
 
   msdev.param <- list(findChromPeaks = findChromPeaks,
                       groupChromPeaks = groupChromPeaks)
