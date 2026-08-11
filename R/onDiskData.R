@@ -9,7 +9,7 @@ onDiskData <- function(data,path = tempfile()){
   path <- normalizePath(path,winslash = "/",mustWork = F)
   data.size <- object.size(data)
   #data.size <- as.numeric(data.size)/1024^2
-  qs::qsave(data,file = path)
+  qs2::qs_save(data, file = path)
   new("onDiskData",
       path=path,
       size = data.size)
@@ -26,7 +26,16 @@ setMethod("show","onDiskData",
 onDiskData_retrieve <- function(object){
 
   if (class(object)=="onDiskData") {
-    data <- qs::qread(object@path)
+    data <- tryCatch(
+      qs2::qs_read(object@path),
+      error = function(e) {
+        if (requireNamespace("qs", quietly = TRUE)) {
+          qs::qread(object@path)
+        } else {
+          stop(e)
+        }
+      }
+    )
     return(data)
   }else{
     return(object)

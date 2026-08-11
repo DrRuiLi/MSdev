@@ -33,7 +33,7 @@ Imports:
     patchwork,
     plotly,
     ProtGenerics,
-    qs,
+    qs2,
     readr,
     S4Vectors,
     Spectra,

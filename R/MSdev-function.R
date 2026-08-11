@@ -3,7 +3,7 @@
 
 #' @title MSdev input and output
 #' @description
-#' save `MSdev` using `qs::qsave()` and  qs::qread()`
+#' Save \code{MSdev} with \code{qs2::qs_save()} / load with \code{qs2::qs_read()}.
 #'
 #' @describeIn MSdev_IO MSdev_save
 #'
@@ -22,7 +22,7 @@ MSdev_save <- function(object,file = object@projectInfo$MSdevFile){
     dir.create(save.dir,recursive = T)
   }
   MSdev@projectInfo$MSdevFile <- file
-  qs::qsave(MSdev, file = file)
+  qs2::qs_save(MSdev, file = file)
   message_with_time("Saved: ", normalizePath(file, winslash = "/", mustWork = FALSE))
   invisible(MSdev)
 }
@@ -30,9 +30,10 @@ MSdev_save <- function(object,file = object@projectInfo$MSdevFile){
 
 
 #' @title Load an MSdev object from a file
-#' @description Load an MSdev object from a file (tries \code{qs::qread()},
-#'   \code{readRDS()}, then \code{load()}). Use \code{\link{.update_MSdev_object}}
-#'   on objects saved with older MSdev versions.
+#' @description Load an MSdev object from a file (tries \code{qs2::qs_read()},
+#'   legacy \code{qs::qread()} if installed, \code{readRDS()}, then
+#'   \code{load()}). Use \code{\link{.update_MSdev_object}} on objects saved
+#'   with older MSdev versions.
 #' @describeIn MSdev_IO load
 #' @param file_to_load file path
 #' @return MSdev
@@ -43,7 +44,10 @@ MSdev_load <- function(file_to_load) {
   if (!file.exists(file_to_load)) {
     stop("File not found: ", file_to_load)
   }
-  obj <- tryCatch(qs::qread(file_to_load), error = function(e) NULL)
+  obj <- tryCatch(qs2::qs_read(file_to_load), error = function(e) NULL)
+  if (is.null(obj) && requireNamespace("qs", quietly = TRUE)) {
+    obj <- tryCatch(qs::qread(file_to_load), error = function(e) NULL)
+  }
   if (is.null(obj)) {
     obj <- tryCatch(readRDS(file_to_load), error = function(e) NULL)
   }
