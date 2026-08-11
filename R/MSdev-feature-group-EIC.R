@@ -737,8 +737,8 @@ xcms_group_feature_EIC <- function(xcms.xcms,
 #' @param object MSdev object
 #' @param rt_tol numeric(1). Maximum absolute RT difference (seconds) for which
 #'   EIC similarity is computed. Default 5.
-#' @param threshold numeric(1). Similarity cut-off for
-#'   \code{\link{groupSimilarityMatrix_completeLinkage}}. Default 0.5.
+#' @param threshold numeric(1). Similarity cut-off for the chosen
+#'   \code{method} (see \code{\link{xcms_group_feature_EIC}}). Default 0.5.
 #' @param expandRt numeric(1). Seconds added on each side of each feature's
 #'   \code{peakRtMin}/\code{peakRtMax} window when cropping EICs via
 #'   \code{\link{XChromatograms_subset_feature}} before correlation.
@@ -754,6 +754,9 @@ xcms_group_feature_EIC <- function(xcms.xcms,
 #'   \code{xcms_group_feature_EIC}. Default TRUE.
 #' @param absent_sim numeric(1). Passed to \code{xcms_group_feature_EIC}.
 #'   Default \code{0}; set \code{NA} for unknown absents.
+#' @param method character(1). Grouping method passed to
+#'   \code{\link{xcms_group_feature_EIC}}: \code{"complete_linkage"} or
+#'   \code{"hclust_average"}. Default \code{"complete_linkage"}.
 #' @param BPPARAM BiocParallel backend for chromatogram extraction and EIC
 #'   similarity scoring.
 #' @return MSdev object with updated MS1 \code{feature_group} labels; when
@@ -769,10 +772,12 @@ MSdev_group_feature_EIC <- function(object,
                                     forceExtractChrom = FALSE,
                                     keep_Similarity_Matrix = TRUE,
                                     absent_sim = 0,
+                                    method = c("complete_linkage", "hclust_average"),
                                     BPPARAM = SnowParam(
                                       workers = parallel::detectCores() - 1,
                                       progressbar = TRUE)) {
   stopifnot(inherits(object, "MSdev"))
+  method <- match.arg(method)
   if (!is.numeric(rt_tol) || length(rt_tol) != 1L || rt_tol <= 0) {
     stop("'rt_tol' must be a positive numeric(1)")
   }
@@ -825,6 +830,7 @@ MSdev_group_feature_EIC <- function(object,
       selected_sample = selected_sample,
       keep_Similarity_Matrix = keep_Similarity_Matrix,
       absent_sim = absent_sim,
+      method = method,
       BPPARAM = BPPARAM
     )
     object@xcmsData[[ms1_key]] <- xcms.xcms
