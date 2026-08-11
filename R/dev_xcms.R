@@ -3620,6 +3620,11 @@ xcmsProcessingMS1 <- function(xcms.xcms,
                             chunkSize = -1,
                             BPPARAM  = BPPARAM,...)
 
+  #xcms.xcms <- xcms_get_peak_fill(xcms.xcms)
+  mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 3,minProp = 0.5,ppm =  xcms_param$findChromPeaks@ppm)
+  xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
+                                      BPPARAM  = BPPARAM)
+
   xcms.xcms <- xcms_filter_peaks_NA(xcms.xcms)
   if (!is.null(chromPeaks_fix_mz_ppm)) {
     xcms.xcms <- fix_xcms_chromPeaks_mz_width(
@@ -3633,10 +3638,6 @@ xcmsProcessingMS1 <- function(xcms.xcms,
       ppm = as.numeric(chromPeaks_max_mz_ppm)
     )
   }
-  #xcms.xcms <- xcms_get_peak_fill(xcms.xcms)
-  #mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 2.5,minProp = 0.5)
-  #xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
-  #                                    BPPARAM  = BiocParallel::SerialParam(progressbar = T))
 
   ### adujust RT
   if(adjustRT){
