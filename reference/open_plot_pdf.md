@@ -2,7 +2,8 @@
 
 Write a plot to a temporary PDF and open it (Windows default viewer).
 Supports `ggplot`, ComplexHeatmap (`Heatmap` / `HeatmapList`), and other
-objects handled by `export::graph2pdf()`.
+objects handled by
+[`export::graph2pdf()`](https://rdrr.io/pkg/export/man/graph2vector.html).
 
 ## Usage
 

@@ -1,8 +1,12 @@
 # MSdev input and output
 
-save `MSdev` using `qs::qsave()` and qs::qread()\`
+Save `MSdev` with
+[`qs2::qs_save()`](https://rdrr.io/pkg/qs2/man/qs_save.html) / load with
+[`qs2::qs_read()`](https://rdrr.io/pkg/qs2/man/qs_read.html).
 
-Load an MSdev object from a file (tries `qs::qread()`,
+Load an MSdev object from a file (tries
+[`qs2::qs_read()`](https://rdrr.io/pkg/qs2/man/qs_read.html), legacy
+`qs::qread()` if installed,
 [`readRDS()`](https://rdrr.io/r/base/readRDS.html), then
 [`load()`](https://rdrr.io/r/base/load.html)). Use
 [`.update_MSdev_object`](https://drruili.github.io/MSdev/reference/dot-update_MSdev_object.md)

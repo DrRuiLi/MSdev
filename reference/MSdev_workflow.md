@@ -183,7 +183,9 @@ MSdev_get_Se(object, polarity_paired = TRUE, ...)
 
 - sheet:
 
-  sheet name or index passed to `openxlsx::read.xlsx` (default `1`).
+  sheet name or index passed to
+  [`openxlsx::read.xlsx`](https://rdrr.io/pkg/openxlsx/man/read.xlsx.html)
+  (default `1`).
 
 - format.to:
 

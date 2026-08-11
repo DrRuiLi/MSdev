@@ -20,6 +20,7 @@ MSdev_group_feature_EIC(
   forceExtractChrom = FALSE,
   keep_Similarity_Matrix = TRUE,
   absent_sim = 0,
+  method = c("complete_linkage", "hclust_average"),
   BPPARAM = SnowParam(workers = parallel::detectCores() - 1, progressbar = TRUE)
 )
 ```
@@ -37,8 +38,8 @@ MSdev_group_feature_EIC(
 
 - threshold:
 
-  numeric(1). Similarity cut-off for
-  [`groupSimilarityMatrix_completeLinkage`](https://drruili.github.io/MSdev/reference/groupSimilarityMatrix_completeLinkage.md).
+  numeric(1). Similarity cut-off for the chosen `method` (see
+  [`xcms_group_feature_EIC`](https://drruili.github.io/MSdev/reference/xcms_group_feature_EIC.md)).
   Default 0.5.
 
 - expandRt:
@@ -71,6 +72,13 @@ MSdev_group_feature_EIC(
 
   numeric(1). Passed to `xcms_group_feature_EIC`. Default `0`; set `NA`
   for unknown absents.
+
+- method:
+
+  character(1). Grouping method passed to
+  [`xcms_group_feature_EIC`](https://drruili.github.io/MSdev/reference/xcms_group_feature_EIC.md):
+  `"complete_linkage"` or `"hclust_average"`. Default
+  `"complete_linkage"`.
 
 - BPPARAM:
 
