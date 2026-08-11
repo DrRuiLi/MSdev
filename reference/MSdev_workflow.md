@@ -76,11 +76,7 @@ MSdev_xcmsProcessing(
 
 MSdev_get_xcms(object)
 
-MSdev_set_param(
-  object,
-  findChromPeaks = xcms::CentWaveParam(),
-  groupChromPeaks = xcms::PeakDensityParam("A")
-)
+MSdev_set_param(object, findChromPeaks = NULL, groupChromPeaks = NULL)
 
 plot_MSdev_sample_peaks(object, target = "PositiveMS1", top_n = Inf)
 
@@ -152,13 +148,13 @@ MSdev_get_Se(object, polarity_paired = TRUE, ...)
 
 - findChromPeaks:
 
-  xcms parameter object for peak detection (default:
-  [`xcms::CentWaveParam()`](https://rdrr.io/pkg/xcms/man/findChromPeaks-centWave.html))
+  xcms parameter object for peak detection. If `NULL` (default), uses
+  the value from `get_MSdev_param(object)`.
 
 - groupChromPeaks:
 
-  xcms parameter object for peak grouping (default:
-  `xcms::PeakDensityParam("A")`)
+  xcms parameter object for peak grouping. If `NULL` (default), uses the
+  value from `get_MSdev_param(object)`.
 
 - target:
 
