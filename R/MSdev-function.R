@@ -896,8 +896,8 @@ featureCandidate<- function(object,mz.ppm = 20,
           for (i in 1:length(x)) {
             iso.table <- MSCC::chemform_isotopes_pattern_enviPat(
               MSCC::chemform_adduct(x$formula[i],x$adduct[i]) )%>%
-              MSCC::match_isotopes_to_featuredef(featuredef, rt.tol = 10) %>%
-              MSCC::match_isotopes_to_featureval(featureval) %>%
+              match_isotopes_to_featuredef(featuredef, rt.tol = 10) %>%
+              match_isotopes_to_featureval(featureval) %>%
               dplyr::mutate(MSDB_id = x$MSDB_id[i])
 
             iso.all[[i]] <- iso.table

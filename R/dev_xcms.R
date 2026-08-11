@@ -2308,6 +2308,71 @@ xcms_get_feature_annotation <- function(xcms.xcms,
 }
 
 
+#' Match theoretical isotopes to xcms feature definitions
+#'
+#' @param isotopes_table Data frame from MSCC isotope pattern helpers
+#'   (needs column \code{m.z}; optional \code{rt}).
+#' @param featuredef xcms feature definition data frame (\code{mzmed},
+#'   optional \code{rtmed}/\code{feature_id}).
+#' @param mz.ppm m/z tolerance in ppm.
+#' @param rt.tol RT tolerance in seconds if both sides have RT.
+#'
+#' @return Matched isotope-feature table.
+#' @keywords internal
+match_isotopes_to_featuredef <- function(isotopes_table, featuredef, mz.ppm = 10, rt.tol = 10) {
+  if (is.null(isotopes_table) || !nrow(isotopes_table) || is.null(featuredef) || !nrow(featuredef)) {
+    return(data.frame())
+  }
+  iso <- as.data.frame(isotopes_table, stringsAsFactors = FALSE)
+  fdf <- as.data.frame(featuredef, stringsAsFactors = FALSE)
+  if (!"m.z" %in% colnames(iso) || !"mzmed" %in% colnames(fdf)) return(data.frame())
+  if (!"feature_id" %in% colnames(fdf)) fdf$feature_id <- rownames(fdf)
+  if (!"rtmed" %in% colnames(fdf)) fdf$rtmed <- NA_real_
+  if (!"rt" %in% colnames(iso)) iso$rt <- NA_real_
+
+  out <- lapply(seq_len(nrow(iso)), function(i) {
+    mz <- suppressWarnings(as.numeric(iso$m.z[i]))
+    rt <- suppressWarnings(as.numeric(iso$rt[i]))
+    if (!is.finite(mz)) return(NULL)
+    mz_err <- abs(suppressWarnings(as.numeric(fdf$mzmed)) - mz) / mz
+    hit <- mz_err <= mz.ppm * 1e-6
+    if (is.finite(rt)) {
+      rt_err <- abs(suppressWarnings(as.numeric(fdf$rtmed)) - rt)
+      hit <- hit & (rt_err <= rt.tol)
+    }
+    idx <- which(hit)
+    if (!length(idx)) return(NULL)
+    cbind(
+      iso[rep(i, length(idx)), , drop = FALSE],
+      fdf[idx, , drop = FALSE],
+      mz_error_ppm = mz_err[idx] * 1e6,
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- out[!vapply(out, is.null, logical(1))]
+  if (!length(out)) return(data.frame())
+  dplyr::bind_rows(out)
+}
+
+#' Append feature intensity matrix to isotope matches
+#'
+#' @param matched_table Output from \code{match_isotopes_to_featuredef()}.
+#' @param featureval Numeric matrix of feature intensities (e.g. from
+#'   xcms \code{featureValues()}), with feature IDs as row names.
+#'
+#' @return Data frame with matched rows and joined intensity columns.
+#' @keywords internal
+match_isotopes_to_featureval <- function(matched_table, featureval) {
+  if (is.null(matched_table) || !nrow(matched_table)) return(data.frame())
+  out <- as.data.frame(matched_table, stringsAsFactors = FALSE)
+  if (is.null(featureval) || !is.matrix(featureval) || !nrow(featureval)) return(out)
+  fv <- as.data.frame(featureval, stringsAsFactors = FALSE)
+  fv$feature_id <- rownames(featureval)
+  val_cols <- setdiff(colnames(fv), "feature_id")
+  colnames(fv)[match(val_cols, colnames(fv))] <- paste0("featureval_", val_cols)
+  dplyr::left_join(out, fv, by = "feature_id")
+}
+
 #' MS1 candidate matching on a featureDefinitions-style data.frame
 #' @param fdf data.frame with at least \code{mzmed} (and preferably
 #'   \code{feature_id})
