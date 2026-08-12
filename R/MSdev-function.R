@@ -458,6 +458,8 @@ MSdev_get_xcms <- function(object){
     return(object)
   }
 
+  message_with_time(" Importing files...")
+
   polarity.index <- c("0" = "Negative",
                       "1" = "Positive")
   ms1_list <- list()
@@ -507,6 +509,7 @@ MSdev_get_xcms <- function(object){
   sp.ms1 <- if (length(ms1_list)) do.call(c, ms1_list) else NULL
   sp.ms2 <- if (length(ms2_list)) do.call(c, ms2_list) else NULL
   object <- .MSdev_finalize_Spectra(object, sp.ms1 = sp.ms1, sp.ms2 = sp.ms2)
+  message_with_time(" Importing files Done...")
   return(object)
 }
 
