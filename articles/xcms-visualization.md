@@ -22,7 +22,7 @@ flowchart TD
   chrom["XChromatograms or XChromatogram"]
   qc["Run QC: TIC, MS1 scan frequency"]
   peaks["Peaks: RT-mz map, scan counts, peak EIC"]
-  feats["Features: RT-mz map, feature EIC, injection intensity"]
+  feats["Features: RT-mz map, heatmap, feature EIC, injection intensity"]
   xic["XIC two-panel"]
   overlay["plot_XChromatograms or mirror"]
   fg["Feature-group EIC or similarity"]
@@ -49,6 +49,7 @@ flowchart TD
 | MS2 scans overlapping each peak | [`plot_xcms_peaks_ms2_scans()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md) | `chromPeaks` + MS2 spectra | ggplot |
 | EIC for one chromPeak | [`plot_xcms_peaks_Chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md) | `chromPeaks` | ggplot |
 | Features on the RT–m/z plane | [`plot_xcms_features_distribution()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md) | `featureDefinitions` | ggplot |
+| Feature × sample intensity heatmap | [`plot_xcms_features_heatmap()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md) | `featureValues` + `pData` | Heatmap |
 | EIC for one feature (few samples) | [`plot_xcms_feature_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md) | `featureDefinitions` | ggplot |
 | Feature intensity vs injection order | [`plot_xcms_feature_intensity()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md) | `featureValues` + `pData` | ggplot |
 | Two-panel XIC (EIC + m/z–RT points) | [`plot_xcms_xic()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md) | mz/RT-filtered xcms object | patchwork |
@@ -166,7 +167,24 @@ median `maxo`, size = `peakWidth`.
 plot_xcms_features_distribution(xcms)
 ```
 
-### 4.2 Feature EIC (inspection)
+### 4.2 Feature heatmap
+
+[`plot_xcms_features_heatmap()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+draws `featureValues` as a ComplexHeatmap: **rows** are features ordered
+by `rtmed`, **columns** are samples ordered by injection time. Cells are
+`log10(maxo)`; missing peaks are grey. A left bar encodes RT; a top bar
+encodes `sample.type` (Blank / QC / Sample) and injection order.
+
+Positive polarity sorts `pData$analysis.time.positive`; negative uses
+`analysis.time.negative`. If those columns are absent, it falls back to
+`analysis.time`, then `ExpTime`, then the current sample order.
+
+``` r
+
+plot_xcms_features_heatmap(xcms)
+```
+
+### 4.3 Feature EIC (inspection)
 
 [`plot_xcms_feature_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
 builds a shared mz–RT box from that feature’s `chromPeaks`, extracts
@@ -188,7 +206,7 @@ then plot with
 [`xcms::chromatogram()`](https://rdrr.io/pkg/ProtGenerics/man/protgenerics.html)
 internally and is meant for a handful of features.
 
-### 4.3 Intensity along the injection sequence
+### 4.4 Intensity along the injection sequence
 
 [`plot_xcms_feature_intensity()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
 plots `featureValues` against injection order. Positive polarity sorts

@@ -90,7 +90,7 @@
   chrom["XChromatograms or XChromatogram"]
   qc["Run QC: TIC, MS1 scan frequency"]
   peaks["Peaks: RT-mz map, scan counts, peak EIC"]
-  feats["Features: RT-mz map, feature EIC, injection intensity"]
+  feats["Features: RT-mz map, heatmap, feature EIC, injection intensity"]
   xic["XIC two-panel"]
   overlay["plot_XChromatograms or mirror"]
   fg["Feature-group EIC or similarity"]
@@ -173,12 +173,20 @@
 <td>ggplot</td>
 </tr>
 <tr class="even">
+<td>Feature × sample intensity heatmap</td>
+<td><code><a href="../reference/xcms_extension_plot.html">plot_xcms_features_heatmap()</a></code></td>
+<td>
+<code>featureValues</code> + <code>pData</code>
+</td>
+<td>Heatmap</td>
+</tr>
+<tr class="odd">
 <td>EIC for one feature (few samples)</td>
 <td><code><a href="../reference/xcms_extension_plot.html">plot_xcms_feature_chromatogram()</a></code></td>
 <td><code>featureDefinitions</code></td>
 <td>ggplot</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Feature intensity vs injection order</td>
 <td><code><a href="../reference/xcms_extension_plot.html">plot_xcms_feature_intensity()</a></code></td>
 <td>
@@ -186,13 +194,13 @@
 </td>
 <td>ggplot</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Two-panel XIC (EIC + m/z–RT points)</td>
 <td><code><a href="../reference/xcms_extension_plot.html">plot_xcms_xic()</a></code></td>
 <td>mz/RT-filtered xcms object</td>
 <td>patchwork</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Overlay chromatogram matrix</td>
 <td><code><a href="../reference/xcms_extension_chromatogram.html">plot_XChromatograms()</a></code></td>
 <td>
@@ -200,7 +208,7 @@
 </td>
 <td>ggplot</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Tidy chromatogram table</td>
 <td><code><a href="../reference/get_chroms_data.html">get_chroms_data()</a></code></td>
 <td>
@@ -208,21 +216,21 @@
 </td>
 <td>data.frame</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Mirror two traces</td>
 <td><code><a href="../reference/plot_Chromatograph_mirror.html">plot_Chromatograph_mirror()</a></code></td>
 <td>
 <code>XChromatogram</code> / chromatogram cell</td>
 <td>ggplot</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Pairwise EIC overlay in a feature group</td>
 <td><code><a href="../reference/plot_xcms_feature_group_EIC_comparasion.html">plot_xcms_feature_group_EIC_comparasion()</a></code></td>
 <td>
 <code>featureGroups</code> + EICs</td>
 <td>ggplot</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>EIC similarity heatmap</td>
 <td><code><a href="../reference/plot_xcms_feature_group_similarity.html">plot_xcms_feature_group_similarity()</a></code></td>
 <td><code>otherData$EIC_Similarity</code></td>
@@ -285,20 +293,28 @@
 <div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/xcms_extension_plot.html">plot_xcms_features_distribution</a></span><span class="op">(</span><span class="va">xcms</span><span class="op">)</span></span></code></pre></div>
 </div>
-</section><section class="level3"><h3 id="feature-eic-inspection">4.2 Feature EIC (inspection)<a class="anchor" aria-label="anchor" href="#feature-eic-inspection"></a>
+</section><section class="level3"><h3 id="feature-heatmap">4.2 Feature heatmap<a class="anchor" aria-label="anchor" href="#feature-heatmap"></a>
+</h3>
+<p><code><a href="../reference/xcms_extension_plot.html">plot_xcms_features_heatmap()</a></code> draws <code>featureValues</code> as a ComplexHeatmap: <strong>rows</strong> are features ordered by <code>rtmed</code>, <strong>columns</strong> are samples ordered by injection time. Cells are <code>log10(maxo)</code>; missing peaks are grey. A left bar encodes RT; a top bar encodes <code>sample.type</code> (Blank / QC / Sample) and injection order.</p>
+<p>Positive polarity sorts <code>pData$analysis.time.positive</code>; negative uses <code>analysis.time.negative</code>. If those columns are absent, it falls back to <code>analysis.time</code>, then <code>ExpTime</code>, then the current sample order.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/xcms_extension_plot.html">plot_xcms_features_heatmap</a></span><span class="op">(</span><span class="va">xcms</span><span class="op">)</span></span></code></pre></div>
+</div>
+</section><section class="level3"><h3 id="feature-eic-inspection">4.3 Feature EIC (inspection)<a class="anchor" aria-label="anchor" href="#feature-eic-inspection"></a>
 </h3>
 <p><code><a href="../reference/xcms_extension_plot.html">plot_xcms_feature_chromatogram()</a></code> builds a shared mz–RT box from that feature’s <code>chromPeaks</code>, extracts chromatograms, and overlays selected samples. If more than five samples are present, it keeps <strong>one sample per <code>pData$group</code></strong> (or the first five if <code>group</code> is missing).</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="fu">xcms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcms/man/XCMSnExp-class.html" class="external-link">featureDefinitions</a></span><span class="op">(</span><span class="va">xcms</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/xcms_extension_plot.html">plot_xcms_feature_chromatogram</a></span><span class="op">(</span><span class="va">xcms</span>, feature.id <span class="op">=</span> <span class="va">fids</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
 </div>
 <p>For many features or full-run traces, extract once with <code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram()</a></code>, then plot with <code><a href="../reference/xcms_extension_chromatogram.html">plot_XChromatograms()</a></code> (section 6). The inspection helper still calls <code><a href="https://rdrr.io/pkg/ProtGenerics/man/protgenerics.html" class="external-link">xcms::chromatogram()</a></code> internally and is meant for a handful of features.</p>
-</section><section class="level3"><h3 id="intensity-along-the-injection-sequence">4.3 Intensity along the injection sequence<a class="anchor" aria-label="anchor" href="#intensity-along-the-injection-sequence"></a>
+</section><section class="level3"><h3 id="intensity-along-the-injection-sequence">4.4 Intensity along the injection sequence<a class="anchor" aria-label="anchor" href="#intensity-along-the-injection-sequence"></a>
 </h3>
 <p><code><a href="../reference/xcms_extension_plot.html">plot_xcms_feature_intensity()</a></code> plots <code>featureValues</code> against injection order. Positive polarity sorts <code>pData$analysis.time.positive</code>; negative uses <code>analysis.time.negative</code>. Points are colored by <code>sample.type</code> (<code>Blank</code> / <code>QC</code> / <code>Sample</code>).</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/xcms_extension_plot.html">plot_xcms_feature_intensity</a></span><span class="op">(</span><span class="va">xcms</span>, feature_id_to_show <span class="op">=</span> <span class="va">fids</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
 </div>
 <hr></section></section><section class="level2"><h2 id="two-panel-xic">5. Two-panel XIC<a class="anchor" aria-label="anchor" href="#two-panel-xic"></a>
@@ -312,7 +328,7 @@
 </ul>
 <p>Supply an <strong>already filtered</strong> <code>XcmsExperiment</code> / <code>XCMSnExp</code> plus the same mz/RT windows used for filtering (axis limits).</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mzr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">760.58</span>, <span class="fl">760.60</span><span class="op">)</span></span>
 <span><span class="va">rtr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">400</span>, <span class="fl">460</span><span class="op">)</span></span>
 <span><span class="va">xcms.filt</span> <span class="op">&lt;-</span> <span class="fu">xcms</span><span class="fu">::</span><span class="fu">filterRt</span><span class="op">(</span><span class="fu">xcms</span><span class="fu">::</span><span class="fu">filterMz</span><span class="op">(</span><span class="va">xcms</span>, mz <span class="op">=</span> <span class="va">mzr</span><span class="op">)</span>, rt <span class="op">=</span> <span class="va">rtr</span><span class="op">)</span></span>
@@ -331,7 +347,7 @@
 </h2>
 <p>Extraction and plotting are separate. Convert <code>XChromatograms</code> / <code>MChromatograms</code> / <code>XChromatogram</code> to a tidy table with <code><a href="../reference/get_chroms_data.html">get_chroms_data()</a></code> (columns <code>rt</code>, <code>intensity</code>, <code>row</code>, <code>col</code>), or pass the S4 object to <code><a href="../reference/xcms_extension_chromatogram.html">plot_XChromatograms()</a></code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">chroms</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram</a></span><span class="op">(</span></span>
 <span>  <span class="va">xcms</span>, feature.id <span class="op">=</span> <span class="va">fids</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">8</span><span class="op">]</span>, sample <span class="op">=</span> <span class="st">"all"</span>, rt <span class="op">=</span> <span class="st">"expand"</span></span>
 <span><span class="op">)</span></span>
@@ -372,7 +388,7 @@
 </table>
 <p><code><a href="../reference/plot_Chromatograph_mirror.html">plot_Chromatograph_mirror()</a></code> compares two traces (<code>XChromatogram</code>, <code>Chromatogram</code>, an <code>XChromatograms</code> cell, or <code>data.frame(rt, intensity)</code>), optionally normalizing each to its own max and flipping the second below zero.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_Chromatograph_mirror.html">plot_Chromatograph_mirror</a></span><span class="op">(</span></span>
 <span>  <span class="va">chroms</span><span class="op">[</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">]</span>,</span>
 <span>  <span class="va">chroms</span><span class="op">[</span><span class="fl">2</span>, <span class="fl">1</span><span class="op">]</span>,</span>
@@ -383,7 +399,7 @@
 </h2>
 <p>After feature compounding, <code>xcms::featureGroups()</code> labels groups. Pairwise EIC scores (when stored) sit on <code>MsExperiment::otherData(xcms)$EIC_Similarity</code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/na.fail.html" class="external-link">na.omit</a></span><span class="op">(</span><span class="fu">xcms</span><span class="fu">::</span><span class="fu">featureGroups</span><span class="op">(</span><span class="va">xcms</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/plot_xcms_feature_group_EIC_comparasion.html">plot_xcms_feature_group_EIC_comparasion</a></span><span class="op">(</span></span>
@@ -400,7 +416,7 @@
 </h2>
 <p>Plotters return ggplot / patchwork / Heatmap objects. Save with ggplot2 or the package export helpers:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/xcms_extension_plot.html">plot_xcms_TIC</a></span><span class="op">(</span><span class="va">xcms</span><span class="op">)</span></span>
 <span><span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsave.html" class="external-link">ggsave</a></span><span class="op">(</span><span class="st">"TIC.pdf"</span>, <span class="va">p</span>, width <span class="op">=</span> <span class="fl">8</span>, height <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/open_plot_pdf.html">open_plot_pdf</a></span><span class="op">(</span><span class="va">p</span>, width <span class="op">=</span> <span class="fl">8</span>, height <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>

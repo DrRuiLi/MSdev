@@ -387,7 +387,8 @@
   [`get_xcms_iso_fraction()`](https://drruili.github.io/MSdev/reference/xcms_extension_isotopologue.md)
   : XCMS isotopologue helpers
 
-- [`plot_xcms_peaks_distribution()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+- [`plot_xcms_features_heatmap()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
+  [`plot_xcms_peaks_distribution()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
   [`plot_xcms_features_distribution()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
   [`plot_xcms_feature_chromatogram()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
   [`plot_xcms_peaks_ms1_scans()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
@@ -397,7 +398,7 @@
   [`plot_xcms_feature_intensity()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
   [`plot_xcms_TIC()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
   [`plot_xcms_xic()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
-  : XCMS diagnostic plots
+  : Heatmap of xcms feature intensities
 
 - [`xcms_get_dda_ms2_assignment()`](https://drruili.github.io/MSdev/reference/xcms_get_dda_ms2_assignment.md)
   : xcms_get_dda_ms2_assignment

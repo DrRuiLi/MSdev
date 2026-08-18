@@ -1,4 +1,12 @@
-# XCMS diagnostic plots
+# Heatmap of xcms feature intensities
+
+Draws
+[`xcms::featureValues()`](https://rdrr.io/pkg/xcms/man/XCMSnExp-peak-grouping-results.html)
+as a ComplexHeatmap: rows are features ordered by `rtmed`, columns are
+samples ordered by injection time. Cells are `log10` peak intensity
+(`maxo` by default); missing peaks stay `NA` and are shown in `na_col`.
+A left color bar encodes retention time; a top bar encodes `sample.type`
+(or `group`) and injection order.
 
 export peaks data by xcms::chromPeaks and plot by ggplot2
 
@@ -37,6 +45,13 @@ and TIC/XIC.
 ## Usage
 
 ``` r
+plot_xcms_features_heatmap(
+  xcms,
+  value = "maxo",
+  log = TRUE,
+  na_col = "#BDBDBD"
+)
+
 plot_xcms_peaks_distribution(
   xcms.xcms,
   plot.title = "Peaks distribution",
@@ -75,6 +90,25 @@ plot_xcms_xic(
 
 ## Arguments
 
+- xcms:
+
+  XCMSnExp / XcmsExperiment object
+
+- value:
+
+  Intensity column passed to
+  [`xcms::featureValues()`](https://rdrr.io/pkg/xcms/man/XCMSnExp-peak-grouping-results.html)
+  (default `"maxo"`).
+
+- log:
+
+  Logical; `log10`-transform intensities (default `TRUE`). Non-finite
+  values become `NA`.
+
+- na_col:
+
+  Color for missing peaks (default `"#BDBDBD"`).
+
 - xcms.xcms:
 
   XCMSnExp object
@@ -94,10 +128,6 @@ plot_xcms_xic(
 - sampleNames:
 
   sample names to include
-
-- xcms:
-
-  XCMSnExp / XcmsExperiment object
 
 - rt_window:
 
@@ -153,6 +183,10 @@ plot_xcms_xic(
 
 ## Value
 
+(Invisibly) a
+[`ComplexHeatmap::Heatmap`](https://rdrr.io/pkg/ComplexHeatmap/man/Heatmap.html)
+object.
+
 ggplot object
 
 ggplot object.
@@ -173,7 +207,15 @@ ggplot object
 
 A patchwork object with two panels, or a list when `return.data = TRUE`.
 
+## Details
+
+Injection order uses `pData$analysis.time.positive` (positive polarity)
+or `analysis.time.negative` (negative), falling back to `analysis.time`,
+then `ExpTime`, then the current sample order.
+
 ## Functions
+
+- `plot_xcms_features_heatmap()`: feature x sample intensity heatmap
 
 - `plot_xcms_peaks_distribution()`: plot peaks distribution
 
