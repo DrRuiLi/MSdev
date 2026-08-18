@@ -17,8 +17,6 @@
 
 ### Technical notes
 
-- [dev_xcms](https://drruili.github.io/MSdev/articles/dev_xcms.md):
-
 - [Rdisop mass decomposition
   (\`decomposeMass\`)](https://drruili.github.io/MSdev/articles/Rdisop_decomposeMass.md):
 
@@ -45,5 +43,11 @@
   xcms / MsFeatures feature compounding (RT → abundance → EIC shape),
   focusing on EIC extraction and the similarity matrix, and how MSdev’s
   stock path compares to custom MSdev_group_feature_EIC().
+
+- [Visualizing xcms
+  data](https://drruili.github.io/MSdev/articles/xcms-visualization.md):
+
+  ggplot2 / patchwork helpers for TICs, peaks, features, chromatograms,
+  and XICs from XcmsExperiment, XCMSnExp, and XChromatogram objects.
 
 ### Developer notes
