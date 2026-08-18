@@ -29,7 +29,7 @@ library(patchwork)
 ```
 
 ```{mermaid}
-#| eval: true
+%%| eval: true
 flowchart TD
   xcms["XcmsExperiment or XCMSnExp"]
   chrom["XChromatograms or XChromatogram"]
