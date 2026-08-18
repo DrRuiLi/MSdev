@@ -28,16 +28,17 @@ library(patchwork)
 # xcms: XcmsExperiment or XCMSnExp after findChromPeaks / groupChromPeaks
 ```
 
-```mermaid
+```{mermaid}
+#| eval: true
 flowchart TD
-  xcms["XcmsExperiment / XCMSnExp"]
-  chrom["XChromatograms / XChromatogram"]
+  xcms["XcmsExperiment or XCMSnExp"]
+  chrom["XChromatograms or XChromatogram"]
   qc["Run QC: TIC, MS1 scan frequency"]
   peaks["Peaks: RT-mz map, scan counts, peak EIC"]
   feats["Features: RT-mz map, feature EIC, injection intensity"]
   xic["XIC two-panel"]
-  overlay["plot_XChromatograms / mirror"]
-  fg["Feature-group EIC / similarity"]
+  overlay["plot_XChromatograms or mirror"]
+  fg["Feature-group EIC or similarity"]
   xcms --> qc
   xcms --> peaks
   xcms --> feats
