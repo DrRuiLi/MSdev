@@ -1194,3 +1194,296 @@ plot_xcms_feature_group_similarity <- function(xcms,
     sample_label = sample_label
   )
 }
+
+#' Coerce sample timestamps to numeric seconds for ordering
+#' @noRd
+.xcms_as_time_numeric <- function(x) {
+  if (inherits(x, "POSIXt")) {
+    return(as.numeric(x))
+  }
+  if (is.numeric(x)) {
+    return(as.numeric(x))
+  }
+  x <- as.character(x)
+  n <- suppressWarnings(as.numeric(x))
+  n_ok <- sum(is.finite(n))
+  if (n_ok >= max(2L, floor(0.5 * length(x)))) {
+    return(n)
+  }
+  as.numeric(suppressWarnings(as.POSIXct(x)))
+}
+
+#' Sample injection order from xcms pData timestamps
+#'
+#' Prefers polarity-specific \code{analysis.time.positive} /
+#' \code{analysis.time.negative}, then \code{analysis.time}, then
+#' \code{ExpTime}. Falls back to the current sample order.
+#' @noRd
+.xcms_sample_injection_order <- function(xcms) {
+  pdata <- as.data.frame(Biobase::pData(xcms), stringsAsFactors = FALSE)
+  sn <- Biobase::sampleNames(xcms)
+  if (!length(sn)) {
+    sn <- rownames(pdata)
+  }
+  if (!length(sn)) {
+    stop("`xcms` has no sample names")
+  }
+  n <- length(sn)
+  if (nrow(pdata) && nrow(pdata) != n) {
+    stop("pData nrow does not match sampleNames")
+  }
+  if (!nrow(pdata)) {
+    pdata <- data.frame(sampleNames = sn, stringsAsFactors = FALSE)
+  }
+  if (!"sampleNames" %in% names(pdata)) {
+    pdata$sampleNames <- sn
+  }
+
+  time_candidates <- character()
+  ion_mode <- tryCatch(
+    unique(as.integer(.xcms_polarity(xcms))),
+    error = function(e) NA_integer_
+  )
+  if (length(ion_mode) == 1L && !is.na(ion_mode)) {
+    if (identical(ion_mode, 1L)) {
+      time_candidates <- c(time_candidates, "analysis.time.positive")
+    } else if (identical(ion_mode, 0L)) {
+      time_candidates <- c(time_candidates, "analysis.time.negative")
+    }
+  }
+  time_candidates <- c(time_candidates, "analysis.time", "ExpTime")
+  time_col <- intersect(time_candidates, names(pdata))
+  time_col <- if (length(time_col)) time_col[[1]] else NA_character_
+
+  if (!is.na(time_col)) {
+    t_num <- .xcms_as_time_numeric(pdata[[time_col]])
+    if (sum(is.finite(t_num))) {
+      ord <- order(t_num, na.last = TRUE)
+    } else {
+      ord <- seq_len(n)
+      time_col <- NA_character_
+    }
+  } else {
+    ord <- seq_len(n)
+  }
+
+  list(
+    order = ord,
+    sample_names = as.character(sn)[ord],
+    pdata = pdata,
+    time_col = time_col
+  )
+}
+
+#' Align featureValues columns to sample names
+#' @noRd
+.xcms_align_feature_values_cols <- function(fval, sample_names) {
+  cn <- colnames(fval)
+  if (is.null(cn)) {
+    if (ncol(fval) != length(sample_names)) {
+      stop("featureValues has no colnames and ncol does not match samples")
+    }
+    colnames(fval) <- sample_names
+    return(fval)
+  }
+  if (all(sample_names %in% cn)) {
+    return(fval)
+  }
+  sn_base <- basename(sample_names)
+  cn_base <- basename(cn)
+  if (all(sn_base %in% cn_base)) {
+    colnames(fval) <- cn_base
+    return(fval)
+  }
+  if (ncol(fval) == length(sample_names)) {
+    colnames(fval) <- sample_names
+    return(fval)
+  }
+  stop("Cannot align featureValues columns with sample names")
+}
+
+#' Heatmap of xcms feature intensities
+#'
+#' Draws \code{xcms::featureValues()} as a \pkg{ComplexHeatmap}: rows are
+#' features ordered by \code{rtmed}, columns are samples ordered by injection
+#' time. Cells are \code{log10} peak intensity (\code{maxo} by default);
+#' missing peaks stay \code{NA} and are shown in \code{na_col}. A left color
+#' bar encodes retention time; a top bar encodes \code{sample.type} (or
+#' \code{group}) and injection order.
+#'
+#' Injection order uses \code{pData$analysis.time.positive} (positive
+#' polarity) or \code{analysis.time.negative} (negative), falling back to
+#' \code{analysis.time}, then \code{ExpTime}, then the current sample order.
+#'
+#' @param xcms An xcms object (\code{XcmsExperiment} / \code{XCMSnExp}) after
+#'   correspondence (\code{featureDefinitions}).
+#' @param value Intensity column passed to \code{xcms::featureValues()}
+#'   (default \code{"maxo"}).
+#' @param log Logical; \code{log10}-transform intensities (default
+#'   \code{TRUE}). Non-finite values become \code{NA}.
+#' @param na_col Color for missing peaks (default \code{"#BDBDBD"}).
+#' @return (Invisibly) a \code{ComplexHeatmap::Heatmap} object.
+#' @describeIn xcms_extension_plot feature x sample intensity heatmap
+#' @export
+plot_xcms_features_heatmap <- function(xcms,
+                                       value = "maxo",
+                                       log = TRUE,
+                                       na_col = "#BDBDBD") {
+  for (pkg in c("ComplexHeatmap", "circlize")) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      stop("Package '", pkg, "' is required for plot_xcms_features_heatmap()")
+    }
+  }
+  if (!(inherits(xcms, "XcmsExperiment") ||
+        inherits(xcms, "MsExperiment") ||
+        inherits(xcms, "XCMSnExp"))) {
+    stop("`xcms` must be an XcmsExperiment, MsExperiment, or XCMSnExp")
+  }
+  fdef <- tryCatch(
+    as.data.frame(xcms::featureDefinitions(xcms)),
+    error = function(e) NULL
+  )
+  if (is.null(fdef) || !nrow(fdef)) {
+    stop("`xcms` has no featureDefinitions; run correspondence (groupChromPeaks) first")
+  }
+  rt <- as.numeric(fdef$rtmed)
+  if (!length(rt) || all(is.na(rt))) {
+    stop("featureDefinitions has no usable rtmed")
+  }
+
+  inj <- .xcms_sample_injection_order(xcms)
+  fval <- xcms::featureValues(xcms, value = value)
+  fval <- .xcms_align_feature_values_cols(fval, Biobase::sampleNames(xcms))
+  sn_ord <- inj$sample_names
+  if (all(basename(sn_ord) %in% colnames(fval)) &&
+      !all(sn_ord %in% colnames(fval))) {
+    sn_ord <- basename(sn_ord)
+  }
+  mat <- as.matrix(fval[, sn_ord, drop = FALSE])
+  storage.mode(mat) <- "double"
+
+  row_ord <- order(rt, na.last = TRUE)
+  mat <- mat[row_ord, , drop = FALSE]
+  rt <- rt[row_ord]
+  fids <- rownames(mat)
+  if (is.null(fids)) {
+    fids <- rownames(fdef)[row_ord]
+    rownames(mat) <- fids
+  }
+
+  if (isTRUE(log)) {
+    mat <- log10(mat)
+    legend_name <- paste0("log10\n", value)
+  } else {
+    legend_name <- as.character(value)
+  }
+  mat[!is.finite(mat)] <- NA_real_
+
+  n_features <- nrow(mat)
+  n_samples <- ncol(mat)
+  pdata_ord <- inj$pdata[inj$order, , drop = FALSE]
+
+  if (isTRUE(log)) {
+    col_fun <- circlize::colorRamp2(
+      c(0, 4.5, 9),
+      c("#FFFFFF", "#F7844F", "#B20C26")
+    )
+  } else {
+    finite_vals <- mat[is.finite(mat)]
+    if (length(finite_vals)) {
+      v_min <- min(finite_vals)
+      v_max <- max(finite_vals)
+      if (v_min == v_max) {
+        v_max <- v_max + 1e-6
+      }
+      col_fun <- circlize::colorRamp2(
+        c(0, 3, stats::median(finite_vals), v_max),
+        c("#FFFFFF","#FFFFFF", "#F7844F", "#B20C26")
+      )
+    } else {
+      col_fun <- circlize::colorRamp2(c(0, 1), c("white", "red"))
+    }
+  }
+
+  rt_range <- range(rt, na.rm = TRUE)
+  if (!all(is.finite(rt_range)) || rt_range[1] == rt_range[2]) {
+    rt_range <- rt_range[1] + c(-1, 1)
+  }
+  rt_col <- circlize::colorRamp2(rt_range, c("#2166AC", "#B2182B"))
+  left_anno <- ComplexHeatmap::rowAnnotation(
+    rtmed = rt,
+    col = list(rtmed = rt_col),
+    annotation_name_side = "top",
+    annotation_name_gp = grid::gpar(fontsize = 8),
+    simple_anno_size = grid::unit(3, "mm"),
+    annotation_legend_param = list(rtmed = list(title = "rtmed (s)"))
+  )
+
+  inj_seq <- seq_len(n_samples)
+  inj_col <- circlize::colorRamp2(
+    c(1, max(n_samples, 2L)),
+    c("#FFD700", "#EE0000")
+  )
+  type_col_name <- if ("sample.type" %in% names(pdata_ord)) {
+    "sample.type"
+  } else if ("group" %in% names(pdata_ord)) {
+    "group"
+  } else {
+    NULL
+  }
+  anno_df <- data.frame(injection = inj_seq, stringsAsFactors = FALSE)
+  anno_col <- list(injection = inj_col)
+  if (!is.null(type_col_name)) {
+    st <- as.character(pdata_ord[[type_col_name]])
+    st[is.na(st) | !nzchar(st)] <- "unknown"
+    type_pal <- c(
+      Blank = "grey",
+      QC = "#66CAB7",
+      Sample = "#EE8E5B",
+      GQC = "#3C8DAD",
+      unknown = "#BDBDBD"
+    )
+    extra <- setdiff(unique(st), names(type_pal))
+    if (length(extra)) {
+      extra_pal <- grDevices::hcl.colors(length(extra), "Dark 3")
+      names(extra_pal) <- extra
+      type_pal <- c(type_pal, extra_pal)
+    }
+    type_fac <- factor(st, levels = unique(st))
+    type_df <- data.frame(tmp = type_fac, stringsAsFactors = FALSE)
+    names(type_df) <- type_col_name
+    anno_df <- cbind(type_df, anno_df)
+    anno_col <- c(
+      stats::setNames(list(type_pal[levels(type_fac)]), type_col_name),
+      anno_col
+    )
+  }
+  top_anno <- ComplexHeatmap::HeatmapAnnotation(
+    df = anno_df,
+    col = anno_col,
+    annotation_name_side = "right",
+    annotation_name_gp = grid::gpar(fontsize = 8),
+    simple_anno_size = grid::unit(3, "mm")
+  )
+
+  ht <- ComplexHeatmap::Heatmap(
+    mat,
+    name = legend_name,
+    col = col_fun,
+    na_col = na_col,
+    cluster_rows = FALSE,
+    cluster_columns = FALSE,
+    show_row_names = FALSE,
+    show_column_names = TRUE,
+    column_names_rot = -45,
+    column_names_gp = grid::gpar(
+      fontsize = ifelse(n_samples > 30L, 4, 6)
+    ),
+    row_title = "Features",
+    column_title = sprintf("%d features x %d samples", n_features, n_samples),
+    left_annotation = left_anno,
+    top_annotation = top_anno,
+    use_raster = TRUE
+  )
+  return(ht)
+}
