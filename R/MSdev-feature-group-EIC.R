@@ -259,7 +259,7 @@ NULL
 #'   \code{Matrix} sparse matrices; absent entries are non-neighbor pairs
 #'   (filled when densified for grouping; see \code{absent_sim} in
 #'   \code{\link{xcms_group_feature_EIC}}). Pairwise scores are pooled across
-#'   selected samples and evaluated in \code{bpnworkers(BPPARAM)} chunks (each
+#'   selected samples and split into \code{n_chunks} BiocParallel jobs (each
 #'   chunk ships only the chromatogram columns it needs). EICs are expected to
 #'   be zero-filled over their windows on the shared sample RT grid (via
 #'   \code{\link{XChromatograms_subset_feature}}), so correlation reflects the
@@ -279,8 +279,13 @@ NULL
 #'   Default \code{20}.
 #' @param selected_sample NULL, integer index/indices, or sample name(s)
 #'   (\code{sample.name} / chromatogram colnames). NULL uses all samples.
-#' @param BPPARAM BiocParallel backend. Chunk count is
-#'   \code{min(bpnworkers(BPPARAM), n_jobs)}. Default \code{SerialParam()}.
+#' @param n_chunks NULL or positive integer. Number of BiocParallel chunks into
+#'   which \code{n_samples * n_rt_pairs} similarity jobs are split. When
+#'   \code{NULL} (default), uses \code{min(bpnworkers(BPPARAM), n_jobs)} for
+#'   backward compatibility. Set explicitly (e.g. \code{200L}) on large batch
+#'   projects to keep Snow payloads small; \code{BPPARAM} workers then control
+#'   parallelism only.
+#' @param BPPARAM BiocParallel backend. Default \code{SerialParam()}.
 #' @return Named list of feature-by-feature \code{dgCMatrix} similarity matrices
 #'   (one per selected sample).
 #' @importFrom Matrix sparseMatrix summary
@@ -291,6 +296,7 @@ get_xcms_feature_EIC_similarity <- function(xcms.xcms,
                                             expandRt = 2,
                                             min_width = 20,
                                             selected_sample = NULL,
+                                            n_chunks = NULL,
                                             BPPARAM = BiocParallel::SerialParam()) {
   if (!is.numeric(rt_tol) || length(rt_tol) != 1L || rt_tol <= 0) {
     stop("'rt_tol' must be a positive numeric(1)")
@@ -331,13 +337,14 @@ get_xcms_feature_EIC_similarity <- function(xcms.xcms,
   np <- nrow(pairs)
   n_jobs <- ns * np
   n_workers <- max(1L, as.integer(BiocParallel::bpnworkers(BPPARAM)))
-  n_chunks <- max(1L, min(n_workers, max(n_jobs, 1L)))
+  n_chunks <- .resolve_eic_n_chunks(n_jobs, n_workers, n_chunks)
   message(
     "  features=", length(fids),
     " rt_neighbor_pairs=", np,
     " samples=", ns,
     " jobs=", n_jobs,
     " chunks=", if (n_jobs == 0L) 0L else n_chunks,
+    " workers=", n_workers,
     " (rt_tol=", rt_tol, ")"
   )
 
@@ -392,6 +399,20 @@ get_xcms_feature_EIC_similarity <- function(xcms.xcms,
     )
   }
   sim_list
+}
+
+
+#' Resolve BiocParallel chunk count for EIC similarity jobs
+#' @noRd
+.resolve_eic_n_chunks <- function(n_jobs, n_workers, n_chunks) {
+  if (is.null(n_chunks)) {
+    return(max(1L, min(n_workers, max(n_jobs, 1L))))
+  }
+  n_chunks <- as.integer(n_chunks)[[1L]]
+  if (!is.finite(n_chunks) || n_chunks < 1L) {
+    stop("'n_chunks' must be NULL or a positive integer")
+  }
+  max(1L, min(n_chunks, max(n_jobs, 1L)))
 }
 
 
@@ -609,6 +630,8 @@ groupSimilarityMatrix_hclustAverage <- function(x, threshold = 0.9) {
 #'   matrix. One of \code{"complete_linkage"}, \code{"hclust_average"}.
 #'   Default \code{"complete_linkage"}. See Details for arguments used by each
 #'   method.
+#' @param n_chunks NULL or positive integer. Passed to
+#'   \code{\link{get_xcms_feature_EIC_similarity}}. (all methods)
 #' @param BPPARAM BiocParallel backend passed to
 #'   \code{\link{get_xcms_feature_EIC_similarity}}. Default \code{SerialParam()}.
 #'   (all methods)
@@ -616,7 +639,7 @@ groupSimilarityMatrix_hclustAverage <- function(x, threshold = 0.9) {
 #' \strong{Shared arguments} (used before grouping for every \code{method}):
 #' \code{xcms.xcms}, \code{chroms}, \code{rt_tol}, \code{expandRt},
 #' \code{min_width}, \code{selected_sample}, \code{keep_Similarity_Matrix},
-#' \code{absent_sim}, \code{BPPARAM}.
+#' \code{absent_sim}, \code{n_chunks}, \code{BPPARAM}.
 #'
 #' \strong{Arguments by \code{method}} (how grouping uses densified similarity):
 #' \describe{
@@ -652,6 +675,7 @@ xcms_group_feature_EIC <- function(xcms.xcms,
                                    keep_Similarity_Matrix = TRUE,
                                    absent_sim = 0,
                                    method = c("complete_linkage", "hclust_average"),
+                                   n_chunks = NULL,
                                    BPPARAM = BiocParallel::SerialParam()) {
   method <- match.arg(method)
   if (!is.numeric(rt_tol) || length(rt_tol) != 1L || rt_tol <= 0) {
@@ -674,6 +698,7 @@ xcms_group_feature_EIC <- function(xcms.xcms,
     expandRt = expandRt,
     min_width = min_width,
     selected_sample = selected_sample,
+    n_chunks = n_chunks,
     BPPARAM = BPPARAM
   )
 
@@ -757,6 +782,9 @@ xcms_group_feature_EIC <- function(xcms.xcms,
 #' @param method character(1). Grouping method passed to
 #'   \code{\link{xcms_group_feature_EIC}}: \code{"complete_linkage"} or
 #'   \code{"hclust_average"}. Default \code{"complete_linkage"}.
+#' @param n_chunks NULL or positive integer. Passed to
+#'   \code{\link{xcms_group_feature_EIC}} / \code{\link{get_xcms_feature_EIC_similarity}}.
+#'   Use on large batch projects to avoid oversized Snow payloads (e.g. \code{200L}).
 #' @param BPPARAM BiocParallel backend for chromatogram extraction and EIC
 #'   similarity scoring.
 #' @return MSdev object with updated MS1 \code{feature_group} labels; when
@@ -773,6 +801,7 @@ MSdev_group_feature_EIC <- function(object,
                                     keep_Similarity_Matrix = TRUE,
                                     absent_sim = 0,
                                     method = c("complete_linkage", "hclust_average"),
+                                    n_chunks = NULL,
                                     BPPARAM = SnowParam(
                                       workers = parallel::detectCores() - 1,
                                       progressbar = TRUE)) {
@@ -831,6 +860,7 @@ MSdev_group_feature_EIC <- function(object,
       keep_Similarity_Matrix = keep_Similarity_Matrix,
       absent_sim = absent_sim,
       method = method,
+      n_chunks = n_chunks,
       BPPARAM = BPPARAM
     )
     object@xcmsData[[ms1_key]] <- xcms.xcms
