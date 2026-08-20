@@ -21,6 +21,7 @@ MSdev_group_feature_EIC(
   keep_Similarity_Matrix = TRUE,
   absent_sim = 0,
   method = c("complete_linkage", "hclust_average"),
+  n_chunks = NULL,
   BPPARAM = SnowParam(workers = parallel::detectCores() - 1, progressbar = TRUE)
 )
 ```
@@ -79,6 +80,15 @@ MSdev_group_feature_EIC(
   [`xcms_group_feature_EIC`](https://drruili.github.io/MSdev/reference/xcms_group_feature_EIC.md):
   `"complete_linkage"` or `"hclust_average"`. Default
   `"complete_linkage"`.
+
+- n_chunks:
+
+  NULL or positive integer. Passed to
+  [`xcms_group_feature_EIC`](https://drruili.github.io/MSdev/reference/xcms_group_feature_EIC.md)
+  /
+  [`get_xcms_feature_EIC_similarity`](https://drruili.github.io/MSdev/reference/get_xcms_feature_EIC_similarity.md).
+  Use on large batch projects to avoid oversized Snow payloads (e.g.
+  `200L`).
 
 - BPPARAM:
 

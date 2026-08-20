@@ -21,6 +21,7 @@ xcms_group_feature_EIC(
   keep_Similarity_Matrix = TRUE,
   absent_sim = 0,
   method = c("complete_linkage", "hclust_average"),
+  n_chunks = NULL,
   BPPARAM = BiocParallel::SerialParam()
 )
 ```
@@ -84,6 +85,12 @@ xcms_group_feature_EIC(
   of `"complete_linkage"`, `"hclust_average"`. Default
   `"complete_linkage"`. See Details for arguments used by each method.
 
+- n_chunks:
+
+  NULL or positive integer. Passed to
+  [`get_xcms_feature_EIC_similarity`](https://drruili.github.io/MSdev/reference/get_xcms_feature_EIC_similarity.md).
+  (all methods)
+
 - BPPARAM:
 
   BiocParallel backend passed to
@@ -101,7 +108,8 @@ member features); when `keep_Similarity_Matrix` is TRUE, also
 
 **Shared arguments** (used before grouping for every `method`):
 `xcms.xcms`, `chroms`, `rt_tol`, `expandRt`, `min_width`,
-`selected_sample`, `keep_Similarity_Matrix`, `absent_sim`, `BPPARAM`.
+`selected_sample`, `keep_Similarity_Matrix`, `absent_sim`, `n_chunks`,
+`BPPARAM`.
 
 **Arguments by `method`** (how grouping uses densified similarity):
 

@@ -7,8 +7,8 @@ Results are stored as symmetric `Matrix` sparse matrices; absent entries
 are non-neighbor pairs (filled when densified for grouping; see
 `absent_sim` in
 [`xcms_group_feature_EIC`](https://drruili.github.io/MSdev/reference/xcms_group_feature_EIC.md)).
-Pairwise scores are pooled across selected samples and evaluated in
-`bpnworkers(BPPARAM)` chunks (each chunk ships only the chromatogram
+Pairwise scores are pooled across selected samples and split into
+`n_chunks` BiocParallel jobs (each chunk ships only the chromatogram
 columns it needs). EICs are expected to be zero-filled over their
 windows on the shared sample RT grid (via
 [`XChromatograms_subset_feature`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)),
@@ -25,6 +25,7 @@ get_xcms_feature_EIC_similarity(
   expandRt = 2,
   min_width = 20,
   selected_sample = NULL,
+  n_chunks = NULL,
   BPPARAM = BiocParallel::SerialParam()
 )
 ```
@@ -64,10 +65,18 @@ get_xcms_feature_EIC_similarity(
   NULL, integer index/indices, or sample name(s) (`sample.name` /
   chromatogram colnames). NULL uses all samples.
 
+- n_chunks:
+
+  NULL or positive integer. Number of BiocParallel chunks into which
+  `n_samples * n_rt_pairs` similarity jobs are split. When `NULL`
+  (default), uses `min(bpnworkers(BPPARAM), n_jobs)` for backward
+  compatibility. Set explicitly (e.g. `200L`) on large batch projects to
+  keep Snow payloads small; `BPPARAM` workers then control parallelism
+  only.
+
 - BPPARAM:
 
-  BiocParallel backend. Chunk count is
-  `min(bpnworkers(BPPARAM), n_jobs)`. Default `SerialParam()`.
+  BiocParallel backend. Default `SerialParam()`.
 
 ## Value
 

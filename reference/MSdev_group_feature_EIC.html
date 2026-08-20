@@ -64,6 +64,7 @@ similarity matrices in <code>otherData(xcms)$EIC_Similarity</code>.</p>
 <span>  keep_Similarity_Matrix <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  absent_sim <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"complete_linkage"</span>, <span class="st">"hclust_average"</span><span class="op">)</span>,</span>
+<span>  n_chunks <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  BPPARAM <span class="op">=</span> <span class="fu">SnowParam</span><span class="op">(</span>workers <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span>, progressbar <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -123,6 +124,12 @@ Default <code>0</code>; set <code>NA</code> for unknown absents.</p></dd>
 <dd><p>character(1). Grouping method passed to
 <code><a href="xcms_group_feature_EIC.html">xcms_group_feature_EIC</a></code>: <code>"complete_linkage"</code> or
 <code>"hclust_average"</code>. Default <code>"complete_linkage"</code>.</p></dd>
+
+
+<dt id="arg-n-chunks">n_chunks<a class="anchor" aria-label="anchor" href="#arg-n-chunks"></a></dt>
+<dd><p>NULL or positive integer. Passed to
+<code><a href="xcms_group_feature_EIC.html">xcms_group_feature_EIC</a></code> / <code><a href="get_xcms_feature_EIC_similarity.html">get_xcms_feature_EIC_similarity</a></code>.
+Use on large batch projects to avoid oversized Snow payloads (e.g. <code>200L</code>).</p></dd>
 
 
 <dt id="arg-bpparam">BPPARAM<a class="anchor" aria-label="anchor" href="#arg-bpparam"></a></dt>

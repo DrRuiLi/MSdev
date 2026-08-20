@@ -5,7 +5,7 @@ MSdev_group_feature_EIC. Results are stored as symmetric
 Matrix sparse matrices; absent entries are non-neighbor pairs
 (filled when densified for grouping; see absent_sim in
 xcms_group_feature_EIC). Pairwise scores are pooled across
-selected samples and evaluated in bpnworkers(BPPARAM) chunks (each
+selected samples and split into n_chunks BiocParallel jobs (each
 chunk ships only the chromatogram columns it needs). EICs are expected to
 be zero-filled over their windows on the shared sample RT grid (via
 XChromatograms_subset_feature), so correlation reflects the
@@ -15,7 +15,7 @@ MSdev_group_feature_EIC. Results are stored as symmetric
 Matrix sparse matrices; absent entries are non-neighbor pairs
 (filled when densified for grouping; see absent_sim in
 xcms_group_feature_EIC). Pairwise scores are pooled across
-selected samples and evaluated in bpnworkers(BPPARAM) chunks (each
+selected samples and split into n_chunks BiocParallel jobs (each
 chunk ships only the chromatogram columns it needs). EICs are expected to
 be zero-filled over their windows on the shared sample RT grid (via
 XChromatograms_subset_feature), so correlation reflects the
@@ -65,7 +65,7 @@ for pairs with <code>|rtmed_i - rtmed_j| &lt; rt_tol</code>. Used by
 <code>Matrix</code> sparse matrices; absent entries are non-neighbor pairs
 (filled when densified for grouping; see <code>absent_sim</code> in
 <code><a href="xcms_group_feature_EIC.html">xcms_group_feature_EIC</a></code>). Pairwise scores are pooled across
-selected samples and evaluated in <code>bpnworkers(BPPARAM)</code> chunks (each
+selected samples and split into <code>n_chunks</code> BiocParallel jobs (each
 chunk ships only the chromatogram columns it needs). EICs are expected to
 be zero-filled over their windows on the shared sample RT grid (via
 <code><a href="xcms_extension_chromatogram.html">XChromatograms_subset_feature</a></code>), so correlation reflects the
@@ -81,6 +81,7 @@ full peak window rather than only the non-<code>NA</code> overlap.</p>
 <span>  expandRt <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  min_width <span class="op">=</span> <span class="fl">20</span>,</span>
 <span>  selected_sample <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  n_chunks <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html" class="external-link">SerialParam</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -122,9 +123,17 @@ Default <code>20</code>.</p></dd>
 (<code>sample.name</code> / chromatogram colnames). NULL uses all samples.</p></dd>
 
 
+<dt id="arg-n-chunks">n_chunks<a class="anchor" aria-label="anchor" href="#arg-n-chunks"></a></dt>
+<dd><p>NULL or positive integer. Number of BiocParallel chunks into
+which <code>n_samples * n_rt_pairs</code> similarity jobs are split. When
+<code>NULL</code> (default), uses <code>min(bpnworkers(BPPARAM), n_jobs)</code> for
+backward compatibility. Set explicitly (e.g. <code>200L</code>) on large batch
+projects to keep Snow payloads small; <code>BPPARAM</code> workers then control
+parallelism only.</p></dd>
+
+
 <dt id="arg-bpparam">BPPARAM<a class="anchor" aria-label="anchor" href="#arg-bpparam"></a></dt>
-<dd><p>BiocParallel backend. Chunk count is
-<code>min(bpnworkers(BPPARAM), n_jobs)</code>. Default <code>SerialParam()</code>.</p></dd>
+<dd><p>BiocParallel backend. Default <code>SerialParam()</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
