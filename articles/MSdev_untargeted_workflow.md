@@ -72,7 +72,8 @@ object <- MSdev_set_param(
     prefilter = c(3, 100),
     peakwidth = c(10, 60),
     snthresh = 10,
-    fitgauss = TRUE
+    fitgauss = TRUE,
+    verboseBetaColumns = TRUE
   ),
   groupChromPeaks = xcms::PeakDensityParam(
     sampleGroups = "A",
@@ -88,7 +89,12 @@ Adjust `ppm`, `peakwidth`, `bw`, and `minFraction` to the instrument and
 chromatography. `sampleGroups` in `PeakDensityParam` is a placeholder
 here;
 [`MSdev_xcmsProcessing()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
-uses the project sample groups when it runs.
+uses the project sample groups when it runs. CentWave
+`verboseBetaColumns = TRUE` writes `beta_cor` / `beta_snr` onto
+`chromPeaks` during picking (no extra EIC pass). Optional peak-shape
+filtering: `MSdev_xcmsProcessing(object, beta_cor_thresh = 0.5)`
+(default `NULL` keeps all peaks; `NA` `beta_cor` from merged peaks is
+kept).
 
 ------------------------------------------------------------------------
 

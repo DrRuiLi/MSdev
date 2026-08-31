@@ -131,7 +131,8 @@ values from a recent lipidomics run):</p>
 <span>    prefilter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">100</span><span class="op">)</span>,</span>
 <span>    peakwidth <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">60</span><span class="op">)</span>,</span>
 <span>    snthresh <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>    fitgauss <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>    fitgauss <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    verboseBetaColumns <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  groupChromPeaks <span class="op">=</span> <span class="fu">xcms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcms/man/groupChromPeaks.html" class="external-link">PeakDensityParam</a></span><span class="op">(</span></span>
 <span>    sampleGroups <span class="op">=</span> <span class="st">"A"</span>,</span>
@@ -145,7 +146,13 @@ values from a recent lipidomics run):</p>
 <code>minFraction</code> to the instrument and chromatography.
 <code>sampleGroups</code> in <code>PeakDensityParam</code> is a
 placeholder here; <code><a href="../reference/MSdev_workflow.html">MSdev_xcmsProcessing()</a></code> uses the project
-sample groups when it runs.</p>
+sample groups when it runs. CentWave
+<code>verboseBetaColumns = TRUE</code> writes <code>beta_cor</code> /
+<code>beta_snr</code> onto <code>chromPeaks</code> during picking (no
+extra EIC pass). Optional peak-shape filtering:
+<code>MSdev_xcmsProcessing(object, beta_cor_thresh = 0.5)</code>
+(default <code>NULL</code> keeps all peaks; <code>NA</code>
+<code>beta_cor</code> from merged peaks is kept).</p>
 <hr>
 </div>
 <div class="section level2">

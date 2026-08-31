@@ -15,6 +15,7 @@ xcmsProcessingMS1(
   adjustRT = T,
   chromPeaks_fix_mz_ppm = NULL,
   chromPeaks_max_mz_ppm = NULL,
+  beta_cor_thresh = NULL,
   BPPARAM = BiocParallel::SnowParam(workers = 4, progressbar = T),
   ...
 )
@@ -26,6 +27,12 @@ xcmsProcessingMS1(
 
   to filter ion_mode, 1: positive, 0: negative, import when scans with
   both pos and neg
+
+- beta_cor_thresh:
+
+  optional numeric; if set, drop chromPeaks with `beta_cor` below this
+  value after peak picking (NA scores are kept). Requires CentWave
+  `verboseBetaColumns`. Default `NULL` skips filtering.
 
 - msDataFiles:
 

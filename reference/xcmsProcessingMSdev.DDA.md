@@ -25,7 +25,8 @@ xcmsProcessingMSdev.DDA(
 
 - ...:
 
-  additional arguments passed to xcms functions
+  additional arguments passed to
+  [`xcmsProcessingMS1`](https://drruili.github.io/MSdev/reference/xcmsProcessingMS1.md).
 
 ## Value
 

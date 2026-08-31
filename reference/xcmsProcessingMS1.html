@@ -52,6 +52,7 @@
 <span>  adjustRT <span class="op">=</span> <span class="cn">T</span>,</span>
 <span>  chromPeaks_fix_mz_ppm <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  chromPeaks_max_mz_ppm <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  beta_cor_thresh <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SnowParam-class.html" class="external-link">SnowParam</a></span><span class="op">(</span>workers <span class="op">=</span> <span class="fl">4</span>, progressbar <span class="op">=</span> <span class="cn">T</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -63,6 +64,12 @@
 
 <dl><dt id="arg-ion-mode">ion_mode<a class="anchor" aria-label="anchor" href="#arg-ion-mode"></a></dt>
 <dd><p>to filter ion_mode, 1: positive, 0: negative, import when scans with both pos and neg</p></dd>
+
+
+<dt id="arg-beta-cor-thresh">beta_cor_thresh<a class="anchor" aria-label="anchor" href="#arg-beta-cor-thresh"></a></dt>
+<dd><p>optional numeric; if set, drop chromPeaks with
+<code>beta_cor</code> below this value after peak picking (NA scores are kept).
+Requires CentWave <code>verboseBetaColumns</code>. Default <code>NULL</code> skips filtering.</p></dd>
 
 
 <dt id="arg-msdatafiles">msDataFiles<a class="anchor" aria-label="anchor" href="#arg-msdatafiles"></a></dt>
