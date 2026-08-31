@@ -3644,7 +3644,86 @@ fix_xcms_chromPeaks_mz_width <- function(xcms.xcms, ppm = 20, verbose = TRUE) {
 }
 
 
-#' Filter chromPeaks by CentWave `beta_cor` (keep NA).
+#' Re-calculate `beta_cor` / `beta_snr` via `chromPeakSummary()` and write
+#' them onto `chromPeaks` (covers merged `CPM*` peaks).
+#' @noRd
+recalc_xcms_chromPeaks_beta <- function(xcms.xcms, BPPARAM, chunkSize = NULL,
+                                        verbose = TRUE) {
+  pks <- xcms::chromPeaks(xcms.xcms)
+  if (is.null(pks) || length(pks) == 0 || nrow(pks) == 0) {
+    if (isTRUE(verbose)) {
+      message("recalc_xcms_chromPeaks_beta: no chromPeaks to score")
+    }
+    return(xcms.xcms)
+  }
+  n_na_before <- if ("beta_cor" %in% colnames(pks)) {
+    sum(is.na(as.numeric(pks[, "beta_cor"])))
+  } else {
+    nrow(pks)
+  }
+  n_workers <- tryCatch(
+    as.integer(BiocParallel::bpnworkers(BPPARAM)),
+    error = function(e) 2L
+  )
+  if (!is.finite(n_workers) || n_workers < 1L) n_workers <- 2L
+  if (is.null(chunkSize)) chunkSize <- n_workers
+  beta <- tryCatch(
+    as.matrix(xcms::chromPeakSummary(
+      xcms.xcms,
+      xcms::BetaDistributionParam(),
+      BPPARAM = BPPARAM,
+      chunkSize = as.integer(chunkSize)
+    )),
+    error = function(e) {
+      if (isTRUE(verbose)) {
+        message("recalc_xcms_chromPeaks_beta: chromPeakSummary failed; ",
+                conditionMessage(e))
+      }
+      NULL
+    }
+  )
+  if (is.null(beta) || !nrow(beta)) {
+    return(xcms.xcms)
+  }
+  if (is.null(rownames(beta)) || is.null(rownames(pks)) ||
+      (nrow(beta) == nrow(pks) && identical(rownames(beta), rownames(pks)))) {
+    if (nrow(beta) != nrow(pks)) {
+      if (isTRUE(verbose)) {
+        message("recalc_xcms_chromPeaks_beta: row count mismatch; skip write")
+      }
+      return(xcms.xcms)
+    }
+    idx <- seq_len(nrow(pks))
+  } else {
+    idx <- match(rownames(pks), rownames(beta))
+  }
+  for (col in c("beta_cor", "beta_snr")) {
+    if (!col %in% colnames(beta)) next
+    vals <- if (col %in% colnames(pks)) {
+      as.numeric(pks[, col])
+    } else {
+      rep(NA_real_, nrow(pks))
+    }
+    ok <- !is.na(idx)
+    vals[ok] <- as.numeric(beta[idx[ok], col])
+    if (col %in% colnames(pks)) {
+      pks[, col] <- vals
+    } else {
+      pks <- cbind(pks, matrix(vals, ncol = 1L, dimnames = list(rownames(pks), col)))
+    }
+  }
+  xcms::chromPeaks(xcms.xcms) <- pks
+  if (isTRUE(verbose)) {
+    n_na_after <- sum(is.na(as.numeric(pks[, "beta_cor"])))
+    message(sprintf(
+      "recalc_xcms_chromPeaks_beta: beta_cor NA %d -> %d / %d chromPeaks",
+      n_na_before, n_na_after, nrow(pks)
+    ))
+  }
+  xcms.xcms
+}
+
+#' Filter chromPeaks by `beta_cor` (drop NA after re-calc).
 #' @noRd
 filter_xcms_chromPeaks_beta_cor <- function(xcms.xcms, thresh, verbose = TRUE) {
   if (is.null(thresh)) {
@@ -3663,26 +3742,23 @@ filter_xcms_chromPeaks_beta_cor <- function(xcms.xcms, thresh, verbose = TRUE) {
   }
   if (!"beta_cor" %in% colnames(pks)) {
     if (isTRUE(verbose)) {
-      message(
-        "filter_xcms_chromPeaks_beta_cor: beta_cor column missing ",
-        "(not CentWave with verboseBetaColumns); skip"
-      )
+      message("filter_xcms_chromPeaks_beta_cor: beta_cor column missing; skip")
     }
     return(xcms.xcms)
   }
   beta_cor <- as.numeric(pks[, "beta_cor"])
-  n_na <- sum(is.na(beta_cor))
-  n_pass <- sum(!is.na(beta_cor) & beta_cor >= thresh)
-  keep <- is.na(beta_cor) | beta_cor >= thresh
-  n_drop <- sum(!keep)
+  n_na <- sum(!is.finite(beta_cor))
+  n_pass <- sum(is.finite(beta_cor) & beta_cor >= thresh)
+  n_below <- sum(is.finite(beta_cor) & beta_cor < thresh)
+  keep <- is.finite(beta_cor) & beta_cor >= thresh
   n_total <- nrow(pks)
   if (isTRUE(verbose)) {
     message(sprintf(
-      "filter_xcms_chromPeaks_beta_cor: %d/%d peaks with beta_cor >= %.3f were kept (%d NA kept, %d removed)",
-      n_pass, n_total, thresh, n_na, n_drop
+      "filter_xcms_chromPeaks_beta_cor: %d/%d peaks with beta_cor >= %.3f were kept (%d NA removed, %d below thresh removed)",
+      n_pass, n_total, thresh, n_na, n_below
     ))
   }
-  if (n_drop > 0) {
+  if (sum(!keep) > 0) {
     xcms.xcms <- xcms::filterChromPeaks(xcms.xcms, keep = keep)
   }
   xcms.xcms
@@ -3703,9 +3779,10 @@ filter_xcms_chromPeaks_beta_cor <- function(xcms.xcms, thresh, verbose = TRUE) {
 #' @param ion_mode to filter ion_mode, 1: positive, 0: negative, import when scans with both pos and neg
 #' @param peaksGroup `vector` to xcms::PeakGroupsParam(sampleGroups), should contain "QC"
 #' @param centWaveParam xcms::CentWaveParam()
-#' @param beta_cor_thresh optional numeric; if set, drop chromPeaks with
-#'   `beta_cor` below this value after peak picking (NA scores are kept).
-#'   Requires CentWave `verboseBetaColumns`. Default `NULL` skips filtering.
+#' @param beta_cor_thresh optional numeric; if set, re-calculate `beta_cor`
+#'   with \code{chromPeakSummary()} after merge, then drop chromPeaks below
+#'   this value (remaining NA scores are dropped). Default \code{NULL} skips
+#'   re-calc and filtering.
 #'
 #' @return xcms
 #' @export
@@ -3765,10 +3842,17 @@ xcmsProcessingMS1 <- function(xcms.xcms,
       ppm = as.numeric(chromPeaks_max_mz_ppm)
     )
   }
-  xcms.xcms <- filter_xcms_chromPeaks_beta_cor(
-    xcms.xcms,
-    thresh = beta_cor_thresh
-  )
+  if (!is.null(beta_cor_thresh)) {
+    message_with_time(" Re-calculate chromPeak beta_cor...")
+    xcms.xcms <- recalc_xcms_chromPeaks_beta(
+      xcms.xcms,
+      BPPARAM = BPPARAM
+    )
+    xcms.xcms <- filter_xcms_chromPeaks_beta_cor(
+      xcms.xcms,
+      thresh = beta_cor_thresh
+    )
+  }
 
   ### adujust RT
   if(adjustRT){
