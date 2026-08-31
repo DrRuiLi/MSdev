@@ -3671,13 +3671,15 @@ filter_xcms_chromPeaks_beta_cor <- function(xcms.xcms, thresh, verbose = TRUE) {
     return(xcms.xcms)
   }
   beta_cor <- as.numeric(pks[, "beta_cor"])
+  n_na <- sum(is.na(beta_cor))
+  n_pass <- sum(!is.na(beta_cor) & beta_cor >= thresh)
   keep <- is.na(beta_cor) | beta_cor >= thresh
   n_drop <- sum(!keep)
   n_total <- nrow(pks)
   if (isTRUE(verbose)) {
     message(sprintf(
-      "filter_xcms_chromPeaks_beta_cor: %d/%d chromPeaks removed (beta_cor < %.3f; NA kept)",
-      n_drop, n_total, thresh
+      "filter_xcms_chromPeaks_beta_cor: %d/%d peaks with beta_cor >= %.3f were kept (%d NA kept, %d removed)",
+      n_pass, n_total, thresh, n_na, n_drop
     ))
   }
   if (n_drop > 0) {
