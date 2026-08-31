@@ -3744,12 +3744,14 @@ xcmsProcessingMS1 <- function(xcms.xcms,
                             param = xcms_param$findChromPeaks,
                             chunkSize = -1,
                             BPPARAM  = BPPARAM,...)
+  message_with_time(" ", nrow(xcms::chromPeaks(xcms.xcms)), " chromPeaks found")
 
-  #xcms.xcms <- xcms_get_peak_fill(xcms.xcms)
+  message_with_time(" Merge neighboring peaks...")
   mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 3,minProp = 0.5,ppm =  xcms_param$findChromPeaks@ppm)
   xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
                                       BPPARAM  = BPPARAM)
 
+  message_with_time(" Filter chromPeaks...")
   xcms.xcms <- xcms_filter_peaks_NA(xcms.xcms)
   if (!is.null(chromPeaks_fix_mz_ppm)) {
     xcms.xcms <- fix_xcms_chromPeaks_mz_width(
@@ -3771,16 +3773,15 @@ xcmsProcessingMS1 <- function(xcms.xcms,
   ### adujust RT
   if(adjustRT){
 
-    message_with_time(" Adjust RT...")
+    message_with_time(" Group peaks (for RT adjustment)...")
     peaksGroup <- Biobase::pData(xcms.xcms)$sample.type
     peak.density.param <- xcms::PeakDensityParam(sampleGroups = peaksGroup,
                                                  minFraction = 0.4,bw = 30,
                                                  binSize = 0.015)
     xcms.xcms <- xcms::groupChromPeaks(xcms.xcms,param = peak.density.param)
 
-
-
     if (length(Biobase::sampleNames(xcms.xcms))>1) {
+      message_with_time(" Adjust RT...")
       if (sum(peaksGroup=="QC") <2 ) {
         rt.adjust.param <- xcms::PeakGroupsParam(minFraction = 0.4,
                                                  #subset = which(peaksGroup == "QC"),
