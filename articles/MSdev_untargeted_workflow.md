@@ -91,10 +91,11 @@ here;
 [`MSdev_xcmsProcessing()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
 uses the project sample groups when it runs. CentWave
 `verboseBetaColumns = TRUE` writes `beta_cor` / `beta_snr` onto
-`chromPeaks` during picking (no extra EIC pass). Optional peak-shape
-filtering: `MSdev_xcmsProcessing(object, beta_cor_thresh = 0.5)`
-(default `NULL` keeps all peaks; `NA` `beta_cor` from merged peaks is
-kept).
+`chromPeaks` during picking. Optional peak-shape filtering:
+`MSdev_xcmsProcessing(object, beta_cor_thresh = 0.5)` re-calculates
+scores with `chromPeakSummary()` after merge (so `CPM*` peaks are
+scored), then keeps peaks with `beta_cor >=` the threshold (remaining
+`NA` are dropped). Default `NULL` skips re-calc and filtering.
 
 ------------------------------------------------------------------------
 

@@ -148,11 +148,13 @@ values from a recent lipidomics run):</p>
 placeholder here; <code><a href="../reference/MSdev_workflow.html">MSdev_xcmsProcessing()</a></code> uses the project
 sample groups when it runs. CentWave
 <code>verboseBetaColumns = TRUE</code> writes <code>beta_cor</code> /
-<code>beta_snr</code> onto <code>chromPeaks</code> during picking (no
-extra EIC pass). Optional peak-shape filtering:
+<code>beta_snr</code> onto <code>chromPeaks</code> during picking.
+Optional peak-shape filtering:
 <code>MSdev_xcmsProcessing(object, beta_cor_thresh = 0.5)</code>
-(default <code>NULL</code> keeps all peaks; <code>NA</code>
-<code>beta_cor</code> from merged peaks is kept).</p>
+re-calculates scores with <code>chromPeakSummary()</code> after merge
+(so <code>CPM*</code> peaks are scored), then keeps peaks with
+<code>beta_cor &gt;=</code> the threshold (remaining <code>NA</code> are
+dropped). Default <code>NULL</code> skips re-calc and filtering.</p>
 <hr>
 </div>
 <div class="section level2">
