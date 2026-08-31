@@ -3644,12 +3644,66 @@ fix_xcms_chromPeaks_mz_width <- function(xcms.xcms, ppm = 20, verbose = TRUE) {
 }
 
 
+#' Filter chromPeaks by CentWave `beta_cor` (keep NA).
+#' @noRd
+filter_xcms_chromPeaks_beta_cor <- function(xcms.xcms, thresh, verbose = TRUE) {
+  if (is.null(thresh)) {
+    return(xcms.xcms)
+  }
+  thresh <- as.numeric(thresh)
+  if (length(thresh) != 1L || !is.finite(thresh)) {
+    stop("beta_cor_thresh must be a single finite number")
+  }
+  pks <- xcms::chromPeaks(xcms.xcms)
+  if (is.null(pks) || length(pks) == 0 || nrow(pks) == 0) {
+    if (isTRUE(verbose)) {
+      message("filter_xcms_chromPeaks_beta_cor: no chromPeaks to filter")
+    }
+    return(xcms.xcms)
+  }
+  if (!"beta_cor" %in% colnames(pks)) {
+    if (isTRUE(verbose)) {
+      message(
+        "filter_xcms_chromPeaks_beta_cor: beta_cor column missing ",
+        "(not CentWave with verboseBetaColumns); skip"
+      )
+    }
+    return(xcms.xcms)
+  }
+  beta_cor <- as.numeric(pks[, "beta_cor"])
+  keep <- is.na(beta_cor) | beta_cor >= thresh
+  n_drop <- sum(!keep)
+  n_total <- nrow(pks)
+  if (isTRUE(verbose)) {
+    message(sprintf(
+      "filter_xcms_chromPeaks_beta_cor: %d/%d chromPeaks removed (beta_cor < %.3f; NA kept)",
+      n_drop, n_total, thresh
+    ))
+  }
+  if (n_drop > 0) {
+    xcms.xcms <- xcms::filterChromPeaks(xcms.xcms, keep = keep)
+  }
+  xcms.xcms
+}
+
+#' Enable CentWave `verboseBetaColumns` when the param slot exists.
+#' @noRd
+.enable_verboseBetaColumns <- function(param) {
+  if (methods::.hasSlot(param, "verboseBetaColumns")) {
+    param@verboseBetaColumns <- TRUE
+  }
+  param
+}
+
 #' @title xcmsProcessingMS1
 #' @description Import `msDataFiles`, filter `ion_mode`, find peaks using `centWaveParam`, correct RT, group peaks using `peaksGroup`, fill peaks by xcms at MS1 Level
 #' @param msDataFiles `char` ms file (full) paths
 #' @param ion_mode to filter ion_mode, 1: positive, 0: negative, import when scans with both pos and neg
 #' @param peaksGroup `vector` to xcms::PeakGroupsParam(sampleGroups), should contain "QC"
 #' @param centWaveParam xcms::CentWaveParam()
+#' @param beta_cor_thresh optional numeric; if set, drop chromPeaks with
+#'   `beta_cor` below this value after peak picking (NA scores are kept).
+#'   Requires CentWave `verboseBetaColumns`. Default `NULL` skips filtering.
 #'
 #' @return xcms
 #' @export
@@ -3663,6 +3717,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
                               adjustRT = T,
                               chromPeaks_fix_mz_ppm = NULL,
                               chromPeaks_max_mz_ppm = NULL,
+                              beta_cor_thresh = NULL,
                               BPPARAM  = BiocParallel::SnowParam(workers = 4,progressbar = T),
                               ...){
 
@@ -3677,6 +3732,9 @@ xcmsProcessingMS1 <- function(xcms.xcms,
 
   xcms.xcms <- ProtGenerics::filterPolarity(xcms.xcms, ion_mode)
 
+  xcms_param$findChromPeaks <- .enable_verboseBetaColumns(
+    xcms_param$findChromPeaks
+  )
 
   ### Find peaks
   message_with_time(" Find peaks...")
@@ -3703,6 +3761,10 @@ xcmsProcessingMS1 <- function(xcms.xcms,
       ppm = as.numeric(chromPeaks_max_mz_ppm)
     )
   }
+  xcms.xcms <- filter_xcms_chromPeaks_beta_cor(
+    xcms.xcms,
+    thresh = beta_cor_thresh
+  )
 
   ### adujust RT
   if(adjustRT){

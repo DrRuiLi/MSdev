@@ -40,18 +40,21 @@ MSdev_param <- function(){
         ppm = 25,
         peakwidth = c(5,50),
         snthresh = 100,
-        prefilter = c(3,100)),
+        prefilter = c(3,100),
+        verboseBetaColumns = TRUE),
       QEplus = xcms::CentWaveParam(
         ppm = 20,
         peakwidth = c(5,50),
         snthresh = 100,
-        prefilter = c(3,1000)
+        prefilter = c(3,1000),
+        verboseBetaColumns = TRUE
       ),
       Default = xcms::CentWaveParam(
         ppm = 20,
         peakwidth = c(5,50),
         snthresh = 100,
-        prefilter = c(3,1000)
+        prefilter = c(3,1000),
+        verboseBetaColumns = TRUE
       )
 
 

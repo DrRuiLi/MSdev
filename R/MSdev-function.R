@@ -331,7 +331,8 @@ MSdev_add_sample <- function(object,
 #' @describeIn MSdev_workflow use xcms to Processing data
 #' @param object MSdev
 #' @param BPPARAM BiocParallel backend passed to xcms peak processing.
-#' @param ... additional arguments passed to xcms functions
+#' @param ... additional arguments passed to \code{\link{xcmsProcessingMS1}}
+#'   (for example \code{beta_cor_thresh}, \code{chromPeaks_fix_mz_ppm}).
 #' @return MSdev
 #' @export
 MSdev_xcmsProcessing <- function(object,
@@ -517,7 +518,7 @@ MSdev_get_xcms <- function(object){
 #' @description Perform peak detection on DDA data using xcms, grouping features across samples.
 #' @param object MSdev
 #' @param BPPARAM BiocParallel backend passed to xcms peak processing.
-#' @param ... additional arguments passed to xcms functions
+#' @param ... additional arguments passed to \code{\link{xcmsProcessingMS1}}.
 #' @return MSdev
 #' @export
 xcmsProcessingMSdev.DDA <- function(object,
@@ -711,7 +712,7 @@ get_MSdev_xcms_param_by_exp <- function(object){
   MS.instru <-object@projectInfo$msModel
   MS.LC.rate <- object@experimentInfo@Chroma_gradient[[1]]$Flow_rate%>%mean
   MS.LC.time <- object@experimentInfo@Chroma_gradient[[1]]$time%>%max
-  cwp <- xcms::CentWaveParam(fitgauss = F,verboseColumns = T)
+  cwp <- xcms::CentWaveParam(fitgauss = F, verboseColumns = T, verboseBetaColumns = T)
 
   ### ppm
   cwp@ppm <- switch(MS.instru,
