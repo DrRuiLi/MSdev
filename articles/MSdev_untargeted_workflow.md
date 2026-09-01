@@ -92,10 +92,10 @@ here;
 uses the project sample groups when it runs. CentWave
 `verboseBetaColumns = TRUE` writes `beta_cor` / `beta_snr` onto
 `chromPeaks` during picking. Optional peak-shape filtering:
-`MSdev_xcmsProcessing(object, beta_cor_thresh = 0.5)` re-calculates
-scores with `chromPeakSummary()` after merge (so `CPM*` peaks are
-scored), then keeps peaks with `beta_cor >=` the threshold (remaining
-`NA` are dropped). Default `NULL` skips re-calc and filtering.
+`MSdev_xcmsProcessing(object, beta_cor_thresh = 0.5)` fills NA scores
+with `chromPeakSummary()` after merge (finite CentWave scores are kept),
+then keeps peaks with `beta_cor >=` the threshold (remaining `NA` are
+dropped). Default `NULL` skips re-calc and filtering.
 
 ------------------------------------------------------------------------
 

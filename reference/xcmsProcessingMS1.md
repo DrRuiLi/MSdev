@@ -30,10 +30,10 @@ xcmsProcessingMS1(
 
 - beta_cor_thresh:
 
-  optional numeric; if set, re-calculate `beta_cor` with
-  `chromPeakSummary()` after merge, then drop chromPeaks below this
-  value (remaining NA scores are dropped). Default `NULL` skips re-calc
-  and filtering.
+  optional numeric; if set, fill NA `beta_cor` after merge with
+  `chromPeakSummary()` (finite CentWave scores are kept), then drop
+  chromPeaks below this value (remaining NA scores are dropped). Default
+  `NULL` skips fill and filtering.
 
 - msDataFiles:
 

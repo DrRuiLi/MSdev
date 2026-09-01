@@ -150,9 +150,9 @@ sample groups when it runs. CentWave
 <code>verboseBetaColumns = TRUE</code> writes <code>beta_cor</code> /
 <code>beta_snr</code> onto <code>chromPeaks</code> during picking.
 Optional peak-shape filtering:
-<code>MSdev_xcmsProcessing(object, beta_cor_thresh = 0.5)</code>
-re-calculates scores with <code>chromPeakSummary()</code> after merge
-(so <code>CPM*</code> peaks are scored), then keeps peaks with
+<code>MSdev_xcmsProcessing(object, beta_cor_thresh = 0.5)</code> fills
+NA scores with <code>chromPeakSummary()</code> after merge (finite
+CentWave scores are kept), then keeps peaks with
 <code>beta_cor &gt;=</code> the threshold (remaining <code>NA</code> are
 dropped). Default <code>NULL</code> skips re-calc and filtering.</p>
 <hr>
