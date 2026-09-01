@@ -3644,8 +3644,9 @@ fix_xcms_chromPeaks_mz_width <- function(xcms.xcms, ppm = 20, verbose = TRUE) {
 }
 
 
-#' Re-calculate `beta_cor` / `beta_snr` via `chromPeakSummary()` and write
-#' them onto `chromPeaks` (covers merged `CPM*` peaks).
+#' Fill NA `beta_cor` / `beta_snr` via `chromPeakSummary()`.
+#' Finite CentWave scores are never overwritten (merged peaks are NA after
+#' refine and are the intended fill targets).
 #' @noRd
 recalc_xcms_chromPeaks_beta <- function(xcms.xcms, BPPARAM, chunkSize = NULL,
                                         verbose = TRUE) {
@@ -3657,7 +3658,7 @@ recalc_xcms_chromPeaks_beta <- function(xcms.xcms, BPPARAM, chunkSize = NULL,
     return(xcms.xcms)
   }
   n_na_before <- if ("beta_cor" %in% colnames(pks)) {
-    sum(is.na(as.numeric(pks[, "beta_cor"])))
+    sum(!is.finite(as.numeric(pks[, "beta_cor"])))
   } else {
     nrow(pks)
   }
@@ -3697,6 +3698,7 @@ recalc_xcms_chromPeaks_beta <- function(xcms.xcms, BPPARAM, chunkSize = NULL,
   } else {
     idx <- match(rownames(pks), rownames(beta))
   }
+  n_filled <- 0L
   for (col in c("beta_cor", "beta_snr")) {
     if (!col %in% colnames(beta)) next
     vals <- if (col %in% colnames(pks)) {
@@ -3704,8 +3706,14 @@ recalc_xcms_chromPeaks_beta <- function(xcms.xcms, BPPARAM, chunkSize = NULL,
     } else {
       rep(NA_real_, nrow(pks))
     }
-    ok <- !is.na(idx)
-    vals[ok] <- as.numeric(beta[idx[ok], col])
+    fill <- !is.na(idx) & !is.finite(vals)
+    if (any(fill)) {
+      newv <- as.numeric(beta[idx[fill], col])
+      vals[fill] <- newv
+      if (identical(col, "beta_cor")) {
+        n_filled <- sum(is.finite(newv))
+      }
+    }
     if (col %in% colnames(pks)) {
       pks[, col] <- vals
     } else {
@@ -3714,10 +3722,10 @@ recalc_xcms_chromPeaks_beta <- function(xcms.xcms, BPPARAM, chunkSize = NULL,
   }
   xcms::chromPeaks(xcms.xcms) <- pks
   if (isTRUE(verbose)) {
-    n_na_after <- sum(is.na(as.numeric(pks[, "beta_cor"])))
+    n_na_after <- sum(!is.finite(as.numeric(pks[, "beta_cor"])))
     message(sprintf(
-      "recalc_xcms_chromPeaks_beta: beta_cor NA %d -> %d / %d chromPeaks",
-      n_na_before, n_na_after, nrow(pks)
+      "recalc_xcms_chromPeaks_beta: beta_cor NA %d -> %d / %d chromPeaks (%d filled, finite CentWave scores kept)",
+      n_na_before, n_na_after, nrow(pks), n_filled
     ))
   }
   xcms.xcms
@@ -3779,10 +3787,10 @@ filter_xcms_chromPeaks_beta_cor <- function(xcms.xcms, thresh, verbose = TRUE) {
 #' @param ion_mode to filter ion_mode, 1: positive, 0: negative, import when scans with both pos and neg
 #' @param peaksGroup `vector` to xcms::PeakGroupsParam(sampleGroups), should contain "QC"
 #' @param centWaveParam xcms::CentWaveParam()
-#' @param beta_cor_thresh optional numeric; if set, re-calculate `beta_cor`
-#'   with \code{chromPeakSummary()} after merge, then drop chromPeaks below
-#'   this value (remaining NA scores are dropped). Default \code{NULL} skips
-#'   re-calc and filtering.
+#' @param beta_cor_thresh optional numeric; if set, fill NA `beta_cor`
+#'   after merge with \code{chromPeakSummary()} (finite CentWave scores are
+#'   kept), then drop chromPeaks below this value (remaining NA scores are
+#'   dropped). Default \code{NULL} skips fill and filtering.
 #'
 #' @return xcms
 #' @export
@@ -3843,7 +3851,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
     )
   }
   if (!is.null(beta_cor_thresh)) {
-    message_with_time(" Re-calculate chromPeak beta_cor...")
+    message_with_time(" Fill NA chromPeak beta_cor...")
     xcms.xcms <- recalc_xcms_chromPeaks_beta(
       xcms.xcms,
       BPPARAM = BPPARAM
