@@ -1700,7 +1700,7 @@ MSdev_import_sampleinfo <- function(object,
 MSdev_msConvert <- function(object,
                             format.to = "mzML",
                             BPPARAM = BiocParallel::SnowParam(
-                              workers = max(1L, parallel::detectCores() - 1L),
+                              workers = 40,
                               progressbar = TRUE
                             )) {
 
