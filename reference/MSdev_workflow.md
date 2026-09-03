@@ -87,8 +87,7 @@ MSdev_import_sampleinfo(object, file = NULL, sheet = 1)
 MSdev_msConvert(
   object,
   format.to = "mzML",
-  BPPARAM = BiocParallel::SnowParam(workers = max(1L, parallel::detectCores() - 1L),
-    progressbar = TRUE)
+  BPPARAM = BiocParallel::SnowParam(workers = 40, progressbar = TRUE)
 )
 
 MSdev_extract_Spectra(object, rt.tol = 10, eval.noise = F, eval.ms1 = F)
