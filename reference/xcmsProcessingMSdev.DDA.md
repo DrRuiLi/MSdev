@@ -8,7 +8,8 @@ samples.
 ``` r
 xcmsProcessingMSdev.DDA(
   object,
-  BPPARAM = BiocParallel::SnowParam(workers = 4, progressbar = TRUE),
+  BPPARAM = BiocParallel::SnowParam(workers = max(1L, floor(parallel::detectCores()/3)),
+    progressbar = TRUE),
   ...
 )
 ```

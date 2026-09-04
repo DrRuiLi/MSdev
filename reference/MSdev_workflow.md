@@ -70,7 +70,8 @@ MSdev_add_sample(object, raw.data.dir = object@projectInfo$rawDataDir)
 
 MSdev_xcmsProcessing(
   object,
-  BPPARAM = BiocParallel::SnowParam(workers = 4, progressbar = TRUE),
+  BPPARAM = BiocParallel::SnowParam(workers = max(1L, floor(parallel::detectCores()/3)),
+    progressbar = TRUE),
   ...
 )
 
@@ -87,7 +88,8 @@ MSdev_import_sampleinfo(object, file = NULL, sheet = 1)
 MSdev_msConvert(
   object,
   format.to = "mzML",
-  BPPARAM = BiocParallel::SnowParam(workers = 40, progressbar = TRUE)
+  BPPARAM = BiocParallel::SnowParam(workers = max(1L, floor(parallel::detectCores()/3)),
+    progressbar = TRUE)
 )
 
 MSdev_extract_Spectra(object, rt.tol = 10, eval.noise = F, eval.ms1 = F)

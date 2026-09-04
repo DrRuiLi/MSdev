@@ -168,7 +168,8 @@ metabolite/candidate filtering.</p>
 <span></span>
 <span><span class="fu">MSdev_xcmsProcessing</span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
-<span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SnowParam-class.html" class="external-link">SnowParam</a></span><span class="op">(</span>workers <span class="op">=</span> <span class="fl">4</span>, progressbar <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SnowParam-class.html" class="external-link">SnowParam</a></span><span class="op">(</span>workers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">floor</a></span><span class="op">(</span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">/</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    progressbar <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -185,7 +186,8 @@ metabolite/candidate filtering.</p>
 <span><span class="fu">MSdev_msConvert</span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
 <span>  format.to <span class="op">=</span> <span class="st">"mzML"</span>,</span>
-<span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SnowParam-class.html" class="external-link">SnowParam</a></span><span class="op">(</span>workers <span class="op">=</span> <span class="fl">40</span>, progressbar <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SnowParam-class.html" class="external-link">SnowParam</a></span><span class="op">(</span>workers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">floor</a></span><span class="op">(</span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">/</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    progressbar <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">MSdev_extract_Spectra</span><span class="op">(</span><span class="va">object</span>, rt.tol <span class="op">=</span> <span class="fl">10</span>, eval.noise <span class="op">=</span> <span class="cn">F</span>, eval.ms1 <span class="op">=</span> <span class="cn">F</span><span class="op">)</span></span>

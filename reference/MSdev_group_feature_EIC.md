@@ -22,7 +22,8 @@ MSdev_group_feature_EIC(
   absent_sim = 0,
   method = c("complete_linkage", "hclust_average"),
   n_chunks = NULL,
-  BPPARAM = SnowParam(workers = parallel::detectCores() - 1, progressbar = TRUE)
+  BPPARAM = SnowParam(workers = max(1L, floor(parallel::detectCores()/2)), progressbar =
+    TRUE)
 )
 ```
 

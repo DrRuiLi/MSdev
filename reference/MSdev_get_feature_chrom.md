@@ -9,7 +9,8 @@ Extract chromatograms for specified features from xcms data via
 ``` r
 MSdev_get_feature_chrom(
   object,
-  BPPARAM = SnowParam(workers = parallel::detectCores() - 1, progressbar = T),
+  BPPARAM = SnowParam(workers = max(1L, floor(parallel::detectCores()/2)), progressbar =
+    T),
   feature.list = NULL
 )
 ```
