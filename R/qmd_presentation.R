@@ -3,7 +3,7 @@
 #' Starts \code{quarto::quarto_preview()} so a revealjs (or html) slide
 #' deck is available locally. With \code{frp = TRUE} the preview is
 #' also published through FRP using \code{.cursor/frp.toml}. The R
-#' session stays usable. Call \code{\link{stop_qmd_presentation}()}
+#' session stays usable. Call \code{\link{qmd_stop_presentation}()}
 #' to stop the server.
 #'
 #' @param qmd Path to a \code{.qmd} file, or a directory that contains one.
@@ -28,13 +28,13 @@
 #'
 #' @examples
 #' \dontrun{
-#' render_qmd_presentation("path/to/slides.qmd")
-#' stop_qmd_presentation()
+#' qmd_render_presentation("path/to/slides.qmd")
+#' qmd_stop_presentation()
 #' }
 #'
 #' @seealso \code{\link[quarto]{quarto_preview}}
 #' @export
-render_qmd_presentation <- function(qmd,
+qmd_render_presentation <- function(qmd,
                                     port = NULL,
                                     host = "0.0.0.0",
                                     render = "auto",
@@ -43,7 +43,7 @@ render_qmd_presentation <- function(qmd,
                                     quiet = FALSE,
                                     frp = TRUE) {
   if (!requireNamespace("quarto", quietly = TRUE)) {
-    stop("Package 'quarto' is required for render_qmd_presentation()")
+    stop("Package 'quarto' is required for qmd_render_presentation()")
   }
   qmd <- .msdev_resolve_qmd(qmd)
   if (is.null(port) && isTRUE(frp)) {
@@ -58,7 +58,7 @@ render_qmd_presentation <- function(qmd,
     render <- "auto"
   }
 
-  stop_qmd_presentation(port, quiet = TRUE)
+  qmd_stop_presentation(port, quiet = TRUE)
 
   lan_bind <- host %in% c("0.0.0.0", "::")
   url <- quarto::quarto_preview(
@@ -94,7 +94,7 @@ render_qmd_presentation <- function(qmd,
     if (!is.null(public_url)) {
       message("Public: ", public_url)
     }
-    message("Stop with stop_qmd_presentation()")
+    message("Stop with qmd_stop_presentation()")
   }
   invisible(local_url)
 }
@@ -108,9 +108,9 @@ render_qmd_presentation <- function(qmd,
 #'   \code{remotePort} from \code{.cursor/frp.toml} when that file exists.
 #' @param quiet Suppress messages.
 #'
-#' @rdname render_qmd_presentation
+#' @rdname qmd_render_presentation
 #' @export
-stop_qmd_presentation <- function(port = NULL, quiet = FALSE) {
+qmd_stop_presentation <- function(port = NULL, quiet = FALSE) {
   .msdev_frp_stop(quiet = TRUE)
   if (is.null(port)) {
     port <- tryCatch(.msdev_frp_settings()$remote_port, error = function(e) NULL)
