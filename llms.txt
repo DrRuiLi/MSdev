@@ -415,8 +415,8 @@ MIT © Rui Li
 - [`plotly_Spectra_mirror()`](https://drruili.github.io/MSdev/reference/plotly_Spectra_mirror.md)
   : Create Interactive Mirror Plot of Two Spectra
 
-- [`render_qmd_presentation()`](https://drruili.github.io/MSdev/reference/render_qmd_presentation.md)
-  [`stop_qmd_presentation()`](https://drruili.github.io/MSdev/reference/render_qmd_presentation.md)
+- [`qmd_render_presentation()`](https://drruili.github.io/MSdev/reference/qmd_render_presentation.md)
+  [`qmd_stop_presentation()`](https://drruili.github.io/MSdev/reference/qmd_render_presentation.md)
   : Render a Quarto presentation and serve it on a local port
 
 - [`setRStudioDir()`](https://drruili.github.io/MSdev/reference/setRStudioDir.md)
