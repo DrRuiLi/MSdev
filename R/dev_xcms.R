@@ -3805,7 +3805,10 @@ xcmsProcessingMS1 <- function(xcms.xcms,
                               chromPeaks_fix_mz_ppm = NULL,
                               chromPeaks_max_mz_ppm = NULL,
                               beta_cor_thresh = NULL,
-                              BPPARAM  = BiocParallel::SnowParam(workers = 4,progressbar = T),
+                              BPPARAM  = BiocParallel::SnowParam(
+                                workers = max(1L, floor(parallel::detectCores() / 3)),
+                                progressbar = T
+                              ),
                               ...){
 
 

@@ -336,7 +336,10 @@ MSdev_add_sample <- function(object,
 #' @return MSdev
 #' @export
 MSdev_xcmsProcessing <- function(object,
-                                 BPPARAM = BiocParallel::SnowParam(workers = 4, progressbar = TRUE),
+                                 BPPARAM = BiocParallel::SnowParam(
+                                   workers = max(1L, floor(parallel::detectCores() / 3)),
+                                   progressbar = TRUE
+                                 ),
                                  ...){
 
   MS.mode <- object@projectInfo$msAcquisition
@@ -522,7 +525,10 @@ MSdev_get_xcms <- function(object){
 #' @return MSdev
 #' @export
 xcmsProcessingMSdev.DDA <- function(object,
-                                    BPPARAM = BiocParallel::SnowParam(workers = 4, progressbar = TRUE),
+                                    BPPARAM = BiocParallel::SnowParam(
+                                      workers = max(1L, floor(parallel::detectCores() / 3)),
+                                      progressbar = TRUE
+                                    ),
                                     ...){
 
   xcms.param <- get_MSdev_param(object )
@@ -1700,7 +1706,7 @@ MSdev_import_sampleinfo <- function(object,
 MSdev_msConvert <- function(object,
                             format.to = "mzML",
                             BPPARAM = BiocParallel::SnowParam(
-                              workers = 40,
+                              workers = max(1L, floor(parallel::detectCores() / 3)),
                               progressbar = TRUE
                             )) {
 
@@ -2821,7 +2827,7 @@ get_MSdev_spectra_target_list <- function(object,
 #' @export
 #'
 MSdev_get_feature_chrom <- function(object,BPPARAM =  SnowParam(
-  workers  = parallel::detectCores() -1,
+  workers  = max(1L, floor(parallel::detectCores() / 2)),
   progressbar = T),feature.list = NULL){
 
   for (i in 0:1) {

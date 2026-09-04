@@ -803,7 +803,7 @@ MSdev_group_feature_EIC <- function(object,
                                     method = c("complete_linkage", "hclust_average"),
                                     n_chunks = NULL,
                                     BPPARAM = SnowParam(
-                                      workers = parallel::detectCores() - 1,
+                                      workers = max(1L, floor(parallel::detectCores() / 2)),
                                       progressbar = TRUE)) {
   stopifnot(inherits(object, "MSdev"))
   method <- match.arg(method)
