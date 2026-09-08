@@ -3849,8 +3849,15 @@ xcmsProcessingMS1 <- function(xcms.xcms,
 
   message_with_time(" Merge neighboring peaks...")
   mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 3,minProp = 0.5,ppm =  xcms_param$findChromPeaks@ppm)
-  xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
-                                      BPPARAM  = BPPARAM)
+  n_workers <- max(2L, as.integer(BiocParallel::bpnworkers(BPPARAM)))
+  if (inherits(xcms.xcms, "XcmsExperiment") || inherits(xcms.xcms, "MsExperiment")) {
+    xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
+                                        chunkSize = n_workers,
+                                        BPPARAM  = BPPARAM)
+  } else {
+    xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
+                                        BPPARAM  = BPPARAM)
+  }
 
   message_with_time(" Filter chromPeaks...")
   xcms.xcms <- xcms_filter_peaks_NA(xcms.xcms)
