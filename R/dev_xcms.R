@@ -647,8 +647,12 @@ get_xcms_peaks_chromatogram <- function(xcms.xcms,
 #' Build feature mz/rt area matrix
 #' @noRd
 .feature_mz_rt_boxes <- function(xcms.xcms, features.data, rt = c("expand", "identity", "all"),
-                                 expandRt = 15, mz.expand = 0) {
+                                 expandRt = 15, mz.expand = 0, expandMzppm = 0) {
   rt <- match.arg(rt)
+  if (!is.numeric(expandMzppm) || length(expandMzppm) != 1L ||
+      !is.finite(expandMzppm) || expandMzppm < 0) {
+    stop("'expandMzppm' must be a non-negative finite numeric(1)")
+  }
   n <- nrow(features.data)
   has_peak_rt <- all(c("peakRtMin", "peakRtMax") %in% colnames(features.data))
   has_peak_mz <- all(c("peakMzMin", "peakMzMax") %in% colnames(features.data))
@@ -697,6 +701,10 @@ get_xcms_peaks_chromatogram <- function(xcms.xcms,
     mz_range <- mzr[, 2L] - mzr[, 1L]
     mzr[, 1L] <- mzr[, 1L] - mz_range * mz.expand
     mzr[, 2L] <- mzr[, 2L] + mz_range * mz.expand
+  }
+  if (expandMzppm > 0) {
+    mzr[, 1L] <- mzr[, 1L] * (1 - expandMzppm / 1e6)
+    mzr[, 2L] <- mzr[, 2L] * (1 + expandMzppm / 1e6)
   }
   rownames(mzr) <- rownames(features.data)
   rownames(rtr) <- rownames(features.data)
@@ -779,6 +787,9 @@ get_xcms_peaks_chromatogram <- function(xcms.xcms,
 #' @param rt one of \code{c("all","expand","identity")}.
 #' @param expandRt seconds added each side when \code{rt="expand"}.
 #' @param mz.expand fraction of mz width to expand on each side.
+#' @param expandMzppm numeric(1). Extra m/z pad in ppm applied after
+#'   \code{mz.expand}: \code{mzmin = mzmin * (1 - ppm/1e6)},
+#'   \code{mzmax = mzmax * (1 + ppm/1e6)}. Default \code{0}.
 #' @param aggregationFun passed to \code{get_xcms_chromatogram}.
 #' @param attachPeaks logical; attach feature chromPeaks into
 #'   \code{XChromatograms} (needed for \code{removeIntensity(..., "outside_chromPeak")}).
@@ -796,6 +807,7 @@ get_xcms_feature_chromatogram <- function(xcms.xcms,
                                           rt = c("expand", "identity", "all"),
                                           expandRt = 15,
                                           mz.expand = 0,
+                                          expandMzppm = 0,
                                           aggregationFun = "max",
                                           attachPeaks = TRUE,
                                           BPPARAM = SerialParam(progressbar = TRUE)) {
@@ -847,7 +859,8 @@ get_xcms_feature_chromatogram <- function(xcms.xcms,
 
   boxes <- .feature_mz_rt_boxes(
     xcms.xcms, features.data,
-    rt = rt, expandRt = expandRt, mz.expand = mz.expand
+    rt = rt, expandRt = expandRt, mz.expand = mz.expand,
+    expandMzppm = expandMzppm
   )
   x.chrom <- get_xcms_chromatogram(
     xcms.sub,

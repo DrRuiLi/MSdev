@@ -2823,12 +2823,16 @@ get_MSdev_spectra_target_list <- function(object,
 #' @param object MSdev object
 #' @param BPPARAM BiocParallel backend for parallel processing
 #' @param feature.list optional list of feature IDs with names "Positive" and "Negative"
+#' @param expandMzppm numeric(1). Passed to
+#'   \code{\link{get_xcms_feature_chromatogram}}: extra m/z pad in ppm
+#'   (\code{mzmin * (1 - ppm/1e6)}, \code{mzmax * (1 + ppm/1e6)}).
+#'   Default \code{0}.
 #' @return MSdev object with chromatograms stored
 #' @export
 #'
 MSdev_get_feature_chrom <- function(object,BPPARAM =  SnowParam(
   workers  = max(1L, floor(parallel::detectCores() / 2)),
-  progressbar = T),feature.list = NULL){
+  progressbar = T),feature.list = NULL, expandMzppm = 0){
 
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
@@ -2848,6 +2852,7 @@ MSdev_get_feature_chrom <- function(object,BPPARAM =  SnowParam(
       feature.id = fid,
       selected_sample = "all",
       rt = "all",
+      expandMzppm = expandMzppm,
       aggregationFun = "max",
       attachPeaks = TRUE,
       BPPARAM = BPPARAM

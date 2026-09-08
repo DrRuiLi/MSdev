@@ -771,6 +771,11 @@ xcms_group_feature_EIC <- function(xcms.xcms,
 #' @param min_width numeric(1). Minimum RT window width (seconds) after
 #'   \code{expandRt}; shorter windows are padded equally on both sides.
 #'   Default \code{20}.
+#' @param expandMzppm numeric(1). Extra m/z pad in ppm used when extracting
+#'   chromatograms via \code{\link{MSdev_get_feature_chrom}}
+#'   (\code{mzmin * (1 - ppm/1e6)}, \code{mzmax * (1 + ppm/1e6)}).
+#'   Default \code{0}. Has no effect on already-stored chromatograms unless
+#'   \code{forceExtractChrom = TRUE}.
 #' @param selected_sample NULL, integer index/indices, or sample name(s)
 #'   (\code{sample.name} / chromatogram colnames). NULL uses all samples.
 #' @param forceExtractChrom logical(1). If TRUE, (re)extract chromatograms via
@@ -796,6 +801,7 @@ MSdev_group_feature_EIC <- function(object,
                                     threshold = 0.5,
                                     expandRt = 2,
                                     min_width = 20,
+                                    expandMzppm = 0,
                                     selected_sample = NULL,
                                     forceExtractChrom = FALSE,
                                     keep_Similarity_Matrix = TRUE,
@@ -812,6 +818,10 @@ MSdev_group_feature_EIC <- function(object,
   }
   if (!is.numeric(threshold) || length(threshold) != 1L) {
     stop("'threshold' must be numeric(1)")
+  }
+  if (!is.numeric(expandMzppm) || length(expandMzppm) != 1L ||
+      !is.finite(expandMzppm) || expandMzppm < 0) {
+    stop("'expandMzppm' must be a non-negative finite numeric(1)")
   }
   if (length(absent_sim) != 1L || !(is.na(absent_sim) || is.numeric(absent_sim))) {
     stop("'absent_sim' must be a single numeric or NA")
@@ -833,7 +843,17 @@ MSdev_group_feature_EIC <- function(object,
   }
   if (need_chrom) {
     message_with_time("Extracting feature chromatograms via MSdev_get_feature_chrom")
-    object <- MSdev_get_feature_chrom(object, BPPARAM = BPPARAM)
+    object <- MSdev_get_feature_chrom(
+      object,
+      BPPARAM = BPPARAM,
+      expandMzppm = expandMzppm
+    )
+  } else if (expandMzppm > 0) {
+    message(
+      "expandMzppm=", expandMzppm,
+      " ignored: stored chromatograms reused. ",
+      "Set forceExtractChrom=TRUE to re-extract with the wider m/z box."
+    )
   }
 
   for (pol in polarities) {

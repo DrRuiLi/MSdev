@@ -438,8 +438,12 @@ ggplot_irange <- function(IR, scale = 1e-6){
 #' @param min_width numeric(1). Minimum RT window width (seconds) after
 #'   \code{expandRt}; shorter windows are padded equally on both sides
 #'   (default \code{20}).
-#' @param max_features Maximum features kept per group (ordered by
-#'   \code{rtmed}). \code{NULL} keeps all members (default).
+#' @param max_features Maximum features kept per group. \code{NULL} keeps all
+#'   members (default). Within each group, features are ordered by
+#'   \code{order_by}.
+#' @param order_by \code{"rtmed"} (default) or \code{"mzmed"}: sort features
+#'   within each group. Groups themselves keep the order of
+#'   \code{feature_group}.
 #' @param sample_index Sample index into
 #'   \code{otherData(xcms)$EIC_Similarity} when several samples are stored
 #'   (default \code{1L}).
@@ -454,6 +458,7 @@ plot_xcms_feature_group_EIC_comparasion <- function(xcms,
                                                expandRt = 2,
                                                min_width = 20,
                                                max_features = NULL,
+                                               order_by = c("rtmed", "mzmed"),
                                                sample_index = 1L,
                                                title = NULL) {
   if (!(inherits(xcms, "XcmsExperiment") ||
@@ -482,6 +487,7 @@ plot_xcms_feature_group_EIC_comparasion <- function(xcms,
       !is.finite(min_width) || min_width < 0) {
     stop("`min_width` must be a non-negative finite numeric(1)")
   }
+  order_by <- match.arg(order_by)
 
   fdf <- as.data.frame(xcms::featureDefinitions(xcms))
   fg_all <- as.character(xcms::featureGroups(xcms))
@@ -508,11 +514,16 @@ plot_xcms_feature_group_EIC_comparasion <- function(xcms,
     )
   }
 
-  # Preserve caller order of groups; features within group by rtmed
+  # Preserve caller order of groups; features within group by order_by
   sel_fg <- feature_group
   gfids_list <- lapply(sel_fg, function(g) {
     gfids <- fids_all[fg_all == g]
-    gfids <- gfids[order(rt_all[gfids], na.last = TRUE)]
+    ord_val <- if (identical(order_by, "mzmed")) {
+      mz_all[gfids]
+    } else {
+      rt_all[gfids]
+    }
+    gfids <- gfids[order(ord_val, na.last = TRUE)]
     if (!is.null(max_features) && length(gfids) > as.integer(max_features)) {
       gfids <- gfids[seq_len(as.integer(max_features))]
     }
@@ -940,6 +951,13 @@ plot_Chromatograph_mirror <- function(chrom1,
 #'   the diagonal. Only applies to \code{order_by = "feature_group"} (where
 #'   each group is a contiguous block). Set \code{0} / \code{NULL} to disable
 #'   (default \code{10}).
+#' @param feature_groups Optional character vector of \code{featureGroups}
+#'   labels to keep (e.g. \code{c("FG.001", "FG.063")}). \code{NULL} (default)
+#'   keeps all features. When \code{order_by = "feature_group"}, groups follow
+#'   this vector's order.
+#' @param show_names \code{TRUE}/\code{FALSE} to show feature-id row and
+#'   column names. \code{NULL} (default) shows names when 40 or fewer
+#'   features remain after filtering.
 #' @return (Invisibly) a \code{ComplexHeatmap::Heatmap} object.
 #' @export
 plot_xcms_feature_group_similarity <- function(xcms,
@@ -947,7 +965,9 @@ plot_xcms_feature_group_similarity <- function(xcms,
                                                sample = 1L,
                                                rt_window = NULL,
                                                na_col = "#BDBDBD",
-                                               box_top_n = 10L) {
+                                               box_top_n = 10L,
+                                               feature_groups = NULL,
+                                               show_names = NULL) {
   order_by <- match.arg(order_by)
   for (pkg in c("ComplexHeatmap", "circlize")) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
@@ -978,10 +998,45 @@ plot_xcms_feature_group_similarity <- function(xcms,
     fids <- as.character(seq_len(nrow(sim)))
   }
 
+  if (!is.null(feature_groups)) {
+    fg_keep <- unique(as.character(feature_groups))
+    fg_keep <- fg_keep[!is.na(fg_keep) & nzchar(fg_keep)]
+    keep <- as.character(feature_group) %in% fg_keep
+    if (sum(keep) < 2L) {
+      stop(
+        "Need at least 2 features in feature_groups = ",
+        paste(fg_keep, collapse = ", "),
+        " (found ", sum(keep), ")"
+      )
+    }
+    sim <- sim[keep, keep, drop = FALSE]
+    rt <- rt[keep]
+    feature_group <- feature_group[keep]
+    fids <- fids[keep]
+  }
+
   # --- Order rows/columns ---
   if (identical(order_by, "feature_group")) {
-    rt_center <- tapply(rt, feature_group, stats::median, na.rm = TRUE)
-    fg_levels <- names(rt_center)[order(rt_center, na.last = TRUE)]
+    if (!is.null(feature_groups)) {
+      fg_levels <- unique(as.character(feature_groups))
+      fg_levels <- fg_levels[fg_levels %in% unique(as.character(feature_group))]
+      extra <- setdiff(unique(as.character(feature_group)), fg_levels)
+      if (length(extra)) {
+        rt_extra <- tapply(
+          rt[as.character(feature_group) %in% extra],
+          as.character(feature_group)[as.character(feature_group) %in% extra],
+          stats::median,
+          na.rm = TRUE
+        )
+        fg_levels <- c(
+          fg_levels,
+          names(rt_extra)[order(rt_extra, na.last = TRUE)]
+        )
+      }
+    } else {
+      rt_center <- tapply(rt, feature_group, stats::median, na.rm = TRUE)
+      fg_levels <- names(rt_center)[order(rt_center, na.last = TRUE)]
+    }
     ord <- order(factor(feature_group, levels = fg_levels), rt, na.last = TRUE)
   } else {
     ord <- order(rt, na.last = TRUE)
@@ -1060,14 +1115,26 @@ plot_xcms_feature_group_similarity <- function(xcms,
   }
 
   if (identical(order_by, "feature_group")) {
-    row_title <- "feature_id (groups by rt.center)"
-    column_title <- sprintf(
-      paste0(
-        "EIC similarity by feature group (groups ordered by rt.center)\n",
-        "%d features, %d groups; sample: %s"
-      ),
-      length(fids), n_fg, sample_label
-    )
+    if (!is.null(feature_groups)) {
+      row_title <- "feature_id (selected groups)"
+      column_title <- sprintf(
+        paste0(
+          "EIC similarity by feature group (%s)\n",
+          "%d features, %d groups; sample: %s"
+        ),
+        paste(unique(as.character(feature_groups)), collapse = ", "),
+        length(fids), n_fg, sample_label
+      )
+    } else {
+      row_title <- "feature_id (groups by rt.center)"
+      column_title <- sprintf(
+        paste0(
+          "EIC similarity by feature group (groups ordered by rt.center)\n",
+          "%d features, %d groups; sample: %s"
+        ),
+        length(fids), n_fg, sample_label
+      )
+    }
   } else {
     row_title <- "feature_id (ordered by rtmed)"
     column_title <- sprintf(
@@ -1107,6 +1174,12 @@ plot_xcms_feature_group_similarity <- function(xcms,
     }
   }
 
+  n_lab <- length(fids)
+  if (is.null(show_names)) {
+    show_names <- n_lab <= 40L
+  }
+  name_fs <- max(5, min(10, floor(220 / max(n_lab, 1L))))
+
   ht <- ComplexHeatmap::Heatmap(
     sim,
     name = "EIC\nsimilarity",
@@ -1114,8 +1187,11 @@ plot_xcms_feature_group_similarity <- function(xcms,
     na_col = na_col,
     cluster_rows = FALSE,
     cluster_columns = FALSE,
-    show_row_names = FALSE,
-    show_column_names = FALSE,
+    show_row_names = isTRUE(show_names),
+    show_column_names = isTRUE(show_names),
+    row_names_gp = grid::gpar(fontsize = name_fs),
+    column_names_gp = grid::gpar(fontsize = name_fs),
+    column_names_rot = 90,
     row_title = row_title,
     column_title = column_title,
     top_annotation = top_anno,
