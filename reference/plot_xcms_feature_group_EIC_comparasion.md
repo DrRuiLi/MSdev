@@ -22,6 +22,7 @@ plot_xcms_feature_group_EIC_comparasion(
   expandRt = 2,
   min_width = 20,
   max_features = NULL,
+  order_by = c("rtmed", "mzmed"),
   sample_index = 1L,
   title = NULL
 )
@@ -59,8 +60,13 @@ plot_xcms_feature_group_EIC_comparasion(
 
 - max_features:
 
-  Maximum features kept per group (ordered by `rtmed`). `NULL` keeps all
-  members (default).
+  Maximum features kept per group. `NULL` keeps all members (default).
+  Within each group, features are ordered by `order_by`.
+
+- order_by:
+
+  `"rtmed"` (default) or `"mzmed"`: sort features within each group.
+  Groups themselves keep the order of `feature_group`.
 
 - sample_index:
 

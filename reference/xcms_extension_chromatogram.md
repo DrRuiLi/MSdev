@@ -73,6 +73,7 @@ get_xcms_feature_chromatogram(
   rt = c("expand", "identity", "all"),
   expandRt = 15,
   mz.expand = 0,
+  expandMzppm = 0,
   aggregationFun = "max",
   attachPeaks = TRUE,
   BPPARAM = SerialParam(progressbar = TRUE)
@@ -160,6 +161,12 @@ plot_XChromatograms(
 - mz.expand:
 
   fraction of mz width to expand on each side.
+
+- expandMzppm:
+
+  numeric(1). Extra m/z pad in ppm applied after `mz.expand`:
+  `mzmin = mzmin * (1 - ppm/1e6)`, `mzmax = mzmax * (1 + ppm/1e6)`.
+  Default `0`.
 
 - attachPeaks:
 

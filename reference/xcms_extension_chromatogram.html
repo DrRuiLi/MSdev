@@ -146,6 +146,7 @@ keeps RTs aligned across features for pairwise comparison.</p>
 <span>  rt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"expand"</span>, <span class="st">"identity"</span>, <span class="st">"all"</span><span class="op">)</span>,</span>
 <span>  expandRt <span class="op">=</span> <span class="fl">15</span>,</span>
 <span>  mz.expand <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  expandMzppm <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  aggregationFun <span class="op">=</span> <span class="st">"max"</span>,</span>
 <span>  attachPeaks <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  BPPARAM <span class="op">=</span> <span class="fu">SerialParam</span><span class="op">(</span>progressbar <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -233,6 +234,12 @@ integer indices or sample name(s) select those samples.</p></dd>
 
 <dt id="arg-mz-expand">mz.expand<a class="anchor" aria-label="anchor" href="#arg-mz-expand"></a></dt>
 <dd><p>fraction of mz width to expand on each side.</p></dd>
+
+
+<dt id="arg-expandmzppm">expandMzppm<a class="anchor" aria-label="anchor" href="#arg-expandmzppm"></a></dt>
+<dd><p>numeric(1). Extra m/z pad in ppm applied after
+<code>mz.expand</code>: <code>mzmin = mzmin * (1 - ppm/1e6)</code>,
+<code>mzmax = mzmax * (1 + ppm/1e6)</code>. Default <code>0</code>.</p></dd>
 
 
 <dt id="arg-attachpeaks">attachPeaks<a class="anchor" aria-label="anchor" href="#arg-attachpeaks"></a></dt>

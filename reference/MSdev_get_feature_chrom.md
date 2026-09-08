@@ -11,7 +11,8 @@ MSdev_get_feature_chrom(
   object,
   BPPARAM = SnowParam(workers = max(1L, floor(parallel::detectCores()/2)), progressbar =
     T),
-  feature.list = NULL
+  feature.list = NULL,
+  expandMzppm = 0
 )
 ```
 
@@ -28,6 +29,13 @@ MSdev_get_feature_chrom(
 - feature.list:
 
   optional list of feature IDs with names "Positive" and "Negative"
+
+- expandMzppm:
+
+  numeric(1). Passed to
+  [`get_xcms_feature_chromatogram`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md):
+  extra m/z pad in ppm (`mzmin * (1 - ppm/1e6)`,
+  `mzmax * (1 + ppm/1e6)`). Default `0`.
 
 ## Value
 

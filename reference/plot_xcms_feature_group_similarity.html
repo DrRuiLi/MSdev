@@ -83,7 +83,9 @@ color bar encodes <code>rtmed</code> (plus a feature-group bar when groups exist
 <span>  sample <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  rt_window <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  na_col <span class="op">=</span> <span class="st">"#BDBDBD"</span>,</span>
-<span>  box_top_n <span class="op">=</span> <span class="fl">10L</span></span>
+<span>  box_top_n <span class="op">=</span> <span class="fl">10L</span>,</span>
+<span>  feature_groups <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  show_names <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -122,6 +124,19 @@ on the densest RT region, keeping the diagonal band visible. <code>NULL</code>
 the diagonal. Only applies to <code>order_by = "feature_group"</code> (where
 each group is a contiguous block). Set <code>0</code> / <code>NULL</code> to disable
 (default <code>10</code>).</p></dd>
+
+
+<dt id="arg-feature-groups">feature_groups<a class="anchor" aria-label="anchor" href="#arg-feature-groups"></a></dt>
+<dd><p>Optional character vector of <code>featureGroups</code>
+labels to keep (e.g. <code>c("FG.001", "FG.063")</code>). <code>NULL</code> (default)
+keeps all features. When <code>order_by = "feature_group"</code>, groups follow
+this vector's order.</p></dd>
+
+
+<dt id="arg-show-names">show_names<a class="anchor" aria-label="anchor" href="#arg-show-names"></a></dt>
+<dd><p><code>TRUE</code>/<code>FALSE</code> to show feature-id row and
+column names. <code>NULL</code> (default) shows names when 40 or fewer
+features remain after filtering.</p></dd>
 
 </dl></div>
     <div class="section level2">

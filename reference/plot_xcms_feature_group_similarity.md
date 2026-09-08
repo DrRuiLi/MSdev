@@ -24,7 +24,9 @@ plot_xcms_feature_group_similarity(
   sample = 1L,
   rt_window = NULL,
   na_col = "#BDBDBD",
-  box_top_n = 10L
+  box_top_n = 10L,
+  feature_groups = NULL,
+  show_names = NULL
 )
 ```
 
@@ -61,6 +63,18 @@ plot_xcms_feature_group_similarity(
   diagonal. Only applies to `order_by = "feature_group"` (where each
   group is a contiguous block). Set `0` / `NULL` to disable (default
   `10`).
+
+- feature_groups:
+
+  Optional character vector of `featureGroups` labels to keep (e.g.
+  `c("FG.001", "FG.063")`). `NULL` (default) keeps all features. When
+  `order_by = "feature_group"`, groups follow this vector's order.
+
+- show_names:
+
+  `TRUE`/`FALSE` to show feature-id row and column names. `NULL`
+  (default) shows names when 40 or fewer features remain after
+  filtering.
 
 ## Value
 
