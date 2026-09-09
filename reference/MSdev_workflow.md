@@ -47,13 +47,10 @@ MS2 spectra.
 Perform feature annotation using a CompoundDb database, including MS1
 candidate search, MS2 scoring, and isotope pattern scoring. MS2 spectra
 are taken from `object@spectra$MS2_Spectra` and selected via character
-`featureDefinitions$ms2_id` (`sp_id` / spectraNames).
-
-Annotate `object@advancedAna$MS2_Precursor` (from
-[`MSdev_get_peak_table_from_spectra`](https://drruili.github.io/MSdev/reference/MSdev_get_peak_table_from_spectra.md))
-with CompDb MS1 candidates and MS2 spectral scores. Isotope-pattern
-scoring is skipped (no MS1 intensity matrix). Requires `ms2_id` on the
-peak table linking to `MS2_Spectra` `sp_id` / spectraNames.
+`featureDefinitions$ms2_id` (`sp_id` / spectraNames). Writes into xcms
+`featureDefinitions` on `PositiveMS1` / `NegativeMS1`. For
+spectra-derived precursor peaks (not xcms features), see
+[`MSdev_annotation_MS2_Precursor`](https://drruili.github.io/MSdev/reference/MSdev_annotation_MS2_Precursor.md).
 
 Build `advancedAna$feature.se` via `MSdev_get_Se`, then retrieve
 compound information, filter based on scores, and optionally build
@@ -102,15 +99,6 @@ MSdev_annotation(
   calc_isopattern_score = F,
   ppm = 10,
   BPPARAM = SerialParam(progressbar = T),
-  ...
-)
-
-MSdev_annotation_MS2_Precursor(
-  object,
-  cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite",
-  ppm = 10,
-  weight_mz = 0.2,
-  weight_ms2 = 0.8,
   ...
 )
 
@@ -202,7 +190,7 @@ MSdev_get_Se(object, polarity_paired = TRUE, ...)
 
 - ppm:
 
-  m/z tolerance in parts per million for candidate matching
+  m/z tolerance in parts per million
 
 - cpdb_path:
 
@@ -211,14 +199,6 @@ MSdev_get_Se(object, polarity_paired = TRUE, ...)
 - calc_isopattern_score:
 
   logical, whether to calculate isotope pattern scores
-
-- weight_mz:
-
-  weight for m/z error score (default `0.2`)
-
-- weight_ms2:
-
-  weight for MS2 similarity score (default `0.8`)
 
 - keys:
 
@@ -272,8 +252,6 @@ MSdev object with updated feature-spectra assignments
 
 MSdev object with annotation results
 
-MSdev object with annotated `advancedAna$MS2_Precursor`
-
 MSdev object with advancedAna populated
 
 MSdev object with `advancedAna$feature.se` populated.
@@ -320,8 +298,6 @@ assigned and features with at least one MS2.
 
 - `MSdev_annotation()`: annotation
 
-- `MSdev_annotation_MS2_Precursor()`: annotate MS2 precursor peaks
-
 - `MSdev_get_Stat()`: extract statistical data
 
 - `MSdev_get_Se()`: extract feature SummarizedExperiment
@@ -330,6 +306,8 @@ assigned and features with at least one MS2.
 
 `get_Spectra_ms2_feature_id`,
 [`match_mz_rt`](https://drruili.github.io/MSdev/reference/match_mz_rt.md)
+
+[`MSdev_annotation_MS2_Precursor`](https://drruili.github.io/MSdev/reference/MSdev_annotation_MS2_Precursor.md)
 
 ## Examples
 

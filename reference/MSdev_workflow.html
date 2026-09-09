@@ -29,11 +29,9 @@ feature_id onto the MS2 spectra.
 Perform feature annotation using a CompoundDb database, including MS1 candidate search, MS2 scoring, and isotope pattern scoring.
 MS2 spectra are taken from object@spectra$MS2_Spectra and selected via
 character featureDefinitions$ms2_id (sp_id / spectraNames).
-Annotate object@advancedAna$MS2_Precursor (from
-MSdev_get_peak_table_from_spectra) with CompDb MS1 candidates
-and MS2 spectral scores. Isotope-pattern scoring is skipped (no MS1
-intensity matrix). Requires ms2_id on the peak table linking to
-MS2_Spectra sp_id / spectraNames.
+Writes into xcms featureDefinitions on PositiveMS1 /
+NegativeMS1. For spectra-derived precursor peaks (not xcms features),
+see MSdev_annotation_MS2_Precursor.
 Build advancedAna$feature.se via MSdev_get_Se, then
 retrieve compound information, filter based on scores, and optionally build
 candidate and metabolite SummarizedExperiment objects.
@@ -69,11 +67,9 @@ feature_id onto the MS2 spectra.
 Perform feature annotation using a CompoundDb database, including MS1 candidate search, MS2 scoring, and isotope pattern scoring.
 MS2 spectra are taken from object@spectra$MS2_Spectra and selected via
 character featureDefinitions$ms2_id (sp_id / spectraNames).
-Annotate object@advancedAna$MS2_Precursor (from
-MSdev_get_peak_table_from_spectra) with CompDb MS1 candidates
-and MS2 spectral scores. Isotope-pattern scoring is skipped (no MS1
-intensity matrix). Requires ms2_id on the peak table linking to
-MS2_Spectra sp_id / spectraNames.
+Writes into xcms featureDefinitions on PositiveMS1 /
+NegativeMS1. For spectra-derived precursor peaks (not xcms features),
+see MSdev_annotation_MS2_Precursor.
 Build advancedAna$feature.se via MSdev_get_Se, then
 retrieve compound information, filter based on scores, and optionally build
 candidate and metabolite SummarizedExperiment objects.
@@ -148,12 +144,10 @@ features using precursor m/z and retention time tolerances. Stores character
 <code>feature_id</code> onto the MS2 spectra.</p>
 <p>Perform feature annotation using a CompoundDb database, including MS1 candidate search, MS2 scoring, and isotope pattern scoring.
 MS2 spectra are taken from <code>object@spectra$MS2_Spectra</code> and selected via
-character <code>featureDefinitions$ms2_id</code> (<code>sp_id</code> / spectraNames).</p>
-<p>Annotate <code>object@advancedAna$MS2_Precursor</code> (from
-<code><a href="MSdev_get_peak_table_from_spectra.html">MSdev_get_peak_table_from_spectra</a></code>) with CompDb MS1 candidates
-and MS2 spectral scores. Isotope-pattern scoring is skipped (no MS1
-intensity matrix). Requires <code>ms2_id</code> on the peak table linking to
-<code>MS2_Spectra</code> <code>sp_id</code> / spectraNames.</p>
+character <code>featureDefinitions$ms2_id</code> (<code>sp_id</code> / spectraNames).
+Writes into xcms <code>featureDefinitions</code> on <code>PositiveMS1</code> /
+<code>NegativeMS1</code>. For spectra-derived precursor peaks (not xcms features),
+see <code><a href="MSdev_annotation_MS2_Precursor.html">MSdev_annotation_MS2_Precursor</a></code>.</p>
 <p>Build <code>advancedAna$feature.se</code> via <code>MSdev_get_Se</code>, then
 retrieve compound information, filter based on scores, and optionally build
 candidate and metabolite SummarizedExperiment objects.</p>
@@ -200,15 +194,6 @@ metabolite/candidate filtering.</p>
 <span>  calc_isopattern_score <span class="op">=</span> <span class="cn">F</span>,</span>
 <span>  ppm <span class="op">=</span> <span class="fl">10</span>,</span>
 <span>  BPPARAM <span class="op">=</span> <span class="fu">SerialParam</span><span class="op">(</span>progressbar <span class="op">=</span> <span class="cn">T</span><span class="op">)</span>,</span>
-<span>  <span class="va">...</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu">MSdev_annotation_MS2_Precursor</span><span class="op">(</span></span>
-<span>  <span class="va">object</span>,</span>
-<span>  cpdb_path <span class="op">=</span> <span class="st">"c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite"</span>,</span>
-<span>  ppm <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>  weight_mz <span class="op">=</span> <span class="fl">0.2</span>,</span>
-<span>  weight_ms2 <span class="op">=</span> <span class="fl">0.8</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -297,7 +282,7 @@ edit it and press ENTER to confirm (and read it back).</p></dd>
 
 
 <dt id="arg-ppm">ppm<a class="anchor" aria-label="anchor" href="#arg-ppm"></a></dt>
-<dd><p>m/z tolerance in parts per million for candidate matching</p></dd>
+<dd><p>m/z tolerance in parts per million</p></dd>
 
 
 <dt id="arg-cpdb-path">cpdb_path<a class="anchor" aria-label="anchor" href="#arg-cpdb-path"></a></dt>
@@ -306,14 +291,6 @@ edit it and press ENTER to confirm (and read it back).</p></dd>
 
 <dt id="arg-calc-isopattern-score">calc_isopattern_score<a class="anchor" aria-label="anchor" href="#arg-calc-isopattern-score"></a></dt>
 <dd><p>logical, whether to calculate isotope pattern scores</p></dd>
-
-
-<dt id="arg-weight-mz">weight_mz<a class="anchor" aria-label="anchor" href="#arg-weight-mz"></a></dt>
-<dd><p>weight for m/z error score (default <code>0.2</code>)</p></dd>
-
-
-<dt id="arg-weight-ms-">weight_ms2<a class="anchor" aria-label="anchor" href="#arg-weight-ms-"></a></dt>
-<dd><p>weight for MS2 similarity score (default <code>0.8</code>)</p></dd>
 
 
 <dt id="arg-keys">keys<a class="anchor" aria-label="anchor" href="#arg-keys"></a></dt>
@@ -356,7 +333,6 @@ and negative feature sets are row-bound without requiring shared samples.</p></d
 <p>MSdev object with spectra stored in <code>object@spectra</code></p>
 <p>MSdev object with updated feature-spectra assignments</p>
 <p>MSdev object with annotation results</p>
-<p>MSdev object with annotated <code>advancedAna$MS2_Precursor</code></p>
 <p>MSdev object with advancedAna populated</p>
 <p>MSdev object with <code>advancedAna$feature.se</code> populated.</p>
     </div>
@@ -385,13 +361,13 @@ features with at least one MS2.</p>
 <li><p><code>MSdev_extract_Spectra()</code>: Extract all spectra, split to MS1 and MS2, store as onDiskData</p></li>
 <li><p><code>MSdev_assign_MS2()</code>: assign MS2 spectra to features</p></li>
 <li><p><code>MSdev_annotation()</code>: annotation</p></li>
-<li><p><code>MSdev_annotation_MS2_Precursor()</code>: annotate MS2 precursor peaks</p></li>
 <li><p><code>MSdev_get_Stat()</code>: extract statistical data</p></li>
 <li><p><code>MSdev_get_Se()</code>: extract feature SummarizedExperiment</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code>get_Spectra_ms2_feature_id</code>, <code><a href="match_mz_rt.html">match_mz_rt</a></code></p></div>
+    <div class="dont-index"><p><code>get_Spectra_ms2_feature_id</code>, <code><a href="match_mz_rt.html">match_mz_rt</a></code></p>
+<p><code><a href="MSdev_annotation_MS2_Precursor.html">MSdev_annotation_MS2_Precursor</a></code></p></div>
     </div>
 
     <div class="section level2">

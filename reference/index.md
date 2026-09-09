@@ -56,6 +56,9 @@
   [`MSdev_load()`](https://drruili.github.io/MSdev/reference/MSdev_IO.md)
   : MSdev input and output
 
+- [`MSdev_annotation_MS2_Precursor()`](https://drruili.github.io/MSdev/reference/MSdev_annotation_MS2_Precursor.md)
+  : Annotate MS2 precursor peaks using a compound database
+
 - [`MSdev_export()`](https://drruili.github.io/MSdev/reference/MSdev_export.md)
   : Msdev Export
 
@@ -98,7 +101,6 @@
   [`MSdev_extract_Spectra()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
   [`MSdev_assign_MS2()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
   [`MSdev_annotation()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
-  [`MSdev_annotation_MS2_Precursor()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
   [`MSdev_get_Stat()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
   [`MSdev_get_Se()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
   : Add new sample files to MSdev object
