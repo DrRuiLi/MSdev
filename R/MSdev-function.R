@@ -1310,6 +1310,36 @@ plot_MSdev_sample_peaks <- function(object, target = "PositiveMS1", top_n = Inf)
   NULL
 }
 
+.msdev_resolve_export_feature_ids <- function(object, feature_id = NULL) {
+  all_id <- .msdev_all_feature_ids(object)
+  if (!length(all_id)) {
+    stop("No feature IDs found in featureRaw, feature.se, or xcmsData")
+  }
+  if (is.null(feature_id)) {
+    return(all_id)
+  }
+  feature_id <- unique(as.character(feature_id))
+  missing_id <- setdiff(feature_id, all_id)
+  if (length(missing_id)) {
+    warning("Unknown feature_id skipped: ",
+            paste(missing_id, collapse = ", "))
+    feature_id <- intersect(feature_id, all_id)
+  }
+  feature_id
+}
+
+.msdev_export_dir <- function(object, out.dir, subdir) {
+  if (is.null(out.dir) || !nzchar(out.dir)) {
+    project_dir <- object@projectInfo$projectDir
+    if (is.null(project_dir) || !nzchar(project_dir)) {
+      stop("`out.dir` is missing and `object@projectInfo$projectDir` is empty")
+    }
+    out.dir <- file.path(project_dir, subdir)
+  }
+  dir.create(out.dir, recursive = TRUE, showWarnings = FALSE)
+  normalizePath(out.dir, winslash = "/", mustWork = TRUE)
+}
+
 .msdev_all_feature_ids <- function(object) {
   fr <- object@advancedAna$featureRaw
   if (is.data.frame(fr) && nrow(fr) && "feature_id" %in% names(fr)) {
@@ -1808,8 +1838,9 @@ plot_MSdev_feature_spectrum <- function(MSdev.obj, feature.id, cpdb = NULL) {
 }
 
 
-#' @title Export MS/MS spectrum and chromatogram for a feature
-#' @description Export PNG images of the MS/MS spectrum and chromatogram for a given feature.
+#' @title Export MS/MS spectrum for a feature
+#' @description Export a PNG of the MS/MS spectrum for a given feature
+#'   (experimental vs reference mirror when a reference spectrum is present).
 #' @param MSdev.obj MSdev object
 #' @param feature_id Character string specifying the feature ID
 #' @param out.dir Output directory path
@@ -1837,30 +1868,215 @@ export_MSdev_feature_MSMS <- function(MSdev.obj, feature_id, out.dir, cpdb = NUL
   if (!ok && file.exists(msms.file)) {
     unlink(msms.file)
   }
+  invisible(NULL)
+}
 
+.msdev_eic_plot_sample_names <- function(xcms.xcms) {
+  all.sample.names <- Biobase::sampleNames(xcms.xcms)
+  xcms.sample.info <- as.data.frame(Biobase::pData(xcms.xcms), stringsAsFactors = FALSE)
+  if (!"sampleNames" %in% colnames(xcms.sample.info)) {
+    xcms.sample.info$sampleNames <- all.sample.names
+  }
+  rownames(xcms.sample.info) <- all.sample.names
+  if (nrow(xcms.sample.info) > 5) {
+    if ("group" %in% colnames(xcms.sample.info) && any(!is.na(xcms.sample.info$group))) {
+      xcms.sample.info %>%
+        dplyr::group_by(group) %>%
+        dplyr::slice_sample(n = 1) %>%
+        dplyr::pull(sampleNames)
+    } else {
+      xcms.sample.info$sampleNames[seq_len(5)]
+    }
+  } else {
+    xcms.sample.info$sampleNames
+  }
+}
+
+.msdev_chrom_row_index <- function(chroms, xcms_fid, feature_id) {
+  rnm <- rownames(chroms)
+  idx <- NA_integer_
+  if (!is.null(rnm)) {
+    idx <- match(xcms_fid, rnm)
+    if (is.na(idx)) {
+      idx <- match(feature_id, rnm)
+    }
+  }
+  if (is.na(idx)) {
+    fd <- tryCatch(
+      as.data.frame(chroms@featureDefinitions),
+      error = function(e) NULL
+    )
+    if (is.null(fd) || !nrow(fd)) {
+      fd <- tryCatch(as.data.frame(MSnbase::fData(chroms)), error = function(e) NULL)
+    }
+    if (!is.null(fd) && "feature_id" %in% colnames(fd)) {
+      idx <- match(xcms_fid, as.character(fd$feature_id))
+      if (is.na(idx)) {
+        idx <- match(feature_id, as.character(fd$feature_id))
+      }
+    }
+  }
+  idx
+}
+
+.msdev_eic_chrom_sample_cols <- function(chroms, xcms.xcms) {
+  want <- as.character(.msdev_eic_plot_sample_names(xcms.xcms))
+  cn <- colnames(chroms)
+  idx <- if (is.null(cn)) {
+    rep(NA_integer_, length(want))
+  } else {
+    match(want, cn)
+  }
+  if (anyNA(idx)) {
+    pdata_names <- tryCatch(
+      as.character(Biobase::pData(chroms)$sample.name),
+      error = function(e) NULL
+    )
+    if (is.null(pdata_names) || !length(pdata_names)) {
+      pdata_names <- tryCatch(
+        as.character(Biobase::pData(xcms.xcms)$sample.name),
+        error = function(e) NULL
+      )
+    }
+    if (!is.null(pdata_names) && length(pdata_names)) {
+      idx2 <- match(want, pdata_names)
+      idx[is.na(idx)] <- idx2[is.na(idx)]
+    }
+  }
+  idx <- unique(idx[!is.na(idx)])
+  if (!length(idx)) {
+    seq_len(min(5L, ncol(chroms)))
+  } else {
+    as.integer(idx)
+  }
+}
+
+.msdev_feature_mz_rt_range <- function(xcms.xcms, xcms_fid) {
+  fdef <- xcms::featureDefinitions(xcms.xcms)
+  if ("feature_id" %in% colnames(fdef)) {
+    ii <- match(xcms_fid, as.character(fdef$feature_id))
+    if (is.na(ii)) {
+      ii <- match(xcms_fid, rownames(fdef))
+    }
+  } else {
+    ii <- match(xcms_fid, rownames(fdef))
+  }
+  mz.range <- c(NA_real_, NA_real_)
+  rt.range <- c(NA_real_, NA_real_)
+  if (is.na(ii)) {
+    return(list(mz = mz.range, rt = rt.range))
+  }
+  row <- fdef[ii, , drop = FALSE]
+  peak.idx <- row$peakidx[[1]]
+  if (!is.null(peak.idx) && length(peak.idx)) {
+    pks <- xcms::chromPeaks(xcms.xcms)[peak.idx, , drop = FALSE]
+    mz.range <- c(min(pks[, "mzmin"], na.rm = TRUE), max(pks[, "mzmax"], na.rm = TRUE))
+    rt.range <- c(min(pks[, "rtmin"], na.rm = TRUE), max(pks[, "rtmax"], na.rm = TRUE))
+  } else {
+    mz.range <- as.numeric(c(row$mzmin, row$mzmax))
+    rt.range <- as.numeric(c(row$rtmin, row$rtmax))
+  }
+  list(mz = as.numeric(mz.range), rt = as.numeric(rt.range))
+}
+
+.plot_msdev_feature_eic <- function(chroms, feature_id, mz.range, rt.range) {
+  df <- get_chroms_data(chroms)
+  cn <- colnames(chroms)
+  if (is.null(cn) || anyNA(cn)) {
+    cn <- as.character(seq_len(ncol(chroms)))
+  }
+  df$group <- cn[df$col]
+  ggplot2::ggplot(df) +
+    ggplot2::geom_line(ggplot2::aes(x = rt, y = intensity, col = group)) +
+    ggplot2::labs(
+      col = "",
+      x = "Retention time",
+      y = "Intensity",
+      title = feature_id,
+      subtitle = paste0(
+        "mz: ", round(mz.range[1], 4), " ~ ", round(mz.range[2], 4),
+        "\nrt: ", round(rt.range[1], 2), " ~ ", round(rt.range[2], 2)
+      )
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      text = ggplot2::element_text(size = 8),
+      legend.position = "none"
+    )
+}
+
+.export_MSdev_feature_chromatograph <- function(object, feature_id, out.dir) {
+  dir.create(out.dir, recursive = TRUE, showWarnings = FALSE)
+  feature_id <- as.character(feature_id)[[1L]]
   pol <- .msdev_polarity_from_feature_id(feature_id)
-  xcms.xcms <- .msdev_get_xcms(MSdev.obj, pol)
+  xcms.xcms <- .msdev_get_xcms(object, pol)
   if (is.null(xcms.xcms)) {
     warning(feature_id, ": no xcms object for chromatogram", call. = FALSE)
     return(invisible(NULL))
   }
-  gp <- plot_xcms_feature_chromatogram(
-    xcms.xcms,
-    feature.id = .msdev_xcms_feature_id(feature_id)
-  ) + ggplot2::theme(legend.position = "none")
-  export::graph2png(gp, file = file.path(out.dir, paste0(feature_id, ".Chrom.png")))
+  xcms_fid <- .msdev_xcms_feature_id(feature_id)
+  pol_int <- if (identical(pol, "Positive")) 1L else 0L
+
+  chrom_one <- NULL
+  stored <- tryCatch(
+    get_MSdev_Chromatogram(object, polarity = pol_int),
+    error = function(e) NULL
+  )
+  if (!is.null(stored) && (inherits(stored, "MChromatograms") ||
+                           inherits(stored, "XChromatograms"))) {
+    row_idx <- .msdev_chrom_row_index(stored, xcms_fid, feature_id)
+    if (!is.na(row_idx)) {
+      col_idx <- .msdev_eic_chrom_sample_cols(stored, xcms.xcms)
+      chrom_one <- stored[row_idx, col_idx, drop = FALSE]
+    }
+  }
+
+  if (is.null(chrom_one) || !nrow(chrom_one) || !ncol(chrom_one)) {
+    samp_names <- as.character(.msdev_eic_plot_sample_names(xcms.xcms))
+    bp <- BiocParallel::SerialParam(progressbar = FALSE)
+    chrom_one <- tryCatch(
+      get_xcms_feature_chromatogram(
+        xcms.xcms,
+        feature.id = xcms_fid,
+        selected_sample = samp_names,
+        rt = "expand",
+        expandRt = 15,
+        aggregationFun = "max",
+        attachPeaks = FALSE,
+        BPPARAM = bp
+      ),
+      error = function(e) {
+        get_xcms_feature_chromatogram(
+          xcms.xcms,
+          feature.id = xcms_fid,
+          selected_sample = "maxo",
+          rt = "expand",
+          expandRt = 15,
+          aggregationFun = "max",
+          attachPeaks = FALSE,
+          BPPARAM = bp
+        )
+      }
+    )
+  }
+
+  rng <- .msdev_feature_mz_rt_range(xcms.xcms, xcms_fid)
+  gp <- .plot_msdev_feature_eic(chrom_one, feature_id, rng$mz, rng$rt)
+  export::graph2png(
+    gp,
+    file = file.path(out.dir, paste0(feature_id, ".EIC.png"))
+  )
   invisible(NULL)
 }
 
 
-#' @title Export MS/MS spectrum and chromatogram for all features
+#' @title Export MS/MS spectra for all features
 #' @description Loop \code{\link{export_MSdev_feature_MSMS}} over features.
 #'   Feature IDs are taken from \code{advancedAna$featureRaw}, else
 #'   \code{feature.se}, else xcms \code{featureDefinitions} (\code{_pos}/
 #'   \code{_neg} suffix). Writes \code{\{feature_id\}.MSMS.png} (experimental vs
-#'   reference mirror when a reference spectrum is present) and
-#'   \code{\{feature_id\}.Chrom.png}. Failures on individual features are warned
-#'   and skipped.
+#'   reference mirror when a reference spectrum is present). Failures on
+#'   individual features are warned and skipped.
 #' @param object MSdev object
 #' @param out.dir Output directory. Default \code{object@projectInfo$projectDir/MSMS}.
 #' @param feature_id Optional character vector of feature IDs. Default all
@@ -1870,7 +2086,8 @@ export_MSdev_feature_MSMS <- function(MSdev.obj, feature_id, out.dir, cpdb = NUL
 #'   \code{\link{MSdev_annotation}}).
 #' @return Invisible character vector of feature IDs attempted.
 #' @seealso \code{\link{export_MSdev_feature_MSMS}},
-#'   \code{\link{plot_MSdev_feature_spectrum}}
+#'   \code{\link{plot_MSdev_feature_spectrum}},
+#'   \code{\link{MSdev_export_feature_Chromatographs}}
 #' @export
 MSdev_export_feature_MSMS <- function(
     object,
@@ -1879,35 +2096,12 @@ MSdev_export_feature_MSMS <- function(
     cpdb_path = object@projectInfo$CompoundDB_path) {
   stopifnot(inherits(object, "MSdev"))
 
-  all_id <- .msdev_all_feature_ids(object)
-  if (!length(all_id)) {
-    stop("No feature IDs found in featureRaw, feature.se, or xcmsData")
-  }
-  if (is.null(feature_id)) {
-    feature_id <- all_id
-  } else {
-    feature_id <- unique(as.character(feature_id))
-    missing_id <- setdiff(feature_id, all_id)
-    if (length(missing_id)) {
-      warning("Unknown feature_id skipped: ",
-              paste(missing_id, collapse = ", "))
-      feature_id <- intersect(feature_id, all_id)
-    }
-  }
+  feature_id <- .msdev_resolve_export_feature_ids(object, feature_id)
   if (!length(feature_id)) {
     message("No features to export")
     return(invisible(character(0)))
   }
-
-  if (is.null(out.dir) || !nzchar(out.dir)) {
-    project_dir <- object@projectInfo$projectDir
-    if (is.null(project_dir) || !nzchar(project_dir)) {
-      stop("`out.dir` is missing and `object@projectInfo$projectDir` is empty")
-    }
-    out.dir <- file.path(project_dir, "MSMS")
-  }
-  dir.create(out.dir, recursive = TRUE, showWarnings = FALSE)
-  out.dir <- normalizePath(out.dir, winslash = "/", mustWork = TRUE)
+  out.dir <- .msdev_export_dir(object, out.dir, "MSMS")
 
   cpdb <- .msdev_open_cpdb(object, cpdb_path = cpdb_path)
   if (is.null(cpdb)) {
@@ -1940,6 +2134,52 @@ MSdev_export_feature_MSMS <- function(
     pbar$tick()
   }
   message_with_time("MSMS export finished")
+  invisible(feature_id)
+}
+
+
+#' @title Export feature EICs for all features
+#' @description Write \code{\{feature_id\}.EIC.png} for each feature. Prefers
+#'   stored chromatograms from \code{\link{get_MSdev_Chromatogram}} (after
+#'   \code{\link{MSdev_get_feature_chrom}}); otherwise extracts with
+#'   \code{\link{get_xcms_feature_chromatogram}} (not \code{xcms::chromatogram}).
+#'   Feature IDs are resolved as in \code{\link{MSdev_export_feature_MSMS}}.
+#'   Failures on individual features are warned and skipped.
+#' @param object MSdev object
+#' @param out.dir Output directory. Default \code{object@projectInfo$projectDir/EIC}.
+#' @param feature_id Optional character vector of feature IDs. Default all
+#'   features discovered as above.
+#' @return Invisible character vector of feature IDs attempted.
+#' @seealso \code{\link{MSdev_export_feature_MSMS}},
+#'   \code{\link{get_xcms_feature_chromatogram}},
+#'   \code{\link{get_MSdev_Chromatogram}}
+#' @export
+MSdev_export_feature_Chromatographs <- function(
+    object,
+    out.dir = file.path(object@projectInfo$projectDir, "EIC"),
+    feature_id = NULL) {
+  stopifnot(inherits(object, "MSdev"))
+
+  feature_id <- .msdev_resolve_export_feature_ids(object, feature_id)
+  if (!length(feature_id)) {
+    message("No features to export")
+    return(invisible(character(0)))
+  }
+  out.dir <- .msdev_export_dir(object, out.dir, "EIC")
+
+  message_with_time("Exporting EIC for ", length(feature_id),
+                    " features to ", out.dir)
+  pbar <- get_progress_bar(length(feature_id))
+  for (fid in feature_id) {
+    tryCatch(
+      .export_MSdev_feature_chromatograph(object, fid, out.dir),
+      error = function(e) {
+        warning(fid, ": ", conditionMessage(e), call. = FALSE)
+      }
+    )
+    pbar$tick()
+  }
+  message_with_time("EIC export finished")
   invisible(feature_id)
 }
 
