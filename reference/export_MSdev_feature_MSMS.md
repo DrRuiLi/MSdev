@@ -6,7 +6,7 @@ feature.
 ## Usage
 
 ``` r
-export_MSdev_feature_MSMS(MSdev.obj, feature_id, out.dir)
+export_MSdev_feature_MSMS(MSdev.obj, feature_id, out.dir, cpdb = NULL)
 ```
 
 ## Arguments
@@ -22,6 +22,10 @@ export_MSdev_feature_MSMS(MSdev.obj, feature_id, out.dir)
 - out.dir:
 
   Output directory path
+
+- cpdb:
+
+  Optional `CompDb` used to fetch reference MS2 spectra.
 
 ## Value
 
