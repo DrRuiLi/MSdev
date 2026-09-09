@@ -1277,106 +1277,534 @@ plot_MSdev_sample_peaks <- function(object, target = "PositiveMS1", top_n = Inf)
 }
 
 
+.msdev_polarity_from_feature_id <- function(feature_id) {
+  fid <- as.character(feature_id)[[1L]]
+  if (grepl("neg", fid, ignore.case = TRUE)) {
+    return("Negative")
+  }
+  if (grepl("pos", fid, ignore.case = TRUE)) {
+    return("Positive")
+  }
+  NA_character_
+}
+
+.msdev_xcms_feature_id <- function(feature_id) {
+  sub("_(pos|neg)$", "", as.character(feature_id)[[1L]], ignore.case = TRUE)
+}
+
+.msdev_get_xcms <- function(object, polarity) {
+  if (is.na(polarity) || !nzchar(polarity)) {
+    return(NULL)
+  }
+  keys <- if (identical(polarity, "Positive")) {
+    c("PositiveMS1", "Positive")
+  } else {
+    c("NegativeMS1", "Negative")
+  }
+  for (k in keys) {
+    x <- object@xcmsData[[k]]
+    if (!is.null(x) && !identical(x, NA)) {
+      return(x)
+    }
+  }
+  NULL
+}
+
+.msdev_all_feature_ids <- function(object) {
+  fr <- object@advancedAna$featureRaw
+  if (is.data.frame(fr) && nrow(fr) && "feature_id" %in% names(fr)) {
+    ids <- unique(as.character(fr$feature_id))
+    return(ids[!is.na(ids) & nzchar(ids)])
+  }
+  se <- object@advancedAna$feature.se
+  if (!is.null(se) && inherits(se, "SummarizedExperiment") && nrow(se) > 0L) {
+    rda <- SummarizedExperiment::rowData(se)
+    ids <- if ("feature_id" %in% colnames(rda)) {
+      as.character(rda$feature_id)
+    } else {
+      rownames(se)
+    }
+    ids <- unique(ids)
+    return(ids[!is.na(ids) & nzchar(ids)])
+  }
+  ids <- character()
+  for (pol in c("Positive", "Negative")) {
+    x <- .msdev_get_xcms(object, pol)
+    if (is.null(x) || !.xcms_has_features(x)) {
+      next
+    }
+    fdf <- xcms::featureDefinitions(x)
+    fid <- if ("feature_id" %in% colnames(fdf)) {
+      as.character(fdf$feature_id)
+    } else {
+      rownames(fdf)
+    }
+    suffix <- if (identical(pol, "Positive")) "_pos" else "_neg"
+    need <- !grepl("_(pos|neg)$", fid, ignore.case = TRUE)
+    fid[need] <- paste0(fid[need], suffix)
+    ids <- c(ids, fid)
+  }
+  unique(ids[!is.na(ids) & nzchar(ids)])
+}
+
+.msdev_ref_precursor_mz <- function(sp) {
+  pmz <- suppressWarnings(as.numeric(.msdev_sp_var(sp, "precursorMz")))
+  if (is.finite(pmz) && abs(pmz - 100) > 1e-3) {
+    return(pmz)
+  }
+  em <- suppressWarnings(as.numeric(.msdev_sp_var(sp, "exactmass")))
+  adduct <- as.character(.msdev_sp_var(sp, "adduct"))
+  if (!is.finite(em)) {
+    return(pmz)
+  }
+  delta <- if (grepl("M-H", adduct, fixed = TRUE) || grepl("[M-H]", adduct, fixed = TRUE)) {
+    -1.007276466
+  } else {
+    1.007276466
+  }
+  em + delta
+}
+
+.msdev_sp_var <- function(sp, var) {
+  if (is.null(sp) || !length(sp) || !var %in% Spectra::spectraVariables(sp)) {
+    return(NA)
+  }
+  x <- sp[[var]]
+  if (is.null(x) || !length(x)) {
+    return(NA)
+  }
+  x[[1L]]
+}
+
+.msdev_get_legacy_annotation <- function(object, feature_id) {
+  fr <- object@advancedAna$featureRaw
+  if (!is.data.frame(fr) || !nrow(fr) || !"feature_id" %in% names(fr)) {
+    return(NULL)
+  }
+  feature.data <- fr[as.character(fr$feature_id) == as.character(feature_id), , drop = FALSE]
+  if (!nrow(feature.data) || is.null(feature.data$ion_mode)) {
+    return(NULL)
+  }
+  ion <- as.character(feature.data$ion_mode[[1L]])
+  ann <- object@annotation[[paste0(ion, "Annotation")]]
+  xcms.ft <- object@xcmsData[[paste0(ion, "Feature")]]
+  if (is.null(ann) || is.null(xcms.ft)) {
+    return(NULL)
+  }
+  xcms_fid <- gsub("_|pos|neg", "", feature_id)
+  idx <- which(rownames(xcms.ft) == xcms_fid)
+  if (!length(idx)) {
+    return(NULL)
+  }
+  list(feature.data = feature.data, annotation = ann[[idx[[1L]]]])
+}
+
+.msdev_match_ms2 <- function(sp, mz, rt, ppm = 20, rt.tol = 10) {
+  if (is.null(sp) || !length(sp) || !is.finite(mz) || !is.finite(rt)) {
+    return(NULL)
+  }
+  if (any(Spectra::msLevel(sp) != 2L)) {
+    sp <- Spectra::filterMsLevel(sp, 2L)
+  }
+  if (!length(sp)) {
+    return(NULL)
+  }
+  pmz <- sp$precursorMz
+  prt <- sp$rtime
+  hit <- abs(pmz - mz) / mz * 1e6 < ppm & abs(prt - rt) < rt.tol
+  hit[is.na(hit)] <- FALSE
+  if (!any(hit)) {
+    return(NULL)
+  }
+  sp[which(hit)]
+}
+
+.msdev_get_exp_ms2 <- function(object, feature_id, ppm = 20, rt.tol = 10) {
+  legacy <- .msdev_get_legacy_annotation(object, feature_id)
+  if (!is.null(legacy) && !is.null(legacy$annotation$expSpec) &&
+      length(legacy$annotation$expSpec)) {
+    return(legacy$annotation$expSpec)
+  }
+  pol <- .msdev_polarity_from_feature_id(feature_id)
+  xcms_fid <- .msdev_xcms_feature_id(feature_id)
+  x <- .msdev_get_xcms(object, pol)
+  if (is.null(x) || !.xcms_has_features(x)) {
+    return(NULL)
+  }
+  fdf <- as.data.frame(xcms::featureDefinitions(x))
+  if (!xcms_fid %in% rownames(fdf)) {
+    return(NULL)
+  }
+  row <- fdf[xcms_fid, , drop = FALSE]
+  pol_int <- if (identical(pol, "Positive")) 1L else 0L
+
+  if ("ms2_id" %in% names(row) && length(unlist(row$ms2_id))) {
+    sp.ms2 <- tryCatch(
+      get_MSdev_Spectra(object, msLevel = 2L, polarity = pol_int),
+      error = function(e) NULL
+    )
+    ids <- as.character(unlist(row$ms2_id))
+    if (!is.null(sp.ms2) && length(sp.ms2) && length(ids)) {
+      hit <- match(ids, Spectra::spectraNames(sp.ms2))
+      if (all(is.na(hit)) && "sp_id" %in% Spectra::spectraVariables(sp.ms2)) {
+        hit <- match(ids, as.character(sp.ms2$sp_id))
+      }
+      hit <- hit[!is.na(hit)]
+      if (length(hit)) {
+        return(sp.ms2[hit])
+      }
+    }
+  }
+
+  sp.xcms <- tryCatch(ProtGenerics::spectra(x), error = function(e) NULL)
+  sp.hit <- .msdev_match_ms2(sp.xcms, row$mzmed, row$rtmed, ppm = ppm, rt.tol = rt.tol)
+  if (!is.null(sp.hit) && length(sp.hit)) {
+    return(sp.hit)
+  }
+
+  sp.ms2 <- tryCatch(
+    get_MSdev_Spectra(object, msLevel = 2L, polarity = pol_int),
+    error = function(e) NULL
+  )
+  .msdev_match_ms2(sp.ms2, row$mzmed, row$rtmed, ppm = ppm, rt.tol = rt.tol)
+}
+
+.msdev_open_cpdb <- function(object, cpdb = NULL, cpdb_path = NULL) {
+  if (inherits(cpdb, "CompDb")) {
+    return(cpdb)
+  }
+  if (is.null(cpdb_path) || !nzchar(as.character(cpdb_path)[[1L]])) {
+    cpdb_path <- object@projectInfo$CompoundDB_path
+  }
+  if (is.null(cpdb_path) || !nzchar(as.character(cpdb_path)[[1L]]) ||
+      !file.exists(cpdb_path)) {
+    return(NULL)
+  }
+  CompoundDb::CompDb(cpdb_path)
+}
+
+.msdev_ion_index_cache <- new.env(parent = emptyenv())
+
+.msdev_cpdb_path_key <- function(cpdb) {
+  tryCatch(as.character(cpdb@dbcon@dbname), error = function(e) "cpdb")
+}
+
+.msdev_get_ion_index <- function(cpdb, polarity) {
+  pol <- as.integer(polarity)[[1L]]
+  key <- paste(.msdev_cpdb_path_key(cpdb), pol, sep = "|")
+  if (exists(key, envir = .msdev_ion_index_cache, inherits = FALSE)) {
+    return(.msdev_ion_index_cache[[key]])
+  }
+  cols <- intersect(
+    c("compound_id", "formula", "exactmass", "has_sp", "name"),
+    CompoundDb::compoundVariables(cpdb, includeId = TRUE)
+  )
+  cpdbt <- as.data.frame(CompoundDb::compounds(cpdb, columns = cols))
+  if ("has_sp" %in% names(cpdbt)) {
+    cpdbt <- cpdbt[which(as.numeric(cpdbt$has_sp) > 0), , drop = FALSE]
+  }
+  if (!nrow(cpdbt) || !"exactmass" %in% names(cpdbt)) {
+    .msdev_ion_index_cache[[key]] <- cpdbt
+    return(cpdbt)
+  }
+  delta <- if (identical(pol, 1L)) 1.007276466 else -1.007276466
+  cpdbt$ion_mz <- as.numeric(cpdbt$exactmass) + delta
+  cpdbt$adduct <- if (identical(pol, 1L)) "[M+H]+" else "[M-H]-"
+  cpdbt <- cpdbt[is.finite(cpdbt$ion_mz), , drop = FALSE]
+  .msdev_ion_index_cache[[key]] <- cpdbt
+  message_with_time("Indexed ", nrow(cpdbt), " CompDb ions for polarity ", pol)
+  cpdbt
+}
+
+.msdev_spectra_by_compound_id <- function(cpdb, compound_id, polarity = NULL) {
+  compound_id <- unique(as.character(compound_id))
+  compound_id <- compound_id[!is.na(compound_id) & nzchar(compound_id)]
+  if (!length(compound_id)) {
+    return(NULL)
+  }
+  sp_list <- lapply(compound_id, function(id) {
+    sp <- tryCatch(
+      Spectra::Spectra(cpdb, filter = ~ compound_id == id),
+      error = function(e) NULL
+    )
+    if (is.null(sp) || !length(sp)) {
+      return(NULL)
+    }
+    tryCatch(
+      Spectra::setBackend(
+        sp,
+        Spectra::MsBackendMemory(),
+        BPPARAM = BiocParallel::SerialParam()
+      ),
+      error = function(e) sp
+    )
+  })
+  sp_list <- sp_list[vapply(sp_list, function(x) !is.null(x) && length(x) > 0L, logical(1))]
+  if (!length(sp_list)) {
+    return(NULL)
+  }
+  sp <- if (length(sp_list) == 1L) sp_list[[1L]] else do.call(c, unname(sp_list))
+  if (!is.null(polarity) && length(sp)) {
+    pol_int <- as.integer(polarity)[[1L]]
+    sp <- tryCatch(ProtGenerics::filterPolarity(sp, pol_int), error = function(e) sp)
+  }
+  if (!length(sp)) {
+    return(NULL)
+  }
+  tryCatch(
+    Spectra::setBackend(
+      sp,
+      Spectra::MsBackendMemory(),
+      BPPARAM = BiocParallel::SerialParam()
+    ),
+    error = function(e) sp
+  )
+}
+
+.msdev_get_ref_ms2 <- function(object, feature_id, cpdb = NULL, ppm = 20) {
+  legacy <- .msdev_get_legacy_annotation(object, feature_id)
+  if (!is.null(legacy) && !is.null(legacy$annotation$refSpec) &&
+      length(legacy$annotation$refSpec)) {
+    return(legacy$annotation$refSpec)
+  }
+  cpdb <- .msdev_open_cpdb(object, cpdb = cpdb)
+  if (is.null(cpdb)) {
+    return(NULL)
+  }
+  pol <- .msdev_polarity_from_feature_id(feature_id)
+  xcms_fid <- .msdev_xcms_feature_id(feature_id)
+  x <- .msdev_get_xcms(object, pol)
+  if (is.null(x) || !.xcms_has_features(x)) {
+    return(NULL)
+  }
+  fdf <- as.data.frame(xcms::featureDefinitions(x))
+  if (!xcms_fid %in% rownames(fdf)) {
+    return(NULL)
+  }
+  row <- fdf[xcms_fid, , drop = FALSE]
+  pol_int <- if (identical(pol, "Positive")) 1L else 0L
+
+  cids <- character()
+  if ("compound_id" %in% names(row)) {
+    cid <- as.character(row$compound_id[[1L]])
+    if (length(cid) && !is.na(cid) && nzchar(cid)) {
+      cids <- cid
+    }
+  }
+  if (!length(cids) && "candidate.id" %in% names(row)) {
+    cids <- as.character(unlist(row$candidate.id[[1L]]))
+    cids <- cids[!is.na(cids) & nzchar(cids)]
+  }
+  if (!length(cids)) {
+    mz <- as.numeric(row$mzmed)[[1L]]
+    if (!is.finite(mz)) {
+      return(NULL)
+    }
+    idx_tbl <- .msdev_get_ion_index(cpdb, pol_int)
+    if (!nrow(idx_tbl) || !"ion_mz" %in% names(idx_tbl)) {
+      return(NULL)
+    }
+    err <- abs(idx_tbl$ion_mz - mz) / mz * 1e6
+    keep <- which(is.finite(err) & err < ppm)
+    if (!length(keep)) {
+      return(NULL)
+    }
+    keep <- keep[order(err[keep])]
+    keep <- head(keep, 20L)
+    cids <- unique(as.character(idx_tbl$compound_id[keep]))
+  }
+  .msdev_spectra_by_compound_id(cpdb, cids, polarity = pol_int)
+}
+
+.msdev_feature_plot_info <- function(object, feature_id) {
+  info <- list(
+    mz = NA, rt = NA, score = NA, name = NA, adduct = NA
+  )
+  legacy <- .msdev_get_legacy_annotation(object, feature_id)
+  if (!is.null(legacy)) {
+    fd <- legacy$feature.data
+    for (nm in names(info)) {
+      if (nm %in% names(fd) && length(fd[[nm]])) {
+        info[[nm]] <- fd[[nm]][[1L]]
+      }
+    }
+  }
+  pol <- .msdev_polarity_from_feature_id(feature_id)
+  x <- .msdev_get_xcms(object, pol)
+  if (!is.null(x) && .xcms_has_features(x)) {
+    fdf <- as.data.frame(xcms::featureDefinitions(x))
+    xcms_fid <- .msdev_xcms_feature_id(feature_id)
+    if (xcms_fid %in% rownames(fdf)) {
+      row <- fdf[xcms_fid, , drop = FALSE]
+      if (is.na(info$mz)) info$mz <- row$mzmed
+      if (is.na(info$rt)) info$rt <- row$rtmed
+      for (nm in c("score", "name", "adduct")) {
+        if (is.na(info[[nm]]) && nm %in% names(row) && length(row[[nm]][[1L]])) {
+          info[[nm]] <- row[[nm]][[1L]]
+        }
+      }
+    }
+  }
+  info
+}
+
+.msdev_sp_memory <- function(sp) {
+  if (is.null(sp) || !length(sp)) {
+    return(sp)
+  }
+  tryCatch(
+    Spectra::setBackend(
+      sp,
+      Spectra::MsBackendMemory(),
+      BPPARAM = BiocParallel::SerialParam()
+    ),
+    error = function(e) sp
+  )
+}
+
+.msdev_pick_one_ms2 <- function(sp) {
+  if (is.null(sp) || length(sp) <= 1L) {
+    return(sp)
+  }
+  npeaks <- lengths(Spectra::mz(sp))
+  tic <- sp$totIonCurrent
+  idx <- if (!is.null(tic) && any(is.finite(tic))) {
+    which.max(tic)
+  } else if (any(npeaks > 0L)) {
+    which.max(npeaks)
+  } else {
+    1L
+  }
+  if (!length(idx) || is.na(idx)) {
+    idx <- 1L
+  }
+  sp[as.integer(idx)]
+}
+
+.msdev_ms2_labels <- function(sp) {
+  mz1 <- Spectra::mz(sp)[[1L]]
+  int1 <- Spectra::intensity(sp)[[1L]]
+  lbls <- round(mz1, digits = 4)
+  lbls[int1 <= 15] <- ""
+  lbls
+}
+
 #' @title Plot MS/MS spectrum for a feature
 #' @description Plot experimental and reference MS/MS spectra for a given feature, with annotation details.
+#'   Experimental MS2 is taken from legacy \code{annotation} when present, else
+#'   from \code{ms2_id} / \code{MS2_Spectra}, else matched from xcms MS2 spectra.
+#'   Reference MS2 is taken from legacy \code{refSpec} when present, else from
+#'   CompDb spectra whose precursor m/z matches the feature (\code{compound_id}
+#'   is preferred when annotated).
 #' @param MSdev.obj MSdev object
 #' @param feature.id Character string specifying the feature ID
-#' @return ggplot object (or NULL if no spectra)
+#' @param cpdb Optional \code{CompDb} object. Opened from
+#'   \code{object@projectInfo$CompoundDB_path} when \code{NULL}.
+#' @return Invisible \code{TRUE} if a spectrum was plotted, \code{FALSE} otherwise.
 #' @export
 #'
 
-plot_MSdev_feature_spectrum <- function(MSdev.obj,feature.id  ){
+plot_MSdev_feature_spectrum <- function(MSdev.obj, feature.id, cpdb = NULL) {
+  stopifnot(inherits(MSdev.obj, "MSdev"))
+  feature.id <- as.character(feature.id)[[1L]]
+  sp.exp <- .msdev_get_exp_ms2(MSdev.obj, feature.id)
+  sp.ref <- .msdev_get_ref_ms2(MSdev.obj, feature.id, cpdb = cpdb)
+  info <- .msdev_feature_plot_info(MSdev.obj, feature.id)
 
-  feature.data <- MSdev.obj@advancedAna$featureRaw%>%
-    dplyr::filter(feature_id == feature.id)
-  feature.annotation <- MSdev.obj@annotation[[paste0(feature.data$ion_mode,"Annotation")]][[which(
-    rownames(MSdev.obj@xcmsData[[paste0(feature.data$ion_mode,"Feature")]])==
-      gsub(pattern = "_|pos|neg",x = feature.id,replacement = ""))]]
-
-  sp.exp <-feature.annotation$expSpec
-  sp.ref <-feature.annotation$refSpec
-
-  if (is.null(sp.exp)) {
-    return()
-  }else{
-    sp.exp <- sp.exp%>%
-      #Spectra::combineSpectra(
-      #  peaks = "intersect",minProp = 0.3,ppm = 50,
-      #  intensityFun = median,mzFun = median)%>%
-      normalizeSpectra()%>%
-      Spectra::filterIntensity(intensity = c(0.05,Inf))%>%
-      Spectra::applyProcessing()
-
-    if (is.null(sp.ref)) {
-
-      sp.exp <- sp.exp%>%
-        Spectra::combineSpectra(
-          peaks = "intersect",minProp = 0.3,ppm = 50,
-          intensityFun = median,mzFun = median)
-
-      text.to.show <- paste0("Feature ID :",feature.id,"\n",
-                             "Exp Precursor mz :",sp.exp$precursorMz,"\n",
-                             "Exp Retention time :",sp.exp$rtime,"\n",
-                             "Score: ",feature.data$score,"\n",
-                             "Compound: ",feature.data$name,"\n",
-                             "Adduct: ",feature.data$adduct,"\n",
-                             "Ref Precursor mz: ",sp.ref$precursorMz,"\n",
-                             "Ref Retention time: ",sp.ref$rtime,"\n",
-                             "INCHIKEY: ",sp.ref$inchikey,"\n",
-                             #"KEGG ID: ",sp.ref$kegg.id,"\n",
-                             "Reference Source: ",sp.ref$database
-
-      )
-      Spectra::plotSpectra(sp.exp,labels = function(z) {
-        lbls <- round(Spectra::mz(z)[[1L]], digits = 4)
-        lbls[Spectra::intensity(z)[[1L]] <= 15] <- ""
-        lbls},
-        main = text.to.show,
-        adj = 0,
-        cex.main = 1.5,
-        cex.axis = 1,
-        labelCex = 1)
-
-    }else{
-
-      sp.score <- Spectra::compareSpectra(sp.exp,sp.ref)
-      sp.exp <- sp.exp[which.max(sp.score)]
-      text.to.show <- paste0("Feature ID :",feature.id,"\n",
-                             "Exp Precursor mz :",feature.data$mz,"\n",
-                             "Exp Retention time :",feature.data$rt,"\n",
-                             "Score: ",feature.data$score,"\n",
-                             "Compound: ",feature.data$name,"\n",
-                             "Adduct: ",feature.data$adduct,"\n",
-                             "Ref Precursor mz: ",sp.ref$precursorMz,"\n",
-                             "Ref Retention time: ",sp.ref$rtime,"\n",
-                             "INCHIKEY: ",sp.ref$inchikey,"\n",
-                             # "KEGG ID: ",sp.ref$kegg.id,"\n",
-                             "Reference Source: ",sp.ref$database
-
-      )
-      Spectra::plotSpectraMirror(sp.exp,sp.ref,
-                                 ylab = "relative intensity",
-                                 labels = function(z) {
-                                   lbls <- round(Spectra::mz(z)[[1L]], digits = 4)
-                                   lbls[Spectra::intensity(z)[[1L]] <= 15] <- ""
-                                   lbls},
-                                 tolerance = 0.2,
-                                 main = text.to.show,
-                                 adj = 0,
-                                 cex.main = 1.5,
-                                 cex.axis = 1,
-                                 labelCex = 1
-
-      )
-
-
-    }
-
-
+  if (is.null(sp.exp) || !length(sp.exp)) {
+    message("No experimental MS2 for ", feature.id)
+    return(invisible(FALSE))
   }
 
+  sp.exp <- .msdev_pick_one_ms2(.msdev_sp_memory(sp.exp))
+  sp.exp <- sp.exp %>%
+    normalizeSpectra() %>%
+    Spectra::filterIntensity(intensity = c(0.05, Inf))
+  sp.exp <- tryCatch(Spectra::applyProcessing(sp.exp), error = function(e) sp.exp)
+  if (!length(sp.exp) || !length(Spectra::mz(sp.exp)[[1L]])) {
+    message("No experimental MS2 peaks for ", feature.id)
+    return(invisible(FALSE))
+  }
 
+  if (!is.null(sp.ref) && length(sp.ref)) {
+    sp.ref <- .msdev_sp_memory(sp.ref)
+    sp.ref <- sp.ref %>%
+      normalizeSpectra() %>%
+      Spectra::filterIntensity(intensity = c(0.05, Inf))
+    sp.ref <- tryCatch(Spectra::applyProcessing(sp.ref), error = function(e) sp.ref)
+    npeaks <- lengths(Spectra::mz(sp.ref))
+    sp.ref <- sp.ref[which(npeaks > 0L)]
+    if (!length(sp.ref)) {
+      sp.ref <- NULL
+    } else {
+      sp.score <- Spectra::compareSpectra(sp.exp, sp.ref)
+      if (is.matrix(sp.score)) {
+        ij <- which(sp.score == max(sp.score, na.rm = TRUE), arr.ind = TRUE)[1, ]
+        sp.exp <- sp.exp[ij[[1L]]]
+        sp.ref <- sp.ref[ij[[2L]]]
+        info$score <- sp.score[ij[[1L]], ij[[2L]]]
+      } else {
+        i <- which.max(sp.score)
+        if (!length(i) || is.na(i)) {
+          i <- 1L
+        }
+        sp.ref <- sp.ref[i]
+        info$score <- sp.score[[i]]
+      }
+      if (is.na(info$name)) {
+        info$name <- .msdev_sp_var(sp.ref, "name")
+      }
+      if (is.na(info$adduct)) {
+        info$adduct <- .msdev_sp_var(sp.ref, "adduct")
+      }
+    }
+  }
 
+  if (is.null(sp.ref) || !length(sp.ref)) {
+    text.to.show <- paste0(
+      "Feature ID :", feature.id, "\n",
+      "Exp Precursor mz :", .msdev_sp_var(sp.exp, "precursorMz"), "\n",
+      "Exp Retention time :", .msdev_sp_var(sp.exp, "rtime"), "\n",
+      "Score: ", info$score, "\n",
+      "Compound: ", info$name, "\n",
+      "Adduct: ", info$adduct
+    )
+    Spectra::plotSpectra(
+      sp.exp,
+      labels = .msdev_ms2_labels(sp.exp),
+      main = text.to.show,
+      adj = 0,
+      cex.main = 1.5,
+      cex.axis = 1,
+      labelCex = 1
+    )
+  } else {
+    text.to.show <- paste0(
+      "Feature ID :", feature.id, "\n",
+      "Exp Precursor mz :", info$mz, "\n",
+      "Exp Retention time :", info$rt, "\n",
+      "Score: ", info$score, "\n",
+      "Compound: ", info$name, "\n",
+      "Adduct: ", info$adduct, "\n",
+      "Ref Precursor mz: ", .msdev_ref_precursor_mz(sp.ref), "\n",
+      "Ref Retention time: ", .msdev_sp_var(sp.ref, "rtime"), "\n",
+      "INCHIKEY: ", .msdev_sp_var(sp.ref, "inchikey"), "\n",
+      "Reference Source: ", .msdev_sp_var(sp.ref, "database")
+    )
+    Spectra::plotSpectraMirror(
+      sp.exp,
+      sp.ref,
+      ylab = "relative intensity",
+      labels = list(.msdev_ms2_labels(sp.exp), .msdev_ms2_labels(sp.ref)),
+      tolerance = 0.2,
+      main = text.to.show,
+      adj = 0,
+      cex.main = 1.5,
+      cex.axis = 1,
+      labelCex = 1
+    )
+  }
+  invisible(TRUE)
 }
 
 
@@ -1385,35 +1813,135 @@ plot_MSdev_feature_spectrum <- function(MSdev.obj,feature.id  ){
 #' @param MSdev.obj MSdev object
 #' @param feature_id Character string specifying the feature ID
 #' @param out.dir Output directory path
+#' @param cpdb Optional \code{CompDb} used to fetch reference MS2 spectra.
 #' @return NULL (writes files to disk)
 #' @export
 #'
 
-export_MSdev_feature_MSMS <- function(MSdev.obj,feature_id,out.dir ){
+export_MSdev_feature_MSMS <- function(MSdev.obj, feature_id, out.dir, cpdb = NULL) {
+  dir.create(out.dir, recursive = TRUE, showWarnings = FALSE)
+  feature_id <- as.character(feature_id)[[1L]]
+  msms.file <- file.path(out.dir, paste0(feature_id, ".MSMS.png"))
+  grDevices::png(msms.file, res = 100, width = 1000, height = 800)
+  graphics::par(mar = c(2, 2, 17, 2))
+  ok <- FALSE
+  tryCatch(
+    {
+      ok <- isTRUE(plot_MSdev_feature_spectrum(MSdev.obj, feature_id, cpdb = cpdb))
+    },
+    error = function(e) {
+      warning(feature_id, " MSMS: ", conditionMessage(e), call. = FALSE)
+    }
+  )
+  grDevices::dev.off()
+  if (!ok && file.exists(msms.file)) {
+    unlink(msms.file)
+  }
 
-
-
-
-  png(paste0(out.dir,"/",feature_id,".MSMS.png"),
-      res = 100,width = 1000,height = 800)
-  par(mar = c(2,2,17,2))
-  plot_MSdev_feature_spectrum(MSdev.obj,feature_id)
-  dev.off()
-
-
-  is.pos <-grepl(pattern = "pos",
-                 x = feature_id)
-  if (is.pos) {
-    xcms.xcms <- MSdev.obj@xcmsData$PositiveMS1
-  }else{
-    xcms.xcms <- MSdev.obj@xcmsData$NegativeMS1}
-  gp <- plot_xcms_feature_chromatogram(xcms.xcms,
-                                       feature.id = gsub(x = feature_id,pattern = "[_|pos|neg]",replacement = ""))+
-    theme(legend.position = "none")
-  export::graph2png(gp , file = paste0(out.dir,"/",feature_id,".Chrom.png"))
-
+  pol <- .msdev_polarity_from_feature_id(feature_id)
+  xcms.xcms <- .msdev_get_xcms(MSdev.obj, pol)
+  if (is.null(xcms.xcms)) {
+    warning(feature_id, ": no xcms object for chromatogram", call. = FALSE)
+    return(invisible(NULL))
+  }
+  gp <- plot_xcms_feature_chromatogram(
+    xcms.xcms,
+    feature.id = .msdev_xcms_feature_id(feature_id)
+  ) + ggplot2::theme(legend.position = "none")
+  export::graph2png(gp, file = file.path(out.dir, paste0(feature_id, ".Chrom.png")))
+  invisible(NULL)
 }
 
+
+#' @title Export MS/MS spectrum and chromatogram for all features
+#' @description Loop \code{\link{export_MSdev_feature_MSMS}} over features.
+#'   Feature IDs are taken from \code{advancedAna$featureRaw}, else
+#'   \code{feature.se}, else xcms \code{featureDefinitions} (\code{_pos}/
+#'   \code{_neg} suffix). Writes \code{\{feature_id\}.MSMS.png} (experimental vs
+#'   reference mirror when a reference spectrum is present) and
+#'   \code{\{feature_id\}.Chrom.png}. Failures on individual features are warned
+#'   and skipped.
+#' @param object MSdev object
+#' @param out.dir Output directory. Default \code{object@projectInfo$projectDir/MSMS}.
+#' @param feature_id Optional character vector of feature IDs. Default all
+#'   features discovered as above.
+#' @param cpdb_path Optional path to a CompoundDb SQLite file. Default
+#'   \code{object@projectInfo$CompoundDB_path} (set by
+#'   \code{\link{MSdev_annotation}}).
+#' @return Invisible character vector of feature IDs attempted.
+#' @seealso \code{\link{export_MSdev_feature_MSMS}},
+#'   \code{\link{plot_MSdev_feature_spectrum}}
+#' @export
+MSdev_export_feature_MSMS <- function(
+    object,
+    out.dir = file.path(object@projectInfo$projectDir, "MSMS"),
+    feature_id = NULL,
+    cpdb_path = object@projectInfo$CompoundDB_path) {
+  stopifnot(inherits(object, "MSdev"))
+
+  all_id <- .msdev_all_feature_ids(object)
+  if (!length(all_id)) {
+    stop("No feature IDs found in featureRaw, feature.se, or xcmsData")
+  }
+  if (is.null(feature_id)) {
+    feature_id <- all_id
+  } else {
+    feature_id <- unique(as.character(feature_id))
+    missing_id <- setdiff(feature_id, all_id)
+    if (length(missing_id)) {
+      warning("Unknown feature_id skipped: ",
+              paste(missing_id, collapse = ", "))
+      feature_id <- intersect(feature_id, all_id)
+    }
+  }
+  if (!length(feature_id)) {
+    message("No features to export")
+    return(invisible(character(0)))
+  }
+
+  if (is.null(out.dir) || !nzchar(out.dir)) {
+    project_dir <- object@projectInfo$projectDir
+    if (is.null(project_dir) || !nzchar(project_dir)) {
+      stop("`out.dir` is missing and `object@projectInfo$projectDir` is empty")
+    }
+    out.dir <- file.path(project_dir, "MSMS")
+  }
+  dir.create(out.dir, recursive = TRUE, showWarnings = FALSE)
+  out.dir <- normalizePath(out.dir, winslash = "/", mustWork = TRUE)
+
+  cpdb <- .msdev_open_cpdb(object, cpdb_path = cpdb_path)
+  if (is.null(cpdb)) {
+    message("No CompDb at object@projectInfo$CompoundDB_path; ",
+            "MSMS plots will show experimental spectra only")
+  } else {
+    db_path <- cpdb_path
+    if (is.null(db_path) || !nzchar(as.character(db_path)[[1L]])) {
+      db_path <- object@projectInfo$CompoundDB_path
+    }
+    message_with_time(
+      "Using CompDb: ",
+      normalizePath(db_path, winslash = "/", mustWork = FALSE)
+    )
+  }
+
+  message_with_time("Exporting MSMS for ", length(feature_id),
+                    " features to ", out.dir)
+  pbar <- get_progress_bar(length(feature_id))
+  for (fid in feature_id) {
+    tryCatch(
+      export_MSdev_feature_MSMS(object, fid, out.dir, cpdb = cpdb),
+      error = function(e) {
+        if (length(grDevices::dev.list())) {
+          try(grDevices::dev.off(), silent = TRUE)
+        }
+        warning(fid, ": ", conditionMessage(e), call. = FALSE)
+      }
+    )
+    pbar$tick()
+  }
+  message_with_time("MSMS export finished")
+  invisible(feature_id)
+}
 
 
 #' @title Generate sample information table from raw data files
