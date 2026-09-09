@@ -265,9 +265,6 @@
 - [`list2df()`](https://drruili.github.io/MSdev/reference/list2df.md) :
   list2df
 
-- [`load_all_msdev()`](https://drruili.github.io/MSdev/reference/load_all_msdev.md)
-  : Load MSdev-related development packages
-
 - [`load_as_var()`](https://drruili.github.io/MSdev/reference/load_as_var.md)
   : Load RData File as Variable
 
