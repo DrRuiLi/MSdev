@@ -309,7 +309,7 @@
 <code class="sourceCode R"><span><span class="va">fids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="fu">xcms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcms/man/XCMSnExp-class.html" class="external-link">featureDefinitions</a></span><span class="op">(</span><span class="va">xcms</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/xcms_extension_plot.html">plot_xcms_feature_chromatogram</a></span><span class="op">(</span><span class="va">xcms</span>, feature.id <span class="op">=</span> <span class="va">fids</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
 </div>
-<p>For many features or full-run traces, extract once with <code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram()</a></code>, then plot with <code><a href="../reference/xcms_extension_chromatogram.html">plot_XChromatograms()</a></code> (section 6). The inspection helper still calls <code><a href="https://rdrr.io/pkg/ProtGenerics/man/protgenerics.html" class="external-link">xcms::chromatogram()</a></code> internally and is meant for a handful of features.</p>
+<p>For many features or full-run traces, extract once with <code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram()</a></code>, then plot with <code><a href="../reference/xcms_extension_chromatogram.html">plot_XChromatograms()</a></code> (section 6). <code><a href="../reference/xcms_extension_plot.html">plot_xcms_feature_chromatogram()</a></code> extracts with that same engine and is meant for a handful of features.</p>
 </section><section class="level3"><h3 id="intensity-along-the-injection-sequence">4.4 Intensity along the injection sequence<a class="anchor" aria-label="anchor" href="#intensity-along-the-injection-sequence"></a>
 </h3>
 <p><code><a href="../reference/xcms_extension_plot.html">plot_xcms_feature_intensity()</a></code> plots <code>featureValues</code> against injection order. Positive polarity sorts <code>pData$analysis.time.positive</code>; negative uses <code>analysis.time.negative</code>. Points are colored by <code>sample.type</code> (<code>Blank</code> / <code>QC</code> / <code>Sample</code>).</p>
@@ -319,7 +319,7 @@
 </div>
 <hr></section></section><section class="level2"><h2 id="two-panel-xic">5. Two-panel XIC<a class="anchor" aria-label="anchor" href="#two-panel-xic"></a>
 </h2>
-<p><code><a href="../reference/xcms_extension_plot.html">plot_xcms_xic()</a></code> is a ggplot2 stand-in for xcms <code>plot(..., type = "XIC")</code>:</p>
+<p><code><a href="../reference/xcms_extension_plot.html">plot_xcms_xic()</a></code> is a ggplot2 stand-in for xcms <code>plot(..., type = "XIC")</code>. The upper-panel trace is extracted with <code><a href="../reference/xcms_extension_chromatogram.html">get_xcms_chromatogram()</a></code> (<code>aggregationFun = "sum"</code>):</p>
 <ul>
 <li>
 <strong>Upper panel:</strong> extracted-ion chromatogram (intensity vs RT)</li>

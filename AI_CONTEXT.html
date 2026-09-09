@@ -132,7 +132,25 @@
 <li>Report: <code>Report_MSdev_feature_group_EIC</code> writes <code>Feature_group_EIC_Positive.pdf</code> / <code>Feature_group_EIC_Negative.pdf</code> under <code>projectDir</code> via <code>plot_xcms_feature_group_EIC_comparasion</code>.</li>
 <li>Shared helper <code>.resolve_selected_sample</code> lives here (also used by chromatogram extractors in <code>dev_xcms.R</code>).</li>
 <li>Chromatograms reused from <code>xcmsData$Positive_Chromatograms</code> / <code>$Negative_Chromatograms</code> (extract via <code>MSdev_get_feature_chrom</code>; retrieve via <code>get_MSdev_Chromatogram(polarity=…)</code> in <code>MSdev-function.R</code>).</li>
-</ul><hr></div>
+</ul></div>
+<div class="section level3">
+<h3 id="eic-extraction-do-not-use-xcmschromatogram">EIC extraction (do not use <code>xcms::chromatogram()</code>)<a class="anchor" aria-label="anchor" href="#eic-extraction-do-not-use-xcmschromatogram"></a></h3>
+<p>Use the MSdev extractor in <code>R/dev_xcms.R</code>. Never add <code><a href="https://rdrr.io/pkg/ProtGenerics/man/protgenerics.html" class="external-link">xcms::chromatogram()</a></code>, <code><a href="https://rdrr.io/pkg/xcms/man/featureChromatograms.html" class="external-link">xcms::featureChromatograms()</a></code>, or <code><a href="https://rdrr.io/pkg/xcms/man/chromPeakChromatograms.html" class="external-link">xcms::chromPeakChromatograms()</a></code>.</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Need</th>
+<th>Call</th>
+</tr></thead><tbody><tr><td>Rectangular mz/rt boxes</td>
+<td>
+<code><a href="reference/xcms_extension_chromatogram.html">get_xcms_chromatogram()</a></code> (engine; drop-in for <code><a href="https://rdrr.io/pkg/ProtGenerics/man/protgenerics.html" class="external-link">xcms::chromatogram()</a></code>)</td>
+</tr><tr><td>Feature EICs</td>
+<td><code><a href="reference/xcms_extension_chromatogram.html">get_xcms_feature_chromatogram()</a></code></td>
+</tr><tr><td>Peak EICs</td>
+<td><code><a href="reference/xcms_extension_chromatogram.html">get_xcms_peaks_chromatogram()</a></code></td>
+</tr><tr><td>Store on the MSdev object</td>
+<td><code><a href="reference/MSdev_get_feature_chrom.html">MSdev_get_feature_chrom()</a></code></td>
+</tr><tr><td>Read stored EICs</td>
+<td><code>get_MSdev_Chromatogram(polarity=…)</code></td>
+</tr></tbody></table><p>Default <code>expandMzppm = 2</code>. Prefer stored chromatograms when present; re-extract only with <code>re_extract</code> / <code>forceExtractChrom</code>. Plot helpers (<code>plot_xcms_feature_chromatogram</code>, <code>plot_xcms_xic</code>, <code>plot_xcms_peaks_Chromatogram</code>, <code>MSdev_export_feature_Chromatographs</code>) already go through this engine.</p>
+<hr></div>
 </div>
 <div class="section level2">
 <h2 id="id_4-core-data-flow--state">4. Core data flow / state<a class="anchor" aria-label="anchor" href="#id_4-core-data-flow--state"></a></h2>
@@ -180,8 +198,9 @@
 <li>For graph/generic issues, check <code>R/0_mscc_graph_generics_imports.R</code> and <code>NAMESPACE</code> imports from <code>MSCC</code> before touching network files.</li>
 <li>Avoid broad edits in large utility files (especially <code>dev_xcms.R</code>) unless caller boundaries are clear.</li>
 <li>For EIC feature-group work, edit <code>R/MSdev-feature-group-EIC.R</code> (logic) and <code>R/dev_plot.R</code> (mirror plots) rather than re-growing <code>MSdev-function.R</code>.</li>
+<li>For any new EIC extract/plot/export path, use <code>get_xcms_chromatogram</code> / <code>get_xcms_feature_chromatogram</code> / <code>get_xcms_peaks_chromatogram</code> (see section 3). Do not call <code><a href="https://rdrr.io/pkg/ProtGenerics/man/protgenerics.html" class="external-link">xcms::chromatogram()</a></code>.</li>
 <li>If architecture shifts again (new migrations between <code>MSdev</code> and <code>MSCC</code>), update this file only after explicit user request.</li>
-</ol><hr><p>Last refreshed after unifying spectra/chromatogram getters: <code>get_MSdev_Spectra(msLevel, polarity)</code> and <code>get_MSdev_Chromatogram(polarity)</code> replace <code>get_MSdev_ms1_Spectra</code> / <code>get_MSdev_ms2_Spectra</code>. This file is a navigation aid, not a substitute for reading source.</p>
+</ol><hr><p>Last refreshed after documenting the MSdev EIC extractor (<code>get_xcms_chromatogram</code> and wrappers) as the only chromatogram extraction path. This file is a navigation aid, not a substitute for reading source.</p>
 </div>
 </div>
 

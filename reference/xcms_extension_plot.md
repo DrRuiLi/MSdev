@@ -15,7 +15,9 @@ retention time (x-axis) vs m/z (y-axis). Point size represents peak
 width, color represents log10 intensity. Includes peak detection
 parameters in subtitle.
 
-extract Chromatogram from xcms according to feature's mz range and plot
+Extract a feature EIC via
+[`get_xcms_feature_chromatogram`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+and plot it.
 
 plot scans number of MS1 levels in each peak, note that to many peaks
 will lead to stuck, apply `filterFile` to decrease peaks count
@@ -238,5 +240,8 @@ then `ExpTime`, then the current sample order.
 - `plot_xcms_xic()`: ggplot2 XIC plot matching xcms
   `plot(type = \"XIC\")`
 
-  Upper panel: extracted ion chromatogram (intensity vs retention time).
-  Lower panel: m/z vs retention time with points coloured by intensity.
+  Upper panel: extracted ion chromatogram (intensity vs retention time),
+  extracted with
+  [`get_xcms_chromatogram`](https://drruili.github.io/MSdev/reference/xcms_extension_chromatogram.md)
+  (`aggregationFun = "sum"`). Lower panel: m/z vs retention time with
+  points coloured by intensity.

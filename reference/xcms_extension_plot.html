@@ -7,7 +7,8 @@ bar encodes retention time; a top bar encodes sample.type (or
 group) and injection order.
 export peaks data by xcms::chromPeaks and plot by ggplot2
 Visualizes the distribution of detected features in a 2D space of retention time (x-axis) vs m/z (y-axis). Point size represents peak width, color represents log10 intensity. Includes peak detection parameters in subtitle.
-extract Chromatogram from xcms according to feature's mz range and plot
+Extract a feature EIC via
+get_xcms_feature_chromatogram and plot it.
 plot scans number of MS1 levels in each peak, note that to many peaks will lead to stuck,
 apply filterFile to decrease peaks count
 Dot-plot MS1 scan frequency along retention time. Scans are
@@ -28,7 +29,8 @@ bar encodes retention time; a top bar encodes sample.type (or
 group) and injection order.
 export peaks data by xcms::chromPeaks and plot by ggplot2
 Visualizes the distribution of detected features in a 2D space of retention time (x-axis) vs m/z (y-axis). Point size represents peak width, color represents log10 intensity. Includes peak detection parameters in subtitle.
-extract Chromatogram from xcms according to feature's mz range and plot
+Extract a feature EIC via
+get_xcms_feature_chromatogram and plot it.
 plot scans number of MS1 levels in each peak, note that to many peaks will lead to stuck,
 apply filterFile to decrease peaks count
 Dot-plot MS1 scan frequency along retention time. Scans are
@@ -89,7 +91,8 @@ bar encodes retention time; a top bar encodes <code>sample.type</code> (or
 <code>group</code>) and injection order.</p>
 <p>export peaks data by xcms::chromPeaks and plot by ggplot2</p>
 <p>Visualizes the distribution of detected features in a 2D space of retention time (x-axis) vs m/z (y-axis). Point size represents peak width, color represents log10 intensity. Includes peak detection parameters in subtitle.</p>
-<p>extract Chromatogram from xcms according to feature's mz range and plot</p>
+<p>Extract a feature EIC via
+<code><a href="xcms_extension_chromatogram.html">get_xcms_feature_chromatogram</a></code> and plot it.</p>
 <p>plot scans number of MS1 levels in each peak, note that to many peaks will lead to stuck,
 apply <code>filterFile</code> to decrease peaks count</p>
 <p>Dot-plot MS1 scan frequency along retention time. Scans are
@@ -279,7 +282,8 @@ polarity) or <code>analysis.time.negative</code> (negative), falling back to
 <li><p><code>plot_xcms_feature_intensity()</code>: plot feature intensity</p></li>
 <li><p><code>plot_xcms_TIC()</code>: plot TIC</p></li>
 <li><p><code>plot_xcms_xic()</code>: ggplot2 XIC plot matching xcms <code>plot(type = \"XIC\")</code></p>
-<p>Upper panel: extracted ion chromatogram (intensity vs retention time).
+<p>Upper panel: extracted ion chromatogram (intensity vs retention time),
+extracted with <code><a href="xcms_extension_chromatogram.html">get_xcms_chromatogram</a></code> (<code>aggregationFun = "sum"</code>).
 Lower panel: m/z vs retention time with points coloured by intensity.</p></li>
 </ul></div>
 
