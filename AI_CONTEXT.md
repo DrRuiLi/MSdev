@@ -57,6 +57,20 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 - Shared helper `.resolve_selected_sample` lives here (also used by chromatogram extractors in `dev_xcms.R`).
 - Chromatograms reused from `xcmsData$Positive_Chromatograms` / `$Negative_Chromatograms` (extract via `MSdev_get_feature_chrom`; retrieve via `get_MSdev_Chromatogram(polarity=…)` in `MSdev-function.R`).
 
+### EIC extraction (do not use `xcms::chromatogram()`)
+
+Use the MSdev extractor in `R/dev_xcms.R`. Never add `xcms::chromatogram()`, `xcms::featureChromatograms()`, or `xcms::chromPeakChromatograms()`.
+
+| Need | Call |
+|------|------|
+| Rectangular mz/rt boxes | `get_xcms_chromatogram()` (engine; drop-in for `xcms::chromatogram()`) |
+| Feature EICs | `get_xcms_feature_chromatogram()` |
+| Peak EICs | `get_xcms_peaks_chromatogram()` |
+| Store on the MSdev object | `MSdev_get_feature_chrom()` |
+| Read stored EICs | `get_MSdev_Chromatogram(polarity=…)` |
+
+Default `expandMzppm = 2`. Prefer stored chromatograms when present; re-extract only with `re_extract` / `forceExtractChrom`. Plot helpers (`plot_xcms_feature_chromatogram`, `plot_xcms_xic`, `plot_xcms_peaks_Chromatogram`, `MSdev_export_feature_Chromatographs`) already go through this engine.
+
 ---
 
 ## 4. Core data flow / state
@@ -89,8 +103,9 @@ Chemistry and molecule-graph primitives were refactored into `MSCC` and are cons
 2. For graph/generic issues, check `R/0_mscc_graph_generics_imports.R` and `NAMESPACE` imports from `MSCC` before touching network files.
 3. Avoid broad edits in large utility files (especially `dev_xcms.R`) unless caller boundaries are clear.
 4. For EIC feature-group work, edit `R/MSdev-feature-group-EIC.R` (logic) and `R/dev_plot.R` (mirror plots) rather than re-growing `MSdev-function.R`.
-5. If architecture shifts again (new migrations between `MSdev` and `MSCC`), update this file only after explicit user request.
+5. For any new EIC extract/plot/export path, use `get_xcms_chromatogram` / `get_xcms_feature_chromatogram` / `get_xcms_peaks_chromatogram` (see section 3). Do not call `xcms::chromatogram()`.
+6. If architecture shifts again (new migrations between `MSdev` and `MSCC`), update this file only after explicit user request.
 
 ---
 
-Last refreshed after unifying spectra/chromatogram getters: `get_MSdev_Spectra(msLevel, polarity)` and `get_MSdev_Chromatogram(polarity)` replace `get_MSdev_ms1_Spectra` / `get_MSdev_ms2_Spectra`. This file is a navigation aid, not a substitute for reading source.
+Last refreshed after documenting the MSdev EIC extractor (`get_xcms_chromatogram` and wrappers) as the only chromatogram extraction path. This file is a navigation aid, not a substitute for reading source.

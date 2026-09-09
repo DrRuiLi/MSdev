@@ -2883,9 +2883,10 @@ xcms_remove_feature_var <- function(xcms.xcms,var){
 }
 
 
-#' @description extract Chromatogram from xcms according to feature's mz range and plot
+#' @description Extract a feature EIC via
+#'   \code{\link{get_xcms_feature_chromatogram}} and plot it.
 #' @describeIn xcms_extension_plot plot feature chromatogram
-#' @param xcms.xcms XCMSnExp object
+#' @param xcms.xcms XCMSnExp / XcmsExperiment object
 #' @param feature.id feature id
 #' @param sampleNames sample names to include
 #'
@@ -2930,19 +2931,30 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
   if (!length(sample.idx)) {
     stop("No samples selected for chromatogram extraction.")
   }
-  xcms.sub <- .xcms_filter_file(xcms.xcms, sample.idx)
+  sel_names <- all.sample.names[sample.idx]
 
-  ### mz / rt from feature peaks
+  ### mz / rt from feature peaks (subtitle); extract via MSdev engine
   xcms.fdef <- xcms::featureDefinitions(xcms.xcms)
   if (is.numeric(feature.id)) {
     feature.id <- rownames(xcms.fdef)[feature.id]
   }
   feature.id <- as.character(feature.id)[1]
-  if (is.na(feature.id) || !nzchar(feature.id) || !(feature.id %in% rownames(xcms.fdef))) {
+  if (is.na(feature.id) || !nzchar(feature.id)) {
+    stop("feature.id is missing.")
+  }
+  if ("feature_id" %in% colnames(xcms.fdef)) {
+    f_row <- match(feature.id, as.character(xcms.fdef$feature_id))
+    if (is.na(f_row)) {
+      f_row <- match(feature.id, rownames(xcms.fdef))
+    }
+  } else {
+    f_row <- match(feature.id, rownames(xcms.fdef))
+  }
+  if (is.na(f_row)) {
     stop("feature.id does not exist in featureDefinitions(xcms.xcms).")
   }
 
-  xcms.feature <- xcms.fdef[feature.id, , drop = FALSE]
+  xcms.feature <- xcms.fdef[f_row, , drop = FALSE]
   peak.idx <- xcms.feature$peakidx[[1]]
   if (is.null(peak.idx) || !length(peak.idx)) {
     stop("Selected feature has no linked peaks (empty peakidx).")
@@ -2957,21 +2969,31 @@ plot_xcms_feature_chromatogram <- function(xcms.xcms ,feature.id, sampleNames =N
     stop("Failed to derive finite mz/rt ranges from feature peaks.")
   }
 
-  xcms.chrom <- xcms::chromatogram(xcms.sub,
-                                   mz = mz.range,
-                                   rt = rt.range,
-                                   BPPARAM = BiocParallel::SerialParam())
-  if (!methods::is(xcms.chrom, "XChromatograms")) {
+  xcms.chrom <- get_xcms_feature_chromatogram(
+    xcms.xcms,
+    feature.id = feature.id,
+    selected_sample = sel_names,
+    rt = "identity",
+    aggregationFun = "max",
+    attachPeaks = FALSE,
+    BPPARAM = BiocParallel::SerialParam(progressbar = FALSE)
+  )
+  if (!methods::is(xcms.chrom, "XChromatograms") &&
+      !methods::is(xcms.chrom, "MChromatograms")) {
     stop("Chromatogram extraction failed for selected feature and samples.")
   }
 
+  chrom_names <- colnames(xcms.chrom)
+  if (is.null(chrom_names) || anyNA(chrom_names)) {
+    chrom_names <- sel_names
+  }
   xcms.chrom.data <- get_chroms_data(xcms.chrom)%>%
-    dplyr::mutate(group = Biobase::sampleNames(xcms.sub)[col])
+    dplyr::mutate(group = chrom_names[col])
 
-  rt_all <- if (inherits(xcms.sub, "MsExperiment") || inherits(xcms.sub, "XcmsExperiment")) {
-    as.numeric(Spectra::rtime(ProtGenerics::spectra(xcms.sub)))
+  rt_all <- if (inherits(xcms.xcms, "MsExperiment") || inherits(xcms.xcms, "XcmsExperiment")) {
+    as.numeric(Spectra::rtime(ProtGenerics::spectra(xcms.xcms)))
   } else {
-    as.numeric(MSnbase::rtime(xcms.sub))
+    as.numeric(MSnbase::rtime(xcms.xcms))
   }
   ggplot(xcms.chrom.data)+
     geom_line(aes(x = rt,y = intensity , col = group))+
@@ -5093,14 +5115,25 @@ xcms_filter_feature_rt_rsd <- function(xcms.xcms, rt.shift = 5 ){
 
 }
 
-#' Extract summed chromatogram trace for ggplot XIC
+#' Extract chromatogram trace for ggplot XIC via get_xcms_chromatogram
 #' @noRd
 .extract_xcms_xic_chromatogram <- function(xcms.filt, mzr, rtr) {
-  if (!requireNamespace("xcms", quietly = TRUE)) {
-    stop("Package 'xcms' is required for XIC plots.", call. = FALSE)
+  nfiles <- .xcms_nfiles(xcms.filt)
+  if (!nfiles) {
+    stop("'xcms.filt' has no sample files", call. = FALSE)
   }
-  chr <- xcms::chromatogram(xcms.filt, mz = mzr, rt = rtr)
-  chr.sp <- chr[[1L]]
+  obj <- if (nfiles > 1L) .xcms_filter_file(xcms.filt, 1L) else xcms.filt
+  chr <- get_xcms_chromatogram(
+    obj,
+    mz = mzr,
+    rt = rtr,
+    aggregationFun = "sum",
+    BPPARAM = BiocParallel::SerialParam(progressbar = FALSE)
+  )
+  if (is.null(chr) || !nrow(chr) || !ncol(chr)) {
+    stop("Chromatogram extraction failed for the supplied mz/rt window.", call. = FALSE)
+  }
+  chr.sp <- chr[1L, 1L]
   rt_vals <- as.numeric(MSnbase::rtime(chr.sp))
   int_vals <- as.numeric(MSnbase::intensity(chr.sp))
   int_vals[!is.finite(int_vals)] <- 0
@@ -5145,7 +5178,8 @@ xcms_filter_feature_rt_rsd <- function(xcms.xcms, rt.shift = 5 ){
 
 #' @describeIn xcms_extension_plot ggplot2 XIC plot matching xcms \code{plot(type = \"XIC\")}
 #'
-#' Upper panel: extracted ion chromatogram (intensity vs retention time).
+#' Upper panel: extracted ion chromatogram (intensity vs retention time),
+#' extracted with \code{\link{get_xcms_chromatogram}} (\code{aggregationFun = "sum"}).
 #' Lower panel: m/z vs retention time with points coloured by intensity.
 #'
 #' @param xcms.filt \code{XCMSnExp} after \code{filterRt()} and \code{filterMz()}.

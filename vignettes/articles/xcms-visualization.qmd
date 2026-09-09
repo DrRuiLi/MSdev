@@ -162,7 +162,7 @@ fids <- rownames(xcms::featureDefinitions(xcms))
 plot_xcms_feature_chromatogram(xcms, feature.id = fids[[1]])
 ```
 
-For many features or full-run traces, extract once with `get_xcms_feature_chromatogram()`, then plot with `plot_XChromatograms()` (section 6). The inspection helper still calls `xcms::chromatogram()` internally and is meant for a handful of features.
+For many features or full-run traces, extract once with `get_xcms_feature_chromatogram()`, then plot with `plot_XChromatograms()` (section 6). `plot_xcms_feature_chromatogram()` extracts with that same engine and is meant for a handful of features.
 
 ### 4.4 Intensity along the injection sequence
 
@@ -176,7 +176,7 @@ plot_xcms_feature_intensity(xcms, feature_id_to_show = fids[[1]])
 
 ## 5. Two-panel XIC
 
-`plot_xcms_xic()` is a ggplot2 stand-in for xcms `plot(..., type = "XIC")`:
+`plot_xcms_xic()` is a ggplot2 stand-in for xcms `plot(..., type = "XIC")`. The upper-panel trace is extracted with `get_xcms_chromatogram()` (`aggregationFun = "sum"`):
 
 - **Upper panel:** extracted-ion chromatogram (intensity vs RT)
 - **Lower panel:** centroid points (m/z vs RT, colored by intensity)
