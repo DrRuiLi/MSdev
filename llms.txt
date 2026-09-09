@@ -143,8 +143,11 @@ MIT © Rui Li
 - [`MSdev_export()`](https://drruili.github.io/MSdev/reference/MSdev_export.md)
   : Msdev Export
 
+- [`MSdev_export_feature_Chromatographs()`](https://drruili.github.io/MSdev/reference/MSdev_export_feature_Chromatographs.md)
+  : Export feature EICs for all features
+
 - [`MSdev_export_feature_MSMS()`](https://drruili.github.io/MSdev/reference/MSdev_export_feature_MSMS.md)
-  : Export MS/MS spectrum and chromatogram for all features
+  : Export MS/MS spectra for all features
 
 - [`MSdev_get_feature_chrom()`](https://drruili.github.io/MSdev/reference/MSdev_get_feature_chrom.md)
   : Extract chromatograms for features
@@ -235,7 +238,7 @@ MIT © Rui Li
   : edit_df_in_excel
 
 - [`export_MSdev_feature_MSMS()`](https://drruili.github.io/MSdev/reference/export_MSdev_feature_MSMS.md)
-  : Export MS/MS spectrum and chromatogram for a feature
+  : Export MS/MS spectrum for a feature
 
 - [`export_Spectra_peak_list_for_cfm()`](https://drruili.github.io/MSdev/reference/export_Spectra_peak_list_for_cfm.md)
   : Export Spectra peak list for CFM (Deprecated)

@@ -1,12 +1,12 @@
-# Export MS/MS spectrum and chromatogram for all features
+# Export MS/MS spectra for all features
 
 Loop
 [`export_MSdev_feature_MSMS`](https://drruili.github.io/MSdev/reference/export_MSdev_feature_MSMS.md)
 over features. Feature IDs are taken from `advancedAna$featureRaw`, else
 `feature.se`, else xcms `featureDefinitions` (`_pos`/ `_neg` suffix).
 Writes `{feature_id}.MSMS.png` (experimental vs reference mirror when a
-reference spectrum is present) and `{feature_id}.Chrom.png`. Failures on
-individual features are warned and skipped.
+reference spectrum is present). Failures on individual features are
+warned and skipped.
 
 ## Usage
 
@@ -47,4 +47,5 @@ Invisible character vector of feature IDs attempted.
 ## See also
 
 [`export_MSdev_feature_MSMS`](https://drruili.github.io/MSdev/reference/export_MSdev_feature_MSMS.md),
-[`plot_MSdev_feature_spectrum`](https://drruili.github.io/MSdev/reference/plot_MSdev_feature_spectrum.md)
+[`plot_MSdev_feature_spectrum`](https://drruili.github.io/MSdev/reference/plot_MSdev_feature_spectrum.md),
+[`MSdev_export_feature_Chromatographs`](https://drruili.github.io/MSdev/reference/MSdev_export_feature_Chromatographs.md)

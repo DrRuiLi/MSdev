@@ -1,7 +1,7 @@
-# Export MS/MS spectrum and chromatogram for a feature
+# Export MS/MS spectrum for a feature
 
-Export PNG images of the MS/MS spectrum and chromatogram for a given
-feature.
+Export a PNG of the MS/MS spectrum for a given feature (experimental vs
+reference mirror when a reference spectrum is present).
 
 ## Usage
 
