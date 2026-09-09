@@ -2829,6 +2829,9 @@ MSdev_assign_MS2 <- function(object,
 #' @description Perform feature annotation using a CompoundDb database, including MS1 candidate search, MS2 scoring, and isotope pattern scoring.
 #' MS2 spectra are taken from \code{object@spectra$MS2_Spectra} and selected via
 #' character \code{featureDefinitions$ms2_id} (\code{sp_id} / spectraNames).
+#' Writes into xcms \code{featureDefinitions} on \code{PositiveMS1} /
+#' \code{NegativeMS1}. For spectra-derived precursor peaks (not xcms features),
+#' see \code{\link{MSdev_annotation_MS2_Precursor}}.
 #' @describeIn MSdev_workflow annotation
 #' @param object MSdev object
 #' @param cpdb_path path to CompoundDb SQLite database
@@ -2836,6 +2839,7 @@ MSdev_assign_MS2 <- function(object,
 #' @param ppm m/z tolerance in parts per million
 #' @param ... additional arguments passed to annotation functions
 #' @return MSdev object with annotation results
+#' @seealso \code{\link{MSdev_annotation_MS2_Precursor}}
 #' @export
 #'
 
@@ -2887,10 +2891,53 @@ MSdev_annotation <- function(object,
 #' @title Annotate MS2 precursor peaks using a compound database
 #' @description Annotate \code{object@advancedAna$MS2_Precursor} (from
 #'   \code{\link{MSdev_get_peak_table_from_spectra}}) with CompDb MS1 candidates
-#'   and MS2 spectral scores. Isotope-pattern scoring is skipped (no MS1
-#'   intensity matrix). Requires \code{ms2_id} on the peak table linking to
-#'   \code{MS2_Spectra} \code{sp_id} / spectraNames.
-#' @describeIn MSdev_workflow annotate MS2 precursor peaks
+#'   and MS2 spectral scores. Same CompDb engine as
+#'   \code{\link{MSdev_annotation}}, but the targets are spectra-derived
+#'   precursor peaks, not xcms MS1 features. Isotope-pattern scoring is skipped
+#'   (no MS1 intensity matrix). Requires \code{ms2_id} on the peak table linking
+#'   to \code{MS2_Spectra} \code{sp_id} / spectraNames.
+#' @details
+#' \code{MS2_Precursor} is not from xcms peak picking. It is built by grouping
+#' MS2 spectra by precursor m/z (\code{ppm}) and RT gap (\code{rt_tol}) into
+#' rows such as \code{MS2P000001}, each with \code{mzmed}/\code{rtmed} and
+#' \code{ms2_id} pointing at those spectra.
+#'
+#' For each polarity the function:
+#' \enumerate{
+#'   \item matches precursor \code{mzmed} to CompDb adduct m/z
+#'     (\code{fdf_get_ms1_candidate});
+#'   \item scores experimental MS2 vs CompDb reference spectra
+#'     (\code{fdf_get_ms2_score}, ndotproduct);
+#'   \item sets \code{score.isopattern} to zeros (no MS1 intensity matrix);
+#'   \item picks the best candidate with default weights
+#'     \code{weight_mz = 0.2}, \code{weight_ms2 = 0.8},
+#'     \code{weight_isopattern = 0}.
+#' }
+#'
+#' Results (\code{compound_id}, \code{adduct}, \code{score}, CompDb
+#' name/formula/smiles, \ldots) are written back to
+#' \code{advancedAna$MS2_Precursor}. \code{projectInfo$CompoundDB_path} is also
+#' set. If \code{MS2_Precursor} is missing, a message asks to run
+#' \code{\link{MSdev_get_peak_table_from_spectra}} first and the object is
+#' returned unchanged.
+#'
+#' Difference from \code{\link{MSdev_annotation}}:
+#' \tabular{lll}{
+#'   \tab \code{MSdev_annotation} \tab \code{MSdev_annotation_MS2_Precursor} \cr
+#'   What \tab xcms MS1 features
+#'     (\code{PositiveMS1} / \code{NegativeMS1}) \tab
+#'     MS2 precursor groups (\code{advancedAna$MS2_Precursor}) \cr
+#'   Written to \tab \code{featureDefinitions} on the xcms object \tab
+#'     \code{advancedAna$MS2_Precursor} \cr
+#'   MS2 link \tab \code{ms2_id} from \code{\link{MSdev_assign_MS2}} \tab
+#'     \code{ms2_id} from grouping the MS2 spectra themselves \cr
+#'   Isotope score \tab optional (\code{calc_isopattern_score}) \tab never \cr
+#'   Default weights \tab mz 0.1 / MS2 0.7 / iso 0.2 \tab
+#'     mz 0.2 / MS2 0.8 / iso 0 \cr
+#'   Helpers \tab \code{xcms_get_feature_*} \tab \code{fdf_get_*}
+#'     (same logic on a data.frame)
+#' }
+#' The two functions do not overwrite each other.
 #' @param object MSdev object with \code{advancedAna$MS2_Precursor}
 #' @param cpdb_path path to CompoundDb SQLite database
 #' @param ppm m/z tolerance in parts per million for candidate matching
@@ -2898,6 +2945,8 @@ MSdev_annotation <- function(object,
 #' @param weight_ms2 weight for MS2 similarity score (default \code{0.8})
 #' @param ... additional arguments passed to annotation helpers
 #' @return MSdev object with annotated \code{advancedAna$MS2_Precursor}
+#' @seealso \code{\link{MSdev_annotation}},
+#'   \code{\link{MSdev_get_peak_table_from_spectra}}
 #' @export
 #'
 MSdev_annotation_MS2_Precursor <- function(

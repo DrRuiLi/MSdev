@@ -27,7 +27,7 @@ load_demo <- function(demo = c("MSdev",
   demo_dir <- "C:\\Users\\91879\\OneDrive\\Code\\R\\Projecct\\2022.1.8_MS.demo\\Demo"
   file_path <- switch(
     demo,
-    "MSdev" = file.path(demo_dir, "MSdev_2025_04_01.Rdata"),
+    "MSdev" = file.path(demo_dir, "MSdev_2026_07_28.Rdata"),
     "XcmsExperiment" = file.path(demo_dir, "XcmsExperiment_2023_11_17.rda"),
     "xcms" = file.path(demo_dir, "XcmsExperiment_2023_11_17.rda"),
     "XCMSnExp" = file.path(demo_dir, "XCMSnExp_2023_11_17.rda"),
