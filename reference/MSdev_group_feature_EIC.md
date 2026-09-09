@@ -16,7 +16,7 @@ MSdev_group_feature_EIC(
   threshold = 0.5,
   expandRt = 2,
   min_width = 20,
-  expandMzppm = 0,
+  expandMzppm = 2,
   selected_sample = NULL,
   forceExtractChrom = FALSE,
   keep_Similarity_Matrix = TRUE,
@@ -62,7 +62,7 @@ MSdev_group_feature_EIC(
   numeric(1). Extra m/z pad in ppm used when extracting chromatograms
   via
   [`MSdev_get_feature_chrom`](https://drruili.github.io/MSdev/reference/MSdev_get_feature_chrom.md)
-  (`mzmin * (1 - ppm/1e6)`, `mzmax * (1 + ppm/1e6)`). Default `0`. Has
+  (`mzmin * (1 - ppm/1e6)`, `mzmax * (1 + ppm/1e6)`). Default `2`. Has
   no effect on already-stored chromatograms unless
   `forceExtractChrom = TRUE`.
 
