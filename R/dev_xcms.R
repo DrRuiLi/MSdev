@@ -647,7 +647,7 @@ get_xcms_peaks_chromatogram <- function(xcms.xcms,
 #' Build feature mz/rt area matrix
 #' @noRd
 .feature_mz_rt_boxes <- function(xcms.xcms, features.data, rt = c("expand", "identity", "all"),
-                                 expandRt = 15, mz.expand = 0, expandMzppm = 0) {
+                                 expandRt = 15, mz.expand = 0, expandMzppm = 2) {
   rt <- match.arg(rt)
   if (!is.numeric(expandMzppm) || length(expandMzppm) != 1L ||
       !is.finite(expandMzppm) || expandMzppm < 0) {
@@ -789,7 +789,7 @@ get_xcms_peaks_chromatogram <- function(xcms.xcms,
 #' @param mz.expand fraction of mz width to expand on each side.
 #' @param expandMzppm numeric(1). Extra m/z pad in ppm applied after
 #'   \code{mz.expand}: \code{mzmin = mzmin * (1 - ppm/1e6)},
-#'   \code{mzmax = mzmax * (1 + ppm/1e6)}. Default \code{0}.
+#'   \code{mzmax = mzmax * (1 + ppm/1e6)}. Default \code{2}.
 #' @param aggregationFun passed to \code{get_xcms_chromatogram}.
 #' @param attachPeaks logical; attach feature chromPeaks into
 #'   \code{XChromatograms} (needed for \code{removeIntensity(..., "outside_chromPeak")}).
@@ -807,7 +807,7 @@ get_xcms_feature_chromatogram <- function(xcms.xcms,
                                           rt = c("expand", "identity", "all"),
                                           expandRt = 15,
                                           mz.expand = 0,
-                                          expandMzppm = 0,
+                                          expandMzppm = 2,
                                           aggregationFun = "max",
                                           attachPeaks = TRUE,
                                           BPPARAM = SerialParam(progressbar = TRUE)) {

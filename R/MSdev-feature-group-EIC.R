@@ -774,7 +774,7 @@ xcms_group_feature_EIC <- function(xcms.xcms,
 #' @param expandMzppm numeric(1). Extra m/z pad in ppm used when extracting
 #'   chromatograms via \code{\link{MSdev_get_feature_chrom}}
 #'   (\code{mzmin * (1 - ppm/1e6)}, \code{mzmax * (1 + ppm/1e6)}).
-#'   Default \code{0}. Has no effect on already-stored chromatograms unless
+#'   Default \code{2}. Has no effect on already-stored chromatograms unless
 #'   \code{forceExtractChrom = TRUE}.
 #' @param selected_sample NULL, integer index/indices, or sample name(s)
 #'   (\code{sample.name} / chromatogram colnames). NULL uses all samples.
@@ -801,7 +801,7 @@ MSdev_group_feature_EIC <- function(object,
                                     threshold = 0.5,
                                     expandRt = 2,
                                     min_width = 20,
-                                    expandMzppm = 0,
+                                    expandMzppm = 2,
                                     selected_sample = NULL,
                                     forceExtractChrom = FALSE,
                                     keep_Similarity_Matrix = TRUE,
@@ -848,7 +848,7 @@ MSdev_group_feature_EIC <- function(object,
       BPPARAM = BPPARAM,
       expandMzppm = expandMzppm
     )
-  } else if (expandMzppm > 0) {
+  } else if (!missing(expandMzppm)) {
     message(
       "expandMzppm=", expandMzppm,
       " ignored: stored chromatograms reused. ",

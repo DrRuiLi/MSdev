@@ -1919,35 +1919,67 @@ export_MSdev_feature_MSMS <- function(MSdev.obj, feature_id, out.dir, cpdb = NUL
   idx
 }
 
-.msdev_eic_chrom_sample_cols <- function(chroms, xcms.xcms) {
-  want <- as.character(.msdev_eic_plot_sample_names(xcms.xcms))
-  cn <- colnames(chroms)
-  idx <- if (is.null(cn)) {
-    rep(NA_integer_, length(want))
-  } else {
-    match(want, cn)
-  }
-  if (anyNA(idx)) {
+.msdev_chrom_pdata_names <- function(chroms, xcms.xcms) {
+  pdata_names <- tryCatch(
+    as.character(Biobase::pData(chroms)$sample.name),
+    error = function(e) NULL
+  )
+  if (is.null(pdata_names) || !length(pdata_names)) {
     pdata_names <- tryCatch(
-      as.character(Biobase::pData(chroms)$sample.name),
+      as.character(Biobase::pData(xcms.xcms)$sample.name),
       error = function(e) NULL
     )
-    if (is.null(pdata_names) || !length(pdata_names)) {
-      pdata_names <- tryCatch(
-        as.character(Biobase::pData(xcms.xcms)$sample.name),
-        error = function(e) NULL
-      )
-    }
-    if (!is.null(pdata_names) && length(pdata_names)) {
-      idx2 <- match(want, pdata_names)
-      idx[is.na(idx)] <- idx2[is.na(idx)]
-    }
   }
-  idx <- unique(idx[!is.na(idx)])
+  pdata_names
+}
+
+.msdev_eic_resolve_selected_sample <- function(xcms.xcms, selected_sample) {
+  if (is.null(selected_sample)) {
+    return(as.character(.msdev_eic_plot_sample_names(xcms.xcms)))
+  }
+  selected_sample
+}
+
+.msdev_eic_chrom_sample_cols <- function(chroms, xcms.xcms,
+                                         selected_sample = NULL,
+                                         xcms_fid = NULL) {
+  n <- ncol(chroms)
+  if (!n) {
+    return(integer(0))
+  }
+  if (identical(selected_sample, "all")) {
+    return(seq_len(n))
+  }
+  if (identical(selected_sample, "maxo")) {
+    fv <- xcms::featureValues(xcms.xcms, missing = "rowmin_half")
+    if (!is.null(xcms_fid) && xcms_fid %in% rownames(fv)) {
+      orig_idx <- which.max(fv[xcms_fid, ])
+    } else {
+      orig_idx <- which.max(colMeans(fv, na.rm = TRUE))
+    }
+    selected_sample <- colnames(fv)[orig_idx]
+  }
+  want <- .msdev_eic_resolve_selected_sample(xcms.xcms, selected_sample)
+  cn <- colnames(chroms)
+  pdata_names <- .msdev_chrom_pdata_names(chroms, xcms.xcms)
+  idx <- tryCatch(
+    .resolve_selected_sample(want, cn, pdata_names),
+    error = function(e) {
+      if (is.null(cn)) {
+        return(rep(NA_integer_, length(want)))
+      }
+      match(as.character(want), cn)
+    }
+  )
+  if (anyNA(idx) && !is.null(pdata_names) && length(pdata_names)) {
+    idx2 <- match(as.character(want), pdata_names)
+    idx[is.na(idx)] <- idx2[is.na(idx)]
+  }
+  idx <- unique(as.integer(idx[!is.na(idx)]))
   if (!length(idx)) {
-    seq_len(min(5L, ncol(chroms)))
+    seq_len(min(5L, n))
   } else {
-    as.integer(idx)
+    idx
   }
 }
 
@@ -2005,9 +2037,23 @@ export_MSdev_feature_MSMS <- function(MSdev.obj, feature_id, out.dir, cpdb = NUL
     )
 }
 
-.export_MSdev_feature_chromatograph <- function(object, feature_id, out.dir) {
+.export_MSdev_feature_chromatograph <- function(
+    object,
+    feature_id,
+    out.dir,
+    re_extract = FALSE,
+    selected_sample = NULL,
+    rt = c("expand", "identity", "all"),
+    expandRt = 15,
+    mz.expand = 0,
+    expandMzppm = 2,
+    aggregationFun = "max",
+    attachPeaks = FALSE,
+    BPPARAM = BiocParallel::SerialParam(progressbar = FALSE)) {
   dir.create(out.dir, recursive = TRUE, showWarnings = FALSE)
   feature_id <- as.character(feature_id)[[1L]]
+  rt <- match.arg(rt)
+  aggregationFun <- match.arg(aggregationFun, c("max", "sum"))
   pol <- .msdev_polarity_from_feature_id(feature_id)
   xcms.xcms <- .msdev_get_xcms(object, pol)
   if (is.null(xcms.xcms)) {
@@ -2016,45 +2062,58 @@ export_MSdev_feature_MSMS <- function(MSdev.obj, feature_id, out.dir, cpdb = NUL
   }
   xcms_fid <- .msdev_xcms_feature_id(feature_id)
   pol_int <- if (identical(pol, "Positive")) 1L else 0L
+  auto_sample <- is.null(selected_sample)
+  sel <- .msdev_eic_resolve_selected_sample(xcms.xcms, selected_sample)
 
   chrom_one <- NULL
-  stored <- tryCatch(
-    get_MSdev_Chromatogram(object, polarity = pol_int),
-    error = function(e) NULL
-  )
-  if (!is.null(stored) && (inherits(stored, "MChromatograms") ||
-                           inherits(stored, "XChromatograms"))) {
-    row_idx <- .msdev_chrom_row_index(stored, xcms_fid, feature_id)
-    if (!is.na(row_idx)) {
-      col_idx <- .msdev_eic_chrom_sample_cols(stored, xcms.xcms)
-      chrom_one <- stored[row_idx, col_idx, drop = FALSE]
+  if (!isTRUE(re_extract)) {
+    stored <- tryCatch(
+      get_MSdev_Chromatogram(object, polarity = pol_int),
+      error = function(e) NULL
+    )
+    if (!is.null(stored) && (inherits(stored, "MChromatograms") ||
+                             inherits(stored, "XChromatograms"))) {
+      row_idx <- .msdev_chrom_row_index(stored, xcms_fid, feature_id)
+      if (!is.na(row_idx)) {
+        col_idx <- .msdev_eic_chrom_sample_cols(
+          stored, xcms.xcms,
+          selected_sample = selected_sample,
+          xcms_fid = xcms_fid
+        )
+        chrom_one <- stored[row_idx, col_idx, drop = FALSE]
+      }
     }
   }
 
   if (is.null(chrom_one) || !nrow(chrom_one) || !ncol(chrom_one)) {
-    samp_names <- as.character(.msdev_eic_plot_sample_names(xcms.xcms))
-    bp <- BiocParallel::SerialParam(progressbar = FALSE)
     chrom_one <- tryCatch(
       get_xcms_feature_chromatogram(
         xcms.xcms,
         feature.id = xcms_fid,
-        selected_sample = samp_names,
-        rt = "expand",
-        expandRt = 15,
-        aggregationFun = "max",
-        attachPeaks = FALSE,
-        BPPARAM = bp
+        selected_sample = sel,
+        rt = rt,
+        expandRt = expandRt,
+        mz.expand = mz.expand,
+        expandMzppm = expandMzppm,
+        aggregationFun = aggregationFun,
+        attachPeaks = attachPeaks,
+        BPPARAM = BPPARAM
       ),
       error = function(e) {
+        if (!auto_sample) {
+          stop(e)
+        }
         get_xcms_feature_chromatogram(
           xcms.xcms,
           feature.id = xcms_fid,
           selected_sample = "maxo",
-          rt = "expand",
-          expandRt = 15,
-          aggregationFun = "max",
-          attachPeaks = FALSE,
-          BPPARAM = bp
+          rt = rt,
+          expandRt = expandRt,
+          mz.expand = mz.expand,
+          expandMzppm = expandMzppm,
+          aggregationFun = aggregationFun,
+          attachPeaks = attachPeaks,
+          BPPARAM = BPPARAM
         )
       }
     )
@@ -2143,12 +2202,41 @@ MSdev_export_feature_MSMS <- function(
 #'   stored chromatograms from \code{\link{get_MSdev_Chromatogram}} (after
 #'   \code{\link{MSdev_get_feature_chrom}}); otherwise extracts with
 #'   \code{\link{get_xcms_feature_chromatogram}} (not \code{xcms::chromatogram}).
-#'   Feature IDs are resolved as in \code{\link{MSdev_export_feature_MSMS}}.
-#'   Failures on individual features are warned and skipped.
+#'   Set \code{re_extract = TRUE} to ignore stored chromatograms and extract
+#'   with the arguments below. Feature IDs are resolved as in
+#'   \code{\link{MSdev_export_feature_MSMS}}. Failures on individual features
+#'   are warned and skipped.
 #' @param object MSdev object
 #' @param out.dir Output directory. Default \code{object@projectInfo$projectDir/EIC}.
 #' @param feature_id Optional character vector of feature IDs. Default all
 #'   features discovered as above.
+#' @param re_extract logical(1). If \code{TRUE}, skip stored chromatograms and
+#'   extract with \code{\link{get_xcms_feature_chromatogram}}. Default
+#'   \code{FALSE}. Extract arguments (\code{rt}, \code{expandRt},
+#'   \code{mz.expand}, \code{expandMzppm}, \code{aggregationFun}) apply only
+#'   when extracting; they have no effect on already-stored chromatograms
+#'   unless \code{re_extract = TRUE}.
+#' @param selected_sample Sample selection, passed to
+#'   \code{\link{get_xcms_feature_chromatogram}} and used to subset stored
+#'   chromatogram columns. \code{NULL} (default) overlays one sample per
+#'   group (or up to five samples). \code{"maxo"} uses the highest-intensity
+#'   sample; \code{"all"} uses all samples; integer indices or sample name(s)
+#'   select those samples.
+#' @param rt one of \code{c("expand", "identity", "all")}. Passed to
+#'   \code{\link{get_xcms_feature_chromatogram}} when extracting. Default
+#'   \code{"expand"}.
+#' @param expandRt seconds added each side when \code{rt = "expand"}. Default
+#'   \code{15}.
+#' @param mz.expand fraction of mz width to expand on each side. Default
+#'   \code{0}.
+#' @param expandMzppm extra m/z pad in ppm applied after \code{mz.expand}.
+#'   Default \code{2}.
+#' @param aggregationFun \code{"max"} or \code{"sum"}, passed to
+#'   \code{\link{get_xcms_feature_chromatogram}}. Default \code{"max"}.
+#' @param attachPeaks logical; attach feature chromPeaks when extracting.
+#'   Default \code{FALSE}.
+#' @param BPPARAM BiocParallel backend for extraction. Default
+#'   \code{SerialParam(progressbar = FALSE)}.
 #' @return Invisible character vector of feature IDs attempted.
 #' @seealso \code{\link{MSdev_export_feature_MSMS}},
 #'   \code{\link{get_xcms_feature_chromatogram}},
@@ -2157,8 +2245,19 @@ MSdev_export_feature_MSMS <- function(
 MSdev_export_feature_Chromatographs <- function(
     object,
     out.dir = file.path(object@projectInfo$projectDir, "EIC"),
-    feature_id = NULL) {
+    feature_id = NULL,
+    re_extract = FALSE,
+    selected_sample = NULL,
+    rt = c("expand", "identity", "all"),
+    expandRt = 15,
+    mz.expand = 0,
+    expandMzppm = 2,
+    aggregationFun = "max",
+    attachPeaks = FALSE,
+    BPPARAM = BiocParallel::SerialParam(progressbar = FALSE)) {
   stopifnot(inherits(object, "MSdev"))
+  rt <- match.arg(rt)
+  aggregationFun <- match.arg(aggregationFun, c("max", "sum"))
 
   feature_id <- .msdev_resolve_export_feature_ids(object, feature_id)
   if (!length(feature_id)) {
@@ -2172,7 +2271,18 @@ MSdev_export_feature_Chromatographs <- function(
   pbar <- get_progress_bar(length(feature_id))
   for (fid in feature_id) {
     tryCatch(
-      .export_MSdev_feature_chromatograph(object, fid, out.dir),
+      .export_MSdev_feature_chromatograph(
+        object, fid, out.dir,
+        re_extract = re_extract,
+        selected_sample = selected_sample,
+        rt = rt,
+        expandRt = expandRt,
+        mz.expand = mz.expand,
+        expandMzppm = expandMzppm,
+        aggregationFun = aggregationFun,
+        attachPeaks = attachPeaks,
+        BPPARAM = BPPARAM
+      ),
       error = function(e) {
         warning(fid, ": ", conditionMessage(e), call. = FALSE)
       }
@@ -3594,13 +3704,13 @@ get_MSdev_spectra_target_list <- function(object,
 #' @param expandMzppm numeric(1). Passed to
 #'   \code{\link{get_xcms_feature_chromatogram}}: extra m/z pad in ppm
 #'   (\code{mzmin * (1 - ppm/1e6)}, \code{mzmax * (1 + ppm/1e6)}).
-#'   Default \code{0}.
+#'   Default \code{2}.
 #' @return MSdev object with chromatograms stored
 #' @export
 #'
 MSdev_get_feature_chrom <- function(object,BPPARAM =  SnowParam(
   workers  = max(1L, floor(parallel::detectCores() / 2)),
-  progressbar = T),feature.list = NULL, expandMzppm = 0){
+  progressbar = T),feature.list = NULL, expandMzppm = 2){
 
   for (i in 0:1) {
     pol <- ifelse(i==0,"Negative","Positive")
