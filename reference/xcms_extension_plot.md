@@ -39,7 +39,8 @@ plot feature's intensity, ordered by
 `Biobase::pData(xcms.xcms)$analysis.time.negative`
 
 Plot MS1 total ion chromatograms (TIC) for an XCMSnExp object, colored
-by sample group from `Biobase::pData(xcms.xcms)$group`.
+by sample group from `Biobase::pData(xcms.xcms)$group`. Y-axis tick
+labels use scientific notation (e.g. \\9 \times 10^{7}\\).
 
 Diagnostic and overview plots for xcms peaks, features, chromatograms,
 and TIC/XIC.
