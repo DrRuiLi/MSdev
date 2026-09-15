@@ -1,7 +1,6 @@
 # Load bundled demo data objects
 
-Load pre-built demo objects from the MSdev demo project directory.
-Dispatches to
+Load pre-built demo objects from package **MSdemo**. Dispatches to
 [`MSdev_load()`](https://drruili.github.io/MSdev/reference/MSdev_IO.md)
 for `"MSdev"` and [`readRDS()`](https://rdrr.io/r/base/readRDS.html) for
 other demo types. `"xcms"` is an alias for `"XcmsExperiment"`
