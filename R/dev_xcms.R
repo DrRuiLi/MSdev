@@ -4134,8 +4134,30 @@ xcms_get_scan_Stat <- function(xcms.xcms){
 
 
 
+#' Scientific axis labels as \eqn{9 \times 10^{7}}
+#' @noRd
+.label_scientific_10 <- function(x) {
+  labs <- vapply(x, FUN.VALUE = character(1L), FUN = function(val) {
+    if (is.na(val)) {
+      return("NA")
+    }
+    if (!is.finite(val) || val == 0) {
+      return(format(val, trim = TRUE))
+    }
+    e <- floor(log10(abs(val)))
+    m <- signif(val / 10^e, digits = 2)
+    if (abs(m) >= 10) {
+      m <- m / 10
+      e <- e + 1L
+    }
+    paste0(format(m, scientific = FALSE, trim = TRUE), " %*% 10^{", e, "}")
+  })
+  parse(text = labs)
+}
+
 #' @description Plot MS1 total ion chromatograms (TIC) for an XCMSnExp object,
 #' colored by sample group from `Biobase::pData(xcms.xcms)$group`.
+#' Y-axis tick labels use scientific notation (e.g. \eqn{9 \times 10^{7}}).
 #' @describeIn xcms_extension_plot plot TIC
 #'
 #' @param xcms.xcms XCMSnExp object
@@ -4183,7 +4205,7 @@ plot_xcms_TIC <- function(xcms.xcms,col.group = NULL,title = "TIC"){
                   col = group,
                   group=fileIdx),alpha = line_alpha)+
     scale_color_manual(values = col.group)+
-    #scale_y_log10()+
+    scale_y_continuous(labels = .label_scientific_10)+
     labs(title = title,x = "Retention Time", y = "Intensity", col = "")+
     theme_classic()->p
   p
