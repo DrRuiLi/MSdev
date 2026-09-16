@@ -134,11 +134,13 @@ Feature–MS2 links use character `sp_id` vectors in
 
 ## 5. Demo data
 
-If bundled demos are available on your machine:
+Raw demo files live in companion package **MSdemo** (not in MSdev). After
+installing MSdemo:
 
 ```{r}
-msdev.demo <- load_demo("MSdev")
-xcms.demo <- load_demo("xcms")       # alias for XcmsExperiment
+# MSdemo::MSdemo_download_dataset()   # first time, several GB from Zenodo
+msdev.demo <- MSdemo::load_demo("MSdev")
+xcms.demo <- MSdemo::load_demo("xcms")       # alias for XcmsExperiment
 ```
 
 ---

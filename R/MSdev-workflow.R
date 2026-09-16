@@ -1,6 +1,6 @@
 MSdev_1.4_workflow <- function(){
 
-  msdev.demo <- load_demo("MSdev")
+  msdev.demo <- MSdemo::load_demo("MSdev")
   msdev.demo <- MSdev_checkSampleInfo(msdev.demo)
   msdev.demo <- MSdev_msConvert(msdev.demo)
   get_MSdev_param(msdev.demo)
