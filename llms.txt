@@ -354,12 +354,6 @@ MIT © Rui Li
 - [`load_as_var()`](https://drruili.github.io/MSdev/reference/load_as_var.md)
   : Load RData File as Variable
 
-- [`load_demo()`](https://drruili.github.io/MSdev/reference/load_demo.md)
-  : Load bundled demo data objects
-
-- [`make_demo()`](https://drruili.github.io/MSdev/reference/make_demo.md)
-  : Rebuild the MSdev demo project
-
 - [`match_mz()`](https://drruili.github.io/MSdev/reference/match_mz.md)
   : Match Ions by M/Z Only
 

@@ -206,10 +206,12 @@ Install with <code><a href="https://bioconductor.github.io/BiocManager/reference
 <div class="section level2">
 <h2 id="demo-data">5. Demo data<a class="anchor" aria-label="anchor" href="#demo-data"></a>
 </h2>
-<p>If bundled demos are available on your machine:</p>
+<p>Raw demo files live in companion package <strong>MSdemo</strong> (not
+in MSdev). After installing MSdemo:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">msdev.demo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_demo.html">load_demo</a></span><span class="op">(</span><span class="st">"MSdev"</span><span class="op">)</span></span>
-<span><span class="va">xcms.demo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_demo.html">load_demo</a></span><span class="op">(</span><span class="st">"xcms"</span><span class="op">)</span>       <span class="co"># alias for XcmsExperiment</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># MSdemo::MSdemo_download_dataset()   # first time, several GB from Zenodo</span></span>
+<span><span class="va">msdev.demo</span> <span class="op">&lt;-</span> <span class="fu">MSdemo</span><span class="fu">::</span><span class="fu">load_demo</span><span class="op">(</span><span class="st">"MSdev"</span><span class="op">)</span></span>
+<span><span class="va">xcms.demo</span> <span class="op">&lt;-</span> <span class="fu">MSdemo</span><span class="fu">::</span><span class="fu">load_demo</span><span class="op">(</span><span class="st">"xcms"</span><span class="op">)</span>       <span class="co"># alias for XcmsExperiment</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
