@@ -167,9 +167,6 @@
 - [`extractSpectra_fullscan_DDA()`](https://drruili.github.io/MSdev/reference/extractSpectra_fullscan_DDA.md)
   : extractSpectra_fullscan_DDA
 
-- [`featureCandidate()`](https://drruili.github.io/MSdev/reference/featureCandidate.md)
-  : featureCandidate
-
 - [`featureSpectra_fullscan_DDA()`](https://drruili.github.io/MSdev/reference/featureSpectra_fullscan_DDA.md)
   : featureSpectra_fullscan_DDA
 
