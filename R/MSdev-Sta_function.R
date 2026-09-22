@@ -676,26 +676,6 @@ MSdev_export <- function(object, candi = FALSE) {
 
 
 
-get_MSDB_info <- function (MSDB_id,
-                             msdb_path,
-                             keys = c("name","kegg_id",
-                                       "formula", "inchikey"))
-{
-  Spectra_database <- MSdev::load_as_var(msdb_path)
-  MSDB_id[!MSDB_id %in% Spectra_database$MSDB_id] <- NA
-  match.idx <- match(MSDB_id, Spectra_database$MSDB_id)
-  keys.match <- intersect(keys,spectraVariables(Spectra_database))
-  keys.nonmatch <- setdiff(keys,spectraVariables(Spectra_database))
-  MSDBInfo <- Spectra::spectraData(Spectra_database)[match.idx,
-                                                     keys.match]
-  rownames(MSDBInfo)<-NULL
-  MSDBInfo <- as.data.frame(MSDBInfo)
-  MSDBInfo[,keys.nonmatch] <- NA
-  return(MSDBInfo)
-}
-
-
-
 get_CompDb_info <- function(cpdb,
                             compound_id,
                                 keys = c("name","kegg_id",
