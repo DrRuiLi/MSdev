@@ -19,6 +19,8 @@ MSdev_annotation_MS2_Precursor(
   ppm = 10,
   weight_mz = 0.2,
   weight_ms2 = 0.8,
+  BPPARAM = BiocParallel::SnowParam(workers = max(1L, floor(parallel::detectCores()/3)),
+    progressbar = TRUE),
   ...
 )
 ```
@@ -44,6 +46,12 @@ MSdev_annotation_MS2_Precursor(
 - weight_ms2:
 
   weight for MS2 similarity score (default `0.8`)
+
+- BPPARAM:
+
+  BiocParallel backend for MS2 scoring. Default is a `SnowParam` with
+  `floor(detectCores() / 3)` workers. Polarities are processed one after
+  the other.
 
 - ...:
 

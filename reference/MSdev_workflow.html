@@ -193,7 +193,8 @@ metabolite/candidate filtering.</p>
 <span>  cpdb_path <span class="op">=</span> <span class="st">"c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite"</span>,</span>
 <span>  calc_isopattern_score <span class="op">=</span> <span class="cn">F</span>,</span>
 <span>  ppm <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>  BPPARAM <span class="op">=</span> <span class="fu">SerialParam</span><span class="op">(</span>progressbar <span class="op">=</span> <span class="cn">T</span><span class="op">)</span>,</span>
+<span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SnowParam-class.html" class="external-link">SnowParam</a></span><span class="op">(</span>workers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">floor</a></span><span class="op">(</span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">/</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    progressbar <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -224,7 +225,11 @@ metabolite/candidate filtering.</p>
 
 
 <dt id="arg-bpparam">BPPARAM<a class="anchor" aria-label="anchor" href="#arg-bpparam"></a></dt>
-<dd><p>BiocParallel backend passed to <code>MSconvertR::msConvert</code>.</p></dd>
+<dd><p>BiocParallel backend for MS2 scoring and, when
+<code>calc_isopattern_score</code> is <code>TRUE</code>, isotope-pattern scoring.
+Default is a <code>SnowParam</code> with <code>floor(detectCores() / 3)</code> workers.
+Positive and negative polarities are processed one after the other, each
+using this backend.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

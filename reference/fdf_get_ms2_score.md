@@ -5,7 +5,14 @@ MS2 spectral similarity scores on a featureDefinitions-style data.frame
 ## Usage
 
 ``` r
-fdf_get_ms2_score(fdf, cpdb, sp.ms2, polarity, ...)
+fdf_get_ms2_score(
+  fdf,
+  cpdb,
+  sp.ms2,
+  polarity,
+  BPPARAM = BiocParallel::SerialParam(),
+  ...
+)
 ```
 
 ## Arguments

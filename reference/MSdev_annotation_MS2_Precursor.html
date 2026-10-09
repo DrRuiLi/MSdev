@@ -68,6 +68,8 @@ to <code>MS2_Spectra</code> <code>sp_id</code> / spectraNames.</p>
 <span>  ppm <span class="op">=</span> <span class="fl">10</span>,</span>
 <span>  weight_mz <span class="op">=</span> <span class="fl">0.2</span>,</span>
 <span>  weight_ms2 <span class="op">=</span> <span class="fl">0.8</span>,</span>
+<span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SnowParam-class.html" class="external-link">SnowParam</a></span><span class="op">(</span>workers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">floor</a></span><span class="op">(</span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">/</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    progressbar <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -94,6 +96,12 @@ to <code>MS2_Spectra</code> <code>sp_id</code> / spectraNames.</p>
 
 <dt id="arg-weight-ms-">weight_ms2<a class="anchor" aria-label="anchor" href="#arg-weight-ms-"></a></dt>
 <dd><p>weight for MS2 similarity score (default <code>0.8</code>)</p></dd>
+
+
+<dt id="arg-bpparam">BPPARAM<a class="anchor" aria-label="anchor" href="#arg-bpparam"></a></dt>
+<dd><p>BiocParallel backend for MS2 scoring. Default is a
+<code>SnowParam</code> with <code>floor(detectCores() / 3)</code> workers. Polarities
+are processed one after the other.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

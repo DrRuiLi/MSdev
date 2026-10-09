@@ -98,7 +98,8 @@ MSdev_annotation(
   cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite",
   calc_isopattern_score = F,
   ppm = 10,
-  BPPARAM = SerialParam(progressbar = T),
+  BPPARAM = BiocParallel::SnowParam(workers = max(1L, floor(parallel::detectCores()/3)),
+    progressbar = TRUE),
   ...
 )
 
@@ -128,7 +129,10 @@ MSdev_get_Se(object, polarity_paired = TRUE, ...)
 
 - BPPARAM:
 
-  BiocParallel backend passed to `MSconvertR::msConvert`.
+  BiocParallel backend for MS2 scoring and, when `calc_isopattern_score`
+  is `TRUE`, isotope-pattern scoring. Default is a `SnowParam` with
+  `floor(detectCores() / 3)` workers. Positive and negative polarities
+  are processed one after the other, each using this backend.
 
 - ...:
 
