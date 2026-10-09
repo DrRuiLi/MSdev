@@ -2739,6 +2739,11 @@ MSdev_assign_MS2 <- function(object,
 #' @param cpdb_path path to CompoundDb SQLite database
 #' @param calc_isopattern_score logical, whether to calculate isotope pattern scores
 #' @param ppm m/z tolerance in parts per million
+#' @param BPPARAM BiocParallel backend for MS2 scoring and, when
+#'   \code{calc_isopattern_score} is \code{TRUE}, isotope-pattern scoring.
+#'   Default is a \code{SnowParam} with \code{floor(detectCores() / 3)} workers.
+#'   Positive and negative polarities are processed one after the other, each
+#'   using this backend.
 #' @param ... additional arguments passed to annotation functions
 #' @return MSdev object with annotation results
 #' @seealso \code{\link{MSdev_annotation_MS2_Precursor}}
@@ -2749,7 +2754,10 @@ MSdev_annotation <- function(object,
                              cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite",
                              calc_isopattern_score = F,
                              ppm = 10,
-                             BPPARAM = SerialParam(  progressbar = T),
+                             BPPARAM = BiocParallel::SnowParam(
+                               workers = max(1L, floor(parallel::detectCores() / 3)),
+                               progressbar = TRUE
+                             ),
                              ...){
 
   cpdb <- CompoundDb::CompDb(cpdb_path)
@@ -2770,6 +2778,7 @@ MSdev_annotation <- function(object,
                                             cpdb = cpdb,
                                             sp.ms2 = sp.ms2,
                                             ppm = ppm,
+                                            BPPARAM = BPPARAM,
                                             ...)
     message_with_time("Calculate isopattern score...")
     xcms.xcms <- xcms_get_feature_isopattern_score(xcms.xcms,
@@ -2845,6 +2854,9 @@ MSdev_annotation <- function(object,
 #' @param ppm m/z tolerance in parts per million for candidate matching
 #' @param weight_mz weight for m/z error score (default \code{0.2})
 #' @param weight_ms2 weight for MS2 similarity score (default \code{0.8})
+#' @param BPPARAM BiocParallel backend for MS2 scoring. Default is a
+#'   \code{SnowParam} with \code{floor(detectCores() / 3)} workers. Polarities
+#'   are processed one after the other.
 #' @param ... additional arguments passed to annotation helpers
 #' @return MSdev object with annotated \code{advancedAna$MS2_Precursor}
 #' @seealso \code{\link{MSdev_annotation}},
@@ -2857,6 +2869,10 @@ MSdev_annotation_MS2_Precursor <- function(
     ppm = 10,
     weight_mz = 0.2,
     weight_ms2 = 0.8,
+    BPPARAM = BiocParallel::SnowParam(
+      workers = max(1L, floor(parallel::detectCores() / 3)),
+      progressbar = TRUE
+    ),
     ...) {
   stopifnot(inherits(object, "MSdev"))
 
@@ -2893,7 +2909,8 @@ MSdev_annotation_MS2_Precursor <- function(
     message_with_time("Find MS1 candidate...")
     fdf <- fdf_get_ms1_candidate(fdf, cpdb, polarity = pol, mz.ppm = ppm, ...)
     message_with_time("Calculate MS2 score...")
-    fdf <- fdf_get_ms2_score(fdf, cpdb, sp.ms2 = sp.ms2, polarity = pol, ...)
+    fdf <- fdf_get_ms2_score(fdf, cpdb, sp.ms2 = sp.ms2, polarity = pol,
+                             BPPARAM = BPPARAM, ...)
     fdf$score.isopattern <- lapply(fdf$candidate.id, function(x) rep(0, length(x)))
     message_with_time("Pick annotation (no isopattern)...")
     fdf <- fdf_get_feature_annotation(

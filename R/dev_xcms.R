@@ -2023,9 +2023,91 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
 }
 
 
+#' Score one feature MS2 job
+#'
+#' @param job List with \code{exp} (experimental Spectra), \code{ref}
+#'   (reference Spectra), and \code{keys} (candidate \code{compound_id_adduct}
+#'   labels). Defined in the package namespace so Snow workers serialize this
+#'   function, not the caller frame.
+#' @return Unnamed numeric scores aligned to \code{keys}, or \code{NULL}.
+#' @keywords internal
+.score_ms2_one <- function(job) {
+  expSpec <- job$exp
+  refSpec <- job$ref
+  keys <- job$keys
+  if (is.null(refSpec) || !length(refSpec)) {
+    return(NULL)
+  }
+  scorem <- Spectra::compareSpectra(
+    expSpec, refSpec, , FUN = MsCoreUtils::ndotproduct, m = 2
+  )
+  dim(scorem) <- c(length(expSpec), length(refSpec))
+  scorem[is.infinite(scorem) | is.na(scorem)] <- 0
+  scores <- apply(scorem, 2L, max, na.rm = TRUE)
+  agg <- mean_f(scores, paste0(refSpec$compound_id, "_", refSpec$adduct))
+  unname(agg[keys])
+}
+
+#' Zero MS2 scores when a feature has no experimental spectrum
+#' @keywords internal
+.score_ms2_zero <- function(refSpec, keys) {
+  if (is.null(refSpec)) {
+    return(NULL)
+  }
+  x <- unique(paste0(refSpec$compound_id, "_", refSpec$adduct))
+  y <- rep(0, length(x))
+  names(y) <- x
+  unname(y[keys])
+}
+
+#' Score feature MS2 candidates, parallel only for features with spectra
+#'
+#' Features with no experimental MS2 are scored on the main process.
+#' Features with both experimental and reference spectra are sent to
+#' \code{BPPARAM} as one job each.
+#' @keywords internal
+.score_ms2_features <- function(feature_id,
+                                candidate_id,
+                                candidate_adduct,
+                                sp.exp,
+                                sp.ref,
+                                BPPARAM = BiocParallel::SerialParam()) {
+  n <- length(feature_id)
+  scores <- vector("list", n)
+  jobs <- vector("list", n)
+  job_idx <- integer(0)
+  for (i in seq_len(n)) {
+    keys <- paste0(candidate_id[[i]], "_", candidate_adduct[[i]])
+    expSpec <- sp.exp[[i]]
+    refSpec <- sp.ref[[as.character(feature_id[[i]])]]
+    has_exp <- !is.null(expSpec) && length(expSpec) > 0L
+    has_ref <- !is.null(refSpec) && length(refSpec) > 0L
+    if (!has_exp) {
+      scores[[i]] <- .score_ms2_zero(refSpec, keys)
+      next
+    }
+    if (!has_ref) {
+      scores[[i]] <- NULL
+      next
+    }
+    job_idx <- c(job_idx, i)
+    jobs[[i]] <- list(exp = expSpec, ref = refSpec, keys = keys)
+  }
+  if (length(job_idx)) {
+    scored <- BiocParallel::bplapply(
+      jobs[job_idx],
+      .score_ms2_one,
+      BPPARAM = BPPARAM
+    )
+    scores[job_idx] <- scored
+  }
+  scores
+}
+
 xcms_get_feature_ms2_score <- function(xcms.xcms ,
                                        cpdb,
                                        sp.ms2,
+                                       BPPARAM = BiocParallel::SerialParam(),
                                        ...){
 
 
@@ -2128,35 +2210,14 @@ xcms_get_feature_ms2_score <- function(xcms.xcms ,
 
   ### output all candidate score
   {
-    .f <- function(expSpec,refSpec,...){
-      if (is.null(expSpec)) {
-        if (is.null(refSpec)) {
-          return(NULL)
-        }else{
-          x <- unique(paste0(refSpec$compound_id,"_",refSpec$adduct))
-          y <- rep(0,length(x))
-          names(y )<-x
-          return(y)
-        }
-      }
-      if (is.null(refSpec)) return(NULL)
-      scorem <- Spectra::compareSpectra(expSpec,refSpec,,FUN = MsCoreUtils::ndotproduct, m = 2)
-      dim(scorem) <- c(length(expSpec),length(refSpec))
-      scorem[is.infinite(scorem)|is.na(scorem )] <- 0
-      scores <- apply(scorem,2,max,na.rm=T)
-      (mean_f(scores,paste0(refSpec$compound_id,"_",refSpec$adduct)))
-    }
-    xcms.fdf$score.ms2 <- BiocParallel::bplapply(1:length(sp.exp),
-                                                       function(i){
-        fid <-xcms.fdf$feature_id[i]
-      s <- .f(expSpec = sp.exp[[i]], refSpec = sp.ref[[fid]])
-      s[paste0(xcms.fdf$candidate.id[[i]],"_",
-               xcms.fdf$candidate.adduct[[i]])]%>%
-        unname()
-    },BPPARAM = BiocParallel::SerialParam(
-      progressbar = T))
-
-
+    xcms.fdf$score.ms2 <- .score_ms2_features(
+      feature_id = xcms.fdf$feature_id,
+      candidate_id = xcms.fdf$candidate.id,
+      candidate_adduct = xcms.fdf$candidate.adduct,
+      sp.exp = sp.exp,
+      sp.ref = sp.ref,
+      BPPARAM = BPPARAM
+    )
   }
 
 
@@ -2488,6 +2549,7 @@ fdf_get_ms2_score <- function(fdf,
                               cpdb,
                               sp.ms2,
                               polarity,
+                              BPPARAM = BiocParallel::SerialParam(),
                               ...) {
   fdf <- as.data.frame(fdf, stringsAsFactors = FALSE)
   if (!nrow(fdf)) {
@@ -2569,34 +2631,13 @@ fdf_get_ms2_score <- function(fdf,
   sp.ref$adduct <- sp.split.df$adduct
   sp.ref <- split(sp.ref, fdf$feature_id[sp.split.df$feature_id])
 
-  .f <- function(expSpec, refSpec, ...) {
-    if (is.null(expSpec)) {
-      if (is.null(refSpec)) {
-        return(NULL)
-      }
-      x <- unique(paste0(refSpec$compound_id, "_", refSpec$adduct))
-      y <- rep(0, length(x))
-      names(y) <- x
-      return(y)
-    }
-    if (is.null(refSpec)) {
-      return(NULL)
-    }
-    scorem <- Spectra::compareSpectra(expSpec, refSpec, , FUN = MsCoreUtils::ndotproduct, m = 2)
-    dim(scorem) <- c(length(expSpec), length(refSpec))
-    scorem[is.infinite(scorem) | is.na(scorem)] <- 0
-    scores <- apply(scorem, 2, max, na.rm = TRUE)
-    mean_f(scores, paste0(refSpec$compound_id, "_", refSpec$adduct))
-  }
-
-  fdf$score.ms2 <- BiocParallel::bplapply(
-    seq_along(sp.exp),
-    function(i) {
-      fid <- fdf$feature_id[i]
-      s <- .f(expSpec = sp.exp[[i]], refSpec = sp.ref[[fid]])
-      unname(s[paste0(fdf$candidate.id[[i]], "_", fdf$candidate.adduct[[i]])])
-    },
-    BPPARAM = BiocParallel::SerialParam(progressbar = TRUE)
+  fdf$score.ms2 <- .score_ms2_features(
+    feature_id = fdf$feature_id,
+    candidate_id = fdf$candidate.id,
+    candidate_adduct = fdf$candidate.adduct,
+    sp.exp = sp.exp,
+    sp.ref = sp.ref,
+    BPPARAM = BPPARAM
   )
   fdf
 }
