@@ -27,6 +27,7 @@ Imports:
     MsExperiment,
     MsFeatures,
     MSnbase,
+    MSAtomMap,
     MSCC,
     mzR,
     openxlsx,

@@ -50,7 +50,7 @@ Metabolic_flux_network_get_Molecule_atom_transfer <- function(Metabolic_flux_net
 
   mfn.e <- edata(Metabolic_flux_network)
   mfn.transfer <- plyr::mlply(mfn.e,.fun = function(from,to,...){
-    MSCC::get_Molecule_atom_transfer_by_atom_map(
+    MSAtomMap::get_Molecule_atom_transfer_by_atom_map(
       V(Metabolic_flux_network@metabolic_network)[[from]]$Molecule_igraph,
       V(Metabolic_flux_network@metabolic_network)[[to]]$Molecule_igraph,
       target_ele = "C"
@@ -500,7 +500,7 @@ Metabolic_flux_network_update_from_visGetEdges <- function(mfn,visGetEdges){
     attr.to.add <- list(id = edge.add.data$id ,
                         name = edge.add.data$id ,
                         atom_transfer = list(
-                          MSCC::get_Molecule_atom_transfer_by_atom_map(
+                          MSAtomMap::get_Molecule_atom_transfer_by_atom_map(
                             mol.ig.from = V(mfn@metabolic_network)[[edge.add.data$from]]$Molecule_igraph,
                             mol.ig.to = V(mfn@metabolic_network)[[edge.add.data$to]]$Molecule_igraph,
                             target_ele = "C"
