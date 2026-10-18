@@ -186,80 +186,114 @@ import(ProtGenerics)
 import(dplyr)
 import(ggplot2)
 import(patchwork)
-importFrom(Biobase,"pData<-")
-importFrom(Biobase,"sampleNames<-")
-importFrom(Biobase,fData)
-importFrom(Biobase,pData)
-importFrom(Biobase,sampleNames)
-importFrom(BiocParallel,SerialParam)
-importFrom(BiocParallel,SnowParam)
-importFrom(BiocParallel,bplapply)
-importFrom(BiocParallel,bpmapply)
-importFrom(BiocParallel,register)
-importFrom(BiocParallel,snowWorkers)
-importFrom(ComplexHeatmap,Legend)
-importFrom(ComplexHeatmap,draw)
-importFrom(ComplexHeatmap,rowAnnotation)
+importFrom(Biobase,
+  "pData<-",
+  "sampleNames<-",
+  fData,
+  pData,
+  sampleNames
+)
+importFrom(BiocParallel,
+  SerialParam,
+  SnowParam,
+  bplapply,
+  bpmapply,
+  register,
+  snowWorkers
+)
+importFrom(ComplexHeatmap,
+  Legend,
+  draw,
+  rowAnnotation
+)
 importFrom(CompoundDb,compounds)
+importFrom(MSCC,
+  atom,
+  edata,
+  get_element,
+  vdata
+)
 importFrom(MSCC,`edata<-`)
 importFrom(MSCC,`vdata<-`)
-importFrom(MSCC,atom)
-importFrom(MSCC,edata)
-importFrom(MSCC,get_element)
-importFrom(MSCC,vdata)
-importFrom(Matrix,sparseMatrix)
-importFrom(Matrix,summary)
-importFrom(ProtGenerics,filterPolarity)
-importFrom(ProtGenerics,polarity)
+importFrom(Matrix,
+  sparseMatrix,
+  summary
+)
+importFrom(ProtGenerics,
+  filterPolarity,
+  polarity
+)
 importFrom(S4Vectors,isEmpty)
-importFrom(SummarizedExperiment,`assay<-`)
-importFrom(SummarizedExperiment,`colData<-`)
-importFrom(SummarizedExperiment,`rowData<-`)
-importFrom(SummarizedExperiment,assay)
-importFrom(SummarizedExperiment,colData)
-importFrom(SummarizedExperiment,rowData)
-importFrom(data.table,data.table)
-importFrom(data.table,rbindlist)
-importFrom(grid,gpar)
-importFrom(grid,grid.circle)
-importFrom(grid,grid.rect)
-importFrom(igraph,E)
-importFrom(igraph,V)
-importFrom(igraph,`E<-`)
-importFrom(igraph,`V<-`)
-importFrom(igraph,as_adjacency_matrix)
-importFrom(igraph,degree)
-importFrom(igraph,distances)
-importFrom(igraph,edge.attributes)
-importFrom(magrittr,`%<>%`)
-importFrom(magrittr,`%>%`)
-importFrom(methods,setMethod)
-importFrom(methods,setReplaceMethod)
-importFrom(plotly,add_bars)
-importFrom(plotly,add_lines)
-importFrom(plotly,add_markers)
-importFrom(plotly,add_pie)
-importFrom(plotly,add_segments)
-importFrom(plotly,add_text)
-importFrom(plotly,event_data)
-importFrom(plotly,layout)
-importFrom(plotly,plot_ly)
+importFrom(SummarizedExperiment,
+  `assay<-`,
+  `colData<-`,
+  `rowData<-`,
+  assay,
+  colData,
+  rowData
+)
+importFrom(data.table,
+  data.table,
+  rbindlist
+)
+importFrom(grid,
+  gpar,
+  grid.circle,
+  grid.rect
+)
+importFrom(igraph,
+  E,
+  V,
+  `E<-`,
+  `V<-`,
+  as_adjacency_matrix,
+  degree,
+  distances,
+  edge.attributes
+)
+importFrom(magrittr,
+  `%<>%`,
+  `%>%`
+)
+importFrom(methods,
+  setMethod,
+  setReplaceMethod
+)
+importFrom(plotly,
+  add_bars,
+  add_lines,
+  add_markers,
+  add_pie,
+  add_segments,
+  add_text,
+  event_data,
+  layout,
+  plot_ly
+)
 importFrom(readr,write_csv)
-importFrom(stringr,str_extract)
-importFrom(stringr,str_extract_all)
-importFrom(stringr,str_split)
-importFrom(tibble,as.tibble)
-importFrom(tibble,remove_rownames)
-importFrom(tibble,rownames_to_column)
-importFrom(tibble,tibble)
-importFrom(visNetwork,visEdges)
-importFrom(visNetwork,visEvents)
-importFrom(visNetwork,visGetEdges)
-importFrom(visNetwork,visInteraction)
-importFrom(visNetwork,visLayout)
-importFrom(visNetwork,visNetwork)
-importFrom(visNetwork,visNetworkProxy)
-importFrom(visNetwork,visOptions)
-importFrom(visNetwork,visUpdateEdges)
-importFrom(xcms,filepaths)
-importFrom(xcms,mzrange)
+importFrom(stringr,
+  str_extract,
+  str_extract_all,
+  str_split
+)
+importFrom(tibble,
+  as.tibble,
+  remove_rownames,
+  rownames_to_column,
+  tibble
+)
+importFrom(visNetwork,
+  visEdges,
+  visEvents,
+  visGetEdges,
+  visInteraction,
+  visLayout,
+  visNetwork,
+  visNetworkProxy,
+  visOptions,
+  visUpdateEdges
+)
+importFrom(xcms,
+  filepaths,
+  mzrange
+)
