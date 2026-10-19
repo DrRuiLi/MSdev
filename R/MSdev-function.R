@@ -455,7 +455,9 @@ MSdev_xcmsProcessing <- function(object,
 #' @title Initialize xcms data from raw files
 #' @description Read raw MS data files and create xcms experiments for both
 #'   polarities, storing them in \code{object@xcmsData}. Also extracts and
-#'   stores MS1 and MS2 spectra in \code{object@spectra}.
+#'   stores MS1 and MS2 spectra in \code{object@spectra}. The copy into
+#'   \code{MsBackendMemory} uses \code{BiocParallel::SerialParam()} so peak
+#'   matrices are not duplicated across workers.
 #' @describeIn MSdev_workflow Initialize xcms data
 #' @param object MSdev object
 #' @return MSdev object with xcmsData and spectra populated
@@ -507,9 +509,12 @@ MSdev_get_xcms <- function(object){
 
     ## Copy Spectra for @spectra (do not write filtered/backend-changed
     ## Spectra back into the experiment). Then MS1-only for xcmsData.
+    ## SerialParam: setBackend otherwise uses MulticoreParam and copies
+    ## every peak matrix in each worker before sending it back.
     sp <- ProtGenerics::spectra(xcms.xcms)
     if (length(sp)) {
-      sp <- Spectra::setBackend(sp, Spectra::MsBackendMemory())
+      sp <- Spectra::setBackend(sp, Spectra::MsBackendMemory(),
+                                BPPARAM = BiocParallel::SerialParam())
       sp1 <- Spectra::filterMsLevel(sp, 1L)
       sp2 <- Spectra::filterMsLevel(sp, 2L)
       if (length(sp1)) ms1_list[[length(ms1_list) + 1L]] <- sp1
@@ -2578,6 +2583,11 @@ MSdev_msConvert <- function(object,
 #' Reads raw data files, splits by MS level, optionally evaluates noise/purity,
 #' and stores on-disk data in \code{object@spectra}.
 #'
+#' File import uses \code{BiocParallel::SerialParam()}. \code{Spectra()} with
+#' \code{MsBackendMemory} materializes every peak, and the default
+#' \code{MulticoreParam} copies those peaks again in each worker before
+#' sending them back to the main process.
+#'
 #' On the main FS/DDA path, prefer \code{\link{MSdev_xcmsProcessing}} /
 #' \code{MSdev_get_xcms}, which copy Spectra from the freshly read
 #' \code{MsExperiment} (filter / \code{setBackend} only; xcms data unchanged)
@@ -2607,8 +2617,12 @@ MSdev_extract_Spectra <- function(object,
   sp.ms1 <- NULL
   sp.ms2 <- NULL
   if (nrow(sampleInfo) > 0) {
+    ## One process. Parallel setBackend copies each file's peaks in the
+    ## worker and serializes that copy back; with a full cohort that
+    ## multiplies the in-memory matrices and can block on the return pipe.
     sp <- Spectra::Spectra(na.omit(sampleInfo$msData.files),
-                           backend = Spectra::MsBackendMemory())
+                           backend = Spectra::MsBackendMemory(),
+                           BPPARAM = BiocParallel::SerialParam())
     if (1L %in% Spectra::msLevel(sp)) {
       sp.ms1 <- Spectra::filterMsLevel(sp, 1L)
     }
