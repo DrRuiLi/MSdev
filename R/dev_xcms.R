@@ -2083,11 +2083,12 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
     has_exp <- !is.null(expSpec) && length(expSpec) > 0L
     has_ref <- !is.null(refSpec) && length(refSpec) > 0L
     if (!has_exp) {
-      scores[[i]] <- .score_ms2_zero(refSpec, keys)
+      # [<- keeps a NULL element; [[<- NULL deletes it and shortens the list
+      scores[i] <- list(.score_ms2_zero(refSpec, keys))
       next
     }
     if (!has_ref) {
-      scores[[i]] <- NULL
+      scores[i] <- list(NULL)
       next
     }
     job_idx <- c(job_idx, i)
