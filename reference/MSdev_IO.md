@@ -12,6 +12,12 @@ Load an MSdev object from a file (tries
 [`.update_MSdev_object`](https://drruili.github.io/MSdev/reference/dot-update_MSdev_object.md)
 on objects saved with older MSdev versions.
 
+If the saved `projectDir` is missing, and this file lives in a different
+directory, paths are rewritten with
+[`MSdev_relocate`](https://drruili.github.io/MSdev/reference/MSdev_relocate.md)
+using that directory as the new `projectDir`. The file is not saved
+again. When the saved directory still exists, paths are left unchanged.
+
 ## Usage
 
 ``` r

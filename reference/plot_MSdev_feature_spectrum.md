@@ -25,8 +25,9 @@ plot_MSdev_feature_spectrum(MSdev.obj, feature.id, cpdb = NULL)
 
 - cpdb:
 
-  Optional `CompDb` object. Opened from
-  `object@projectInfo$CompoundDB_path` when `NULL`.
+  Optional `CompDb` object. When `NULL`, opened from
+  `projectInfo$CompoundDB_path`, `options(MSdev.compoundDb)`, or the
+  `MSDEV_COMPOUNDDB` environment variable.
 
 ## Value
 

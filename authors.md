@@ -8,12 +8,12 @@
 ## Citation
 
 Li R (2026). *MSdev: Mass spectrumetry data analysis development by Li
-Rui*. R package version 3.0.0, <https://drruili.github.io/MSdev/>.
+Rui*. R package version 3.1.0, <https://drruili.github.io/MSdev/>.
 
     @Manual{,
       title = {MSdev: Mass spectrumetry data analysis development by Li Rui},
       author = {Rui Li},
       year = {2026},
-      note = {R package version 3.0.0},
+      note = {R package version 3.1.0},
       url = {https://drruili.github.io/MSdev/},
     }

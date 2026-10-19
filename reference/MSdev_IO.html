@@ -3,11 +3,19 @@
 Load an MSdev object from a file (tries qs2::qs_read(),
 legacy qs::qread() if installed, readRDS(), then
 load()). Use .update_MSdev_object on objects saved
-with older MSdev versions."><meta property="og:description" content="Save MSdev with qs2::qs_save() / load with qs2::qs_read().
+with older MSdev versions.
+If the saved projectDir is missing, and this file lives in a
+different directory, paths are rewritten with MSdev_relocate
+using that directory as the new projectDir. The file is not saved
+again. When the saved directory still exists, paths are left unchanged."><meta property="og:description" content="Save MSdev with qs2::qs_save() / load with qs2::qs_read().
 Load an MSdev object from a file (tries qs2::qs_read(),
 legacy qs::qread() if installed, readRDS(), then
 load()). Use .update_MSdev_object on objects saved
-with older MSdev versions."></head><body>
+with older MSdev versions.
+If the saved projectDir is missing, and this file lives in a
+different directory, paths are rewritten with MSdev_relocate
+using that directory as the new projectDir. The file is not saved
+again. When the saved directory still exists, paths are left unchanged."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -15,7 +23,7 @@ with older MSdev versions."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">MSdev</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,6 +60,10 @@ with older MSdev versions."></head><body>
 legacy <code>qs::qread()</code> if installed, <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code>, then
 <code><a href="https://rdrr.io/r/base/load.html" class="external-link">load()</a></code>). Use <code><a href="dot-update_MSdev_object.html">.update_MSdev_object</a></code> on objects saved
 with older MSdev versions.</p>
+<p>If the saved <code>projectDir</code> is missing, and this file lives in a
+different directory, paths are rewritten with <code><a href="MSdev_relocate.html">MSdev_relocate</a></code>
+using that directory as the new <code>projectDir</code>. The file is not saved
+again. When the saved directory still exists, paths are left unchanged.</p>
     </div>
 
     <div class="section level2">

@@ -11,7 +11,7 @@ and creates sample information from the raw data directory."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">MSdev</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -50,11 +50,7 @@ and creates sample information from the raw data directory.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">MSdev</span><span class="op">(</span></span>
-<span>  rawDataDir <span class="op">=</span> <span class="st">"C:/Users/91879/OneDrive/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data"</span>,</span>
-<span>  projectDir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">dirname</a></span><span class="op">(</span><span class="va">rawDataDir</span><span class="op">)</span>,</span>
-<span>  experimentInfo <span class="op">=</span> <span class="fu">MS_Exp</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">MSdev</span><span class="op">(</span><span class="va">rawDataDir</span>, projectDir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">dirname</a></span><span class="op">(</span><span class="va">rawDataDir</span><span class="op">)</span>, experimentInfo <span class="op">=</span> <span class="fu">MS_Exp</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -62,13 +58,15 @@ and creates sample information from the raw data directory.</p>
 
 
 <dl><dt id="arg-rawdatadir">rawDataDir<a class="anchor" aria-label="anchor" href="#arg-rawdatadir"></a></dt>
-<dd><p>path to directory containing raw mass spectrometry data files
-(supported extensions: <code>.wiff</code>, <code>.raw</code>, <code>.mzXML</code>,
-<code>.mzML</code>, <code>.lcd</code>; matching is case-insensitive)</p></dd>
+<dd><p>path to directory containing raw mass spectrometry data files.
+Required. Supported extensions: <code>.wiff</code>, <code>.raw</code>, <code>.mzXML</code>,
+<code>.mzML</code>, <code>.lcd</code>; matching is case-insensitive.</p></dd>
 
 
 <dt id="arg-projectdir">projectDir<a class="anchor" aria-label="anchor" href="#arg-projectdir"></a></dt>
-<dd><p>project directory for storing processed data, defaults to parent of rawDataDir</p></dd>
+<dd><p>project directory for storing processed data, defaults to parent of rawDataDir.
+This is the single relocatable project root. Other project paths are also
+stored relative to it in <code>projectInfo$paths</code>.</p></dd>
 
 
 <dt id="arg-experimentinfo">experimentInfo<a class="anchor" aria-label="anchor" href="#arg-experimentinfo"></a></dt>

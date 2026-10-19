@@ -17,7 +17,7 @@ is preferred when annotated)."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">MSdev</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -75,8 +75,9 @@ is preferred when annotated).</p>
 
 
 <dt id="arg-cpdb">cpdb<a class="anchor" aria-label="anchor" href="#arg-cpdb"></a></dt>
-<dd><p>Optional <code>CompDb</code> object. Opened from
-<code>object@projectInfo$CompoundDB_path</code> when <code>NULL</code>.</p></dd>
+<dd><p>Optional <code>CompDb</code> object. When <code>NULL</code>, opened from
+<code>projectInfo$CompoundDB_path</code>, <code>options(MSdev.compoundDb)</code>, or
+the <code>MSDEV_COMPOUNDDB</code> environment variable.</p></dd>
 
 </dl></div>
     <div class="section level2">

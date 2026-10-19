@@ -15,7 +15,7 @@ spectraNames.
 ``` r
 MSdev_annotation_MS2_Precursor(
   object,
-  cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite",
+  cpdb_path = NULL,
   ppm = 10,
   weight_mz = 0.2,
   weight_ms2 = 0.8,
@@ -33,7 +33,10 @@ MSdev_annotation_MS2_Precursor(
 
 - cpdb_path:
 
-  path to CompoundDb SQLite database
+  path to a CompoundDb SQLite database. `NULL` resolves
+  `projectInfo$CompoundDB_path`, then `options(MSdev.compoundDb)`, then
+  the `MSDEV_COMPOUNDDB` environment variable. The first path that
+  exists is used.
 
 - ppm:
 

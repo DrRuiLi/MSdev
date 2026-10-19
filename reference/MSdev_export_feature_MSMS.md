@@ -36,9 +36,9 @@ MSdev_export_feature_MSMS(
 
 - cpdb_path:
 
-  Optional path to a CompoundDb SQLite file. Default
-  `object@projectInfo$CompoundDB_path` (set by
-  [`MSdev_annotation`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)).
+  Optional path to a CompoundDb SQLite file. When `NULL` or missing,
+  resolved from `projectInfo$CompoundDB_path`,
+  `options(MSdev.compoundDb)`, then `MSDEV_COMPOUNDDB`.
 
 ## Value
 

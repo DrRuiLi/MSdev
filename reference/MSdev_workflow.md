@@ -95,7 +95,7 @@ MSdev_assign_MS2(object, rt.tol = 10, ppm = 20)
 
 MSdev_annotation(
   object,
-  cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite",
+  cpdb_path = NULL,
   calc_isopattern_score = F,
   ppm = 10,
   BPPARAM = BiocParallel::SnowParam(workers = max(1L, floor(parallel::detectCores()/3)),
@@ -198,7 +198,10 @@ MSdev_get_Se(object, polarity_paired = TRUE, ...)
 
 - cpdb_path:
 
-  path to CompoundDb SQLite database
+  path to a CompoundDb SQLite database. `NULL` resolves
+  `projectInfo$CompoundDB_path`, then `options(MSdev.compoundDb)`, then
+  the `MSDEV_COMPOUNDDB` environment variable. The first path that
+  exists is used.
 
 - calc_isopattern_score:
 

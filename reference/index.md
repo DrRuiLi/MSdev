@@ -80,6 +80,9 @@
 - [`MSdev_group_feature_EIC()`](https://drruili.github.io/MSdev/reference/MSdev_group_feature_EIC.md)
   : Group features by EIC similarity within RT tolerance
 
+- [`MSdev_path()`](https://drruili.github.io/MSdev/reference/MSdev_path.md)
+  : Resolve an MSdev project path
+
 - [`plot_MSdev_normalization()`](https://drruili.github.io/MSdev/reference/MSdev_preprocess_visualization.md)
   [`plot_MSdev_QC_RSD_hist()`](https://drruili.github.io/MSdev/reference/MSdev_preprocess_visualization.md)
   [`plot_MSdev_QC_RSD_CDF()`](https://drruili.github.io/MSdev/reference/MSdev_preprocess_visualization.md)
@@ -89,6 +92,9 @@
 
 - [`MSdev_processInfo()`](https://drruili.github.io/MSdev/reference/MSdev_processInfo.md)
   : List process history of xcmsData
+
+- [`MSdev_relocate()`](https://drruili.github.io/MSdev/reference/MSdev_relocate.md)
+  : Point an MSdev object at a new project directory
 
 - [`MSdev_add_sample()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)
   [`MSdev_xcmsProcessing()`](https://drruili.github.io/MSdev/reference/MSdev_workflow.md)

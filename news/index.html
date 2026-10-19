@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">MSdev</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,10 +38,21 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="3.1.0" id="msdev-310">MSdev 3.1.0<a class="anchor" aria-label="anchor" href="#msdev-310"></a></h2>
+<ul><li>Project paths can move with the project directory. <code>projectDir</code> is the only machine-specific root. Other project paths are also stored relative to it in <code>projectInfo$paths</code>.</li>
+<li>
+<code><a href="../reference/MSdev.html">MSdev()</a></code> now requires <code>rawDataDir</code>. The previous personal default path was removed.</li>
+<li>
+<code><a href="../reference/MSdev_relocate.html">MSdev_relocate()</a></code> rewrites absolute paths inside an existing object (sample files, on-disk spectra and chromatograms, and xcms experiment file paths) after the project folder has been moved. <code><a href="../reference/MSdev_IO.html">MSdev_load()</a></code> does this automatically when the saved <code>projectDir</code> no longer exists.</li>
+<li>CompoundDb is resolved from the function argument, a stored path that still exists, <code>options(MSdev.compoundDb)</code>, then the <code>MSDEV_COMPOUNDDB</code> environment variable. Annotation functions no longer default to a hardcoded database path.</li>
+<li>Objects saved before 3.1.0 still load on the original machine. Call <code><a href="../reference/MSdev_relocate.html">MSdev_relocate()</a></code> after copying a project while the old directory is still present.</li>
+</ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="3.0.0" id="msdev-300">MSdev 3.0.0<a class="anchor" aria-label="anchor" href="#msdev-300"></a></h2>
 <ul><li>Initial CRAN submission.</li>
 </ul></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

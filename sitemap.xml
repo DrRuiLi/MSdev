@@ -29,8 +29,10 @@
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_get_feature_purity.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_get_peak_table_from_spectra.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_group_feature_EIC.html</loc></url>
+<url><loc>https://drruili.github.io/MSdev/reference/MSdev_path.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_preprocess_visualization.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_processInfo.html</loc></url>
+<url><loc>https://drruili.github.io/MSdev/reference/MSdev_relocate.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_workflow.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_xcms_group_features.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/MetaboSignalNetworkTable2df.html</loc></url>
