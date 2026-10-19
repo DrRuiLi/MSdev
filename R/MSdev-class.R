@@ -37,16 +37,17 @@ setClass("MSdev",
 #' This function initializes the project structure, detects raw data format,
 #' and creates sample information from the raw data directory.
 #'
-#' @param rawDataDir path to directory containing raw mass spectrometry data files
-#'   (supported extensions: \code{.wiff}, \code{.raw}, \code{.mzXML},
-#'   \code{.mzML}, \code{.lcd}; matching is case-insensitive)
-#' @param projectDir project directory for storing processed data, defaults to parent of rawDataDir
+#' @param rawDataDir path to directory containing raw mass spectrometry data files.
+#'   Required. Supported extensions: \code{.wiff}, \code{.raw}, \code{.mzXML},
+#'   \code{.mzML}, \code{.lcd}; matching is case-insensitive.
+#' @param projectDir project directory for storing processed data, defaults to parent of rawDataDir.
+#'   This is the single relocatable project root. Other project paths are also
+#'   stored relative to it in \code{projectInfo$paths}.
 #' @param experimentInfo MS_Exp object containing experiment metadata
 #'
 #' @return MSdev object
 #' @export
-MSdev <- function(rawDataDir =
-                    "C:/Users/91879/OneDrive/Code/R/Projecct/2022.1.8_MS.demo/Demo/raw.data",
+MSdev <- function(rawDataDir,
                   projectDir = dirname(rawDataDir),
                   experimentInfo = MS_Exp()){
   .Object <- new("MSdev")
@@ -54,29 +55,39 @@ MSdev <- function(rawDataDir =
 
     ### check param
     {
+      if (missing(rawDataDir) || !length(rawDataDir) ||
+          !nzchar(as.character(rawDataDir)[[1L]])) {
+        stop("'rawDataDir' is required.", call. = FALSE)
+      }
       if (!dir.exists(rawDataDir)) {
         message("rawDataDir do not exist")
-
       }
-      rawDataDir <- normalizePath(rawDataDir)
-      projectDir <- normalizePath(projectDir)
-      dir.create(projectDir,recursive = T,showWarnings = F)
+      rawDataDir <- .msdev_path_prefix(rawDataDir)
+      if (!dir.exists(projectDir)) {
+        dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
+      }
+      projectDir <- .msdev_path_prefix(projectDir)
+      msDataDir <- .msdev_path_prefix(file.path(rawDataDir, "msData"))
+      msdevFile <- .msdev_path_prefix(
+        file.path(projectDir, paste0("MSdev", date_suffix(), ".Rdata"))
+      )
     }
 
     .Object@projectInfo = list(
       creatTime = Sys.time(),
-      projectDir =projectDir,
-      rawDataDir =rawDataDir,
+      projectDir = projectDir,
+      rawDataDir = rawDataDir,
       rawDataFormat = NULL,
       rawDataFileCount = NULL,
-      msDataDir =paste0(rawDataDir , "/msData"),
+      msDataDir = msDataDir,
       experimentTime = NULL,
       msAcquisition = "Unknow",
       msLevel= NA,
       polarity = -1,
       sampleCount = NA,
-      MSdevFile = paste0(projectDir , "/MSdev",date_suffix(),".Rdata")
+      MSdevFile = msdevFile
     )
+    .Object <- .msdev_fill_paths(.Object)
     .Object@experimentInfo = experimentInfo
 
     ### check raw data

@@ -21,7 +21,13 @@ MSdev_save <- function(object,file = object@projectInfo$MSdevFile){
   if (!dir.exists(save.dir)) {
     dir.create(save.dir,recursive = T)
   }
-  MSdev@projectInfo$MSdevFile <- file
+  MSdev@projectInfo$MSdevFile <- .msdev_path_prefix(file)
+  if (!is.null(MSdev@projectInfo$paths)) {
+    MSdev@projectInfo$paths["msdevFile"] <- .msdev_relative(
+      MSdev@projectInfo$MSdevFile,
+      MSdev@projectInfo$projectDir
+    )
+  }
   qs2::qs_save(MSdev, file = file)
   message_with_time("Saved: ", normalizePath(file, winslash = "/", mustWork = FALSE))
   invisible(MSdev)
@@ -34,6 +40,11 @@ MSdev_save <- function(object,file = object@projectInfo$MSdevFile){
 #'   legacy \code{qs::qread()} if installed, \code{readRDS()}, then
 #'   \code{load()}). Use \code{\link{.update_MSdev_object}} on objects saved
 #'   with older MSdev versions.
+#'
+#'   If the saved \code{projectDir} is missing, and this file lives in a
+#'   different directory, paths are rewritten with \code{\link{MSdev_relocate}}
+#'   using that directory as the new \code{projectDir}. The file is not saved
+#'   again. When the saved directory still exists, paths are left unchanged.
 #' @describeIn MSdev_IO load
 #' @param file_to_load file path
 #' @return MSdev
@@ -63,7 +74,7 @@ MSdev_load <- function(file_to_load) {
   if (!inherits(obj, "MSdev")) {
     stop("Loaded object is not of class MSdev")
   }
-  obj
+  .msdev_load_relocate(obj, file_to_load)
 }
 
 
@@ -1405,11 +1416,8 @@ plot_MSdev_sample_peaks <- function(object, target = "PositiveMS1", top_n = Inf)
   if (inherits(cpdb, "CompDb")) {
     return(cpdb)
   }
-  if (is.null(cpdb_path) || !nzchar(as.character(cpdb_path)[[1L]])) {
-    cpdb_path <- object@projectInfo$CompoundDB_path
-  }
-  if (is.null(cpdb_path) || !nzchar(as.character(cpdb_path)[[1L]]) ||
-      !file.exists(cpdb_path)) {
+  cpdb_path <- .msdev_resolve_cpdb_path(object, cpdb_path)
+  if (is.null(cpdb_path)) {
     return(NULL)
   }
   CompoundDb::CompDb(cpdb_path)
@@ -1630,8 +1638,9 @@ plot_MSdev_sample_peaks <- function(object, target = "PositiveMS1", top_n = Inf)
 #'   is preferred when annotated).
 #' @param MSdev.obj MSdev object
 #' @param feature.id Character string specifying the feature ID
-#' @param cpdb Optional \code{CompDb} object. Opened from
-#'   \code{object@projectInfo$CompoundDB_path} when \code{NULL}.
+#' @param cpdb Optional \code{CompDb} object. When \code{NULL}, opened from
+#'   \code{projectInfo$CompoundDB_path}, \code{options(MSdev.compoundDb)}, or
+#'   the \code{MSDEV_COMPOUNDDB} environment variable.
 #' @return Invisible \code{TRUE} if a spectrum was plotted, \code{FALSE} otherwise.
 #' @export
 #'
@@ -2042,9 +2051,9 @@ export_MSdev_feature_MSMS <- function(MSdev.obj, feature_id, out.dir, cpdb = NUL
 #' @param out.dir Output directory. Default \code{object@projectInfo$projectDir/MSMS}.
 #' @param feature_id Optional character vector of feature IDs. Default all
 #'   features discovered as above.
-#' @param cpdb_path Optional path to a CompoundDb SQLite file. Default
-#'   \code{object@projectInfo$CompoundDB_path} (set by
-#'   \code{\link{MSdev_annotation}}).
+#' @param cpdb_path Optional path to a CompoundDb SQLite file. When
+#'   \code{NULL} or missing, resolved from \code{projectInfo$CompoundDB_path},
+#'   \code{options(MSdev.compoundDb)}, then \code{MSDEV_COMPOUNDDB}.
 #' @return Invisible character vector of feature IDs attempted.
 #' @seealso \code{\link{export_MSdev_feature_MSMS}},
 #'   \code{\link{plot_MSdev_feature_spectrum}},
@@ -2064,19 +2073,15 @@ MSdev_export_feature_MSMS <- function(
   }
   out.dir <- .msdev_export_dir(object, out.dir, "MSMS")
 
-  cpdb <- .msdev_open_cpdb(object, cpdb_path = cpdb_path)
+  db_path <- .msdev_resolve_cpdb_path(object, cpdb_path)
+  cpdb <- .msdev_open_cpdb(object, cpdb_path = db_path)
   if (is.null(cpdb)) {
-    message("No CompDb at object@projectInfo$CompoundDB_path; ",
-            "MSMS plots will show experimental spectra only")
-  } else {
-    db_path <- cpdb_path
-    if (is.null(db_path) || !nzchar(as.character(db_path)[[1L]])) {
-      db_path <- object@projectInfo$CompoundDB_path
-    }
-    message_with_time(
-      "Using CompDb: ",
-      normalizePath(db_path, winslash = "/", mustWork = FALSE)
+    message(
+      "No CompDb found (projectInfo$CompoundDB_path, options(MSdev.compoundDb), ",
+      "or MSDEV_COMPOUNDDB); MSMS plots will show experimental spectra only"
     )
+  } else {
+    message_with_time("Using CompDb: ", db_path)
   }
 
   message_with_time("Exporting MSMS for ", length(feature_id),
@@ -2736,7 +2741,10 @@ MSdev_assign_MS2 <- function(object,
 #' see \code{\link{MSdev_annotation_MS2_Precursor}}.
 #' @describeIn MSdev_workflow annotation
 #' @param object MSdev object
-#' @param cpdb_path path to CompoundDb SQLite database
+#' @param cpdb_path path to a CompoundDb SQLite database. \code{NULL} resolves
+#'   \code{projectInfo$CompoundDB_path}, then \code{options(MSdev.compoundDb)},
+#'   then the \code{MSDEV_COMPOUNDDB} environment variable. The first path that
+#'   exists is used.
 #' @param calc_isopattern_score logical, whether to calculate isotope pattern scores
 #' @param ppm m/z tolerance in parts per million
 #' @param BPPARAM BiocParallel backend for MS2 scoring and, when
@@ -2751,7 +2759,7 @@ MSdev_assign_MS2 <- function(object,
 #'
 
 MSdev_annotation <- function(object,
-                             cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite",
+                             cpdb_path = NULL,
                              calc_isopattern_score = F,
                              ppm = 10,
                              BPPARAM = BiocParallel::SnowParam(
@@ -2760,6 +2768,7 @@ MSdev_annotation <- function(object,
                              ),
                              ...){
 
+  cpdb_path <- .msdev_require_cpdb_path(object, cpdb_path)
   cpdb <- CompoundDb::CompDb(cpdb_path)
 
   for (i in 0:1) {
@@ -2850,7 +2859,10 @@ MSdev_annotation <- function(object,
 #' }
 #' The two functions do not overwrite each other.
 #' @param object MSdev object with \code{advancedAna$MS2_Precursor}
-#' @param cpdb_path path to CompoundDb SQLite database
+#' @param cpdb_path path to a CompoundDb SQLite database. \code{NULL} resolves
+#'   \code{projectInfo$CompoundDB_path}, then \code{options(MSdev.compoundDb)},
+#'   then the \code{MSDEV_COMPOUNDDB} environment variable. The first path that
+#'   exists is used.
 #' @param ppm m/z tolerance in parts per million for candidate matching
 #' @param weight_mz weight for m/z error score (default \code{0.2})
 #' @param weight_ms2 weight for MS2 similarity score (default \code{0.8})
@@ -2865,7 +2877,7 @@ MSdev_annotation <- function(object,
 #'
 MSdev_annotation_MS2_Precursor <- function(
     object,
-    cpdb_path = "c:/Users/91879/OneDrive/Code/R/data/MSDB/CompoundDB/CompoundDB.sqlite",
+    cpdb_path = NULL,
     ppm = 10,
     weight_mz = 0.2,
     weight_ms2 = 0.8,
@@ -2889,6 +2901,7 @@ MSdev_annotation_MS2_Precursor <- function(
     peak_table$feature_id <- rownames(peak_table)
   }
 
+  cpdb_path <- .msdev_require_cpdb_path(object, cpdb_path)
   cpdb <- CompoundDb::CompDb(cpdb_path)
   sp.ms2 <- get_MSdev_Spectra(object, msLevel = 2L)
 
@@ -2982,7 +2995,7 @@ MSdev_get_Stat <- function(object,
 
     ### retrieve data
     if (!is.null(rda$compound_id)) {
-      cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
+      cpdb <- CompoundDb::CompDb(.msdev_require_cpdb_path(object))
       db.info <- get_CompDb_info(compound_id = rda$compound_id,
                                  keys = keys,
                                  cpdb = cpdb)
@@ -3043,7 +3056,7 @@ MSdev_get_Stat <- function(object,
                                 "candidate.n","temp_id")))%>%
         dplyr::relocate(any_of(c("score","score.ms2","score.isopattern")),
                         .after = any_of("adduct"))
-      cpdb <- CompoundDb::CompDb(object@projectInfo$CompoundDB_path)
+      cpdb <- CompoundDb::CompDb(.msdev_require_cpdb_path(object))
       db.info <- get_CompDb_info(compound_id = candi.rda.split$compound_id,
                                  keys = keys,
                                  cpdb = cpdb)
