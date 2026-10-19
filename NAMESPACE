@@ -225,9 +225,9 @@ importFrom(ProtGenerics,
 )
 importFrom(S4Vectors,isEmpty)
 importFrom(SummarizedExperiment,
-  `assay<-`,
-  `colData<-`,
-  `rowData<-`,
+  "assay<-",
+  "colData<-",
+  "rowData<-",
   assay,
   colData,
   rowData
@@ -242,18 +242,18 @@ importFrom(grid,
   grid.rect
 )
 importFrom(igraph,
+  "E<-",
+  "V<-",
   E,
   V,
-  `E<-`,
-  `V<-`,
   as_adjacency_matrix,
   degree,
   distances,
   edge.attributes
 )
 importFrom(magrittr,
-  `%<>%`,
-  `%>%`
+  "%<>%",
+  "%>%"
 )
 importFrom(methods,
   setMethod,
