@@ -3,7 +3,9 @@
 Perform peak detection and grouping using xcms functions based on acquisition mode (FS/DDA/MRM).
 Read raw MS data files and create xcms experiments for both
 polarities, storing them in object@xcmsData. Also extracts and
-stores MS1 and MS2 spectra in object@spectra.
+stores MS1 and MS2 spectra in object@spectra. The copy into
+MsBackendMemory uses BiocParallel::SerialParam() so peak
+matrices are not duplicated across workers.
 Set custom xcms parameters for peak detection and grouping in an MSdev object.
 These parameters will be used during xcms processing.
 Plot a heatmap using ComplexHeatmap showing whether each feature's peak is detected (present) or not detected (absent) in each sample.
@@ -14,6 +16,10 @@ Convert raw data files to mzML format using MSconvertR, updating sample informat
 File-based spectra importer for cases without (or after) xcms init.
 Reads raw data files, splits by MS level, optionally evaluates noise/purity,
 and stores on-disk data in object@spectra.
+File import uses BiocParallel::SerialParam(). Spectra() with
+MsBackendMemory materializes every peak, and the default
+MulticoreParam copies those peaks again in each worker before
+sending them back to the main process.
 On the main FS/DDA path, prefer MSdev_xcmsProcessing /
 MSdev_get_xcms, which copy Spectra from the freshly read
 MsExperiment (filter / setBackend only; xcms data unchanged)
@@ -41,7 +47,9 @@ metabolite/candidate filtering."><meta property="og:description" content="Add ra
 Perform peak detection and grouping using xcms functions based on acquisition mode (FS/DDA/MRM).
 Read raw MS data files and create xcms experiments for both
 polarities, storing them in object@xcmsData. Also extracts and
-stores MS1 and MS2 spectra in object@spectra.
+stores MS1 and MS2 spectra in object@spectra. The copy into
+MsBackendMemory uses BiocParallel::SerialParam() so peak
+matrices are not duplicated across workers.
 Set custom xcms parameters for peak detection and grouping in an MSdev object.
 These parameters will be used during xcms processing.
 Plot a heatmap using ComplexHeatmap showing whether each feature's peak is detected (present) or not detected (absent) in each sample.
@@ -52,6 +60,10 @@ Convert raw data files to mzML format using MSconvertR, updating sample informat
 File-based spectra importer for cases without (or after) xcms init.
 Reads raw data files, splits by MS level, optionally evaluates noise/purity,
 and stores on-disk data in object@spectra.
+File import uses BiocParallel::SerialParam(). Spectra() with
+MsBackendMemory materializes every peak, and the default
+MulticoreParam copies those peaks again in each worker before
+sending them back to the main process.
 On the main FS/DDA path, prefer MSdev_xcmsProcessing /
 MSdev_get_xcms, which copy Spectra from the freshly read
 MsExperiment (filter / setBackend only; xcms data unchanged)
@@ -119,7 +131,9 @@ metabolite/candidate filtering."></head><body>
 <p>Perform peak detection and grouping using xcms functions based on acquisition mode (FS/DDA/MRM).</p>
 <p>Read raw MS data files and create xcms experiments for both
 polarities, storing them in <code>object@xcmsData</code>. Also extracts and
-stores MS1 and MS2 spectra in <code>object@spectra</code>.</p>
+stores MS1 and MS2 spectra in <code>object@spectra</code>. The copy into
+<code>MsBackendMemory</code> uses <code><a href="https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html" class="external-link">BiocParallel::SerialParam()</a></code> so peak
+matrices are not duplicated across workers.</p>
 <p>Set custom xcms parameters for peak detection and grouping in an MSdev object.
 These parameters will be used during xcms processing.</p>
 <p>Plot a heatmap using ComplexHeatmap showing whether each feature's peak is detected (present) or not detected (absent) in each sample.</p>
@@ -130,6 +144,10 @@ then refresh project metadata and (when present) xcms <code>pData</code>.</p>
 <p>File-based spectra importer for cases without (or after) xcms init.
 Reads raw data files, splits by MS level, optionally evaluates noise/purity,
 and stores on-disk data in <code>object@spectra</code>.</p>
+<p>File import uses <code><a href="https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html" class="external-link">BiocParallel::SerialParam()</a></code>. <code>Spectra()</code> with
+<code>MsBackendMemory</code> materializes every peak, and the default
+<code>MulticoreParam</code> copies those peaks again in each worker before
+sending them back to the main process.</p>
 <p>On the main FS/DDA path, prefer <code>MSdev_xcmsProcessing</code> /
 <code>MSdev_get_xcms</code>, which copy Spectra from the freshly read
 <code>MsExperiment</code> (filter / <code>setBackend</code> only; xcms data unchanged)

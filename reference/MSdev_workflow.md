@@ -8,7 +8,9 @@ acquisition mode (FS/DDA/MRM).
 
 Read raw MS data files and create xcms experiments for both polarities,
 storing them in `object@xcmsData`. Also extracts and stores MS1 and MS2
-spectra in `object@spectra`.
+spectra in `object@spectra`. The copy into `MsBackendMemory` uses
+[`BiocParallel::SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html)
+so peak matrices are not duplicated across workers.
 
 Set custom xcms parameters for peak detection and grouping in an MSdev
 object. These parameters will be used during xcms processing.
@@ -28,6 +30,12 @@ information.
 File-based spectra importer for cases without (or after) xcms init.
 Reads raw data files, splits by MS level, optionally evaluates
 noise/purity, and stores on-disk data in `object@spectra`.
+
+File import uses
+[`BiocParallel::SerialParam()`](https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html).
+`Spectra()` with `MsBackendMemory` materializes every peak, and the
+default `MulticoreParam` copies those peaks again in each worker before
+sending them back to the main process.
 
 On the main FS/DDA path, prefer `MSdev_xcmsProcessing` /
 `MSdev_get_xcms`, which copy Spectra from the freshly read
