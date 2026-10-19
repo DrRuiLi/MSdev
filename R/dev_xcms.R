@@ -2030,6 +2030,9 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
 #'   labels). Defined in the package namespace so Snow workers serialize this
 #'   function, not the caller frame.
 #' @return Unnamed numeric scores aligned to \code{keys}, or \code{NULL}.
+#'   Each value is the highest library-spectrum score for that
+#'   \code{compound_id} + adduct. Experimental spectra are still reduced
+#'   with \code{max} per library spectrum before that.
 #' @keywords internal
 .score_ms2_one <- function(job) {
   expSpec <- job$exp
@@ -2044,7 +2047,8 @@ xcms_get_feature_ms1_candidate <- function(xcms.xcms ,
   dim(scorem) <- c(length(expSpec), length(refSpec))
   scorem[is.infinite(scorem) | is.na(scorem)] <- 0
   scores <- apply(scorem, 2L, max, na.rm = TRUE)
-  agg <- mean_f(scores, paste0(refSpec$compound_id, "_", refSpec$adduct))
+  group <- paste0(refSpec$compound_id, "_", refSpec$adduct)
+  agg <- sapply(split(scores, group), max)
   unname(agg[keys])
 }
 
