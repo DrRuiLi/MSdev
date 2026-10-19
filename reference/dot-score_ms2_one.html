@@ -60,7 +60,10 @@ function, not the caller frame.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Unnamed numeric scores aligned to <code>keys</code>, or <code>NULL</code>.</p>
+    <p>Unnamed numeric scores aligned to <code>keys</code>, or <code>NULL</code>.
+Each value is the highest library-spectrum score for that
+<code>compound_id</code> + adduct. Experimental spectra are still reduced
+with <code>max</code> per library spectrum before that.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

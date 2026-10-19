@@ -19,4 +19,7 @@ Score one feature MS2 job
 
 ## Value
 
-Unnamed numeric scores aligned to `keys`, or `NULL`.
+Unnamed numeric scores aligned to `keys`, or `NULL`. Each value is the
+highest library-spectrum score for that `compound_id` + adduct.
+Experimental spectra are still reduced with `max` per library spectrum
+before that.
