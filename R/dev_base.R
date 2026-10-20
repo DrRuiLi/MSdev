@@ -22,6 +22,16 @@ between.range <- function(x, r){
 }
 
 
+package_report <- function(){
+
+    pkgnet::CreatePackageReport(
+      pkg_name = packageName(),
+      pkg_path = '.'
+    )
+
+
+}
+
 
 
 #' @title Load RData File as Variable
