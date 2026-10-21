@@ -32,6 +32,9 @@ articles:
   contents: starts_with("articles/")
 - title: Developer notes
   contents: matches("^dev_")
+- title: Package structure
+  contents:
+  - pkgnet-report
 footer:
   structure:
     left: developed_by
