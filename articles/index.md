@@ -51,8 +51,3 @@
   and XICs from XcmsExperiment, XCMSnExp, and XChromatogram objects.
 
 ### Developer notes
-
-### Package structure
-
-- [MSdev Package Report, by
-  pkgnet](https://drruili.github.io/MSdev/articles/pkgnet-report.md):
