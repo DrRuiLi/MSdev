@@ -19,11 +19,16 @@ navbar:
     left:
     - intro
     - reference
+    - pkgnet
     - articles
     right:
     - search
     - github
     - lightswitch
+  components:
+    pkgnet:
+      text: pkgnet
+      href: articles/pkgnet-report.html
 articles:
 - title: Get started
   navbar: ~
@@ -32,7 +37,7 @@ articles:
   contents: starts_with("articles/")
 - title: Developer notes
   contents: matches("^dev_")
-- title: Package structure
+- title: internal
   contents:
   - pkgnet-report
 footer:
