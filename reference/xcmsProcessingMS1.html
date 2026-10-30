@@ -54,6 +54,7 @@
 <span>  chromPeaks_fix_mz_ppm <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  chromPeaks_max_mz_ppm <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  beta_cor_thresh <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  mergeNeighboringPeaks <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SnowParam-class.html" class="external-link">SnowParam</a></span><span class="op">(</span>workers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">floor</a></span><span class="op">(</span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">/</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>    progressbar <span class="op">=</span> <span class="cn">T</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
@@ -73,6 +74,12 @@
 after merge with <code>chromPeakSummary()</code> (finite CentWave scores are
 kept), then drop chromPeaks below this value (remaining NA scores are
 dropped). Default <code>NULL</code> skips fill and filtering.</p></dd>
+
+
+<dt id="arg-mergeneighboringpeaks">mergeNeighboringPeaks<a class="anchor" aria-label="anchor" href="#arg-mergeneighboringpeaks"></a></dt>
+<dd><p>logical. Merge neighboring chromPeaks with
+<code><a href="https://rdrr.io/pkg/xcms/man/refineChromPeaks.html" class="external-link">xcms::MergeNeighboringPeaksParam</a></code> after peak detection.
+Default <code>TRUE</code>.</p></dd>
 
 
 <dt id="arg-msdatafiles">msDataFiles<a class="anchor" aria-label="anchor" href="#arg-msdatafiles"></a></dt>

@@ -16,6 +16,7 @@ xcmsProcessingMS1(
   chromPeaks_fix_mz_ppm = NULL,
   chromPeaks_max_mz_ppm = NULL,
   beta_cor_thresh = NULL,
+  mergeNeighboringPeaks = TRUE,
   BPPARAM = BiocParallel::SnowParam(workers = max(1L, floor(parallel::detectCores()/3)),
     progressbar = T),
   ...
@@ -35,6 +36,12 @@ xcmsProcessingMS1(
   `chromPeakSummary()` (finite CentWave scores are kept), then drop
   chromPeaks below this value (remaining NA scores are dropped). Default
   `NULL` skips fill and filtering.
+
+- mergeNeighboringPeaks:
+
+  logical. Merge neighboring chromPeaks with
+  [`xcms::MergeNeighboringPeaksParam`](https://rdrr.io/pkg/xcms/man/refineChromPeaks.html)
+  after peak detection. Default `TRUE`.
 
 - msDataFiles:
 

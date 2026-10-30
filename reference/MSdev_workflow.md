@@ -77,6 +77,7 @@ MSdev_xcmsProcessing(
   object,
   BPPARAM = BiocParallel::SnowParam(workers = max(1L, floor(parallel::detectCores()/3)),
     progressbar = TRUE),
+  mergeNeighboringPeaks = TRUE,
   ...
 )
 
@@ -141,6 +142,13 @@ MSdev_get_Se(object, polarity_paired = TRUE, ...)
   is `TRUE`, isotope-pattern scoring. Default is a `SnowParam` with
   `floor(detectCores() / 3)` workers. Positive and negative polarities
   are processed one after the other, each using this backend.
+
+- mergeNeighboringPeaks:
+
+  logical. Run
+  [`xcms::refineChromPeaks()`](https://rdrr.io/pkg/xcms/man/refineChromPeaks.html)
+  with `MergeNeighboringPeaksParam` after peak detection. Default
+  `TRUE`.
 
 - ...:
 

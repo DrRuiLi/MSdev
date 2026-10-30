@@ -183,6 +183,7 @@ metabolite/candidate filtering.</p>
 <span>  <span class="va">object</span>,</span>
 <span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SnowParam-class.html" class="external-link">SnowParam</a></span><span class="op">(</span>workers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">floor</a></span><span class="op">(</span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">/</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>    progressbar <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>  mergeNeighboringPeaks <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -249,6 +250,12 @@ metabolite/candidate filtering.</p>
 Default is a <code>SnowParam</code> with <code>floor(detectCores() / 3)</code> workers.
 Positive and negative polarities are processed one after the other, each
 using this backend.</p></dd>
+
+
+<dt id="arg-mergeneighboringpeaks">mergeNeighboringPeaks<a class="anchor" aria-label="anchor" href="#arg-mergeneighboringpeaks"></a></dt>
+<dd><p>logical. Run
+<code><a href="https://rdrr.io/pkg/xcms/man/refineChromPeaks.html" class="external-link">xcms::refineChromPeaks()</a></code> with <code>MergeNeighboringPeaksParam</code>
+after peak detection. Default <code>TRUE</code>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
