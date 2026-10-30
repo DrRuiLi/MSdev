@@ -251,6 +251,16 @@ NULL
   )
 }
 
+#' One sample as-is; several samples via the \code{prob} quantile per edge
+#' @noRd
+.eic_sim_aggregate <- function(sim_list, prob = 0.75) {
+  if (length(sim_list) == 1L) {
+    sim_list[[1L]]
+  } else {
+    .aggregate_sparse_sim_list(sim_list, prob = prob)
+  }
+}
+
 
 #' @title Pairwise EIC similarity for xcms features
 #' @description Compute per-sample feature-by-feature EIC similarity matrices
@@ -705,12 +715,7 @@ xcms_group_feature_EIC <- function(xcms.xcms,
   fids <- rownames(sim_list[[1L]])
   fdf <- as.data.frame(xcms::featureDefinitions(xcms.xcms))
 
-  ns <- length(sim_list)
-  sim_sp <- if (ns == 1L) {
-    sim_list[[1L]]
-  } else {
-    .aggregate_sparse_sim_list(sim_list, prob = 0.75)
-  }
+  sim_sp <- .eic_sim_aggregate(sim_list, prob = 0.75)
   sim2d <- .sparse_sim_to_dense(sim_sp, absent = absent_sim)
 
   grp <- switch(
@@ -828,33 +833,13 @@ MSdev_group_feature_EIC <- function(object,
   }
 
   polarities <- c("Negative", "Positive")
-  need_chrom <- forceExtractChrom
-  if (!need_chrom) {
-    for (pol in polarities) {
-      ms1_key <- paste0(pol, "MS1")
-      chrom_key <- paste0(pol, "_Chromatograms")
-      xcms_pol <- object@xcmsData[[ms1_key]]
-      if (!is.null(xcms_pol) && !identical(xcms_pol, NA) &&
-          is.null(object@xcmsData[[chrom_key]])) {
-        need_chrom <- TRUE
-        break
-      }
-    }
-  }
-  if (need_chrom) {
-    message_with_time("Extracting feature chromatograms via MSdev_get_feature_chrom")
-    object <- MSdev_get_feature_chrom(
-      object,
-      BPPARAM = BPPARAM,
-      expandMzppm = expandMzppm
-    )
-  } else if (!missing(expandMzppm)) {
-    message(
-      "expandMzppm=", expandMzppm,
-      " ignored: stored chromatograms reused. ",
-      "Set forceExtractChrom=TRUE to re-extract with the wider m/z box."
-    )
-  }
+  object <- .msdev_ensure_feature_chrom(
+    object,
+    forceExtractChrom = forceExtractChrom,
+    expandMzppm = expandMzppm,
+    warn_expand = !missing(expandMzppm),
+    BPPARAM = BPPARAM
+  )
 
   for (pol in polarities) {
     ms1_key <- paste0(pol, "MS1")
@@ -887,6 +872,226 @@ MSdev_group_feature_EIC <- function(object,
   }
 
   object
+}
+
+
+#' Extract feature chromatograms when forced or missing for any polarity
+#' @noRd
+.msdev_ensure_feature_chrom <- function(object,
+                                        forceExtractChrom = FALSE,
+                                        expandMzppm = 2,
+                                        warn_expand = FALSE,
+                                        BPPARAM = BiocParallel::SerialParam()) {
+  need_chrom <- isTRUE(forceExtractChrom)
+  if (!need_chrom) {
+    for (pol in c("Negative", "Positive")) {
+      xcms_pol <- object@xcmsData[[paste0(pol, "MS1")]]
+      if (!is.null(xcms_pol) && !identical(xcms_pol, NA) &&
+          is.null(object@xcmsData[[paste0(pol, "_Chromatograms")]])) {
+        need_chrom <- TRUE
+        break
+      }
+    }
+  }
+  if (need_chrom) {
+    message_with_time("Extracting feature chromatograms via MSdev_get_feature_chrom")
+    object <- MSdev_get_feature_chrom(
+      object,
+      BPPARAM = BPPARAM,
+      expandMzppm = expandMzppm
+    )
+  } else if (isTRUE(warn_expand)) {
+    message(
+      "expandMzppm=", expandMzppm,
+      " ignored: stored chromatograms reused. ",
+      "Set forceExtractChrom=TRUE to re-extract with the wider m/z box."
+    )
+  }
+  object
+}
+
+
+#' @title EIC similarity for xcms features without grouping
+#' @description Runs \code{\link{get_xcms_feature_EIC_similarity}}, aggregates
+#'   the per-sample matrices (\code{prob} quantile per edge, over samples where
+#'   the edge exists), and stores both in \code{otherData(xcms)}:
+#'   \code{EIC_Similarity} (named list of per-sample \code{dgCMatrix}) and
+#'   \code{EIC_Similarity_agg} (one symmetric \code{dgCMatrix}, diagonal 1;
+#'   pairs outside \code{rt_tol} are not stored). \code{featureGroups} is left
+#'   untouched, so callers can build their own (e.g. overlapping) groups with
+#'   \code{\link{groupSimilarityMatrix_neighborhood}}.
+#' @inheritParams get_xcms_feature_EIC_similarity
+#' @param prob numeric(1). Quantile used to aggregate samples. Default 0.75.
+#' @return Updated \code{xcms.xcms}.
+#' @export
+xcms_feature_EIC_similarity <- function(xcms.xcms,
+                                        chroms,
+                                        rt_tol = 5,
+                                        expandRt = 2,
+                                        min_width = 20,
+                                        selected_sample = NULL,
+                                        prob = 0.75,
+                                        n_chunks = NULL,
+                                        BPPARAM = BiocParallel::SerialParam()) {
+  sim_list <- get_xcms_feature_EIC_similarity(
+    xcms.xcms = xcms.xcms,
+    chroms = chroms,
+    rt_tol = rt_tol,
+    expandRt = expandRt,
+    min_width = min_width,
+    selected_sample = selected_sample,
+    n_chunks = n_chunks,
+    BPPARAM = BPPARAM
+  )
+  od <- MsExperiment::otherData(xcms.xcms)
+  od$EIC_Similarity <- sim_list
+  od$EIC_Similarity_agg <- .eic_sim_aggregate(sim_list, prob = prob)
+  MsExperiment::otherData(xcms.xcms) <- od
+  xcms.xcms
+}
+
+
+#' @title EIC similarity per polarity without grouping
+#' @description Per-polarity wrapper around
+#'   \code{\link{xcms_feature_EIC_similarity}}. Shares chromatogram handling
+#'   with \code{\link{MSdev_group_feature_EIC}} but does not assign
+#'   \code{feature_group} labels.
+#' @inheritParams MSdev_group_feature_EIC
+#' @param prob numeric(1). Quantile used to aggregate samples. Default 0.75.
+#' @return MSdev object; each polarity's MS1 xcms object carries
+#'   \code{otherData(xcms)$EIC_Similarity} and
+#'   \code{otherData(xcms)$EIC_Similarity_agg}.
+#' @export
+MSdev_feature_EIC_similarity <- function(object,
+                                         rt_tol = 5,
+                                         expandRt = 2,
+                                         min_width = 20,
+                                         expandMzppm = 2,
+                                         selected_sample = NULL,
+                                         forceExtractChrom = FALSE,
+                                         prob = 0.75,
+                                         n_chunks = NULL,
+                                         BPPARAM = SnowParam(
+                                           workers = max(1L, floor(parallel::detectCores() / 2)),
+                                           progressbar = TRUE)) {
+  stopifnot(inherits(object, "MSdev"))
+  if (!is.numeric(rt_tol) || length(rt_tol) != 1L || rt_tol <= 0) {
+    stop("'rt_tol' must be a positive numeric(1)")
+  }
+  object <- .msdev_ensure_feature_chrom(
+    object,
+    forceExtractChrom = forceExtractChrom,
+    expandMzppm = expandMzppm,
+    warn_expand = !missing(expandMzppm),
+    BPPARAM = BPPARAM
+  )
+  for (pol in c("Negative", "Positive")) {
+    ms1_key <- paste0(pol, "MS1")
+    chrom_key <- paste0(pol, "_Chromatograms")
+    xcms.xcms <- object@xcmsData[[ms1_key]]
+    if (is.null(xcms.xcms) || identical(xcms.xcms, NA)) {
+      next
+    }
+    if (is.null(object@xcmsData[[chrom_key]])) {
+      warning("No chromatograms for ", pol, "; skip.")
+      next
+    }
+    message_with_time("EIC similarity: ", pol)
+    object@xcmsData[[ms1_key]] <- xcms_feature_EIC_similarity(
+      xcms.xcms = xcms.xcms,
+      chroms = onDiskData_retrieve(object@xcmsData[[chrom_key]]),
+      rt_tol = rt_tol,
+      expandRt = expandRt,
+      min_width = min_width,
+      selected_sample = selected_sample,
+      prob = prob,
+      n_chunks = n_chunks,
+      BPPARAM = BPPARAM
+    )
+  }
+  object
+}
+
+
+#' @title Seed-centered overlapping groups from a similarity matrix
+#' @description For each seed \code{s}, the group is \code{s} plus every
+#'   feature \code{x} with \code{sim(s, x) > threshold} (closed neighborhood).
+#'   A feature may belong to several groups. Pairs with no stored value in a
+#'   sparse matrix (outside \code{rt_tol}) and non-finite values are never
+#'   neighbors.
+#' @param x Symmetric similarity matrix (\code{dgCMatrix} or dense) with
+#'   feature ids as dimnames.
+#' @param seeds Character feature ids (matching \code{colnames(x)}) or integer
+#'   column indices.
+#' @param threshold numeric(1). Strict lower bound on similarity to the seed.
+#'   Default 0.9.
+#' @param prefix character(1). Group label prefix; label is
+#'   \code{paste0(prefix, seed_id)}. Default \code{"FG."}.
+#' @return \code{data.frame(feature_group, seed_id, feature_id, sim)}, seed
+#'   row first in each group with \code{sim = 1}, members by decreasing
+#'   \code{sim}.
+#' @export
+groupSimilarityMatrix_neighborhood <- function(x,
+                                               seeds,
+                                               threshold = 0.9,
+                                               prefix = "FG.") {
+  if (!is.numeric(threshold) || length(threshold) != 1L) {
+    stop("'threshold' must be numeric(1)")
+  }
+  if (nrow(x) != ncol(x)) {
+    stop("'x' should be a square matrix")
+  }
+  fids <- colnames(x)
+  if (is.null(fids)) {
+    fids <- as.character(seq_len(ncol(x)))
+  }
+  empty <- data.frame(
+    feature_group = character(0), seed_id = character(0),
+    feature_id = character(0), sim = numeric(0),
+    stringsAsFactors = FALSE
+  )
+  if (!length(seeds)) {
+    return(empty)
+  }
+  si <- if (is.character(seeds)) match(seeds, fids) else as.integer(seeds)
+  if (anyNA(si) || any(si < 1L | si > ncol(x))) {
+    stop("'seeds' not found in the similarity matrix")
+  }
+  si <- unique(si)
+  sub <- x[, si, drop = FALSE]
+  if (inherits(sub, "Matrix")) {
+    s <- Matrix::summary(methods::as(sub, "CsparseMatrix"))
+    ii <- s$i
+    jj <- s$j
+    vv <- as.numeric(s$x)
+  } else {
+    sub <- as.matrix(sub)
+    ii <- rep.int(seq_len(nrow(sub)), ncol(sub))
+    jj <- rep(seq_len(ncol(sub)), each = nrow(sub))
+    vv <- as.numeric(sub)
+  }
+  keep <- is.finite(vv) & vv > threshold & ii != si[jj]
+  ii <- ii[keep]
+  jj <- jj[keep]
+  vv <- vv[keep]
+  out <- data.frame(
+    seed_col = c(seq_along(si), jj),
+    feature_idx = c(si, ii),
+    sim = c(rep(1, length(si)), vv),
+    is_seed = c(rep(TRUE, length(si)), rep(FALSE, length(ii))),
+    stringsAsFactors = FALSE
+  )
+  out <- out[order(out$seed_col, !out$is_seed, -out$sim, out$feature_idx), , drop = FALSE]
+  seed_id <- fids[si[out$seed_col]]
+  res <- data.frame(
+    feature_group = paste0(prefix, seed_id),
+    seed_id = seed_id,
+    feature_id = fids[out$feature_idx],
+    sim = out$sim,
+    stringsAsFactors = FALSE
+  )
+  rownames(res) <- NULL
+  res
 }
 
 

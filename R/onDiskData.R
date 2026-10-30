@@ -23,6 +23,11 @@ setMethod("show","onDiskData",
           })
 
 
+#' Read the data behind an onDiskData handle
+#'
+#' @param object An \code{onDiskData} handle, or any object (returned as is).
+#' @return The stored object.
+#' @export
 onDiskData_retrieve <- function(object){
 
   if (class(object)=="onDiskData") {
