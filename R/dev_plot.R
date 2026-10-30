@@ -517,7 +517,7 @@ plot_xcms_feature_group_EIC_comparasion <- function(xcms,
   # Preserve caller order of groups; features within group by order_by
   sel_fg <- feature_group
   gfids_list <- lapply(sel_fg, function(g) {
-    gfids <- fids_all[fg_all == g]
+    gfids <- fids_all[which(fg_all == g)]
     ord_val <- if (identical(order_by, "mzmed")) {
       mz_all[gfids]
     } else {
