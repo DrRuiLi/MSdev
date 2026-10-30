@@ -17,6 +17,11 @@ S/Cl/Br/K. A row is used only if the ceiling is at least `min_rel`
 ceiling times the factor (`intensity_factor_chon` or
 `intensity_factor_hetero`). 41K is used only in positive mode.
 
+Parallel-ladder check: an S/Cl/Br step whose parent is itself an
+isotopologue is kept only if the monoisotopic root has the same step
+(same isotope and k) to a feature with higher median `into`. Dropped
+edges have `pass_parallel = FALSE` in `pairs`.
+
 Each heavy feature keeps one parent, ordered by isotope priority (13C,
 then 15N/18O/2H, then 34S/37Cl/81Br, then 41K), \|ppm\| and similarity.
 Parents that are not linked to each other make the feature `ambiguous`.
