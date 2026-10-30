@@ -68,6 +68,9 @@
 - [`MSdev_export_feature_MSMS()`](https://drruili.github.io/MSdev/reference/MSdev_export_feature_MSMS.md)
   : Export MS/MS spectra for all features
 
+- [`MSdev_feature_EIC_similarity()`](https://drruili.github.io/MSdev/reference/MSdev_feature_EIC_similarity.md)
+  : EIC similarity per polarity without grouping
+
 - [`MSdev_get_feature_chrom()`](https://drruili.github.io/MSdev/reference/MSdev_get_feature_chrom.md)
   : Extract chromatograms for features
 
@@ -261,6 +264,9 @@
   : Group features by average-linkage hierarchical clustering on
   similarity
 
+- [`groupSimilarityMatrix_neighborhood()`](https://drruili.github.io/MSdev/reference/groupSimilarityMatrix_neighborhood.md)
+  : Seed-centered overlapping groups from a similarity matrix
+
 - [`groupStringFactor()`](https://drruili.github.io/MSdev/reference/groupStringFactor.md)
   : groupStringFactor
 
@@ -293,6 +299,9 @@
 
 - [`normalize_max_min()`](https://drruili.github.io/MSdev/reference/normalize_max_min.md)
   : Normalize Values Using Min-Max Scaling
+
+- [`onDiskData_retrieve()`](https://drruili.github.io/MSdev/reference/onDiskData_retrieve.md)
+  : Read the data behind an onDiskData handle
 
 - [`open_dir()`](https://drruili.github.io/MSdev/reference/open_dir.md)
   : Open Directory in File Explorer
@@ -408,6 +417,9 @@
   [`plot_xcms_TIC()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
   [`plot_xcms_xic()`](https://drruili.github.io/MSdev/reference/xcms_extension_plot.md)
   : Heatmap of xcms feature intensities
+
+- [`xcms_feature_EIC_similarity()`](https://drruili.github.io/MSdev/reference/xcms_feature_EIC_similarity.md)
+  : EIC similarity for xcms features without grouping
 
 - [`xcms_get_dda_ms2_assignment()`](https://drruili.github.io/MSdev/reference/xcms_get_dda_ms2_assignment.md)
   : xcms_get_dda_ms2_assignment
