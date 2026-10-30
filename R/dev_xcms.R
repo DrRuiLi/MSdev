@@ -3872,6 +3872,9 @@ filter_xcms_chromPeaks_beta_cor <- function(xcms.xcms, thresh, verbose = TRUE) {
 #'   after merge with \code{chromPeakSummary()} (finite CentWave scores are
 #'   kept), then drop chromPeaks below this value (remaining NA scores are
 #'   dropped). Default \code{NULL} skips fill and filtering.
+#' @param mergeNeighboringPeaks logical. Merge neighboring chromPeaks with
+#'   \code{xcms::MergeNeighboringPeaksParam} after peak detection.
+#'   Default \code{TRUE}.
 #'
 #' @return xcms
 #' @export
@@ -3886,6 +3889,7 @@ xcmsProcessingMS1 <- function(xcms.xcms,
                               chromPeaks_fix_mz_ppm = NULL,
                               chromPeaks_max_mz_ppm = NULL,
                               beta_cor_thresh = NULL,
+                              mergeNeighboringPeaks = TRUE,
                               BPPARAM  = BiocParallel::SnowParam(
                                 workers = max(1L, floor(parallel::detectCores() / 3)),
                                 progressbar = T
@@ -3915,16 +3919,18 @@ xcmsProcessingMS1 <- function(xcms.xcms,
                             BPPARAM  = BPPARAM,...)
   message_with_time(" ", nrow(xcms::chromPeaks(xcms.xcms)), " chromPeaks found")
 
-  message_with_time(" Merge neighboring peaks...")
-  mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 3,minProp = 0.5,ppm =  xcms_param$findChromPeaks@ppm)
-  n_workers <- max(2L, as.integer(BiocParallel::bpnworkers(BPPARAM)))
-  if (inherits(xcms.xcms, "XcmsExperiment") || inherits(xcms.xcms, "MsExperiment")) {
-    xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
-                                        chunkSize = n_workers,
-                                        BPPARAM  = BPPARAM)
-  } else {
-    xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
-                                        BPPARAM  = BPPARAM)
+  if (isTRUE(mergeNeighboringPeaks)) {
+    message_with_time(" Merge neighboring peaks...")
+    mpp <- xcms::MergeNeighboringPeaksParam(expandRt = 3,minProp = 0.5,ppm =  xcms_param$findChromPeaks@ppm)
+    n_workers <- max(2L, as.integer(BiocParallel::bpnworkers(BPPARAM)))
+    if (inherits(xcms.xcms, "XcmsExperiment") || inherits(xcms.xcms, "MsExperiment")) {
+      xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
+                                          chunkSize = n_workers,
+                                          BPPARAM  = BPPARAM)
+    } else {
+      xcms.xcms <- xcms::refineChromPeaks(xcms.xcms, mpp,
+                                          BPPARAM  = BPPARAM)
+    }
   }
 
   message_with_time(" Filter chromPeaks...")

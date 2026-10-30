@@ -342,6 +342,9 @@ MSdev_add_sample <- function(object,
 #' @describeIn MSdev_workflow use xcms to Processing data
 #' @param object MSdev
 #' @param BPPARAM BiocParallel backend passed to xcms peak processing.
+#' @param mergeNeighboringPeaks logical. Run
+#'   \code{xcms::refineChromPeaks()} with \code{MergeNeighboringPeaksParam}
+#'   after peak detection. Default \code{TRUE}.
 #' @param ... additional arguments passed to \code{\link{xcmsProcessingMS1}}
 #'   (for example \code{beta_cor_thresh}, \code{chromPeaks_fix_mz_ppm}).
 #' @return MSdev
@@ -351,13 +354,19 @@ MSdev_xcmsProcessing <- function(object,
                                    workers = max(1L, floor(parallel::detectCores() / 3)),
                                    progressbar = TRUE
                                  ),
+                                 mergeNeighboringPeaks = TRUE,
                                  ...){
 
   MS.mode <- object@projectInfo$msAcquisition
 
   if ("FS" %in% MS.mode|"DDA" %in% MS.mode) {
     object <- MSdev_get_xcms(object)
-    object <- xcmsProcessingMSdev.DDA(object, BPPARAM = BPPARAM, ...)
+    object <- xcmsProcessingMSdev.DDA(
+      object,
+      BPPARAM = BPPARAM,
+      mergeNeighboringPeaks = mergeNeighboringPeaks,
+      ...
+    )
     object <- MSdev_assign_MS2(object)
     return(object)
   }
