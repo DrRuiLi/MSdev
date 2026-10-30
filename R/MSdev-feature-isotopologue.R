@@ -208,12 +208,75 @@
   out
 }
 
+#' Best parent per heavy feature: isotope priority, |ppm|, similarity.
+#' @noRd
+.msdev_isotopologue_pick <- function(e) {
+  e <- e[order(e$hi, e$prio, abs(e$ppm), -e$sim), , drop = FALSE]
+  e[!duplicated(e$hi), , drop = FALSE]
+}
+
+#' Monoisotopic root of every feature index (itself when it has no parent).
+#' @noRd
+.msdev_isotopologue_roots <- function(best, n) {
+  parent <- rep(NA_integer_, n)
+  parent[best$hi] <- best$lo
+  root <- seq_len(n)
+  for (i in best$hi) {
+    cur <- i
+    while (!is.na(parent[[cur]])) {
+      cur <- parent[[cur]]
+    }
+    root[[i]] <- cur
+  }
+  root
+}
+
+#' Parallel-ladder check for S/Cl/Br steps whose parent is not the root.
+#'
+#' Such a step implies the root carries that element, so the root must have
+#' the same step (same isotope and k) to a feature stronger than this heavy.
+#' Repeats until no edge is dropped. Returns the kept rows of \code{e}.
+#' @noRd
+.msdev_isotopologue_parallel <- function(e, n, into) {
+  if (!nrow(e) || is.null(into)) {
+    return(rep(TRUE, nrow(e)))
+  }
+  into_med <- apply(into, 1L, stats::median, na.rm = TRUE)
+  keep <- rep(TRUE, nrow(e))
+  hetero_step <- e$parent %in% c("S", "Cl", "Br")
+  repeat {
+    cur <- e[keep, , drop = FALSE]
+    root <- .msdev_isotopologue_roots(.msdev_isotopologue_pick(cur), n)
+    drop <- integer()
+    for (r in which(keep & hetero_step)) {
+      lo <- e$lo[[r]]
+      R <- root[[lo]]
+      if (R == lo) {
+        next
+      }
+      sib <- cur$hi[cur$lo == R & cur$iso == e$iso[[r]] & cur$k == e$k[[r]]]
+      ok <- length(sib) > 0L &&
+        any(into_med[sib] > into_med[[e$hi[[r]]]], na.rm = TRUE)
+      if (!ok) {
+        drop <- c(drop, r)
+      }
+    }
+    if (!length(drop)) {
+      break
+    }
+    keep[drop] <- FALSE
+  }
+  keep
+}
+
 #' One parent per heavy feature, then walk to the monoisotopic root.
 #' @noRd
 .msdev_isotopologue_resolve <- function(pairs, sim, fid, mz, into, catalog, ppm,
                                         max_atoms, intensity_factor_chon,
                                         intensity_factor_hetero, min_rel) {
-  e <- pairs[pairs$pass, , drop = FALSE]
+  pairs$pass_parallel <- rep(TRUE, nrow(pairs))
+  ip <- which(pairs$pass)
+  e <- pairs[ip, , drop = FALSE]
   empty_links <- data.frame(
     feature_id = character(), mzmed = numeric(), status = character(),
     anchor = character(), parent = character(), formula = character(),
@@ -221,10 +284,13 @@
     ratio = numeric(), n_parent = integer(), stringsAsFactors = FALSE
   )
   if (!nrow(e)) {
-    return(list(links = empty_links, conflicts = e[0, , drop = FALSE]))
+    return(list(pairs = pairs, links = empty_links, conflicts = e[0, , drop = FALSE]))
   }
+  keep <- .msdev_isotopologue_parallel(e, length(fid), into)
+  pairs$pass_parallel[ip[!keep]] <- FALSE
+  e <- e[keep, , drop = FALSE]
+  best <- .msdev_isotopologue_pick(e)
   e <- e[order(e$hi, e$prio, abs(e$ppm), -e$sim), , drop = FALSE]
-  best <- e[!duplicated(e$hi), , drop = FALSE]
   linked <- paste(e$lo, e$hi)
   ambiguous <- vapply(best$hi, function(h) {
     pp <- unique(e$lo[e$hi == h])
@@ -304,7 +370,7 @@
   conflicts <- e[e$hi %in% amb_h, , drop = FALSE]
   rownames(links) <- NULL
   rownames(conflicts) <- NULL
-  list(links = links, conflicts = conflicts)
+  list(pairs = pairs, links = links, conflicts = conflicts)
 }
 
 
@@ -326,6 +392,11 @@
 #'   observed \code{into} ratio is at most ceiling times the factor
 #'   (\code{intensity_factor_chon} or \code{intensity_factor_hetero}).
 #'   41K is used only in positive mode.
+#'
+#'   Parallel-ladder check: an S/Cl/Br step whose parent is itself an
+#'   isotopologue is kept only if the monoisotopic root has the same step
+#'   (same isotope and k) to a feature with higher median \code{into}.
+#'   Dropped edges have \code{pass_parallel = FALSE} in \code{pairs}.
 #'
 #'   Each heavy feature keeps one parent, ordered by isotope priority
 #'   (13C, then 15N/18O/2H, then 34S/37Cl/81Br, then 41K), |ppm| and
@@ -386,6 +457,7 @@ xcms_feature_natural_isotopologues <- function(xcms.xcms,
   pairs <- do.call(.msdev_isotopologue_pairs,
                    c(list(sim = sim, sim_threshold = sim_threshold), args))
   res <- do.call(.msdev_isotopologue_resolve, c(list(pairs = pairs, sim = sim), args))
+  pairs <- res$pairs
   links <- res$links
 
   n <- nrow(fd)
@@ -418,6 +490,7 @@ xcms_feature_natural_isotopologues <- function(xcms.xcms,
     n_mass_pairs = sum(near),
     n_reject_min_rel = sum(near & !pairs$pass_min_rel),
     n_reject_intensity = sum(near & pairs$pass_min_rel & !pairs$pass_intensity),
+    n_reject_parallel = sum(!pairs$pass_parallel),
     n_isotopologue = nrow(links),
     n_monoisotopic = length(roots),
     n_ambiguous = sum(links$status == "ambiguous"),
@@ -444,7 +517,7 @@ xcms_feature_natural_isotopologues <- function(xcms.xcms,
     summary$n_monoisotopic, " monoisotopic roots; ", summary$n_ambiguous,
     " ambiguous, ", summary$n_chain_fallback, " chain fallback; rejected ",
     summary$n_reject_min_rel, " by min_rel, ", summary$n_reject_intensity,
-    " by intensity"
+    " by intensity, ", summary$n_reject_parallel, " by parallel ladder"
   )
   xcms.xcms
 }
