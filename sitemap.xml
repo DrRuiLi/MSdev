@@ -27,6 +27,7 @@
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_export_feature_Chromatographs.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_export_feature_MSMS.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_feature_EIC_similarity.html</loc></url>
+<url><loc>https://drruili.github.io/MSdev/reference/MSdev_feature_natural_isotopologues.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_get_feature_chrom.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_get_feature_purity.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/MSdev_get_peak_table_from_spectra.html</loc></url>
@@ -145,6 +146,7 @@
 <url><loc>https://drruili.github.io/MSdev/reference/xcms_extension_isotopologue.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/xcms_extension_plot.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/xcms_feature_EIC_similarity.html</loc></url>
+<url><loc>https://drruili.github.io/MSdev/reference/xcms_feature_natural_isotopologues.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/xcms_get_dda_ms2_assignment.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/xcms_get_dda_scan_stimulate.html</loc></url>
 <url><loc>https://drruili.github.io/MSdev/reference/xcms_get_feature_isotope_label.html</loc></url>

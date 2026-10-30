@@ -71,6 +71,9 @@
 - [`MSdev_feature_EIC_similarity()`](https://drruili.github.io/MSdev/reference/MSdev_feature_EIC_similarity.md)
   : EIC similarity per polarity without grouping
 
+- [`MSdev_feature_natural_isotopologues()`](https://drruili.github.io/MSdev/reference/MSdev_feature_natural_isotopologues.md)
+  : Natural isotopologue ladders per polarity
+
 - [`MSdev_get_feature_chrom()`](https://drruili.github.io/MSdev/reference/MSdev_get_feature_chrom.md)
   : Extract chromatograms for features
 
@@ -420,6 +423,9 @@
 
 - [`xcms_feature_EIC_similarity()`](https://drruili.github.io/MSdev/reference/xcms_feature_EIC_similarity.md)
   : EIC similarity for xcms features without grouping
+
+- [`xcms_feature_natural_isotopologues()`](https://drruili.github.io/MSdev/reference/xcms_feature_natural_isotopologues.md)
+  : Natural isotopologue ladders for xcms features
 
 - [`xcms_get_dda_ms2_assignment()`](https://drruili.github.io/MSdev/reference/xcms_get_dda_ms2_assignment.md)
   : xcms_get_dda_ms2_assignment
